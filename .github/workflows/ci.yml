@@ -1,0 +1,73 @@
+# CI for kept.
+#
+# Two jobs, split by what they need. The fast one is pure logic, strict types
+# and a build — no browser, so it fails in seconds rather than minutes when it
+# fails at all. The other serves the built app and runs six sweeps against a
+# real Chromium. Each of those sweeps found genuine defects the day it was
+# written, which is why they are gates and not a ritual someone remembers to
+# perform.
+name: ci
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit:
+    name: unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        # Under a non-UK, DST-observing zone on purpose: in UTC or London a
+        # date parsed as UTC midnight still lands on the right calendar day,
+        # so the timezone bugs these tests exist to catch would pass unnoticed.
+        run: npm test
+      - name: Build
+        run: npx vite build
+
+  browser:
+    name: browser
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Build
+        run: npx vite build
+      - name: Serve the built app
+        run: |
+          npx vite preview --port 5183 --strictPort &
+          npx wait-on http://localhost:5183/app/ --timeout 60000
+      - name: End to end
+        run: npm run smoke
+      - name: WCAG AA contrast over every rendered text node
+        run: npm run contrast
+      - name: axe-core audit of every screen
+        run: npm run a11y
+      - name: Narrow screens, adversarial content, empty states
+        run: npm run layout
+      - name: The same fact, stated in more than one place, agrees
+        run: npm run agreement
+      # Last, and on its own port: it starts and then STOPS its own server,
+      # because that is the only way to cut a service worker's network — the
+      # page-level offline switch the other sweeps have leaves the worker's own
+      # fetches reaching the live server. Nothing above it is disturbed.
+      - name: A deploy reaches the app, and the app works without one
+        run: npm run freshness

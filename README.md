@@ -6,18 +6,20 @@ and says which one closes first.
 
 Built from the `Kept Mobile v7` / `Kept Landing v2` design handoff.
 
-**This project is unrelated to the Apex Appraise codebase it sits beside.** It
-shares no dependencies, no build and no CI with it — `kept/` is deliberately
-outside the root `pnpm-workspace.yaml` globs so the two products cannot become
-entangled. It lifts out into its own repository with a single `git mv`.
+This was built inside another repository — a directory beside an unrelated
+product, deliberately outside that repo's workspace globs, sharing no
+dependencies, no build and no CI with it. The claim written here from the
+first day was that it would lift out into its own repository cleanly. It has,
+with its history intact: `git subtree split` over the 121 commits that touched
+it, so every commit message survives the move. Nothing had to be untangled,
+which is the only real test that claim ever had.
 
 ## Running it
 
 ```bash
-cd kept
 npm install
 npm run dev        # landing page at /, app at /app/
-npm test           # 519 unit tests over the decision logic
+npm test           # 635 unit tests over the decision logic
 npm run typecheck  # strict, noUnusedLocals
 npm run build      # both entries
 ```
@@ -26,7 +28,7 @@ The browser checks need a built preview server:
 
 ```bash
 npm run build && npx vite preview --port 5183 &
-npm run smoke      # 59 end-to-end checks, including a midnight rollover
+npm run smoke      # 61 end-to-end checks, including a midnight rollover
 npm run contrast   # WCAG AA sweep over every rendered text node, and the same page on a dark device
 npm run a11y       # axe-core audit of every screen, plus focus management and the focus ring
 npm run layout     # 320px and 402px, adversarial content, empty states, covered buttons, crushed names,
@@ -53,28 +55,21 @@ The service worker is what makes the deadline checkable with no signal.
 
 ## CI
 
-`.github/workflows/kept.yml` runs on changes under `kept/` only, and Apex's
-`ci.yml` carries the matching `paths-ignore` so it never runs for these — the
-same separation the directory layout already makes. Both halves of that were
-written down here long before the second one was true: `ci.yml` had no path
-filter at all, so every commit to kept also ran a full pnpm install, a Prisma
-generate, a Postgres service and a Playwright browser job, green every time,
-on a diff that could not reach any of it.
+`.github/workflows/ci.yml` runs on every push to `main` and every pull
+request. Two jobs: a fast one (typecheck, unit tests, build) and a browser one
+that serves the built app and runs five sweeps against it, plus `freshness`,
+which starts and stops a server of its own. Each of those found real defects
+the day it was written, which is why they are gates rather than a ritual
+someone remembers to perform.
 
-A path filter does less than it looks like it does, though, and this is worth
-knowing before reading a CI run and concluding the filter is broken: on
-`pull_request` GitHub evaluates it against the pull request's *whole diff*,
-not the commit just pushed. A pull request that touches a single file outside
-`kept/` runs Apex's suite on every later commit, whatever those commits touch
-— which is what the pull request introducing this arrangement does, since it
-edits both workflows, the root `.gitignore` and the root README. The saving is
-on pushes to main and on pull requests confined to `kept/`.
-
-Two jobs: a fast one (typecheck, unit tests, build) and a browser one that
-serves the built app and runs five sweeps against it, plus `freshness`, which
-starts and stops a server of its own. Each of those found real defects the day
-it was written, which is why they are gates rather than a ritual someone
-remembers to perform.
+There are no path filters, and that is now simply because there is nothing
+here to filter out. While this lived beside another product both workflows
+carried them, and the lesson from that arrangement is worth keeping even
+though the arrangement is gone: **on `pull_request`, GitHub evaluates a path
+filter against the pull request's whole diff, not against the commit just
+pushed.** A pull request that touches one file outside the filtered directory
+runs the other product's suite on every later commit, whatever those commits
+touch. It reads exactly like a broken filter and is not one.
 
 ## Layout
 
