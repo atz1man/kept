@@ -157,10 +157,34 @@ broken camera. The banner itself split in two, because the existing one blamed a
 full phone, which is right for a write that did not land and simply false for a
 camera that never opened.
 
-That is the shape of the whole exercise. Three of the defects found building
-this — the storage location, the home indicator, and the purpose strings — are
-invisible to every test in this repository, because they are facts about a
-device none of it runs on. They were found by reading for the platform, and the
+**The home screen carried Capacitor's logo.** `npx cap add ios` writes its own
+blue mark as the app icon and again as the launch screen, and says nothing about
+having done it. It sat there for eight commits. Nothing here could see it: every
+browser sweep runs against the web build, which has kept's own icons and never
+opens those files.
+
+`scripts/make-icons.mjs` renders them now, from the same single SVG the web
+icons come from, and iOS gets its own variant because it has two rules the web
+does not — both silent. An app icon carrying an **alpha channel** is rejected at
+submission, and every Playwright screenshot is RGBA, so the generator writes the
+PNG itself with the channel dropped rather than merely unused. And a **rounded**
+icon is masked twice, showing dark wedges inside the system's own curve, so the
+iOS variant squares its corners off. `test/ios-assets.test.ts` decodes the files
+and checks the corners are kept ink, the mark is actually on them, and the
+launch screen is painted the colour `capacitor.config.ts` tells the shell to
+paint — the same fact in two files, which is the pairing this codebase keeps
+finding quietly disagreeing.
+
+The first attempt at the launch screen was wrong and the generator called it a
+success. A nested `<svg x y width height>` is the obvious way to place the mark,
+and Chromium did not scale it by the inner viewBox: it rendered several times
+too large and ran off the canvas. Only looking at the file caught it, which is
+why the guard now also asserts the mark is *not* where it should not be.
+
+That is the shape of the whole exercise. Four of the defects found building
+this — the storage location, the home indicator, the purpose strings, and the
+vendor's logo on the home screen — are invisible to every test in this
+repository, because they are facts about a device none of it runs on. They were found by reading for the platform, and the
 guards against them are guards a reader can check rather than a runner.
 
 **Not verified here, and it should not be claimed otherwise:** nothing has been
