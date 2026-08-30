@@ -19,7 +19,7 @@ which is the only real test that claim ever had.
 ```bash
 npm install
 npm run dev        # landing page at /, app at /app/
-npm test           # 635 unit tests over the decision logic
+npm test           # 673 unit tests over the decision logic
 npm run typecheck  # strict, noUnusedLocals
 npm run build      # both entries
 ```
@@ -41,6 +41,61 @@ npm run freshness  # starts and stops its OWN server — see below, no preview n
 
 In a sandbox whose Chromium is not the build Playwright expects, point it at
 the installed binary: `CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome npm run smoke`.
+
+And the iOS app:
+
+```bash
+npm run build:ios  # builds to dist-ios and makes the APP the entry, not the landing page
+npx cap sync ios   # copies it into the Xcode project and updates the plugins
+```
+
+The rest needs macOS — `pod install`, signing, and the build itself. Everything
+above this line runs anywhere.
+
+## iOS
+
+kept is a native app by **wrapping** the web app, not by being rewritten.
+
+The reason is where the risk lands. `src/lib` is the return windows, the two
+statutory clocks and the parser, held by the unit suite and six browser sweeps.
+A SwiftUI rewrite would move exactly that into a language the web toolchain
+cannot check, making the money-and-dates code this app exists to get right the
+least verified part of it. Wrapping keeps every test applying to what ships.
+
+Three things about the platform genuinely change the app, and each is written
+where it happens rather than only here.
+
+**The receipts need somewhere better than the web view.** WKWebView keeps its
+storage under `Library/WebKit`, which the system may reclaim and which is not
+in a device backup — and there is no server holding a copy, so that is a total
+loss with no error and no signal. `lib/mirror.ts` keeps a second copy in the
+app's Documents directory. One rule: it holds whatever `save` last committed.
+That is what makes erasing safe, and it is why an empty library has to count as
+a library rather than as an absence.
+
+**Alerts can be lodged in advance.** This is the reason to have a native app at
+all: `lib/schedule.ts` works out what will be worth saying and when, and iOS
+raises it with kept closed. The web cannot, which is why `notify.ts` says so and
+Settings says so — and why Settings now says something different on iOS, since
+leaving the web sentence up there would have the app understating itself.
+
+**The bottom 34px belong to the home indicator.** Anything anchored to the
+bottom edge has to account for `env(safe-area-inset-bottom)`, and no browser
+check can see that it does not: the inset is 0 here, so the wrong layout looks
+perfect. `test/safe-area.test.ts` reads the source instead.
+
+That last one is the shape of the whole exercise. Two of the defects found
+building this — the storage location and the home indicator — are invisible to
+every test in this repository, because they are facts about a device none of it
+runs on. They were found by reading for the platform, and the guards against
+them are guards a reader can check rather than a runner.
+
+**Not verified here, and it should not be claimed otherwise:** nothing has been
+run on a device or a simulator. `appId` in `capacitor.config.ts` is
+deliberately `uk.co.kept.REPLACE_ME` — it must match the bundle identifier on
+the Apple developer account, cannot be guessed, and is obviously wrong rather
+than plausibly wrong on purpose, the same choice as `TABLE_CHECKED_ON` and
+`SOCIAL_PROOF_IS_PLACEHOLDER`.
 
 ## Stack, and why
 
