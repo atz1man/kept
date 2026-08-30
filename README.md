@@ -37,6 +37,7 @@ npm run layout     # 320px and 402px, adversarial content, empty states, covered
 npm run agreement  # the same fact, on more than one screen, has to match
 npm run perf       # diagnostic, not a gate: how it behaves as the list grows
 npm run freshness  # starts and stops its OWN server — see below, no preview needed
+npm run ios        # boots dist-ios, the bundle that ships — also its own server
 ```
 
 In a sandbox whose Chromium is not the build Playwright expects, point it at
@@ -89,6 +90,17 @@ clock is not proof: "its 9am has passed, so it was delivered" is false whenever
 notifications are refused at the system level, and being wrong that way puts
 the original defect back — claiming a warning that never arrived. Understating
 is the direction to be wrong in.
+
+**The service worker is a web mechanism, and stays there.** Its scope is
+`/app/`, because that is where the app lives on the web. The native shell loads
+the app from the ROOT, so in the iOS bundle the registration succeeded and the
+page it exists to serve sat outside its scope — running on every launch, able
+to control nothing. Measured, not guessed: `registrations: ["/app/"],
+controlled: false`. Widening the scope would be the wrong fix, because a
+Capacitor app's assets are already local files, so offline there is a property
+of the bundle rather than of a cache. `npm run ios` boots `dist-ios` and
+refuses if a worker registers, and it exists because every other sweep runs
+against the web build and nothing had ever loaded the one that ships.
 
 **The bottom 34px belong to the home indicator.** Anything anchored to the
 bottom edge has to account for `env(safe-area-inset-bottom)`, and no browser

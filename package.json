@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Kept — local-first UK return-deadline tracker (PWA + landing page)",
+  "description": "Kept \u2014 local-first UK return-deadline tracker (PWA + landing page)",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
@@ -18,7 +18,8 @@
     "perf": "node scripts/perf.mjs",
     "agreement": "node scripts/agreement.mjs",
     "freshness": "node scripts/freshness.mjs",
-    "build:ios": "vite build --outDir dist-ios && node scripts/ios-entry.mjs"
+    "build:ios": "vite build --outDir dist-ios && node scripts/ios-entry.mjs",
+    "ios": "node scripts/ios-bundle.mjs"
   },
   "dependencies": {
     "@capacitor/core": "^6.2.1",

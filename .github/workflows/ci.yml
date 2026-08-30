@@ -71,3 +71,8 @@ jobs:
       # fetches reaching the live server. Nothing above it is disturbed.
       - name: A deploy reaches the app, and the app works without one
         run: npm run freshness
+      # The bundle that actually ships to a phone. Every check above runs
+      # against the WEB build; this one builds dist-ios and boots it, which is
+      # a different document at a different path. It owns its own port.
+      - name: The iOS bundle boots as the app at its root
+        run: npm run build:ios && npm run ios
