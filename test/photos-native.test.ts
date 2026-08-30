@@ -63,6 +63,31 @@ describe('erasing everything', () => {
     await settle();
     expect(dirsRemoved).toEqual(['receipts']);
   });
+
+  it('still reaches them when localStorage will not answer at all', async () => {
+    /*
+     * Safari in private mode throws on ACCESS, not on write, which this
+     * codebase already knows — `storage()` catches it and degrades to an
+     * in-memory session. `wipe` used to return early on that, before it had
+     * touched anything, and the photographs do not live in localStorage. So on
+     * the one device where the store is unreadable, "erase everything" left
+     * every picture of a receipt exactly where it was, with nothing on screen
+     * to say so.
+     *
+     * The order in `wipe` is what fixes it, and this is the only thing that
+     * says so: putting the early return back leaves every other test green.
+     */
+    Object.defineProperty(globalThis.window as object, 'localStorage', {
+      get() {
+        throw new Error('SecurityError: access denied');
+      },
+      configurable: true,
+    });
+    const { wipe } = await import('../src/lib/storage');
+    expect(() => wipe()).not.toThrow();
+    await settle();
+    expect(dirsRemoved).toEqual(['receipts']);
+  });
 });
 
 describe('clearing up after deleted receipts', () => {

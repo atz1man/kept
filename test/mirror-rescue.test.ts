@@ -127,6 +127,69 @@ describe('on iOS', () => {
     expect(JSON.parse(files.get('kept-receipts.json')!).receipts).toEqual([]);
   });
 
+
+  it('an erase survives the app being killed before the next save', async () => {
+    /*
+     * The window this closes. `wipe` used to REMOVE the localStorage key and
+     * leave the emptied state to the save effect that follows a moment later.
+     * Between the two, localStorage held nothing and the mirror still held
+     * everything — which `chooseSource` reads, correctly for every other
+     * situation, as "the web view lost the store, put it back".
+     *
+     * So: erase, then close the app. Which is exactly what somebody does after
+     * erasing. Measured before the fix, the next launch handed back both
+     * receipts.
+     *
+     * Note there is no `save` between the wipe and the restore. That absence is
+     * the whole test, and putting one back makes it pass on the old code too.
+     */
+    boot(true);
+    const { save, wipe, restoreFromMirror } = await import('../src/lib/storage');
+    save(JSON.parse(library(['a', 'b'])));
+    await settle();
+
+    wipe();
+
+    expect(await restoreFromMirror()).toBe(false);
+    expect(JSON.parse(store.getItem(KEY)!).receipts).toEqual([]);
+  });
+
+  it('takes the second copy with it, rather than only the live store', async () => {
+    // A file on disk still holding every receipt is the erase having removed
+    // them from the screen and nowhere else — the thing the photo erase was
+    // added for, one layer over.
+    boot(true);
+    const { save, wipe } = await import('../src/lib/storage');
+    save(JSON.parse(library(['a', 'b'])));
+    await settle();
+
+    wipe();
+    await settle();
+
+    expect(JSON.parse(files.get('kept-receipts.json')!).receipts).toEqual([]);
+  });
+
+  it('keeps what is not a receipt, so the two erase paths agree', async () => {
+    /*
+     * The reducer's `wipe` clears receipts and alertsSent and keeps the rest.
+     * If this wrote a different post-erase state, the app would show one thing
+     * for the instant before the save effect ran and another after — settings
+     * reset and then unreset, onboarding reappearing and then not.
+     */
+    boot(true);
+    const { save, wipe } = await import('../src/lib/storage');
+    save({ ...JSON.parse(library(['a'])), onboardingSeen: true, settings: { urgentDays: 9 } });
+    await settle();
+
+    wipe();
+
+    const after = JSON.parse(store.getItem(KEY)!);
+    expect(after.receipts).toEqual([]);
+    expect(after.alertsSent).toEqual([]);
+    expect(after.onboardingSeen).toBe(true);
+    expect(after.settings).toEqual({ urgentDays: 9 });
+  });
+
   it('does NOT undo an erase, even when the mirror still holds the old library', async () => {
     /*
      * The state that actually matters, and the one the obvious version of this

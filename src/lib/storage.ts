@@ -303,22 +303,75 @@ export function onExternalChange(handler: (state: KeptState) => void, today: Dat
  * hand means digging through browser settings.
  */
 export function wipe(): void {
-  const store = storage();
-  if (!store) return;
   /*
-   * The pictures too. This removed the localStorage key and nothing else,
-   * which was complete while everything lived there — a photo on the
-   * filesystem would outlive the erase, leaving the receipts gone from the
-   * screen and the shopping still on the disk. The privacy notice does not
-   * have an asterisk.
+   * The pictures and the mirror are dealt with OUTSIDE the localStorage guard,
+   * and the ordering here is the whole correctness of this function.
+   *
+   * Neither of them lives in localStorage, so returning early on a store that
+   * will not answer — Safari in private mode throws on access — would leave the
+   * photographs and the second copy of every receipt behind, on the one path
+   * where the person has explicitly asked for them to be gone.
    */
   void erasePhotos();
+
+  const store = storage();
+  let existing: string | null = null;
   try {
-    store.removeItem(KEY);
+    existing = store?.getItem(KEY) ?? null;
   } catch {
-    // Nothing more to do — the in-memory state is reset by the caller either
-    // way, and a storage that refuses writes has nothing persisted to remove.
+    // Unreadable is not a reason to skip the write below.
   }
+
+  /*
+   * AN EMPTY LIBRARY IS WRITTEN, NOT THE KEY REMOVED, and the difference is a
+   * window in which an erase undoes itself.
+   *
+   * Removing the key left the app depending on the save effect that follows to
+   * commit the emptied state a moment later. Between the two, localStorage held
+   * nothing and the mirror still held everything — and `chooseSource` reads
+   * exactly that as "the web view lost the store, put it back". So an erase
+   * followed by the app being killed, which is precisely what somebody does
+   * after erasing, came back on the next launch with every receipt restored.
+   * Measured, not reasoned about: the probe returned two receipts.
+   *
+   * Writing the emptied library is synchronous, so the window does not exist
+   * rather than being made small. `chooseSource` then answers "local" from the
+   * instant this returns, whatever the mirror still holds.
+   *
+   * It keeps the rest of the blob — settings, the policy feed, whether
+   * onboarding has been seen — because that is what the reducer's `wipe` does
+   * a moment later, and two paths writing different post-erase states would be
+   * the same fact disagreeing with itself. Only the receipts and the record of
+   * having spoken about them go.
+   */
+  const erased = erasedFrom(existing);
+  try {
+    store?.setItem(KEY, erased);
+  } catch {
+    // A storage that refuses writes has nothing persisted to erase either; the
+    // in-memory state is reset by the caller regardless.
+  }
+  // And the second copy, so the file on disk stops holding what was erased.
+  void writeMirror(erased);
+}
+
+/** The stored blob with the receipts taken out — or a valid empty one. */
+function erasedFrom(raw: string | null): string {
+  try {
+    const parsed: unknown = JSON.parse(raw ?? '');
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return JSON.stringify({ ...(parsed as object), receipts: [], alertsSent: [] });
+    }
+  } catch {
+    // Unparseable is the same answer as absent: write a clean empty library.
+  }
+  /*
+   * Deliberately minimal. `hydrate` fills every other key from its own
+   * defaults, so spelling them out here would be a second copy of what a
+   * default is — and the one thing this MUST satisfy is `looksLikeState`, or
+   * the mirror wins on the next launch and the erase is undone after all.
+   */
+  return JSON.stringify({ version: SCHEMA_VERSION, receipts: [] });
 }
 
 /**

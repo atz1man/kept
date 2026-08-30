@@ -181,10 +181,26 @@ and Chromium did not scale it by the inner viewBox: it rendered several times
 too large and ran off the canvas. Only looking at the file caught it, which is
 why the guard now also asserts the mark is *not* where it should not be.
 
-That is the shape of the whole exercise. Four of the defects found building
-this — the storage location, the home indicator, the purpose strings, and the
-vendor's logo on the home screen — are invisible to every test in this
-repository, because they are facts about a device none of it runs on. They were found by reading for the platform, and the
+**An erase could undo itself.** `wipe` removed the localStorage key and left
+the emptied library to the save effect that follows a moment later. Between the
+two, localStorage held nothing and the mirror still held everything — which
+`chooseSource` reads, correctly for every other situation, as "the web view lost
+the store, put it back". So erasing and then closing the app, which is exactly
+what somebody does after erasing, brought every receipt back on the next launch.
+Measured before it was changed: two receipts, restored. `wipe` writes the
+emptied library synchronously now, so the window does not exist rather than
+being made small, and it takes the mirror with it. Two smaller things came out
+of the same reading: it returned early on a store that would not answer, which
+on Safari in private mode meant the photographs survived an erase; and the
+emptied blob it writes keeps settings and onboarding, because the reducer's own
+`wipe` does, and two paths writing different post-erase states would be the same
+fact disagreeing with itself.
+
+That is the shape of the whole exercise. Five of the defects found building
+this — the storage location, the home indicator, the purpose strings, the
+vendor's logo on the home screen, and the erase that undid itself — are
+invisible to every test that existed when they were introduced, because they
+are facts about a device none of this runs on. They were found by reading for the platform, and the
 guards against them are guards a reader can check rather than a runner.
 
 **Not verified here, and it should not be claimed otherwise:** nothing has been
