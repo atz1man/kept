@@ -2,6 +2,7 @@ import { useEffect, useReducer, useState } from 'react';
 import { pruneSent } from '../lib/alerts';
 import { planAlerts } from '../lib/schedule';
 import { isNative } from '../lib/mirror';
+import { cleanupPhotos } from '../lib/photos';
 import { onNotificationTap, syncScheduled } from './schedule-native';
 import { startOfDay, toISODate } from '../lib/dates';
 import { SHARE_PARAMS, sharedTextFrom } from '../lib/share';
@@ -357,6 +358,24 @@ export function useApp() {
     });
     setSaveFailed(!ok);
   }, [state.embedded, state.version, state.receipts, state.updates, state.onboardingSeen, state.settings, state.alertsSent]);
+
+  /*
+   * Pictures whose receipt has gone, cleared once per launch.
+   *
+   * Not at the moment of deletion, because deleting is UNDOABLE here — the
+   * undo bar restores the receipt, and it would come back to a photo already
+   * thrown away. By the next launch the undo has been taken or it has not, and
+   * the disk can safely follow the library. It also catches what no delete
+   * path could: a photo left by a restore that replaced the library.
+   *
+   * Once, on the receipts the app booted with. Re-running it on every change
+   * would race the undo it exists to respect.
+   */
+  useEffect(() => {
+    if (state.embedded || !isNative()) return;
+    void cleanupPhotos(state.receipts.map((r) => r.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.embedded]);
 
   /*
    * A tapped notification opens the receipt it is about.

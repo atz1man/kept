@@ -102,6 +102,32 @@ of the bundle rather than of a cache. `npm run ios` boots `dist-ios` and
 refuses if a worker registers, and it exists because every other sweep runs
 against the web build and nothing had ever loaded the one that ships.
 
+**The paper receipt can be photographed, and the picture is not read.** What a
+shop asks for at the counter is proof of purchase, and for a counter purchase
+that is the slip. `lib/photos.ts` keeps it on the filesystem, because a photo is
+megabytes against a `localStorage` quota in single figures — one snap would
+evict every receipt the app had. The control says outright that kept keeps the
+picture and does not read it: OCR is a separate problem with a separate failure
+mode, and a total this app got wrong from a blurry thermal print would be worse
+than no total at all. The disabled "Scan a paper receipt" button still says
+scanning is not built, because it is not.
+
+Three decisions there are worth knowing. There is deliberately **no `photo`
+field on `Receipt`** — the file is the truth, because a flag could not stay in
+step with the disk at the one moment that matters, a backup restored onto a
+different phone, where every flag would arrive set and every file be missing. A
+receipt id is **not a filename**: `readReceipt` accepts any non-empty string as
+an id and a backup file is untrusted input, so an id of `../kept-receipts.json`
+would point a write at the mirror that holds every receipt — ids are reduced to
+characters that cannot mean anything to a path. And orphaned pictures are
+cleared **at launch, not at delete**, because deleting a receipt here is
+undoable and the undo would otherwise restore a receipt whose picture had
+already gone.
+
+Erasing takes them with it. That needed saying in code as well as here: `wipe`
+removed the localStorage key and nothing else, which was complete while
+everything lived there.
+
 **The bottom 34px belong to the home indicator.** Anything anchored to the
 bottom edge has to account for `env(safe-area-inset-bottom)`, and no browser
 check can see that it does not: the inset is 0 here, so the wrong layout looks

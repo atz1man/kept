@@ -1,5 +1,6 @@
 import { readReceipt } from './backup';
 import { chooseSource, isNative, readMirror, writeMirror } from './mirror';
+import { erasePhotos } from './photos';
 import { readFeed } from './policy-feed';
 import { seedReceipts, seedUpdates } from './seed';
 import type { PolicyUpdate, Receipt } from './types';
@@ -304,6 +305,14 @@ export function onExternalChange(handler: (state: KeptState) => void, today: Dat
 export function wipe(): void {
   const store = storage();
   if (!store) return;
+  /*
+   * The pictures too. This removed the localStorage key and nothing else,
+   * which was complete while everything lived there — a photo on the
+   * filesystem would outlive the erase, leaving the receipts gone from the
+   * screen and the shopping still on the disk. The privacy notice does not
+   * have an asterisk.
+   */
+  void erasePhotos();
   try {
     store.removeItem(KEY);
   } catch {
