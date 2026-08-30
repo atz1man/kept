@@ -28,9 +28,15 @@ function humaniseRemaining(today: Date, ends: Date): string {
   const days = daysBetween(today, ends);
   if (days < 0) return '';
   if (days < 45) return `${days} ${days === 1 ? 'day' : 'days'}`;
+  // Starting at 1 gives the same answer everywhere this line is reached — 45
+  // days is always at least one whole month — so no test can tell 0 from 1
+  // here. Recorded rather than left for the next person to try.
   let months = 0;
   while (addMonths(today, months + 1).getTime() <= ends.getTime()) months += 1;
-  if (months < 12) return `${months} months`;
+  // Singular, like the days and years branches either side of it. This read
+  // "1 months" for every warranty between 45 and 59 days from its end, on the
+  // detail screen, for six weeks of every cover period.
+  if (months < 12) return `${months} ${months === 1 ? 'month' : 'months'}`;
   const years = Math.floor(months / 12);
   const rest = months % 12;
   if (rest === 0) return `${years} ${years === 1 ? 'year' : 'years'}`;
@@ -174,6 +180,9 @@ export function timelineDots(receipts: readonly Receipt[], today: Date) {
 }
 
 export function makeReceiptId(now: Date = new Date()): string {
+  // The slice bounds are arbitrary: any six-ish base-36 characters do, and
+  // pinning the exact length in a test would assert a decision nobody made.
+  // What matters is asserted next door — uniqueness, and surviving photoName.
   const rand = Math.random().toString(36).slice(2, 8);
   return `r_${startOfDay(now).getTime().toString(36)}_${rand}`;
 }

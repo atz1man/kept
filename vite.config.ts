@@ -66,5 +66,26 @@ export default defineConfig({
       },
     },
   },
-  test: { environment: 'node', include: ['test/**/*.test.ts'] },
+  test: {
+    environment: 'node',
+    include: ['test/**/*.test.ts'],
+    /*
+     * A non-UK, DST-observing zone, ON PURPOSE — and set HERE rather than only
+     * in the npm script, which is where it used to live alone.
+     *
+     * The point of the zone is that a date parsed as UTC midnight still lands
+     * on the right calendar day in UTC or London, so the timezone bugs these
+     * tests exist to catch would pass unnoticed. That works only if the zone is
+     * actually in effect. It was set by `npm test` and nothing else, so
+     * `npx vitest run` — the obvious thing to type, and what I ran all day —
+     * used the container's UTC and every DST test passed for the wrong reason.
+     * Measured: mutate `Math.round` to `Math.floor` in `daysBetween`, which is
+     * the truncating divide that loses a day each spring, and the suite is
+     * green under `npx vitest run` and red under `npm test`.
+     *
+     * `test/timezone.test.ts` holds this setting to the property it is for, so
+     * it cannot go quiet again.
+     */
+    env: { TZ: 'America/New_York' },
+  },
 });

@@ -57,6 +57,66 @@ describe('day arithmetic', () => {
   });
 });
 
+describe('fromISODate on a string that is not a full date', () => {
+  /*
+   * `isISODate` in backup.ts enforces the shape and the round trip, so nothing
+   * stored ever reaches here short. The fallbacks exist so the function is
+   * TOTAL — every other date helper composes on top of it, and an Invalid Date
+   * escaping into `daysBetween` becomes a NaN days-left that renders as
+   * "NaN days" rather than failing anywhere anyone would notice.
+   *
+   * A missing part means the start of the period it names, which is the only
+   * reading of "2026" that is not a guess.
+   */
+  it('reads a bare year as the first of January', () => {
+    expect(toISODate(fromISODate('2026'))).toBe('2026-01-01');
+  });
+
+  it('reads a year and month as the first of that month', () => {
+    expect(toISODate(fromISODate('2026-08'))).toBe('2026-08-01');
+  });
+
+  it('never hands back an Invalid Date', () => {
+    // The property the fallbacks are actually for.
+    for (const iso of ['2026', '2026-08', '2026-08-28']) {
+      expect(Number.isNaN(fromISODate(iso).getTime())).toBe(false);
+    }
+  });
+});
+
+describe('relativeAgo — the chip on the policy feed', () => {
+  /*
+   * Coarse on purpose: the exact hour a retailer edited its terms is noise.
+   * But the bucket EDGES are what a reader sees, and they were untested — the
+   * weeks bucket rounded down with nothing saying it must.
+   */
+  const day = (n: number) => new Date(2026, 7, 28 - n);
+  const today = new Date(2026, 7, 28);
+  const ago = (n: number) => relativeAgo(day(n), today);
+
+  it('rounds weeks DOWN, so it never overstates how long ago it was', () => {
+    // ceil would call eight days "2w ago", which is a fortnight it has not been.
+    expect(ago(7)).toBe('1w ago');
+    expect(ago(8)).toBe('1w ago');
+    expect(ago(13)).toBe('1w ago');
+    expect(ago(14)).toBe('2w ago');
+  });
+
+  it('changes unit where it says it does', () => {
+    expect(ago(6)).toBe('6d ago');
+    expect(ago(29)).toBe('4w ago');
+    expect(ago(30)).toBe('1mo ago');
+    expect(ago(364)).toBe('12mo ago');
+    expect(ago(365)).toBe('1y ago');
+  });
+
+  it('says today and yesterday rather than counting them', () => {
+    expect(ago(0)).toBe('today');
+    expect(relativeAgo(new Date(2026, 7, 29), today)).toBe('today');
+    expect(ago(1)).toBe('yesterday');
+  });
+});
+
 describe('addMonths — the unit warranties are quoted in', () => {
   it('adds a plain month', () => {
     expect(toISODate(addMonths(new Date(2026, 0, 15), 1))).toBe('2026-02-15');

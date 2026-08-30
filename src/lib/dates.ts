@@ -100,6 +100,9 @@ export function relativeAgo(then: Date, today: Date): string {
 export function addMonths(d: Date, months: number): Date {
   const start = startOfDay(d);
   const day = start.getDate();
+  // The 1 is arbitrary and cannot be otherwise: setDate below overwrites it.
+  // Any day-of-month here gives the same answer, which is why no test can
+  // distinguish them — recorded rather than left for the next person to try.
   const out = new Date(start.getFullYear(), start.getMonth() + months, 1);
   const lastDayOfTarget = new Date(out.getFullYear(), out.getMonth() + 1, 0).getDate();
   out.setDate(Math.min(day, lastDayOfTarget));
