@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { color, radius } from '../../tokens';
 import { isNative } from '../../lib/mirror';
-import { deletePhoto, readPhoto, savePhoto } from '../../lib/photos';
+import { deletePhoto, isCameraCancellation, readPhoto, savePhoto } from '../../lib/photos';
 import { Pressable } from './Pressable';
 
 /**
@@ -25,7 +25,13 @@ import { Pressable } from './Pressable';
 export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
   const [data, setData] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
+  /*
+   * Two causes, two sentences. The existing banner blames a full phone, which
+   * is right for a write that did not land and simply false for a camera that
+   * never opened — and stating a wrong cause is worse than stating none, since
+   * the person goes and deletes photographs to make room that was never short.
+   */
+  const [failed, setFailed] = useState<'save' | 'camera' | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -42,7 +48,7 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
 
   const take = async () => {
     setBusy(true);
-    setFailed(false);
+    setFailed(null);
     try {
       const { Camera, CameraResultType, CameraSource } = await import('@capacitor/camera');
       const shot = await Camera.getPhoto({
@@ -56,9 +62,12 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
       // A write that did not land must not leave a picture on screen that is
       // not on the disk — the same rule the failed-save banner exists for.
       if (ok) setData(shot.base64String);
-      else setFailed(true);
-    } catch {
-      // Cancelling the camera is the ordinary case and is not a failure.
+      else setFailed('save');
+    } catch (e) {
+      // Cancelling is ordinary; a refused permission or a missing usage
+      // description is not, and used to be indistinguishable. See
+      // isCameraCancellation for why the unrecognised case counts as failure.
+      if (!isCameraCancellation(e)) setFailed('camera');
     } finally {
       setBusy(false);
     }
@@ -104,7 +113,9 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
           </Pressable>
           {failed && (
             <div role="alert" style={{ fontSize: 12.5, color: color.danger, fontWeight: 600, marginTop: 8 }}>
-              That photo could not be saved, so it has not been kept. There may be no room left on the phone.
+              {failed === 'save'
+                ? 'That photo could not be saved, so it has not been kept. There may be no room left on the phone.'
+                : 'The camera could not be opened. Check that kept is allowed to use the camera in Settings.'}
             </div>
           )}
         </>

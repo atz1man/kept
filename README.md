@@ -133,11 +133,35 @@ bottom edge has to account for `env(safe-area-inset-bottom)`, and no browser
 check can see that it does not: the inset is 0 here, so the wrong layout looks
 perfect. `test/safe-area.test.ts` reads the source instead.
 
-That last one is the shape of the whole exercise. Two of the defects found
-building this — the storage location and the home indicator — are invisible to
-every test in this repository, because they are facts about a device none of it
-runs on. They were found by reading for the platform, and the guards against
-them are guards a reader can check rather than a runner.
+**A missing purpose string does not crash — it goes quiet.** `Info.plist` had
+none of the three usage descriptions, and `@capacitor/camera` checks all three
+in `getPhoto` *before* it dispatches on source, even though kept only ever asks
+for a new photograph and never opens the library. A missing key makes the call
+**reject**. That would have been survivable if the rejection were visible, and
+it was not: `take()` caught everything with a comment saying cancelling is the
+ordinary case, so a build with no purpose strings, and a phone whose owner had
+refused camera permission, both looked exactly like a tap on Cancel. A button
+that does nothing, on every device, with nothing anywhere saying why.
+
+Both halves are fixed. The strings are in `Info.plist`, and
+`test/ios-usage-strings.test.ts` reads the required list out of the **plugin's
+own Swift source** rather than a copy of it, so a key added by an upgrade is
+caught the day the upgrade lands. It also holds the strings to the code: two of
+them say kept never opens the photo library, which is true only while the source
+is `CameraSource.Camera`, so changing that fails the test rather than quietly
+making a sentence in a plist untrue. And `isCameraCancellation` is lifted out of
+the component — the component cannot be exercised here, and the judgement can —
+with anything unrecognised counting as a failure on purpose: wrong in that
+direction shows a banner to someone who cancelled, wrong in the other hides a
+broken camera. The banner itself split in two, because the existing one blamed a
+full phone, which is right for a write that did not land and simply false for a
+camera that never opened.
+
+That is the shape of the whole exercise. Three of the defects found building
+this — the storage location, the home indicator, and the purpose strings — are
+invisible to every test in this repository, because they are facts about a
+device none of it runs on. They were found by reading for the platform, and the
+guards against them are guards a reader can check rather than a runner.
 
 **Not verified here, and it should not be claimed otherwise:** nothing has been
 run on a device or a simulator. `appId` in `capacitor.config.ts` is

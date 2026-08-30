@@ -22,6 +22,16 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- The camera plugin checks for ALL THREE of these before it dispatches on
+	     source, so a missing one rejects getPhoto even though kept only ever
+	     asks for a new photograph. test/ios-usage-strings.test.ts reads the
+	     plugin's own list rather than this comment. -->
+	<key>NSCameraUsageDescription</key>
+	<string>kept uses the camera only to photograph a paper receipt, so you have proof of purchase when you go back to the shop. The picture stays on this device and is never uploaded.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>kept never opens your photo library. It only takes a new photograph of a receipt, which stays on this device.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>kept does not add anything to your photo library. A receipt photograph is kept inside the app and is deleted when you erase your receipts.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

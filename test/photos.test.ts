@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { orphanedPhotos, photoName, photoPath } from '../src/lib/photos';
+import { isCameraCancellation, orphanedPhotos, photoName, photoPath } from '../src/lib/photos';
 
 describe('a receipt id is not a filename', () => {
   it('keeps an ordinary one', () => {
@@ -60,5 +60,37 @@ describe('pictures that no longer belong to anything', () => {
      * picture belonging to a receipt the person still holds.
      */
     expect(orphanedPhotos(['rok.jpg'], ['r/o\\k'])).toEqual([]);
+  });
+});
+
+describe('telling a cancelled camera from a broken one', () => {
+  /*
+   * The messages below are the plugin's own, copied from
+   * node_modules/@capacitor/camera. The two that must NOT read as cancellation
+   * are the two that actually happen on a real phone: a build missing a usage
+   * description, and a person who said no to the camera. Both used to be caught
+   * as if they were a tap on Cancel.
+   */
+  it.each([
+    ['User cancelled photos app', true],
+    ['User cancelled photos app.', true],
+    ['You are missing NSCameraUsageDescription in your Info.plist file. Camera will not function without it.', false],
+    ['User denied access to camera', false],
+    ['Unable to load image', false],
+    ['', false],
+  ])('%j → cancellation: %s', (message, expected) => {
+    expect(isCameraCancellation(new Error(message))).toBe(expected);
+    // Capacitor throws a CapacitorException on the web, a plain object shape
+    // over the bridge, and sometimes a bare string. All three carry the message.
+    expect(isCameraCancellation({ message })).toBe(expected);
+    expect(isCameraCancellation(message)).toBe(expected);
+  });
+
+  it('treats an error with nothing to read as a failure, not a cancellation', () => {
+    // Wrong in this direction is a banner for someone who cancelled. Wrong the
+    // other way is a camera that silently does nothing.
+    for (const nothing of [undefined, null, {}, 0, new Error()]) {
+      expect(isCameraCancellation(nothing)).toBe(false);
+    }
   });
 });

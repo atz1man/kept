@@ -156,3 +156,36 @@ export async function cleanupPhotos(receiptIds: readonly string[]): Promise<numb
     return 0;
   }
 }
+
+/**
+ * Did the person tap Cancel, or did the camera actually fail?
+ *
+ * `Camera.getPhoto` rejects for both, and the difference is the whole
+ * behaviour of the button. Catching them together — which is what this code
+ * did — makes the WORST iOS failure the quietest one: the plugin rejects when a
+ * usage description is missing from Info.plist, and again when camera
+ * permission is refused, and either one then looks exactly like a tap on
+ * Cancel. A button that does nothing, on every device, with nothing anywhere
+ * saying why.
+ *
+ * `"User cancelled photos app"` is the plugin's own wording for a cancellation,
+ * the same string in its iOS and its web implementation. That one message is
+ * the ordinary case; everything else earns a banner.
+ *
+ * ANYTHING UNRECOGNISED IS A FAILURE, deliberately. Being wrong in that
+ * direction shows a banner to somebody who cancelled, which is a small
+ * annoyance; being wrong the other way hides a broken camera, which is the
+ * defect this exists for.
+ *
+ * Lifted out of `ReceiptPhoto` because the component cannot be exercised
+ * here — there is no camera on this machine to cancel — and this judgement can.
+ */
+export function isCameraCancellation(error: unknown): boolean {
+  const message =
+    typeof error === 'string'
+      ? error
+      : typeof (error as { message?: unknown })?.message === 'string'
+        ? ((error as { message: string }).message)
+        : '';
+  return /user cancelled/i.test(message);
+}
