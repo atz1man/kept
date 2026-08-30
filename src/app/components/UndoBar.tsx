@@ -30,7 +30,8 @@ export function UndoBar({ label, onUndo, onDismiss }: { label: string; onUndo: (
       style={{
         position: 'absolute',
         // Clear of the floating tab bar, which sits at bottom 24 and is 63 tall.
-        bottom: 100,
+        // Rides above the tab bar, so it has to move with it. See TabBar.
+        bottom: 'calc(100px + env(safe-area-inset-bottom, 0px))',
         left: 16,
         right: 16,
         zIndex: 40,
