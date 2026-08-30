@@ -2161,3 +2161,31 @@ can substantiate.
 The retailer windows in `stores.ts` were written from the handoff and public
 policy pages. Verify each one against the retailer's current published terms
 before launch — the app's core claim is that these are right.
+
+**The iOS privacy manifest is not written, and it is the one place the App
+Store reads this app's central claim mechanically.** What was measured here,
+rather than assumed:
+
+- `ios/App/App/` contains no `PrivacyInfo.xcprivacy`.
+- `@capacitor/ios` ships one for the Capacitor and CapacitorCordova targets,
+  declaring no tracking, no tracking domains, no collected data and no accessed
+  API types.
+- `@capacitor/camera`, `@capacitor/filesystem` and `@capacitor/local-notifications`
+  — the three plugins this app uses — ship none at any version installed here.
+
+kept's own declaration is the knowable part, and it is the same shape as
+Capacitor's, because it is true: nothing tracked, no tracking domains, nothing
+collected. An app whose whole promise is that the receipts never leave the
+device should say exactly that in the file Apple parses, not only in a privacy
+notice a person has to read.
+
+What could NOT be settled from here is which required-reason APIs the plugin
+code reaches once compiled — that needs the Mac toolchain, and declaring an API
+the app does not use is as wrong as omitting one it does.
+
+It is deliberately not half-done. Dropping the file into `ios/App/App/` without
+also registering it in `project.pbxproj` — a PBXFileReference, a PBXBuildFile,
+the group, and the target's Resources build phase — leaves it out of the built
+app entirely, which is worse than its absence: it looks finished. No pbxproj
+parser is available here and the project cannot be opened to check, so that
+edit belongs on the machine that can build it.
