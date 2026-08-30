@@ -32,6 +32,38 @@ export async function syncScheduled(plan: readonly PlannedAlert[]): Promise<bool
   try {
     const { LocalNotifications } = await import('@capacitor/local-notifications');
 
+    /*
+     * Cancelling comes first, and needs no permission.
+     *
+     * This runs when the switch is turned OFF, with an empty plan, and that
+     * path must clear what is already lodged whatever the permission state
+     * says — otherwise alerts granted last week keep arriving for weeks after
+     * the person asked them to stop.
+     */
+    const pending = await LocalNotifications.getPending();
+    if (pending.notifications.length > 0) {
+      await LocalNotifications.cancel({ notifications: pending.notifications.map((n) => ({ id: n.id })) });
+    }
+
+    /*
+     * Nothing to lodge means nothing to ask for, and the order matters more
+     * than it looks.
+     *
+     * A fresh install holds five DEMO receipts and nothing else, and
+     * `planAlerts` refuses to raise anything about those — a notification is
+     * not a demonstration. So the plan is empty on first launch, and asking
+     * first meant the system permission dialog appeared the moment the app
+     * opened, before a single real receipt existed, about nothing.
+     *
+     * iOS gives an app ONE chance at that dialog. Someone who declines it
+     * because it arrived out of nowhere has switched off deadline alerts
+     * permanently, and the only way back is the Settings app. The prompt now
+     * waits until there is a deadline to warn about, which is the moment it
+     * can explain itself. `notify.ts` already refuses to ask from inside the
+     * marketing page's demo frame, for the same reason.
+     */
+    if (plan.length === 0) return true;
+
     const permission = await LocalNotifications.checkPermissions();
     if (permission.display !== 'granted') {
       const asked = await LocalNotifications.requestPermissions();
@@ -39,12 +71,6 @@ export async function syncScheduled(plan: readonly PlannedAlert[]): Promise<bool
       // Settings screen is where the consequence belongs, not a thrown promise.
       if (asked.display !== 'granted') return false;
     }
-
-    const pending = await LocalNotifications.getPending();
-    if (pending.notifications.length > 0) {
-      await LocalNotifications.cancel({ notifications: pending.notifications.map((n) => ({ id: n.id })) });
-    }
-    if (plan.length === 0) return true;
 
     await LocalNotifications.schedule({
       notifications: plan.map((p, i) => ({

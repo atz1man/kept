@@ -112,7 +112,17 @@ async function fs() {
  */
 export const MIRROR_READ_BUDGET_MS = 3000;
 
-export async function readMirror(): Promise<string | null> {
+/**
+ * @param budgetMs Overridable for the same reason `derive` takes `today`
+ *                 rather than reading the clock: a budget that cannot be
+ *                 shortened is a budget that cannot be tested. Three attempts
+ *                 to control it with fake timers instead all failed, because
+ *                 the dynamic import below needs real async work that fake
+ *                 time does not provide — so the budget kept expiring on the
+ *                 IMPORT, and the test measured a hung import while claiming
+ *                 to measure a hung read.
+ */
+export async function readMirror(budgetMs = MIRROR_READ_BUDGET_MS): Promise<string | null> {
   if (!isNative()) return null;
 
   /*
@@ -143,7 +153,7 @@ export async function readMirror(): Promise<string | null> {
 
   let timer: ReturnType<typeof setTimeout> | undefined;
   const budget = new Promise<null>((resolve) => {
-    timer = setTimeout(() => resolve(null), MIRROR_READ_BUDGET_MS);
+    timer = setTimeout(() => resolve(null), budgetMs);
   });
   try {
     return await Promise.race([read, budget]);

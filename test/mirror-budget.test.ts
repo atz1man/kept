@@ -7,19 +7,30 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  * hangs is a blank screen — nothing threw, nothing rendered, and `Recovery`
  * never hears about it because there is no error to catch. This is the one
  * failure mode of the mirror that costs more than the mirror is worth.
+ *
+ * Real timers and a short budget, NOT fake timers. Three attempts to fake the
+ * clock here were flaky at about one run in three in the full suite and clean
+ * every time in isolation, which is the signature of a race that needs load to
+ * lose. The cause: `readMirror` dynamically imports the plugin before it reads,
+ * and `advanceTimersByTimeAsync` advances fake time while module resolution
+ * needs real async work — so the budget expired on the IMPORT, `readFile` was
+ * never reached, and the test measured a hung import while claiming to measure
+ * a hung read. Two of the three versions could also pass vacuously that way.
+ *
+ * Passing the budget in is the same seam `derive(r, today)` uses, for the same
+ * reason.
  */
 
 let resolveRead: ((value: unknown) => void) | null = null;
-const readCalls: number[] = [];
+let readCalls = 0;
 
 vi.mock('@capacitor/filesystem', () => ({
   Directory: { Documents: 'DOCUMENTS' },
   Encoding: { UTF8: 'utf8' },
   Filesystem: {
-    // Never settles. This is a plugin call that has gone away — the app is
-    // waiting on a bridge that will not answer.
+    // Never settles: a plugin call waiting on a bridge that will not answer.
     readFile: () => {
-      readCalls.push(Date.now());
+      readCalls += 1;
       return new Promise((res) => {
         resolveRead = res;
       });
@@ -28,84 +39,78 @@ vi.mock('@capacitor/filesystem', () => ({
   },
 }));
 
-function fakeLocalStorage() {
-  const map = new Map<string, string>();
-  return {
-    getItem: (k: string) => map.get(k) ?? null,
-    setItem: (k: string, v: string) => void map.set(k, v),
-    removeItem: (k: string) => void map.delete(k),
-    _map: map,
-  };
-}
-
-let store: ReturnType<typeof fakeLocalStorage>;
+const BUDGET = 25;
 
 beforeEach(() => {
-  readCalls.length = 0;
+  readCalls = 0;
   resolveRead = null;
-  vi.resetModules();
-  vi.useFakeTimers();
-  store = fakeLocalStorage();
   (globalThis as Record<string, unknown>).window = {
-    localStorage: store,
+    localStorage: {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {},
+    },
     Capacitor: { isNativePlatform: () => true },
   };
 });
 
 afterEach(() => {
-  vi.useRealTimers();
   delete (globalThis as Record<string, unknown>).window;
 });
 
 describe('a rescue that never answers', () => {
   it('gives up inside its budget instead of holding the app forever', async () => {
-    const { readMirror, MIRROR_READ_BUDGET_MS } = await import('../src/lib/mirror');
-    const pending = readMirror();
-
-    // The read is genuinely outstanding: nothing has resolved it.
-    await vi.advanceTimersByTimeAsync(MIRROR_READ_BUDGET_MS - 1);
-    let settled = false;
-    void pending.then(() => {
-      settled = true;
-    });
-    await Promise.resolve();
-    expect(settled).toBe(false);
-
-    await vi.advanceTimersByTimeAsync(2);
-    await expect(pending).resolves.toBeNull();
-    expect(readCalls).toHaveLength(1);
+    const { readMirror } = await import('../src/lib/mirror');
+    const started = Date.now();
+    await expect(readMirror(BUDGET)).resolves.toBeNull();
+    // It really did reach the read and really did give up on it, rather than
+    // falling out somewhere earlier and looking the same from outside.
+    expect(readCalls).toBe(1);
+    expect(resolveRead).not.toBeNull();
+    expect(Date.now() - started).toBeLessThan(2000);
   });
 
-  it('leaves the live store untouched when it gives up', async () => {
+  it('a late answer reaches nobody', async () => {
     /*
-     * The important half. Giving up must not be mistaken for "the mirror said
-     * there is nothing", which would be a licence to write over what is there.
+     * Why the budget is on the READ and not on the restore that calls it. A
+     * timeout one level up would abandon the wait and let this resolution
+     * arrive after the app had mounted on an empty store — and the save effect
+     * would commit that empty library, which the mirror copies, making a
+     * recoverable loss permanent. Here the race has already settled, so the
+     * answer has nowhere to go.
      */
-    const { restoreFromMirror } = await import('../src/lib/storage');
-    store.setItem('kept.v1', JSON.stringify({ receipts: [{ id: 'a' }] }));
-    const pending = restoreFromMirror();
-    await vi.advanceTimersByTimeAsync(5000);
-    await expect(pending).resolves.toBe(false);
-    expect(JSON.parse(store.getItem('kept.v1')!).receipts).toHaveLength(1);
+    const { readMirror } = await import('../src/lib/mirror');
+    const first = await readMirror(BUDGET);
+    expect(first).toBeNull();
+    expect(resolveRead).not.toBeNull();
+
+    resolveRead!({ data: JSON.stringify({ receipts: [{ id: 'ghost' }] }) });
+    await new Promise((r) => setTimeout(r, 10));
+    // The call already answered null and cannot answer twice.
+    await expect(Promise.resolve(first)).resolves.toBeNull();
   });
 
-  it('a late answer cannot land after the app has moved on', async () => {
+  it('leaves the live store untouched, and never even asks, when it is healthy', async () => {
     /*
-     * The reason the budget is on the READ and not on the restore that calls
-     * it. A timeout one level up would let this resolution arrive after the
-     * app had already mounted on an empty store — and the save effect would
-     * commit that empty library, which the mirror copies, making a recoverable
-     * loss permanent. Here the read has already been abandoned, so a late
-     * answer reaches nobody.
+     * The cheapest defence against a hanging bridge is not to call it. An
+     * ordinary launch has a readable store and returns before the filesystem
+     * is touched at all — which is why `readCalls` is 0 here, and why the
+     * early return in restoreFromMirror is not the mere optimisation I first
+     * recorded it as.
      */
+    const held = JSON.stringify({ receipts: [{ id: 'a' }] });
+    (globalThis as Record<string, unknown>).window = {
+      localStorage: {
+        getItem: () => held,
+        setItem: () => {
+          throw new Error('a healthy store must not be written over');
+        },
+        removeItem: () => {},
+      },
+      Capacitor: { isNativePlatform: () => true },
+    };
     const { restoreFromMirror } = await import('../src/lib/storage');
-    const pending = restoreFromMirror();
-    await vi.advanceTimersByTimeAsync(5000);
-    await expect(pending).resolves.toBe(false);
-
-    resolveRead?.({ data: JSON.stringify({ receipts: [{ id: 'ghost' }] }) });
-    await vi.advanceTimersByTimeAsync(100);
-
-    expect(store.getItem('kept.v1')).toBeNull();
+    await expect(restoreFromMirror()).resolves.toBe(false);
+    expect(readCalls).toBe(0);
   });
 });
