@@ -2,3 +2,5 @@ node_modules/
 dist/
 *.local
 dist-ios/
+dist-wiring-unsigned/
+dist-wiring-signed/

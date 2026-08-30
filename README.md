@@ -2015,10 +2015,58 @@ spending minutes a mutation on it.
 - **Signing the policy feed.** The feed is fetched from the app's own origin,
   validated entry by entry and merged (`lib/policy-feed.ts`), and the download
   is of *all* changes — never a query naming the shops a particular user
-  holds, which would be the leak the privacy notice rules out. What is missing
-  is provenance: the entries in `public/policy-feed.json` are maintained by
-  hand and nothing proves they came from us. Production wants them signed, and
-  a pipeline that verifies each retailer's published terms before publishing.
+  holds, which would be the leak the privacy notice rules out.
+
+  What was missing was provenance, and this entry said so three times before
+  anything was done about it. The limits on the feed bound the *damage* — a
+  window must be a positive integer under ten years, a note is capped, the feed
+  at `MAX_UPDATES` — but none of them asks whether the thing that answered was
+  the right thing at all, and `windowInForceFor` hands a new purchase whatever
+  the feed says. Anything able to respond to that URL could tell every
+  installation that Currys now gives seven days, and the direction that costs
+  money is the short one.
+
+  So `lib/feed-signature.ts` verifies a detached ECDSA P-256 / SHA-256
+  signature served beside the feed at `/policy-feed.sig`. Three things about it
+  are deliberate:
+
+  - **The signature covers the bytes that arrived**, not a re-serialised parse.
+    `App.tsx` reads the response as text and hands those exact bytes to the
+    verifier, because signing `JSON.stringify(JSON.parse(body))` would let two
+    different documents share one signature anywhere serialisation normalised a
+    difference away — key order, whitespace, `1.0` against `1`.
+  - **The policy is separate from the cryptography.** `feedIsAcceptable` is a
+    four-line function with its own tests, because the policy is where the
+    mistake would be: with a key configured an *unsigned* feed is refused, so a
+    server that quietly stopped signing cannot undo the feature. And "the
+    environment has no WebCrypto" returns false — cannot check must never read
+    as checked.
+  - **`FEED_PUBLIC_KEY` is `null`, and that ships.** Not a placeholder that
+    looks real: a fake key would fail every genuine feed and silently switch the
+    policy watch off, and a security feature that breaks the product is one
+    nobody keeps. While it is null the app behaves exactly as it did before —
+    which is why no on-screen copy claims the feed is verified, and why the
+    shipping build never even requests the signature. Turning it on is
+    `npm run feed:keygen`, the public half into that constant or into
+    `VITE_FEED_PUBLIC_KEY` at build time, the private half kept off this machine
+    and out of this repository, and `npm run feed:sign` over each published
+    feed. Neither script writes a key to disk. The override is build time only:
+    a key a running page could set would be no key at all.
+
+  `npm run feed:wiring` is the part that took the longest to get honest. The
+  unit tests prove the verifier verifies and the policy is the policy; neither
+  says whether `App.tsx` *calls* them, on the right bytes, and drops the feed
+  when the answer is no — a check whose result is ignored passes every unit test
+  it has. So that script builds the real app twice, with and without a key it
+  generates, serves five feeds at it, and reads `localStorage` to see which ones
+  reached the store. Its first draft could not tell the bytes-versus-parsed
+  difference apart, because the probe it served was already canonical JSON and
+  both readings hashed the same; it now serves the feed pretty-printed, the way
+  the real file is, and fails itself if that ever stops being true.
+
+  Still wanted for production: a pipeline that verifies each retailer's
+  published terms before publishing, and somewhere to hold the private key that
+  is not a laptop.
 
 ## Before this ships
 

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { color, paperGrain } from '../tokens';
 import { dueAlerts, supersededKeys } from '../lib/alerts';
-import { FEED_URL, mergeFeed, readFeed } from '../lib/policy-feed';
+import { FEED_SIG_URL, FEED_URL, mergeFeed, readFeed } from '../lib/policy-feed';
+import { FEED_PUBLIC_KEY, feedIsAcceptable, verifyFeed } from '../lib/feed-signature';
 import { deliver } from './notify';
 import { money, sumPence } from '../lib/money';
 import { midSentence } from '../lib/words';
@@ -66,17 +67,52 @@ export function App() {
     // directly below it.
     if (!settings.policyWatch) return;
     let cancelled = false;
-    fetch(FEED_URL, { cache: 'no-cache' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((doc) => {
-        const incoming = readFeed(doc);
+    /*
+     * Read as TEXT, not json, because a signature covers BYTES.
+     *
+     * Parsing first and signing the re-serialised object would let two
+     * different documents share one signature wherever JSON.stringify
+     * normalised a difference away — key order, whitespace, 1.0 against 1. What
+     * is checked here is exactly what arrived.
+     */
+    void (async () => {
+      try {
+        const res = await fetch(FEED_URL, { cache: 'no-cache' });
+        if (!res.ok) return;
+        const body = await res.text();
+
+        /*
+         * The signature is only fetched once there is a key to check it with,
+         * so the state this ships in makes no extra request at all.
+         */
+        let verified: boolean | null = null;
+        if (FEED_PUBLIC_KEY !== null) {
+          const sig = await fetch(FEED_SIG_URL, { cache: 'no-cache' })
+            .then((r) => (r.ok ? r.text() : ''))
+            .catch(() => '');
+          verified = sig.trim() ? await verifyFeed(body, sig.trim(), FEED_PUBLIC_KEY) : null;
+        }
+        if (!feedIsAcceptable(FEED_PUBLIC_KEY, verified).accept) {
+          /*
+           * Refused, and the app keeps the feed it already holds. That is the
+           * right failure: the held copy was accepted under the same rule, and
+           * silently taking an unproven one would defeat the check. Nothing is
+           * said on screen because the feed a person can see is unchanged —
+           * there is no consequence to report yet.
+           */
+          return;
+        }
+
+        const incoming = readFeed(JSON.parse(body));
         if (cancelled || !incoming || incoming.length === 0) return;
         dispatch({ type: 'feed', updates: mergeFeed(state.updates, incoming) });
-      })
-      .catch(() => {
+      } catch {
         // Offline is the normal case for this app, and the bundled feed is
-        // already on screen. A failed refresh is not worth telling anyone about.
-      });
+        // already on screen. A failed refresh is not worth telling anyone
+        // about — and unparseable JSON lands here too, which is the same
+        // answer: keep what is held.
+      }
+    })();
     return () => {
       cancelled = true;
     };

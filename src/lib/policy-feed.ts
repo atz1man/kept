@@ -307,3 +307,16 @@ export function readFeed(doc: unknown): PolicyUpdate[] | null {
 
 /** Where the feed lives — this app's own origin, never anyone else's. */
 export const FEED_URL = '/policy-feed.json';
+
+/**
+ * The signature, detached, beside the feed.
+ *
+ * Detached rather than a field inside the document, because a signature over a
+ * document that contains it is a knot: the field has to be excluded, which
+ * means agreeing exactly how to remove it, and any disagreement between signer
+ * and verifier is a hole. A separate file signs the whole thing as served.
+ *
+ * Only requested when there is a public key to check it against, so the state
+ * this ships in makes no extra request.
+ */
+export const FEED_SIG_URL = '/policy-feed.sig';

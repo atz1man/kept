@@ -19,7 +19,10 @@
     "agreement": "node scripts/agreement.mjs",
     "freshness": "node scripts/freshness.mjs",
     "build:ios": "vite build --outDir dist-ios && node scripts/ios-entry.mjs",
-    "ios": "node scripts/ios-bundle.mjs"
+    "ios": "node scripts/ios-bundle.mjs",
+    "feed:keygen": "node scripts/feed-keygen.mjs",
+    "feed:sign": "node scripts/feed-sign.mjs",
+    "feed:wiring": "node scripts/feed-wiring.mjs"
   },
   "dependencies": {
     "@capacitor/camera": "^6.1.3",
