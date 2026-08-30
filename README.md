@@ -19,7 +19,7 @@ which is the only real test that claim ever had.
 ```bash
 npm install
 npm run dev        # landing page at /, app at /app/
-npm test           # 673 unit tests over the decision logic
+npm test           # 759 unit tests over the decision logic
 npm run typecheck  # strict, noUnusedLocals
 npm run build      # both entries
 ```
@@ -75,7 +75,7 @@ real, and it does not care what the identifier is, only that the three agree.
 kept is a native app by **wrapping** the web app, not by being rewritten.
 
 The reason is where the risk lands. `src/lib` is the return windows, the two
-statutory clocks and the parser, held by the unit suite and six browser sweeps.
+statutory clocks and the parser, held by the unit suite and eight browser sweeps.
 A SwiftUI rewrite would move exactly that into a language the web toolchain
 cannot check, making the money-and-dates code this app exists to get right the
 least verified part of it. Wrapping keeps every test applying to what ships.
@@ -260,8 +260,10 @@ The service worker is what makes the deadline checkable with no signal.
 
 `.github/workflows/ci.yml` runs on every push to `main` and every pull
 request. Two jobs: a fast one (typecheck, unit tests, build) and a browser one
-that serves the built app and runs five sweeps against it, plus `freshness`,
-which starts and stops a server of its own. Each of those found real defects
+that serves the built app and runs five sweeps against it, plus three that own
+their servers: `freshness`, which starts and stops one so it can cut a service
+worker's network; `ios`, which boots the bundle that actually ships; and
+`feed:wiring`, which builds the app twice, with a signing key and without. Each of those found real defects
 the day it was written, which is why they are gates rather than a ritual
 someone remembers to perform.
 
@@ -1842,14 +1844,32 @@ exactly what was wrong. None of it reached the screen — and the check written
 for that defect, `onboarding is not shown again`, sat two hundred lines further
 down, where it could only ever be reached in the world where it passed.
 
-The report is a function now in **all six** sweeps — fixed where it is true,
+The report is a function now in **all eight** sweeps — fixed where it is true,
 not only where it was noticed — installed on the way out however the run ends,
 and the check has moved up to the first launch that reads `onboardingSeen` off
 the disk. Two of them needed a small rearrangement to get there: `contrast` and
 `a11y` grouped their findings into rows *after* the browser work, so a reporter
 that read those rows could not run during the work. The grouping is
 presentation and now lives inside the reporter, which leaves it depending on
-nothing declared later. The same mutation now prints:
+nothing declared later.
+
+That count said **six** for a long time, and it was six sweeps ago. It went
+stale twice without anybody noticing, and the second time it went false:
+`feed:wiring` was written later — by someone who did not know this file existed
+— and became a CI gate with no reporter at all. So the failure most likely in a
+sandbox, a Chromium the pinned Playwright does not have, would have printed a
+bare stack trace and nothing else, which reads as the feature being broken
+rather than the environment being wrong. Precisely the misdiagnosis this whole
+mechanism was built to prevent, reintroduced by the person who had just read
+about it.
+
+`test/sweeps-report.test.ts` now walks the browser job's own `npm run` steps,
+resolves them through `package.json` to the files they execute, keeps the ones
+that drive a browser, and asks each for the reporter. A claim in a README with
+nothing enforcing it is how this came to be false; a ninth sweep will be caught
+on the day it is added. It also asks that the handler go in EARLY, because the
+first fix installed it after two `build()` calls and left the likeliest failure
+escaping it anyway. The same mutation now prints:
 
 ```
 ✗ onboarding is not shown again

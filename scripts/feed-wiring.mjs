@@ -19,6 +19,7 @@
  * afterwards, which works right up until it crashes between the two.
  */
 import { chromium } from 'playwright';
+import { reportOnCrash, sayCrash } from './crash-report.mjs';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { webcrypto as wc } from 'node:crypto';
@@ -27,6 +28,29 @@ import { extname, join } from 'node:path';
 
 const EXEC = process.env.CHROMIUM_PATH;
 const PROBE = 'u_wiring_probe';
+/** How long a feed gets to reach the store before it counts as refused. */
+const SETTLE_MS = 6000;
+
+/*
+ * Findings are gathered rather than printed as they happen, so a run that dies
+ * still says what it had established. This one has more ways to die than most:
+ * it generates a key, shells out to TWO builds, and starts five servers and
+ * five browsers.
+ *
+ * Installed HERE, above all of that, and the placement is the whole point. My
+ * first version registered the handler after the builds — which left the most
+ * likely failure in a sandbox, a Chromium the pinned Playwright does not have,
+ * printing a raw stack trace and nothing else. That reads as the feature being
+ * broken rather than the environment being wrong, which is the exact
+ * misdiagnosis this file's own comments warn about. Verified by throwing before
+ * the first build and watching it report.
+ *
+ * `report` is a function declaration, so it is hoisted and can be handed over
+ * before the code below it has run; on the crash path it never touches CASES,
+ * which may not be initialised yet.
+ */
+const results = [];
+reportOnCrash(report);
 
 const b64 = (b) => Buffer.from(new Uint8Array(b)).toString('base64');
 const pair = await wc.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
@@ -86,7 +110,25 @@ async function launch(dir, port, { body, signature }) {
   const server = await serve(dir, port);
   const browser = await chromium.launch(EXEC ? { executablePath: EXEC } : {});
   try {
-    const ctx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+    /*
+     * THE SERVICE WORKER IS BLOCKED, and that is not tidiness.
+     *
+     * `/policy-feed.json` is network-first in `sw.js`, so on a page the worker
+     * controls, the app's fetch goes to the worker and the worker fetches.
+     * whether Playwright's `page.route` intercepts a request a WORKER made is
+     * not something this file can rely on — so the probe sometimes arrived and
+     * sometimes did not, and the run reported the app REFUSING a feed it had
+     * simply never been shown. That is the worst direction for this gate to be
+     * wrong in: it invents the failure it exists to catch.
+     *
+     * Blocking it is also the honest scope. This sweep asks whether App.tsx
+     * verifies before it applies. `freshness` is the sweep that owns what the
+     * worker does, and it starts and stops its own server to ask it properly.
+     */
+    const ctx = await browser.newContext({
+      viewport: { width: 402, height: 874 },
+      serviceWorkers: 'block',
+    });
     const page = await ctx.newPage();
     const asked = [];
     page.on('request', (r) => asked.push(new URL(r.url()).pathname));
@@ -99,15 +141,34 @@ async function launch(dir, port, { body, signature }) {
       return route.fulfill({ status: 200, contentType: 'application/json', body });
     });
     await page.goto(`http://localhost:${port}/app/`, { waitUntil: 'networkidle' });
-    // The fetch is fired from an effect after mount; give it room to land.
     await page.waitForFunction(
       () => JSON.parse(localStorage.getItem('kept.v1') ?? '{}').updates !== undefined,
     );
-    await page.waitForTimeout(500);
-    const ids = await page.evaluate(
-      () => JSON.parse(localStorage.getItem('kept.v1')).updates.map((u) => u.id),
-    );
-    return { applied: ids.includes(PROBE), askedForSignature: asked.includes('/policy-feed.sig') };
+
+    /*
+     * POLLED, not slept on, and both directions get the same budget.
+     *
+     * This was `waitForTimeout(500)` and it failed about one run in some
+     * number — once, here, under the load of the browsers this script starts
+     * itself. The fetch is fired from an effect after mount, then verified with
+     * WebCrypto, then dispatched, then saved; 500ms is a guess at how long all
+     * of that takes on an unloaded machine, and a guess that runs short turns
+     * an ACCEPTED feed into a reported refusal. That is the wrong direction to
+     * be flaky in: it invents the failure this gate exists to catch.
+     *
+     * A refusal case therefore spends the whole budget, which is the honest
+     * cost of proving a negative — and the budget is long enough that
+     * exceeding it is a real fault rather than a slow afternoon.
+     */
+    const applied = await page
+      .waitForFunction(
+        (probe) => JSON.parse(localStorage.getItem('kept.v1')).updates.some((u) => u.id === probe),
+        PROBE,
+        { timeout: SETTLE_MS },
+      )
+      .then(() => true)
+      .catch(() => false);
+    return { applied, askedForSignature: asked.includes('/policy-feed.sig') };
   } finally {
     await browser.close();
     server.close();
@@ -143,38 +204,62 @@ const CASES = [
 ];
 
 let port = 4361;
-let wrong = 0;
-console.log('');
 for (const c of CASES) {
   const got = await launch(c.dir, port++, c);
-  const ok = got.applied === c.applied && got.askedForSignature === c.askedForSignature;
-  if (!ok) wrong += 1;
-  console.log(`  ${ok ? '✓' : '✗'} ${c.name}`);
-  if (!ok) {
-    console.log(`      used the feed: ${got.applied} (wanted ${c.applied})`);
-    console.log(`      asked for a signature: ${got.askedForSignature} (wanted ${c.askedForSignature})`);
+  results.push({
+    name: c.name,
+    ok: got.applied === c.applied && got.askedForSignature === c.askedForSignature,
+    got,
+    want: c,
+  });
+}
+
+function report(crash) {
+  console.log('');
+  for (const r of results) {
+    console.log(`  ${r.ok ? '✓' : '✗'} ${r.name}`);
+    if (!r.ok) {
+      console.log(`      used the feed: ${r.got.applied} (wanted ${r.want.applied})`);
+      console.log(`      asked for a signature: ${r.got.askedForSignature} (wanted ${r.want.askedForSignature})`);
+    }
   }
+  let wrong = results.filter((r) => !r.ok).length;
+
+  /*
+   * The vacuity guards, and they only mean anything on a run that finished:
+   * a crash leaves cases unrun, which is not the same as a check that stopped
+   * asking. Saying "it stopped exercising both builds" about a run that died
+   * on the first one would be a second, invented failure on top of the real
+   * one.
+   */
+  if (!crash) {
+    if (results.length !== CASES.length) {
+      console.log(`  ✗ ${CASES.length - results.length} case(s) never ran`);
+      wrong += 1;
+    }
+    if (new Set(CASES.map((c) => c.dir)).size !== 2) {
+      console.log('  ✗ this check stopped exercising both builds');
+      wrong += 1;
+    }
+    if (!CASES.some((c) => c.applied) || !CASES.some((c) => !c.applied)) {
+      console.log('  ✗ this check stopped asking about both outcomes');
+      wrong += 1;
+    }
+    // The probe has to be bytes a re-serialising verifier would get wrong, or
+    // the "signs what arrived" property is untested and this file says
+    // otherwise.
+    if (FEED === JSON.stringify(JSON.parse(FEED))) {
+      console.log('  ✗ the probe feed is canonical JSON, so it cannot catch a re-serialised verify');
+      wrong += 1;
+    }
+  }
+
+  if (crash) {
+    sayCrash(crash);
+    process.exit(1);
+  }
+  console.log(wrong ? `\n${wrong} of ${CASES.length} wrong\n` : `\nall ${CASES.length} as intended\n`);
+  process.exit(wrong ? 1 : 0);
 }
 
-/*
- * A sweep over no cases passes silently, reporting success for a question it
- * never asked — and this one would also pass if every build were the unsigned
- * one, so both builds have to be represented.
- */
-if (new Set(CASES.map((c) => c.dir)).size !== 2) {
-  console.log('  ✗ this check stopped exercising both builds');
-  wrong += 1;
-}
-if (!CASES.some((c) => c.applied) || !CASES.some((c) => !c.applied)) {
-  console.log('  ✗ this check stopped asking about both outcomes');
-  wrong += 1;
-}
-// The probe has to be bytes a re-serialising verifier would get wrong, or the
-// "signs what arrived" property above is untested and this file says otherwise.
-if (FEED === JSON.stringify(JSON.parse(FEED))) {
-  console.log('  ✗ the probe feed is canonical JSON, so it cannot catch a re-serialised verify');
-  wrong += 1;
-}
-
-console.log(wrong ? `\n${wrong} of ${CASES.length} wrong\n` : `\nall ${CASES.length} as intended\n`);
-process.exit(wrong ? 1 : 0);
+report();
