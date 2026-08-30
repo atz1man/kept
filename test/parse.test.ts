@@ -287,6 +287,29 @@ describe('the day it arrived — read, never guessed', () => {
 });
 
 describe('the day it was dispatched — a third clock, kept apart', () => {
+  it('takes a dispatch date of today, which is when most of these emails arrive', () => {
+    /*
+     * `daysBetween(today, hit.date) <= 0` — already happened, today included.
+     * Every case here used a date safely in the past, so tightening it to
+     * `< 0` threw away the commonest one of all: the dispatch email that
+     * arrives the day the parcel leaves.
+     *
+     * Not cosmetic. `dispatchedOn` becomes `windowStartsOn`, and the shops
+     * that count from dispatch — Zara among them — have their whole deadline
+     * moved by it. Losing it falls back to the order date and shortens the
+     * window the app counts down, silently.
+     */
+    const p = parse('Zara · Order placed 13 Aug 2026 · £34.99 · Dispatched 28 Aug 2026');
+    expect(p.dispatchedOn).toBe('2026-08-28');
+  });
+
+  it('refuses a dispatch date still in the future, which is a promise', () => {
+    // The other side of the same comparison. "Dispatching by Friday" is not an
+    // event, and the field is null rather than a date it has not happened on.
+    const p = parse('Zara · Order placed 13 Aug 2026 · £34.99 · Dispatched 30 Aug 2026');
+    expect(p.dispatchedOn).toBeNull();
+  });
+
   it('reads a labelled dispatch date', () => {
     const p = parse('Zara · Order placed 13 Aug 2026 · £34.99 · Dispatched 15 Aug 2026');
     expect(p.purchasedOn).toBe('2026-08-13');
