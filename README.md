@@ -79,6 +79,17 @@ raises it with kept closed. The web cannot, which is why `notify.ts` says so and
 Settings says so — and why Settings now says something different on iOS, since
 leaving the web sentence up there would have the app understating itself.
 
+One thing this leaves imperfect, on purpose. `alertsSent` is not only dedup —
+the celebration reads it to decide whether to say "kept reminded me before the
+window shut", a line that was once printed whether or not kept had said
+anything. When iOS raises an alert with the app closed, nothing records it, so
+a person who saw the warning, dismissed it, and returned the coat a day later
+gets the plain celebration. A tap records it, because a tap is proof. The
+clock is not proof: "its 9am has passed, so it was delivered" is false whenever
+notifications are refused at the system level, and being wrong that way puts
+the original defect back — claiming a warning that never arrived. Understating
+is the direction to be wrong in.
+
 **The bottom 34px belong to the home indicator.** Anything anchored to the
 bottom edge has to account for `env(safe-area-inset-bottom)`, and no browser
 check can see that it does not: the inset is 0 here, so the wrong layout looks

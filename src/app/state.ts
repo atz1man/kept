@@ -374,7 +374,27 @@ export function useApp() {
     if (state.embedded || !isNative()) return undefined;
     let stop: (() => void) | undefined;
     let done = false;
-    void onNotificationTap((id) => rawDispatch({ type: 'open', id })).then((off) => {
+    void onNotificationTap((id, key) => {
+      /*
+       * A tap is PROOF the system delivered it, and proof is the only thing
+       * worth recording here.
+       *
+       * `alertsSent` is not only dedup: the celebration reads it to decide
+       * whether to say "kept reminded me before the window shut", and that
+       * line was once printed whether or not kept had said anything. On iOS
+       * the system delivers while the app is closed, so nothing was recorded
+       * and the celebration UNDERSTATED — it omitted credit kept had earned.
+       *
+       * Deliberately not inferred from the clock instead. "Its 9am has passed,
+       * so it must have been delivered" is false whenever notifications are
+       * refused at the system level, and being wrong THAT way puts the
+       * original defect back: claiming a warning that never arrived. An
+       * untapped alert therefore still goes unrecorded, which understates
+       * rather than overstates, and that is the direction to be wrong in.
+       */
+      rawDispatch({ type: 'alerted', keys: [key] });
+      rawDispatch({ type: 'open', id });
+    }).then((off) => {
       if (done) off();
       else stop = off;
     });

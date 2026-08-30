@@ -75,13 +75,17 @@ export async function syncScheduled(plan: readonly PlannedAlert[]): Promise<bool
  *
  * Returns its own unsubscribe, so a re-render cannot stack listeners.
  */
-export async function onNotificationTap(open: (receiptId: string) => void): Promise<() => void> {
+export async function onNotificationTap(
+  open: (receiptId: string, key: string) => void,
+): Promise<() => void> {
   if (!isNative()) return () => {};
   try {
     const { LocalNotifications } = await import('@capacitor/local-notifications');
     const handle = await LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
-      const id = (action.notification.extra as { receiptId?: unknown } | undefined)?.receiptId;
-      if (typeof id === 'string' && id) open(id);
+      const extra = action.notification.extra as { receiptId?: unknown; key?: unknown } | undefined;
+      const id = extra?.receiptId;
+      const key = extra?.key;
+      if (typeof id === 'string' && id && typeof key === 'string' && key) open(id, key);
     });
     return () => void handle.remove();
   } catch {
