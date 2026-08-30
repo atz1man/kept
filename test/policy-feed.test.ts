@@ -19,6 +19,51 @@ const update = (over: Partial<PolicyUpdate> = {}): PolicyUpdate => ({
   ...over,
 });
 
+describe('which window a purchase was made under', () => {
+  const bought = ago(2);
+
+  it('takes the newest change on or before the purchase', () => {
+    const w = windowInForceFor('Zara', bought, [
+      update({ id: 'new', changedOn: ago(5), newWindowDays: 30 }),
+      update({ id: 'old', changedOn: ago(20), newWindowDays: 7 }),
+    ]);
+    expect(w).toEqual({ days: 30, changedOn: ago(5) });
+  });
+
+  it('does not let a SUPERSEDED change shorten it', () => {
+    /*
+     * The `days !== undefined` on the same-date branch is what stops an older
+     * entry reaching the `Math.min`. Loosen that `&&` to `||` and the seven-day
+     * window from a change made a fortnight before the newer one wins — the app
+     * counting down from a policy that was already replaced when the thing was
+     * bought, in the direction that costs money.
+     *
+     * Order matters: the newer one has to be seen first for the older to have
+     * anything to shorten.
+     */
+    const w = windowInForceFor('Zara', bought, [
+      update({ id: 'new', changedOn: ago(5), newWindowDays: 30 }),
+      update({ id: 'superseded', changedOn: ago(14), newWindowDays: 7 }),
+    ]);
+    expect(w!.days).toBe(30);
+  });
+
+  it('takes the shorter of two changes made on the SAME day', () => {
+    // Which is what the same-date branch is for: two entries, one date, and no
+    // way to tell which the retailer meant last.
+    const sameDay = ago(5);
+    const w = windowInForceFor('Zara', bought, [
+      update({ id: 'a', changedOn: sameDay, newWindowDays: 30 }),
+      update({ id: 'b', changedOn: sameDay, newWindowDays: 14 }),
+    ]);
+    expect(w!.days).toBe(14);
+  });
+
+  it('ignores a change made after the purchase', () => {
+    expect(windowInForceFor('Zara', bought, [update({ changedOn: ago(1), newWindowDays: 7 })])).toBeUndefined();
+  });
+});
+
 describe('who an update actually affects', () => {
   it('is just news when the shop is not one you use', () => {
     const [a] = assess([update({ store: 'ASOS', affectsStores: ['ASOS'] })], [zaraReceipt], TODAY);
@@ -123,6 +168,16 @@ describe('reading a downloaded feed', () => {
     ['a malformed date', { id: 'u', store: 'Zara', changedOn: '26/08/2026', text: 'x', affectsStores: [] }],
     ['a non-array affectsStores', { id: 'u', store: 'Zara', changedOn: '2026-08-26', text: 'x', affectsStores: 'Zara' }],
     ['a fractional window', { id: 'u', store: 'Zara', changedOn: '2026-08-26', text: 'x', affectsStores: [], newWindowDays: 1.5 }],
+    /*
+     * PRESENT BUT EMPTY, which is what `isStr`'s `trim().length > 0` is for and
+     * what none of the rows above reached — a missing key is caught by the
+     * typeof alone. Loosen it to `>= 0` and a card renders with no shop name,
+     * or no text, from a response nothing here trusts.
+     */
+    ['an empty id', { id: '', store: 'Zara', changedOn: '2026-08-26', text: 'x', affectsStores: [] }],
+    ['a blank store name', { id: 'u', store: '   ', changedOn: '2026-08-26', text: 'x', affectsStores: [] }],
+    ['no text to show', { id: 'u', store: 'Zara', changedOn: '2026-08-26', text: '', affectsStores: [] }],
+    ['a blank name among the shops it affects', { id: 'u', store: 'Zara', changedOn: '2026-08-26', text: 'x', affectsStores: ['Zara', ' '] }],
   ])('drops an entry with %s', (_label, entry) => {
     expect(readFeed(feed([entry]))).toEqual([]);
   });
@@ -179,8 +234,51 @@ describe('the news cannot crowd out the receipts', () => {
   const many = (n: number, from = 0) =>
     Array.from({ length: n }, (_, i) => update({ id: `u${from + i}`, changedOn: ago(from + i + 1) }));
 
+  const asFeed = (updates: unknown[]) => ({ feed: 'kept-policy', updates });
+
+  it('accepts an entry naming exactly as many shops as it is allowed', () => {
+    /*
+     * `affectsStores.length > MAX_AFFECTED` rejects. Nothing sat on the edge,
+     * so tightening it to `>=` dropped a perfectly legal entry and no test
+     * noticed — and a dropped entry is silence about a change that did happen,
+     * which is the failure this file's comments keep returning to.
+     */
+    const names = (n: number) => Array.from({ length: n }, (_, i) => `Shop ${i}`);
+    const at = readFeed(asFeed([{ id: 'at', store: 'Zara', changedOn: '2026-08-26', text: 'x', affectsStores: names(40) }]));
+    expect(at).toHaveLength(1);
+    const over = readFeed(asFeed([{ id: 'over', store: 'Zara', changedOn: '2026-08-26', text: 'x', affectsStores: names(41) }]));
+    expect(over).toHaveLength(0);
+  });
+
+  it('accepts a one-day window, which is the shortest a shop can offer', () => {
+    // `newWindowDays < 1` rejects. Exactly 1 is legal and was untested, so
+    // tightening it to `<= 1` threw away the most alarming update there is.
+    const ok = readFeed(asFeed([{ id: 'one', store: 'Zara', changedOn: '2026-08-26', text: 'x', affectsStores: ['Zara'], newWindowDays: 1 }]));
+    expect(ok).toHaveLength(1);
+    expect(ok![0].newWindowDays).toBe(1);
+    const zero = readFeed(asFeed([{ id: 'nil', store: 'Zara', changedOn: '2026-08-26', text: 'x', affectsStores: ['Zara'], newWindowDays: 0 }]));
+    expect(zero).toHaveLength(0);
+  });
+
   it('bounds one oversized response at the door', () => {
     expect(readFeed({ feed: 'kept-policy', updates: many(MAX_UPDATES * 5) })).toHaveLength(MAX_UPDATES);
+  });
+
+  it('keeps what it stores inside the size the cap was chosen for', () => {
+    /*
+     * The assertions here all read `MAX_UPDATES` on both sides, so they say the
+     * cap is APPLIED and nothing about what it is: raise the constant and every
+     * one of them still passes. The number itself is a judgement — the comment
+     * beside it says "about 60KB, more than anyone reads" — so pinning the
+     * literal 200 would assert a decision rather than a property.
+     *
+     * This asserts the property. A cap raised to something that no longer fits
+     * in a localStorage budget shared with every receipt the person owns fails
+     * here, which is the thing that would actually hurt.
+     */
+    const kept = readFeed({ feed: 'kept-policy', updates: many(MAX_UPDATES * 5) })!;
+    const bytes = JSON.stringify(kept).length;
+    expect(bytes).toBeLessThan(120_000);
   });
 
   it('keeps the newest of an oversized response, not the first it happened to read', () => {

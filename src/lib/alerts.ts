@@ -114,6 +114,8 @@ export function dueAlerts(
   }
   // Soonest first: when several fire at once, the one that matters most is the
   // one that gets read.
+  // Only the ORDER of these numbers means anything — 'week' could be any value
+  // above 'closed' and no test could tell, which is why none tries.
   const order: Record<AlertRung, number> = { today: 0, soon: 1, closed: 2, week: 3 };
   return out.sort((a, b) => order[a.rung] - order[b.rung]);
 }

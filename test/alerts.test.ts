@@ -33,6 +33,11 @@ describe('which deadlines are worth an interruption', () => {
   });
 
   it.each([
+    // Four is the case that was missing. Three was here, and at three the rung
+    // is 'soon' whether the cut is `<= 3` or `<= 4` — only the day on the OTHER
+    // side of the boundary can tell them apart, and that is the day the wording
+    // changes from planning to hurrying.
+    [4, 'week'],
     [3, 'soon'],
     [1, 'soon'],
     [0, 'today'],
@@ -91,6 +96,27 @@ describe('restraint', () => {
       closingIn(-2, { id: 'closed-one' }),
       closingIn(0, { id: 'today-one' }),
       closingIn(2, { id: 'soon-one' }),
+    ];
+    expect(dueAlerts(set, TODAY, URGENT, none).map((a) => a.receiptId)).toEqual([
+      'today-one', 'soon-one', 'closed-one', 'week-one',
+    ]);
+  });
+
+  it('ranks them, rather than leaving the order it was handed', () => {
+    /*
+     * The case above fed `today` in before `soon`, and `Array.sort` is stable —
+     * so it passed unchanged when `today` and `soon` were given the SAME rank,
+     * because the input order already had them that way round. It was asserting
+     * the fixture, not the ranking.
+     *
+     * Reversing the input is the whole test: now only a comparator that really
+     * puts today above soon can produce this.
+     */
+    const set = [
+      closingIn(2, { id: 'soon-one' }),
+      closingIn(6, { id: 'week-one' }),
+      closingIn(0, { id: 'today-one' }),
+      closingIn(-2, { id: 'closed-one' }),
     ];
     expect(dueAlerts(set, TODAY, URGENT, none).map((a) => a.receiptId)).toEqual([
       'today-one', 'soon-one', 'closed-one', 'week-one',
