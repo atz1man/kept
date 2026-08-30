@@ -319,3 +319,98 @@ describe('what a file may claim about a receipt', () => {
     expect(s.receipts[0]).toEqual(expect.objectContaining({ item: good.item, store: good.store, amount: good.amount }));
   });
 });
+
+describe('the edges of what a backup file may carry', () => {
+  /*
+   * A backup is untrusted input — the file can be edited, or written by
+   * something that misunderstood the format — and this module is the door.
+   * Every check below is one character wide, and none of them had a case
+   * sitting ON the boundary, so tightening or loosening any of them changed no
+   * test at all. Ten mutations of this file survived the whole suite.
+   *
+   * Both directions each time: the legal value is ACCEPTED and the one beyond
+   * it is refused. A test for only the refusal would pass a validator that
+   * refused everything.
+   */
+  const withField = (over: Record<string, unknown>) => readReceipt({ ...good, ...over }, true);
+
+  it.each([
+    ['a one-day window, the shortest there is', { windowDays: 1 }],
+    ['the longest window it will take', { windowDays: MAX_WINDOW_DAYS }],
+    ['a free item, at zero pence', { amount: 0 }],
+    ['the largest amount it will take', { amount: MAX_AMOUNT_PENCE }],
+  ])('accepts %s', (_label, over) => {
+    expect(withField(over)).not.toBeNull();
+  });
+
+  it.each([
+    ['a zero-day window', { windowDays: 0 }],
+    ['a window longer than it will take', { windowDays: MAX_WINDOW_DAYS + 1 }],
+    ['a negative amount', { amount: -1 }],
+    ['an amount larger than it will take', { amount: MAX_AMOUNT_PENCE + 1 }],
+  ])('refuses %s', (_label, over) => {
+    expect(withField(over)).toBeNull();
+  });
+
+  it.each([
+    ['no months at all, which is a note with no clock behind it', 0],
+    ['a hundred years, the longest it allows', 1200],
+  ])('keeps a warranty of %s', (_label, months) => {
+    expect(withField({ warranty: { months } })!.warranty).toEqual({ months });
+  });
+
+  it.each([
+    ['negative', -1],
+    ['longer than a hundred years', 1201],
+    ['fractional', 6.5],
+  ])('drops a %s warranty, and keeps the receipt', (_label, months) => {
+    /*
+     * The FIELD is refused, not the row. That is this file's rule everywhere —
+     * an unreadable category falls back rather than costing somebody a
+     * receipt — and it is worth pinning, because the obvious reading of a
+     * bounds check is that it rejects the whole thing. I wrote that test first
+     * and the code was right.
+     */
+    const r = withField({ warranty: { months } });
+    expect(r).not.toBeNull();
+    expect(r!.warranty).toBeUndefined();
+  });
+
+  it.each([
+    ['an array', ['2026-08-16']],
+    ['a number', 20260816],
+    ['an object', { year: 2026 }],
+    ['null', null],
+  ])('refuses a date that arrives as %s, rather than throwing', (_label, value) => {
+    /*
+     * `isISODate` checks `typeof v !== 'string' || regex fails` and the two
+     * limbs were only ever tested together. The array is the one that matters:
+     * JSON can carry it, and `["2026-08-16"]` coerces to the string
+     * "2026-08-16", so it passes a regex test on its own. Swap that `||` for an
+     * `&&` and the guard falls through to `v.split(...)` on an array — a
+     * TypeError out of the importer, from a file somebody edited by hand.
+     *
+     * Refused is the right answer. Thrown is not.
+     */
+    expect(() => readReceipt({ ...good, purchasedOn: value }, true)).not.toThrow();
+    expect(readReceipt({ ...good, purchasedOn: value }, true)).toBeNull();
+  });
+
+  it.each(['id', 'store', 'item', 'policy'])('refuses a receipt with no %s', (field) => {
+    /*
+     * These four are one `||` chain, and the chain was only ever tested as a
+     * whole. Swap it for an `&&` and a receipt missing any single one of them
+     * is accepted — a row rendering with a blank shop, or no id at all, which
+     * on iOS is also the name of its photograph.
+     */
+    expect(readReceipt({ ...good, [field]: '' }, true)).toBeNull();
+  });
+
+  it('takes a name of exactly the length it allows, and trims a longer one', () => {
+    // `fits` is `length <= max`. Nothing sat on the edge, so tightening it to
+    // `<` threw away a legal receipt.
+    const exact = 'x'.repeat(120);
+    expect(readReceipt({ ...good, store: exact }, true)!.store).toBe(exact);
+    expect(readReceipt({ ...good, store: 'x'.repeat(121) }, true)!.store).toHaveLength(120);
+  });
+});

@@ -69,6 +69,8 @@ const isStr = (v: unknown): v is string => typeof v === 'string' && v.trim().len
 const MAX_STORE = 120;
 const MAX_ITEM = 200;
 const MAX_NOTE = 2000;
+// `<` would do as well as `<=`: slicing a string to its own length returns it
+// unchanged, so no test can tell them apart. Recorded rather than re-derived.
 const trim = (v: string, max: number) => (v.length <= max ? v : v.slice(0, max));
 
 function isISODate(v: unknown): v is string {
