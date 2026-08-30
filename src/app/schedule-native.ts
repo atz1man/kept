@@ -64,3 +64,27 @@ export async function syncScheduled(plan: readonly PlannedAlert[]): Promise<bool
     return false;
   }
 }
+
+/**
+ * Open the receipt a tapped notification is about.
+ *
+ * The `extra` the scheduler attaches is the only link back: iOS hands the
+ * notification to the app, not a receipt. Resolving it is the reducer's job,
+ * because whether that receipt is still held is a question about state — the
+ * alert may have been lodged weeks before it was tapped.
+ *
+ * Returns its own unsubscribe, so a re-render cannot stack listeners.
+ */
+export async function onNotificationTap(open: (receiptId: string) => void): Promise<() => void> {
+  if (!isNative()) return () => {};
+  try {
+    const { LocalNotifications } = await import('@capacitor/local-notifications');
+    const handle = await LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
+      const id = (action.notification.extra as { receiptId?: unknown } | undefined)?.receiptId;
+      if (typeof id === 'string' && id) open(id);
+    });
+    return () => void handle.remove();
+  } catch {
+    return () => {};
+  }
+}

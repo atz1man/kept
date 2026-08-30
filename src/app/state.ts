@@ -2,7 +2,7 @@ import { useEffect, useReducer, useState } from 'react';
 import { pruneSent } from '../lib/alerts';
 import { planAlerts } from '../lib/schedule';
 import { isNative } from '../lib/mirror';
-import { syncScheduled } from './schedule-native';
+import { onNotificationTap, syncScheduled } from './schedule-native';
 import { startOfDay, toISODate } from '../lib/dates';
 import { SHARE_PARAMS, sharedTextFrom } from '../lib/share';
 import { derive, makeReceiptId } from '../lib/receipts';
@@ -95,8 +95,27 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         screen: action.screen,
         selId: action.screen === 'detail' || action.screen === 'edit' ? state.selId : null,
       };
-    case 'open':
-      return { ...state, justDeleted: null, screen: 'detail', selId: action.id };
+    case 'open': {
+      /*
+       * Only if it is still held.
+       *
+       * Every caller inside the app passes an id off a row that is on screen,
+       * so this could not previously miss. A tapped notification can: it was
+       * lodged with iOS days or weeks earlier and the receipt may have been
+       * returned, deleted, or erased since. `App.tsx` renders the detail screen
+       * as `screen === 'detail' && selected`, so a missing one is not an error
+       * — it is a blank page under the tab bar, which is the exact failure
+       * `Recovery` exists for and a miserable thing to meet from a lock screen.
+       *
+       * The list is the honest answer: the receipt is genuinely not there. The
+       * same reasoning the `sync` case applies when another tab deletes what
+       * this one has open.
+       */
+      const held = state.receipts.some((r) => r.id === action.id);
+      return held
+        ? { ...state, justDeleted: null, screen: 'detail', selId: action.id }
+        : { ...state, justDeleted: null, screen: 'home', selId: null };
+    }
     case 'ob-next':
       return state.obStep >= ONBOARDING_STEPS - 1
         ? { ...state, screen: 'home', onboardingSeen: true }
@@ -338,6 +357,32 @@ export function useApp() {
     });
     setSaveFailed(!ok);
   }, [state.embedded, state.version, state.receipts, state.updates, state.onboardingSeen, state.settings, state.alertsSent]);
+
+  /*
+   * A tapped notification opens the receipt it is about.
+   *
+   * The scheduler has been attaching `receiptId` to every alert since it was
+   * written and nothing read it — a thing declared with nothing reading it,
+   * which is a defect class this codebase has caught four times and had no
+   * business reintroducing. Either the field goes or it is used; it earns its
+   * place by taking someone from the lock screen to the coat.
+   *
+   * Registered once, not on every state change: the handler dispatches, and
+   * the reducer is what knows whether the receipt is still held.
+   */
+  useEffect(() => {
+    if (state.embedded || !isNative()) return undefined;
+    let stop: (() => void) | undefined;
+    let done = false;
+    void onNotificationTap((id) => rawDispatch({ type: 'open', id })).then((off) => {
+      if (done) off();
+      else stop = off;
+    });
+    return () => {
+      done = true;
+      stop?.();
+    };
+  }, [state.embedded]);
 
   /*
    * Lodge the deadlines with iOS, so they arrive when the app is closed.

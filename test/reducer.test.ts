@@ -21,6 +21,37 @@ const base = (over: Partial<AppState> = {}): AppState => ({
   ...over,
 });
 
+describe('opening a receipt', () => {
+  it('opens one that is held', () => {
+    const next = reducer(base(), { type: 'open', id: 'b' }, TODAY);
+    expect(next.screen).toBe('detail');
+    expect(next.selId).toBe('b');
+  });
+
+  /*
+   * Reachable only from a tapped notification, which is why it did not matter
+   * before there was one. Every caller inside the app passes an id off a row
+   * that is on screen; an alert lodged with iOS can be tapped days later, after
+   * the receipt has been returned, deleted or erased.
+   *
+   * App.tsx renders the detail screen as `screen === 'detail' && selected`, so
+   * a receipt that is gone is not an error — it is a blank page under the tab
+   * bar, arrived at from a lock screen with no way to tell what went wrong.
+   */
+  it('falls back to the list when the receipt is gone', () => {
+    const next = reducer(base(), { type: 'open', id: 'vanished' }, TODAY);
+    expect(next.screen).toBe('home');
+    expect(next.selId).toBeNull();
+  });
+
+  it('does not strand an undo offer either way', () => {
+    const held = reducer(base({ justDeleted: null }), { type: 'open', id: 'a' }, TODAY);
+    const gone = reducer(base({ justDeleted: null }), { type: 'open', id: 'nope' }, TODAY);
+    expect(held.justDeleted).toBeNull();
+    expect(gone.justDeleted).toBeNull();
+  });
+});
+
 describe('sharing a win', () => {
   // It reported success either way, so a refused clipboard rendered as
   // "Copied — paste it anywhere ✓" and the person found out by pasting
