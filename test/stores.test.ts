@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { STORE_POLICIES, findStore, type StorePolicy } from '../src/lib/stores';
+import { ALIASES_BY_LENGTH, STORE_POLICIES, findStore, type StorePolicy } from '../src/lib/stores';
 import { parseReceiptText } from '../src/lib/parse';
 
 /**
@@ -157,5 +157,39 @@ describe('where each entry says its clock starts', () => {
       (p) => (p.clockStart === 'delivery' && !saysDelivery(p)) || (p.clockStart === 'dispatch' && !saysDispatch(p)),
     ).map((p) => p.name);
     expect(silent).toEqual([]);
+  });
+});
+
+describe('the order aliases are matched in', () => {
+  /*
+   * `pickStore` returns the FIRST alias that matches, so the order of this list
+   * is the rule. Longest first, or a shop whose name contains another's — the
+   * comment names "john lewis" against a future "john", and "marks and spencer"
+   * against a bare "m&s" in the same email footer — resolves to the wrong one.
+   *
+   * Nothing tested it. Flipping the comparator's subtraction to an addition
+   * garbles the whole list and every parse test still passed, because no two
+   * shops' aliases overlap TODAY. That is exactly the state in which this
+   * ordering is protecting a future entry rather than a present one, and the
+   * state in which it is easiest to break without noticing.
+   */
+  it('is longest first, with no shorter alias ahead of a longer one', () => {
+    const lengths = ALIASES_BY_LENGTH.map((a) => a.alias.length);
+    expect(lengths.length).toBeGreaterThan(20);
+    expect([...lengths].sort((a, b) => b - a)).toEqual(lengths);
+  });
+
+  it('picks the longer alias when a text carries both', () => {
+    // Two real aliases from two different shops, the shorter one first in the
+    // text: only the ORDER of the list decides this, not where they appear.
+    const short = [...ALIASES_BY_LENGTH].reverse()[0];
+    const long = ALIASES_BY_LENGTH[0];
+    expect(long.alias.length).toBeGreaterThan(short.alias.length);
+    const out = parseReceiptText(
+      `Order confirmation from ${short.alias} and ${long.alias} · Total £20.00 · 20 Aug 2026`,
+      new Date(2026, 7, 28),
+    );
+    if (!out.ok) throw new Error(`expected a parse, got ${out.reason}`);
+    expect(out.value.store).toBe(long.store.name);
   });
 });
