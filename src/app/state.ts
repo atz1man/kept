@@ -1,5 +1,8 @@
 import { useEffect, useReducer, useState } from 'react';
 import { pruneSent } from '../lib/alerts';
+import { planAlerts } from '../lib/schedule';
+import { isNative } from '../lib/mirror';
+import { syncScheduled } from './schedule-native';
 import { startOfDay, toISODate } from '../lib/dates';
 import { SHARE_PARAMS, sharedTextFrom } from '../lib/share';
 import { derive, makeReceiptId } from '../lib/receipts';
@@ -335,6 +338,37 @@ export function useApp() {
     });
     setSaveFailed(!ok);
   }, [state.embedded, state.version, state.receipts, state.updates, state.onboardingSeen, state.settings, state.alertsSent]);
+
+  /*
+   * Lodge the deadlines with iOS, so they arrive when the app is closed.
+   *
+   * Re-run whenever anything the plan is derived from moves: the receipts, the
+   * urgency slider, and the record of what has already been said. `today`
+   * too — a phone left overnight rolls the date and every deadline with it.
+   *
+   * The switch has to SWITCH. Turning deadline alerts off cancels what is
+   * already lodged rather than merely declining to add more; otherwise
+   * everything scheduled before the toggle keeps arriving for weeks, and the
+   * control would be a stored boolean nothing acted on — which is exactly what
+   * `policyWatch` turned out to be, on the row directly above it in Settings.
+   */
+  useEffect(() => {
+    if (state.embedded || !isNative()) return;
+    if (!state.settings.deadlineAlerts) {
+      void syncScheduled([]);
+      return;
+    }
+    void syncScheduled(
+      planAlerts(state.receipts, today, state.settings.urgentDays, new Set(state.alertsSent)),
+    );
+  }, [
+    state.embedded,
+    state.receipts,
+    state.settings.deadlineAlerts,
+    state.settings.urgentDays,
+    state.alertsSent,
+    today,
+  ]);
 
   return { state, dispatch: rawDispatch, today, saveFailed };
 }

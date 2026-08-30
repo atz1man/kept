@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { color, font, radius } from '../../tokens';
+import { isNative } from '../../lib/mirror';
 import { fmtDateLong, fromISODate } from '../../lib/dates';
 import { mergeBackup, parseBackup } from '../../lib/backup';
 import { notifyState, requestNotifyPermission, type NotifyState } from '../notify';
@@ -208,13 +209,20 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
             separator={false}
             onChange={(v) => void toggleAlerts(v)}
           />
-          {/* The honest ceiling for a web app, stated where the switch is
-              rather than implied away: Notification Triggers never shipped,
-              and periodic background sync is one engine's, at its discretion. */}
+          {/* Two different truths, and the screen has to tell the right one.
+              On the web this is a genuine ceiling, stated where the switch is
+              rather than implied away: Notification Triggers never shipped and
+              periodic background sync is one engine's, at its discretion. In
+              the iOS app the deadlines are lodged with the system in advance,
+              so they do arrive with kept closed — and leaving the web sentence
+              up there would be the app understating what it does, which is the
+              same species of untruth as overstating it. */}
           <div style={{ padding: '0 18px 14px', fontSize: 12, color: color.muted, lineHeight: 1.5 }}>
             {permission === 'denied'
               ? 'Your browser is blocking notifications for kept. Turn them back on in site settings.'
-              : 'Checked each time you open kept. Nothing arrives while kept is closed — a web app cannot wake itself.'}
+              : isNative()
+                ? 'Lodged with iOS in advance, so they arrive at 9am on the day even if kept is closed. Turning this off cancels the ones already waiting.'
+                : 'Checked each time you open kept. Nothing arrives while kept is closed — a web app cannot wake itself.'}
           </div>
         </div>
         {/* "Daily · on" was a cadence nothing kept. The feed is fetched once

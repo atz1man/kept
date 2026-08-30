@@ -1892,15 +1892,20 @@ spending minutes a mutation on it.
   feed — parse, confirm, edit before saving — already exists and is where a
   scan should land, so adding it later is a contained change rather than a
   redesign.
-- **Background notifications.** Deadline alerts are real — `lib/alerts.ts`
-  decides which deadlines are worth an interruption and `app/notify.ts`
-  delivers them — but a web app cannot wake itself at 9am. Notification
-  Triggers never shipped, and Periodic Background Sync is one engine's, for
-  installed apps only, granted at the browser's discretion. So alerts are
-  computed whenever kept is opened or brought back to the foreground, and
-  Settings says exactly that instead of implying a service that does not
-  exist. A native shell or a push path replaces `notify.ts` alone; the
-  decision engine does not change.
+- **Background notifications, on the web.** Still not possible, and still
+  stated rather than implied: Notification Triggers never shipped, and Periodic
+  Background Sync is one engine's, for installed apps only, granted at the
+  browser's discretion. So on the web alerts are computed whenever kept is
+  opened or brought back to the foreground, and Settings says exactly that.
+
+  **On iOS they are real.** The prediction this entry made — that a native
+  shell replaces the delivery alone and the decision engine does not change —
+  held: `lib/alerts.ts` was not touched. `lib/schedule.ts` works out what will
+  be worth saying and when, and `app/schedule-native.ts` lodges it with the
+  system, so a deadline arrives at 9am with kept closed. Both paths read the
+  same `copyFor`, so the words cannot drift apart. Settings now tells whichever
+  truth applies, because leaving the web sentence up on iOS would be the app
+  understating itself, which is the same species of untruth as overstating.
 - **Payments.** The pricing tiers unlock the local plan flag and say plainly
   that nothing was charged. No card, no billing, nothing to cancel.
 - **Signing the policy feed.** The feed is fetched from the app's own origin,

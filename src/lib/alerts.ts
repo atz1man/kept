@@ -42,7 +42,17 @@ function rungFor(daysLeft: number, urgentDays: number): AlertRung | null {
   return null;
 }
 
-function copyFor(rung: AlertRung, r: Receipt, daysLeft: number, deadline: Date): { title: string; body: string } {
+/**
+ * The words, in one place.
+ *
+ * Exported because there are now TWO paths to a lock screen — this module,
+ * when the app is open, and `schedule.ts`, which lodges the same alerts with
+ * iOS ahead of time. Handing the wording to the scheduler as a parameter would
+ * let the two say different things about the same receipt, which is the exact
+ * shape of defect this codebase keeps finding: one fact, two surfaces, quietly
+ * disagreeing. There is one set of words and both read it.
+ */
+export function copyFor(rung: AlertRung, r: Receipt, daysLeft: number, deadline: Date): { title: string; body: string } {
   const what = `${r.store} · ${r.item}`;
   switch (rung) {
     case 'week':
