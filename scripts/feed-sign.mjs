@@ -2,6 +2,7 @@
  * Sign the published policy feed.
  *
  *   KEPT_FEED_KEY="<base64 pkcs8>" npm run feed:sign
+ *   KEPT_FEED_KEY=... node scripts/feed-sign.mjs <feed.json> <out.sig>
  *
  * Writes public/policy-feed.sig next to public/policy-feed.json. The key comes
  * from the environment and is never read from a file in this repository, for
@@ -20,8 +21,18 @@ if (!key) {
   process.exit(1);
 }
 
-const FEED = new URL('../public/policy-feed.json', import.meta.url);
-const SIG = new URL('../public/policy-feed.sig', import.meta.url);
+/*
+ * Paths are overridable so the round trip can be checked without writing over
+ * the published feed. The defaults are the real ones, and the round trip has to
+ * run THIS script rather than a copy of its logic — a signer and a verifier
+ * that agree only in a test are two surfaces of one fact, quietly disagreeing.
+ */
+const FEED = process.argv[2]
+  ? new URL(process.argv[2], `file://${process.cwd()}/`)
+  : new URL('../public/policy-feed.json', import.meta.url);
+const SIG = process.argv[3]
+  ? new URL(process.argv[3], `file://${process.cwd()}/`)
+  : new URL('../public/policy-feed.sig', import.meta.url);
 const bytes = readFileSync(FEED);
 
 // It has to be a feed this app would accept in the first place. Signing a
@@ -33,7 +44,7 @@ try {
     throw new Error('not a kept-policy document');
   }
 } catch (e) {
-  console.error(`✗ public/policy-feed.json is not a feed this app would accept: ${e.message}`);
+  console.error(`✗ ${FEED.pathname} is not a feed this app would accept: ${e.message}`);
   process.exit(1);
 }
 
@@ -46,4 +57,4 @@ const priv = await crypto.subtle.importKey(
 );
 const sig = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, priv, bytes);
 writeFileSync(SIG, Buffer.from(new Uint8Array(sig)).toString('base64'));
-console.log(`✓ signed ${bytes.length} bytes → public/policy-feed.sig`);
+console.log(`✓ signed ${bytes.length} bytes → ${SIG.pathname}`);
