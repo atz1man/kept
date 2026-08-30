@@ -2145,6 +2145,27 @@ spending minutes a mutation on it.
   both readings hashed the same; it now serves the feed pretty-printed, the way
   the real file is, and fails itself if that ever stops being true.
 
+  **The half that is deliberately not built: saying so.** A refused feed is
+  silent. The app keeps the list it already holds, which is the right thing to
+  do — the held copy was accepted under the same rule, and quietly taking an
+  unproven one would defeat the check — but the Watch screen still reads *"Kept's
+  own list of changes, fetched each time you open the app"*. Literally true: it
+  is fetched. Misleading all the same, because the list on screen is not what
+  came back, and a person looking at a stale one has nothing to tell them so.
+  This codebase has removed a sentence for less — "Policies verified daily by
+  kept · last check today 06:00" invented both the verification and the hour.
+
+  It is not built because it cannot occur in the shipping build. With
+  `FEED_PUBLIC_KEY` null nothing is ever refused, so the copy would render on no
+  device and no sweep could check it — the exact blind spot that let
+  `ReceiptPhoto` go unseen until `npm run ios` grew to open a receipt. The
+  groundwork is done rather than guessed at: `feedIsAcceptable` already returns
+  `reason: 'refused'` instead of a bare boolean, precisely so the caller can
+  distinguish this from an ordinary offline failure. Whoever sets a real key
+  should carry that reason into the state and give the Watch footer a second
+  sentence — and extend `feed:wiring`, which already builds with a key, to
+  assert it appears.
+
   Still wanted for production: a pipeline that verifies each retailer's
   published terms before publishing, and somewhere to hold the private key that
   is not a laptop.
