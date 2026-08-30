@@ -101,9 +101,30 @@ async function fs() {
   return { Filesystem: mod.Filesystem, Directory: mod.Directory, Encoding: mod.Encoding };
 }
 
+/**
+ * How long the rescue may hold the app up.
+ *
+ * The read happens BEFORE the first render, so a call that never answers is a
+ * blank screen — the failure `Recovery` exists for, reached by a path Recovery
+ * cannot see, because nothing threw and nothing rendered. Three seconds is
+ * long enough for a disk read of a file measured in kilobytes and short enough
+ * that a person meets the app rather than a white rectangle.
+ */
+export const MIRROR_READ_BUDGET_MS = 3000;
+
 export async function readMirror(): Promise<string | null> {
   if (!isNative()) return null;
-  try {
+
+  /*
+   * The budget is on the READ, deliberately, and not on the restore that calls
+   * it. A timeout one level up would let the read land AFTER the app had
+   * mounted on an empty store — and the save effect would then commit that
+   * empty library, which the mirror faithfully copies, turning a recoverable
+   * loss into a permanent one. That is the same ordering hazard `main.tsx`
+   * documents, arriving by a different route. Giving up here means nothing
+   * lands late, because nothing is still coming.
+   */
+  const read = (async () => {
     const { Filesystem, Directory, Encoding } = await fs();
     const file = await Filesystem.readFile({
       path: MIRROR_FILE,
@@ -111,10 +132,25 @@ export async function readMirror(): Promise<string | null> {
       encoding: Encoding.UTF8,
     });
     return typeof file.data === 'string' ? file.data : null;
-  } catch {
+  })().catch(() => {
     // No mirror yet is the ordinary case on a first launch, and an unreadable
     // one is not worth distinguishing: either way there is nothing to restore.
+    // Caught HERE rather than around the race, so a rejection arriving after
+    // the budget has expired is already handled and cannot surface as an
+    // unhandled rejection in a shell that has moved on.
     return null;
+  });
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const budget = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), MIRROR_READ_BUDGET_MS);
+  });
+  try {
+    return await Promise.race([read, budget]);
+  } finally {
+    // Or a launch that read its mirror in 4ms would still hold a timer open
+    // for the rest of the three seconds.
+    clearTimeout(timer);
   }
 }
 

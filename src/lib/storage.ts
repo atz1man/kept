@@ -201,8 +201,15 @@ export async function restoreFromMirror(): Promise<boolean> {
   } catch {
     local = null;
   }
-  // Ask before reading the file: a healthy store is the ordinary case and
-  // deserves no disk read at launch.
+  /*
+   * Ask before reading the file. I recorded this as saving a disk read, and
+   * that undersold it: an ordinary launch never touches the filesystem at all,
+   * so a plugin call that hangs cannot delay the app for anyone whose store is
+   * intact. The read has its own budget for when it IS reached
+   * (MIRROR_READ_BUDGET_MS), but the cheapest way to survive a hanging bridge
+   * is not to call it. The mutation that removes this line is only invisible
+   * while the bridge answers.
+   */
   if (chooseSource(local, null) === 'local') return false;
   const mirror = await readMirror();
   if (!mirror || chooseSource(local, mirror) !== 'mirror') return false;
