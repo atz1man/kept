@@ -42,13 +42,19 @@ describe('what the app calls itself', () => {
   });
 
   it('uses one bundle identifier for Debug and Release alike', () => {
-    expect([...new Set(bundleIds())]).toHaveLength(1);
+    const found = [...new Set(bundleIds())];
+    expect(found, `project.pbxproj has more than one bundle identifier: ${found.join(', ')}`)
+      .toHaveLength(1);
   });
 
   it('and it is the one Capacitor was told to use', () => {
     // Capacitor writes the native project from this value; if they part
     // company, `npx cap sync` and Xcode are building two different apps.
-    expect(bundleIds()[0]).toBe(configValue('appId'));
+    expect(
+      bundleIds()[0],
+      `project.pbxproj says ${bundleIds()[0]} and capacitor.config.ts says ${configValue('appId')} — `
+        + 'both need changing; `npx cap sync ios` does not do it for you',
+    ).toBe(configValue('appId'));
   });
 
   it('lets Info.plist derive the identifier rather than repeat it', () => {
@@ -63,6 +69,9 @@ describe('what the app calls itself', () => {
   it('shows the same name on the home screen that the config sets', () => {
     // CFBundleDisplayName is what a person reads under the icon. Capacitor
     // writes it once, from appName, and never looks again.
-    expect(plistValue('CFBundleDisplayName')).toBe(configValue('appName'));
+    expect(
+      plistValue('CFBundleDisplayName'),
+      `Info.plist says ${plistValue('CFBundleDisplayName')} and capacitor.config.ts says ${configValue('appName')}`,
+    ).toBe(configValue('appName'));
   });
 });

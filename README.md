@@ -53,6 +53,23 @@ npx cap sync ios   # copies it into the Xcode project and updates the plugins
 The rest needs macOS — `pod install`, signing, and the build itself. Everything
 above this line runs anywhere.
 
+**Setting the real bundle identifier takes two edits, not one.** `appId` in
+`capacitor.config.ts` is `uk.co.kept.REPLACE_ME`, and the same string is in
+`ios/App/App.xcodeproj/project.pbxproj` twice, once for Debug and once for
+Release. `npx cap sync ios` will NOT bring them into line — the CLI writes
+`PRODUCT_BUNDLE_IDENTIFIER` and `CFBundleDisplayName` from
+`editProjectSettingsIOS`, and that runs from `cap add` only, once, when the
+project is first created. Change the config and the pbxproj together, by hand.
+
+Do NOT re-create the project to get it done for you. `ios/` is not purely
+generated any more: it carries the three camera usage descriptions and kept's
+own icon and launch screen, none of which `cap add` would write.
+
+`test/ios-identity.test.ts` is what says so: it compares all three and fails
+naming the mismatch, which is the first thing that will happen if only one is
+edited. That is the point of it — the check exists for the day this is done for
+real, and it does not care what the identifier is, only that the three agree.
+
 ## iOS
 
 kept is a native app by **wrapping** the web app, not by being rewritten.
