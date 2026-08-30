@@ -1,4 +1,5 @@
 import { readReceipt } from './backup';
+import { chooseSource, isNative, readMirror, writeMirror } from './mirror';
 import { readFeed } from './policy-feed';
 import { seedReceipts, seedUpdates } from './seed';
 import type { PolicyUpdate, Receipt } from './types';
@@ -181,6 +182,38 @@ export function hydrate(raw: unknown, today: Date): KeptState {
   };
 }
 
+/**
+ * Put the mirror back, when the web view has lost the live store.
+ *
+ * Runs before the app mounts and only on iOS; on the web it resolves
+ * immediately having done nothing. It writes into `localStorage` rather than
+ * returning a state, so that `load` and every screen below it stay exactly as
+ * they were — the rescue is invisible to the rest of the app, which is the
+ * point. Returns whether it actually restored anything, so a caller can say so.
+ */
+export async function restoreFromMirror(): Promise<boolean> {
+  if (!isNative()) return false;
+  const store = storage();
+  if (!store) return false;
+  let local: string | null = null;
+  try {
+    local = store.getItem(KEY);
+  } catch {
+    local = null;
+  }
+  // Ask before reading the file: a healthy store is the ordinary case and
+  // deserves no disk read at launch.
+  if (chooseSource(local, null) === 'local') return false;
+  const mirror = await readMirror();
+  if (!mirror || chooseSource(local, mirror) !== 'mirror') return false;
+  try {
+    store.setItem(KEY, mirror);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function load(today: Date): KeptState {
   const store = storage();
   const raw = store?.getItem(KEY);
@@ -212,6 +245,14 @@ export function save(state: KeptState): boolean {
     // the quota for nothing.
     if (store.getItem(KEY) === next) return true;
     store.setItem(KEY, next);
+    /*
+     * And again, outside the web view, on iOS only. Deliberately not awaited:
+     * the reducer saves synchronously and cannot wait, and a mirror that fails
+     * to write is a degraded state rather than a loss — the live store already
+     * has it. That is why this does not feed the failure banner, which means
+     * "your receipts are not saved" and would be untrue here. See mirror.ts.
+     */
+    void writeMirror(next);
     return true;
   } catch {
     // Quota exceeded, or a store that refuses writes entirely.

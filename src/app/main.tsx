@@ -4,6 +4,8 @@ import '../styles.css';
 import { App } from './App';
 import { Recovery } from './components/Recovery';
 import { color } from '../tokens';
+import { isNative } from '../lib/mirror';
+import { restoreFromMirror } from '../lib/storage';
 
 /**
  * On a phone the app is the whole viewport. On a desktop it renders in a
@@ -41,11 +43,33 @@ function Shell() {
   );
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <Shell />
-  </StrictMode>,
-);
+function mount() {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <Shell />
+    </StrictMode>,
+  );
+}
+
+/*
+ * On iOS, put the mirror back BEFORE the first read of the store.
+ *
+ * The order is the whole thing, and getting it the other way round would be
+ * worse than having no mirror at all. `load` runs inside `useReducer`, so
+ * mounting first means booting on the empty library the web view handed
+ * back — and then the save effect commits that empty library, which the
+ * mirror faithfully copies, because its one rule is to hold whatever was
+ * committed. A recoverable loss would become a permanent one, in the moment
+ * the rescue was supposed to happen.
+ *
+ * The web path is left exactly as it was, mounting synchronously, rather than
+ * awaiting a promise that resolves to `false` having done nothing.
+ */
+if (isNative()) {
+  void restoreFromMirror().finally(mount);
+} else {
+  mount();
+}
 
 // The service worker is what makes the deadline checkable with no signal —
 // the one piece of infrastructure a local-first app genuinely needs.

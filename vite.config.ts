@@ -14,11 +14,25 @@ import { resolve } from 'node:path';
  * users are not made to re-download a byte-identical app.
  */
 function stampServiceWorker(): Plugin {
+  /*
+   * Read from the resolved config rather than written here, because this
+   * plugin knew only one output directory and there are now two. `npm run
+   * build:ios` builds to `dist-ios`, and with the path hardcoded this stamped
+   * the WEB build's worker using the WEB build's manifest, then left the iOS
+   * worker holding a literal `__BUILD_ID__` — a cache name that never changes,
+   * which is the never-evicting worker the loud failure below exists to
+   * prevent. It reported "no placeholder to stamp", which was true of the file
+   * it was looking at and false of the one it was building.
+   */
+  let outDir = 'dist';
   return {
     name: 'kept-stamp-service-worker',
     apply: 'build',
+    configResolved(config) {
+      outDir = config.build.outDir;
+    },
     closeBundle() {
-      const swPath = resolve(__dirname, 'dist/sw.js');
+      const swPath = resolve(__dirname, outDir, 'sw.js');
       let sw: string;
       try {
         sw = readFileSync(swPath, 'utf8');
@@ -30,7 +44,7 @@ function stampServiceWorker(): Plugin {
         // renamed placeholder would otherwise be a silent regression.
         this.error('sw.js has no __BUILD_ID__ placeholder to stamp');
       }
-      const manifest = readFileSync(resolve(__dirname, 'dist/app/index.html'), 'utf8');
+      const manifest = readFileSync(resolve(__dirname, outDir, 'app/index.html'), 'utf8');
       const id = createHash('sha256').update(manifest).digest('hex').slice(0, 12);
       writeFileSync(swPath, sw.replaceAll('__BUILD_ID__', id));
     },
