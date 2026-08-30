@@ -118,6 +118,9 @@ export function planAlerts(
       const when = at9am(day);
       // Nothing in the past: the system would either fire it immediately or
       // refuse it, and both are wrong for a window that closed last month.
+      // `<` would do: `when` is always 9am exactly and `now` is an arbitrary
+      // instant, so equality needs the suite to run at 09:00:00.000 to the
+      // millisecond. Practically equivalent, and recorded rather than chased.
       if (when.getTime() <= now.getTime()) continue;
       const daysLeft = Math.round((startOfDay(deadline).getTime() - startOfDay(when).getTime()) / 86_400_000);
       out.push({ key, receiptId: r.id, rung, at: when, ...copyFor(rung, r, daysLeft, deadline) });

@@ -78,6 +78,53 @@ describe('what gets lodged with the system', () => {
   });
 });
 
+describe('when an alert is lodged for, and what it says', () => {
+  it('fires at nine on the dot, not at nine-ish', () => {
+    /*
+     * `setHours(FIRE_HOUR, 0, 0, 0)` — the three zeros were untested, so an
+     * alert could have been lodged for 09:01 or 09:00:01 and nothing noticed.
+     * Nine is a choice about waking somebody up; a minute past nine is nobody's
+     * choice at all.
+     */
+    for (const a of plan([receipt()])) {
+      expect([a.at.getHours(), a.at.getMinutes(), a.at.getSeconds(), a.at.getMilliseconds()])
+        .toEqual([FIRE_HOUR, 0, 0, 0]);
+    }
+    expect(FIRE_HOUR).toBe(9);
+  });
+
+  it('counts the days left from the day it will FIRE, not from today', () => {
+    /*
+     * The number in the words. `Math.round((deadline - when) / a day)` is
+     * computed against the fire date, because an alert lodged today for a
+     * fortnight's time has to say what will be true then, not what is true now.
+     * Nothing asserted it: rounding could become truncation, or the subtraction
+     * an addition, and every existing test still passed.
+     */
+    const bodies = Object.fromEntries(plan([receipt()]).map((a) => [a.rung, a.body]));
+    expect(bodies.week).toContain('7 days left');
+    expect(bodies.soon).toContain('3 days left');
+  });
+
+  it('still says seven when the week it counts crosses the clocks going forward', () => {
+    /*
+     * The same rounding as `daysBetween`, in the notification's own words.
+     * One of the days between the fire date and the deadline is 23 hours long
+     * across a spring transition, so a truncating divide reads that week as six
+     * days — a lock screen saying "6 days left" on the morning it means seven.
+     *
+     * The fixture above sits in June, where every day is 24 hours and rounding
+     * and truncation agree. Sunday 14 March 2027 is the US spring-forward, and
+     * the suite runs in that zone precisely so this is reachable.
+     */
+    const bought = toISODate(new Date(2027, 1, 18));
+    const spanning = receipt({ purchasedOn: bought, windowDays: 30 });
+    const week = planAlerts([spanning], new Date(2027, 2, 1), 7, new Set()).find((a) => a.rung === 'week');
+    expect(week!.at.toDateString()).toBe('Sat Mar 13 2027');
+    expect(week!.body).toContain('7 days left');
+  });
+});
+
 describe('the two boundaries iOS and the settings slider impose', () => {
   /*
    * The slider offers 2 to 21 days. The `soon` rung is fixed at 3.
@@ -98,6 +145,18 @@ describe('the two boundaries iOS and the settings slider impose', () => {
     const week = out.find((p) => p.rung === 'week')!;
     const soon = out.find((p) => p.rung === 'soon')!;
     expect(week.at.getTime()).toBeLessThan(soon.at.getTime());
+  });
+
+  it('is capped at 64, because that is the number iOS keeps', () => {
+    /*
+     * A LITERAL, unlike the other caps in this codebase. MAX_UPDATES is our
+     * judgement and no test pins it; this one is Apple's, and exceeding it does
+     * not degrade gracefully — iOS keeps 64 pending local notifications per app
+     * and silently drops the rest, without saying which. Every assertion here
+     * reads the constant on both sides, so raising it to 65 changed nothing and
+     * the feature would simply stop working on a device none of this runs on.
+     */
+    expect(MAX_PENDING).toBe(64);
   });
 
   it('never hands iOS more than it will keep', () => {
