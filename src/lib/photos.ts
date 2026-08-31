@@ -1,4 +1,4 @@
-import { isNative } from './mirror';
+import { filesystem, isNative } from './mirror';
 
 /**
  * The picture of the paper receipt.
@@ -62,11 +62,6 @@ export function orphanedPhotos(files: readonly string[], receiptIds: readonly st
   return files.filter((f) => !held.has(f));
 }
 
-async function fs() {
-  const mod = await import('@capacitor/filesystem');
-  return { Filesystem: mod.Filesystem, Directory: mod.Directory };
-}
-
 /** Base64 in, no data-URI prefix — what @capacitor/camera hands back. */
 export async function savePhoto(receiptId: string, base64: string): Promise<boolean> {
   const path = photoPath(receiptId);
@@ -75,7 +70,7 @@ export async function savePhoto(receiptId: string, base64: string): Promise<bool
   // returns false anyway. Equivalent under mutation, and recorded as such.
   if (!isNative() || path === null) return false;
   try {
-    const { Filesystem, Directory } = await fs();
+    const { Filesystem, Directory } = await filesystem();
     await Filesystem.mkdir({ path: PHOTO_DIR, directory: Directory.Documents, recursive: true }).catch(() => {
       // Already there, which is the ordinary case after the first photo.
     });
@@ -93,7 +88,7 @@ export async function readPhoto(receiptId: string): Promise<string | null> {
   // Equivalent, and recorded so it is not chased again.
   if (!isNative() || path === null) return null;
   try {
-    const { Filesystem, Directory } = await fs();
+    const { Filesystem, Directory } = await filesystem();
     const file = await Filesystem.readFile({ path, directory: Directory.Documents });
     return typeof file.data === 'string' ? file.data : null;
   } catch {
@@ -107,7 +102,7 @@ export async function deletePhoto(receiptId: string): Promise<void> {
   const path = photoPath(receiptId);
   if (!isNative() || path === null) return;
   try {
-    const { Filesystem, Directory } = await fs();
+    const { Filesystem, Directory } = await filesystem();
     await Filesystem.deleteFile({ path, directory: Directory.Documents });
   } catch {
     // Nothing to delete is success.
@@ -125,7 +120,7 @@ export async function deletePhoto(receiptId: string): Promise<void> {
 export async function erasePhotos(): Promise<void> {
   if (!isNative()) return;
   try {
-    const { Filesystem, Directory } = await fs();
+    const { Filesystem, Directory } = await filesystem();
     await Filesystem.rmdir({ path: PHOTO_DIR, directory: Directory.Documents, recursive: true });
   } catch {
     // No directory means nothing was ever photographed.
@@ -147,7 +142,7 @@ export async function erasePhotos(): Promise<void> {
 export async function cleanupPhotos(receiptIds: readonly string[]): Promise<number> {
   if (!isNative()) return 0;
   try {
-    const { Filesystem, Directory } = await fs();
+    const { Filesystem, Directory } = await filesystem();
     const dir = await Filesystem.readdir({ path: PHOTO_DIR, directory: Directory.Documents });
     const files = dir.files.map((f) => (typeof f === 'string' ? f : f.name));
     const gone = orphanedPhotos(files, receiptIds);
