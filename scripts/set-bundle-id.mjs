@@ -15,7 +15,7 @@
  * `test/ios-identity.test.ts` fails while any of them disagree. This is the
  * thing to run so that they do not.
  */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ROOT = new URL('..', import.meta.url).pathname;
@@ -40,10 +40,27 @@ export function bundleIdProblem(id) {
   return null;
 }
 
-/** Every file the identifier is written into, and how to find it in each. */
+/**
+ * Every file the identifier is written into, and how to find it in each.
+ *
+ * The bundle copy is OPTIONAL, and getting that wrong is what this comment is
+ * for. `ios/App/App/capacitor.config.json` is generated — `ios/.gitignore`
+ * lists it under "Generated Config files" — so it is absent from a fresh
+ * clone and present on any machine that has run `cap sync ios`. The first
+ * draft of this script required it, which made it exit 1 on CI and on anyone
+ * else's first checkout. It is rewritten when it is there, so a stale copy in
+ * a working tree does not sit disagreeing with the config it came from, and
+ * skipped when it is not, because `cap sync` will write it correctly from
+ * `capacitor.config.ts` either way.
+ */
 const SITES = [
   { file: join(ROOT, 'capacitor.config.ts'), find: /appId: '([^']+)'/g, write: (id) => `appId: '${id}'` },
-  { file: join(ROOT, 'ios/App/App/capacitor.config.json'), find: /"appId": "([^"]+)"/g, write: (id) => `"appId": "${id}"` },
+  {
+    file: join(ROOT, 'ios/App/App/capacitor.config.json'),
+    find: /"appId": "([^"]+)"/g,
+    write: (id) => `"appId": "${id}"`,
+    optional: true,
+  },
   {
     file: join(ROOT, 'ios/App/App.xcodeproj/project.pbxproj'),
     find: /PRODUCT_BUNDLE_IDENTIFIER = ([^;]+);/g,
@@ -65,7 +82,12 @@ function main() {
   }
 
   const changes = [];
+  const skipped = [];
   for (const site of SITES) {
+    if (site.optional && !existsSync(site.file)) {
+      skipped.push(site);
+      continue;
+    }
     const before = readFileSync(site.file, 'utf8');
     const found = [...before.matchAll(site.find)];
     if (found.length !== (site.expect ?? 1)) {
@@ -84,6 +106,9 @@ function main() {
   console.log(`✓ bundle identifier set to ${id}`);
   for (const { site, was } of changes) {
     console.log(`    ${site.file.replace(ROOT, '')} — was ${was.join(', ')}`);
+  }
+  for (const site of skipped) {
+    console.log(`    ${site.file.replace(ROOT, '')} — not here yet, cap sync writes it`);
   }
   console.log('  Now run: npx cap sync ios');
 }
