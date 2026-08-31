@@ -63,6 +63,13 @@ function pickAmount(text: string): Pence | null {
 interface DateHit {
   date: Date;
   index: number;
+  /**
+   * How many characters the date itself took, so a caller can look at what
+   * comes immediately AFTER it. Guessing that from `index` alone means
+   * allowing for the longest date form, and an allowance long enough for
+   * "12 September 2026" is long enough to reach into the next clause.
+   */
+  length: number;
 }
 
 /** Candidate dates in the text, with their positions. */
@@ -81,10 +88,10 @@ function datesIn(text: string, today: Date): DateHit[] {
    * invalid date, and `getMonth()` is NaN, which equals nothing. Both are
    * belt and braces over a check that already holds.
    */
-  const push = (y: number, m: number, d: number, index: number) => {
+  const push = (y: number, m: number, d: number, index: number, length: number) => {
     if (m < 0 || m > 11 || d < 1 || d > 31) return;
     const dt = new Date(y, m, d);
-    if (dt.getMonth() === m && dt.getDate() === d) found.push({ date: dt, index });
+    if (dt.getMonth() === m && dt.getDate() === d) found.push({ date: dt, index, length });
   };
 
   // "25 Aug", "25 August 2026", "25th Aug"
@@ -92,23 +99,23 @@ function datesIn(text: string, today: Date): DateHit[] {
   for (const m of text.matchAll(dmy)) {
     const mon = MONTHS[m[2].slice(0, 3).toLowerCase()];
     if (mon === undefined) continue;
-    push(resolveYear(m[3], mon, Number(m[1]), today), mon, Number(m[1]), m.index ?? 0);
+    push(resolveYear(m[3], mon, Number(m[1]), today), mon, Number(m[1]), m.index ?? 0, m[0].length);
   }
   // "Aug 25", "August 25, 2026"
   const mdy = /\b([a-z]{3,9})\.?[ .\-/]+(\d{1,2})(?:st|nd|rd|th)?,?(?:[ .\-/]+(\d{2,4}))?\b/gi;
   for (const m of text.matchAll(mdy)) {
     const mon = MONTHS[m[1].slice(0, 3).toLowerCase()];
     if (mon === undefined) continue;
-    push(resolveYear(m[3], mon, Number(m[2]), today), mon, Number(m[2]), m.index ?? 0);
+    push(resolveYear(m[3], mon, Number(m[2]), today), mon, Number(m[2]), m.index ?? 0, m[0].length);
   }
   // "25/08/2026" — day first. This is a UK app; 05/08 is 5 August, never 8 May.
   for (const m of text.matchAll(/\b(\d{1,2})\/(\d{1,2})\/(\d{2,4})\b/g)) {
     const y = Number(m[3]);
-    push(y < 100 ? 2000 + y : y, Number(m[2]) - 1, Number(m[1]), m.index ?? 0);
+    push(y < 100 ? 2000 + y : y, Number(m[2]) - 1, Number(m[1]), m.index ?? 0, m[0].length);
   }
   // ISO
   for (const m of text.matchAll(/\b(\d{4})-(\d{2})-(\d{2})\b/g)) {
-    push(Number(m[1]), Number(m[2]) - 1, Number(m[3]), m.index ?? 0);
+    push(Number(m[1]), Number(m[2]) - 1, Number(m[3]), m.index ?? 0, m[0].length);
   }
   return found;
 }
@@ -148,7 +155,32 @@ const LABEL_REACH = 40;
  * alternative fallback — assuming today — is further from the truth and in the
  * same dangerous direction.
  */
-const NOT_A_PURCHASE = /\b(?:deliver\w*|arriv\w*|dispatch\w*|ship\w*|expect\w*|estimat\w*|return\w*|collect\w*|due)\b[^\n]{0,24}$/i;
+const OTHER_CLOCK = 'deliver\\w*|arriv\\w*|dispatch\\w*|ship\\w*|expect\\w*|estimat\\w*|return\\w*|collect\\w*|due';
+
+const NOT_A_PURCHASE = new RegExp(`\\b(?:${OTHER_CLOCK})\\b[^\\n]{0,24}$`, 'i');
+
+/**
+ * The same words on the OTHER side of the date.
+ *
+ * The check above reads backwards, and so saw only the word order it was
+ * written for. Measured, on an order placed 1 August read on 20 September:
+ * "Dispatched 12 August" correctly yielded the 1st, while "12 August
+ * dispatched", "12 August    Delivered" and "12 August (delivery)" all yielded
+ * the 12th — the shipping-history table and the parenthesised column, which is
+ * how a great many order emails set exactly this. Eleven days late, in the
+ * direction this function's own comment names: the app promises days the shop
+ * will not honour.
+ *
+ * Anchored tight against the end of the date, and that is the whole of what
+ * keeps it safe. Only whitespace, a bracket or a dash may stand between the
+ * two — never another word and never a comma — so "12 August 2026 dispatched"
+ * is caught while "Ordered 1 August 2026, dispatch to follow" is not, and the
+ * genuine purchase date in the second is not thrown away for a delivery date
+ * further down. Which is why `DateHit` had to learn its own length: a lead
+ * allowance generous enough for "12 September 2026" would reach into the next
+ * clause on its own.
+ */
+const NOT_A_PURCHASE_AFTER = new RegExp(`^[ \\t]*[([–—-]?[ \\t]*(?:${OTHER_CLOCK})\\b`, 'i');
 
 /**
  * The purchase date.
@@ -179,7 +211,11 @@ function pickDate(text: string, today: Date): Date | null {
   if (labelled) return labelled.date;
 
   const newest = (hits: DateHit[]) => hits.reduce((best, hit) => (hit.date > best ? hit.date : best), hits[0].date);
-  const plain = past.filter((hit) => !NOT_A_PURCHASE.test(text.slice(Math.max(0, hit.index - 40), hit.index)));
+  const plain = past.filter(
+    (hit) =>
+      !NOT_A_PURCHASE.test(text.slice(Math.max(0, hit.index - 40), hit.index)) &&
+      !NOT_A_PURCHASE_AFTER.test(text.slice(hit.index + hit.length)),
+  );
   return newest(plain.length > 0 ? plain : past);
 }
 

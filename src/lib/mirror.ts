@@ -101,9 +101,42 @@ const MIRROR_FILE = 'kept-receipts.json';
  * asked for. Two dynamic imports of the same module would be two places to
  * get the lazy-loading rule wrong.
  */
-export async function filesystem() {
-  const mod = await import('@capacitor/filesystem');
-  return { Filesystem: mod.Filesystem, Directory: mod.Directory, Encoding: mod.Encoding };
+type FilesystemPlugin = {
+  Filesystem: typeof import('@capacitor/filesystem').Filesystem;
+  Directory: typeof import('@capacitor/filesystem').Directory;
+  Encoding: typeof import('@capacitor/filesystem').Encoding;
+};
+
+/**
+ * Resolved once and kept.
+ *
+ * The lazy rule is about the FIRST call — a browser must never load this — and
+ * caching does not weaken it. What it removes is the twelfth `import()` of a
+ * module that has been in memory since the first: every save, every photo
+ * write and every erase was starting a fresh dynamic import and paying for the
+ * resolution.
+ *
+ * It also settles a test flake that cost several wrong theories. Two of those
+ * imports racing under load occasionally resolved to the REAL plugin rather
+ * than the suite's mock; the real one throws "This browser doesn't support
+ * IndexedDB" under Node, `write` catches it and returns false exactly as it is
+ * meant to on a device, and the erase silently never reached the mirror. One
+ * import per module instance leaves nothing to race.
+ *
+ * A failed resolution is not cached, so a load that fails once can be retried.
+ */
+let plugin: Promise<FilesystemPlugin> | null = null;
+
+export function filesystem(): Promise<FilesystemPlugin> {
+  if (!plugin) {
+    plugin = import('@capacitor/filesystem')
+      .then((mod) => ({ Filesystem: mod.Filesystem, Directory: mod.Directory, Encoding: mod.Encoding }))
+      .catch((e: unknown) => {
+        plugin = null;
+        throw e;
+      });
+  }
+  return plugin;
 }
 
 /**
@@ -169,9 +202,7 @@ export async function readMirror(budgetMs = MIRROR_READ_BUDGET_MS): Promise<stri
   }
 }
 
-/** Returns whether the write landed, on the same principle as `save`. */
-export async function writeMirror(raw: string): Promise<boolean> {
-  if (!isNative()) return false;
+async function write(raw: string): Promise<boolean> {
   try {
     const { Filesystem, Directory, Encoding } = await filesystem();
     await Filesystem.writeFile({
@@ -184,4 +215,50 @@ export async function writeMirror(raw: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * Every mirror write, in the order it was asked for.
+ *
+ * Both callers issue this and neither can await it — `save` runs inside the
+ * reducer and `wipe` is synchronous by design — so two writes were regularly
+ * in flight at once with nothing deciding which reached the disk last. Each
+ * one crosses the bridge to native and back; nothing about that is ordered.
+ *
+ * Measured, with a save taking 30ms and an erase issued straight after taking
+ * none: the file ended up holding BOTH RECEIPTS, after the erase. Which is
+ * this codebase's own headline defect wearing a different coat — the live
+ * store is correctly empty, `chooseSource` answers "local", the app looks
+ * erased, and every receipt is sitting in a file in Documents that the Files
+ * app can now open. "A file on disk still holding every receipt is the erase
+ * having removed them from the screen and nowhere else", as the test for the
+ * photographs already puts it.
+ *
+ * A tail promise is the whole fix. Writes are rare — one per change to the
+ * library — so serialising them costs nothing, and the queue never rejects:
+ * `write` returns false rather than throwing, and the `catch` below is there
+ * for the impossible case rather than the expected one.
+ */
+let queue: Promise<unknown> = Promise.resolve();
+
+/** Returns whether the write landed, on the same principle as `save`. */
+export function writeMirror(raw: string): Promise<boolean> {
+  if (!isNative()) return Promise.resolve(false);
+  const landed = queue.then(() => write(raw));
+  queue = landed.catch(() => undefined);
+  return landed;
+}
+
+/**
+ * Resolves once every mirror write issued so far has finished.
+ *
+ * For tests, and said plainly rather than dressed up: the app never needs
+ * this, because nothing it does depends on the mirror having landed. What the
+ * tests needed before it was a fixed number of event-loop ticks and a hope,
+ * which is why the guard over the erase failed about one run in three — and
+ * a guard that fails at random is one somebody eventually reruns rather than
+ * reads.
+ */
+export function mirrorSettled(): Promise<void> {
+  return queue.then(() => undefined);
 }

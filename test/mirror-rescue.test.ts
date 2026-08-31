@@ -26,10 +26,55 @@ vi.mock('@capacitor/filesystem', () => ({
       return { data: files.get(path) };
     },
     writeFile: async ({ path, data }: { path: string; data: string }) => {
+      // A write to a phone is not instant, and two of them are not ordered.
+      // The gate lets a test hold the FIRST one open while the next is issued
+      // — a promise rather than a sleep, deliberately: `mirror-budget.test.ts`
+      // runs a 25ms budget on real timers a few files away and says in its own
+      // comment that it loses under load. A suite that sleeps is that load.
+      if (writeGate) {
+        const held = writeGate;
+        writeGate = null;
+        gateEntered?.();
+        gateEntered = null;
+        await held;
+      }
+      if (writeThrows > 0) {
+        writeThrows -= 1;
+        throw new Error('no space');
+      }
       files.set(path, data);
     },
   },
 }));
+
+/** Held open across the NEXT write only. See the ordering tests below. */
+let writeGate: Promise<void> | null = null;
+/** Called by the mock when a write actually reaches that gate. */
+let gateEntered: (() => void) | null = null;
+/** How many of the next writes fail outright. */
+let writeThrows = 0;
+
+/**
+ * Blocks the next write until `release` is called, and says when it has
+ * actually arrived.
+ *
+ * `entered` is not a nicety, and it has to be signalled from inside the mock
+ * rather than when the gate is made. Releasing before a write has reached the
+ * gate holds nothing up at all — both writes are still inside
+ * `await filesystem()` at that point — and two drafts of the ordering test
+ * below passed with the queue and without it for exactly that reason, the
+ * second while carrying an `entered` that resolved the moment it was created.
+ */
+function holdNextWrite(): { entered: Promise<void>; release: () => void } {
+  let release!: () => void;
+  writeGate = new Promise<void>((r) => {
+    release = r;
+  });
+  const entered = new Promise<void>((r) => {
+    gateEntered = r;
+  });
+  return { entered, release };
+}
 
 const KEY = 'kept.v1';
 
@@ -53,9 +98,24 @@ function boot(native: boolean) {
   };
 }
 
-/** The mirror write is deliberately not awaited by `save`, so poll for it. */
+/**
+ * The mirror write is deliberately not awaited by `save`, so wait for it.
+ *
+ * This was twenty event-loop ticks and a hope, and it failed about one run in
+ * three — the erase guard below, of all of them. `mirrorSettled` exists for
+ * this: it resolves when the writes actually have. The ticks stay after it for
+ * everything else this file waits on, which is not the mirror.
+ */
+/** Drains the microtask queue: one macrotask tick is enough for all of it. */
+async function flush() {
+  await new Promise((r) => setTimeout(r, 0));
+}
+
 async function settle() {
+  const { mirrorSettled } = await import('../src/lib/mirror');
+  await mirrorSettled();
   for (let i = 0; i < 20; i += 1) await new Promise((r) => setTimeout(r, 0));
+  await mirrorSettled();
 }
 
 const library = (ids: string[]) =>
@@ -70,6 +130,9 @@ const library = (ids: string[]) =>
 
 beforeEach(() => {
   files.clear();
+  writeGate = null;
+  gateEntered = null;
+  writeThrows = 0;
   vi.resetModules();
 });
 
@@ -274,5 +337,87 @@ describe('on the web', () => {
 
     expect(files.size).toBe(0);
     expect(await restoreFromMirror()).toBe(false);
+  });
+});
+
+describe('two mirror writes in flight at once', () => {
+  /*
+   * Neither caller can await this one — `save` runs inside the reducer and
+   * `wipe` is synchronous by design — so a save and the erase that follows it
+   * were regularly both in flight, with nothing deciding which reached the
+   * disk last. Each crosses the bridge to native and back; nothing about that
+   * is ordered.
+   *
+   * Measured before the fix, with the save taking 30ms and the erase issued
+   * straight after taking none: the file ended up holding BOTH RECEIPTS after
+   * the erase. The live store is correctly empty and `chooseSource` answers
+   * "local", so the app looks erased while every receipt sits in a file in
+   * Documents — which, since this branch opted Documents into the Files app,
+   * somebody can open.
+   *
+   * It is the same defect as the one at the top of this file, reached from the
+   * other side: there the erase left the mirror alone, here it writes to it
+   * and loses the race.
+   */
+  it('let nothing overtake a write still in flight', async () => {
+    boot(true);
+    const { writeMirror, mirrorSettled } = await import('../src/lib/mirror');
+    const gate = holdNextWrite();
+    const first = writeMirror('library');
+    await gate.entered;
+    const second = writeMirror('erased');
+    await flush();
+
+    /*
+     * THE assertion, and it took three drafts to find one that could fail.
+     *
+     * Comparing the final contents does not discriminate: unqueued, the second
+     * write is two microtask hops behind the first, so releasing the first
+     * still lets it land before the second and the order comes out right by
+     * arithmetic. Both writes have to be in flight at once with the first held
+     * open past the second's completion, and what that looks like is this —
+     * while the first is held, NOTHING may have reached the disk. Unqueued,
+     * 'erased' is already there.
+     */
+    expect(files.get('kept-receipts.json')).toBeUndefined();
+
+    gate.release();
+    await Promise.all([first, second]);
+    expect(files.get('kept-receipts.json')).toBe('erased');
+    await mirrorSettled();
+  });
+
+  it('is the erase that wins, through save and wipe rather than by hand', async () => {
+    // The same thing said in the app's own words, so the guard survives
+    // someone rewriting how a mirror write is issued.
+    boot(true);
+    const { save, wipe } = await import('../src/lib/storage');
+    const { mirrorSettled } = await import('../src/lib/mirror');
+    /*
+     * A restatement in the app's own words, so the guard survives someone
+     * rewriting how a mirror write is issued. It is NOT the discriminating
+     * test — `save` and `wipe` are both synchronous and hand back no promise,
+     * so there is nothing here to wait on precisely. The case above is the one
+     * that fails without the queue every time.
+     */
+    const gate = holdNextWrite();
+    save(JSON.parse(library(['a', 'b'])));
+    wipe();
+    await gate.entered;
+    gate.release();
+    await mirrorSettled();
+    expect(JSON.parse(files.get('kept-receipts.json')!).receipts).toEqual([]);
+  });
+
+  it('does not let one failed write strand the queue', async () => {
+    // The tail is chained on, so a rejection that escaped would stop every
+    // later erase from ever reaching the disk.
+    boot(true);
+    const { writeMirror, mirrorSettled } = await import('../src/lib/mirror');
+    writeThrows = 1;
+    expect(await writeMirror('first')).toBe(false);
+    expect(await writeMirror('second')).toBe(true);
+    await mirrorSettled();
+    expect(files.get('kept-receipts.json')).toBe('second');
   });
 });

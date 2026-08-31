@@ -65,3 +65,4 @@ describe('which copy the app boots from', () => {
     expect(chooseSource(library(0), library(12))).toBe('local');
   });
 });
+

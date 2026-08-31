@@ -548,3 +548,55 @@ describe('a promised delivery is not a delivery', () => {
     expect(parse('Delivered by DPD on 3 September 2026').arrivedOn).toBe('2026-09-03');
   });
 });
+
+describe('a shipping date is not a purchase date, whichever side its word sits', () => {
+  /*
+   * `pickDate` prefers a date NOT announced as a delivery or a dispatch, and
+   * read only backwards for that word — so it saw "Dispatched 12 August" and
+   * missed "12 August dispatched". Measured on an order placed 1 August, read
+   * on 20 September: the first correctly gave the 1st, the second, the table
+   * column and the parenthesised form all gave the 12th. Eleven days late, and
+   * late is the direction that matters — the return window then runs from a
+   * day after the purchase, so the app promises days the shop will not honour.
+   */
+  const read = new Date(2026, 8, 20);
+  const bought = (body: string) => {
+    const outcome = parseReceiptText(`Zara\n${body}\nTotal £61.00`, read);
+    if (!outcome.ok) throw new Error(outcome.reason);
+    return outcome.value.purchasedOn;
+  };
+
+  it('ignores a shipping date whose word follows it', () => {
+    for (const line of [
+      '12 August 2026 dispatched',
+      '12 August 2026    Delivered',
+      '12 August 2026 (delivery)',
+      '12 August 2026 — shipped',
+    ]) {
+      expect(bought(`1 August 2026\n${line}`), line).toBe('2026-08-01');
+    }
+  });
+
+  it('still ignores one whose word precedes it', () => {
+    expect(bought('1 August 2026\nDispatched 12 August 2026')).toBe('2026-08-01');
+  });
+
+  it('does not throw away a purchase date because a later clause mentions shipping', () => {
+    /*
+     * The guard rail on the rule above, and the reason only whitespace, a
+     * bracket or a dash may stand between the date and the word. A comma
+     * starts a new clause: "Ordered 1 August 2026, dispatch to follow" is a
+     * purchase date, and reading it as a shipping date would hand the answer
+     * to the delivery date underneath — which is the very defect being fixed,
+     * arriving by way of the fix.
+     */
+    expect(bought('Ordered 1 August 2026, dispatch to follow\nDelivered 5 August 2026')).toBe('2026-08-01');
+    expect(bought('1 August 2026 order confirmed\nDelivered 5 August 2026')).toBe('2026-08-01');
+  });
+
+  it('leaves a labelled order date alone either way', () => {
+    // The label wins before any of this is consulted, which is the point of
+    // having it: a shop that writes "Order date" is not being second-guessed.
+    expect(bought('Order date: 1 August 2026\n12 August 2026 delivered')).toBe('2026-08-01');
+  });
+});

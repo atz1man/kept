@@ -39,15 +39,22 @@ function native() {
   (globalThis as Record<string, unknown>).window = { Capacitor: { isNativePlatform: () => true } };
 }
 
-/** A browser, with the two APIs the download route needs. */
+/**
+ * A browser, with the two APIs the download route needs.
+ *
+ * The object-URL pair is added to the REAL `URL` rather than a stand-in put in
+ * its place. Replacing the global outright takes `new URL(...)` down with it,
+ * and this file is not the only thing in a worker that constructs one — a way
+ * of failing that shows up somewhere else entirely, once, and does not
+ * reproduce.
+ */
 function web(clickThrows = false) {
   const clicked: { href?: string; download?: string }[] = [];
   const revoked: string[] = [];
   (globalThis as Record<string, unknown>).window = {};
-  (globalThis as Record<string, unknown>).URL = {
-    createObjectURL: () => 'blob:kept/1',
-    revokeObjectURL: (u: string) => revoked.push(u),
-  };
+  const url = URL as unknown as Record<string, unknown>;
+  url.createObjectURL = () => 'blob:kept/1';
+  url.revokeObjectURL = (u: string) => revoked.push(u);
   (globalThis as Record<string, unknown>).Blob = class {
     constructor(public parts: unknown[]) {}
   };
@@ -72,9 +79,12 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  for (const key of ['window', 'URL', 'Blob', 'document']) {
+  for (const key of ['window', 'Blob', 'document']) {
     delete (globalThis as Record<string, unknown>)[key];
   }
+  const url = URL as unknown as Record<string, unknown>;
+  delete url.createObjectURL;
+  delete url.revokeObjectURL;
 });
 
 describe('saving a backup', () => {
