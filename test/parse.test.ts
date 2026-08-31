@@ -600,3 +600,33 @@ describe('a shipping date is not a purchase date, whichever side its word sits',
     expect(bought('Order date: 1 August 2026\n12 August 2026 delivered')).toBe('2026-08-01');
   });
 });
+
+describe('a label claims only the date that follows it', () => {
+  /*
+   * `pickDate` treats a date as labelled when it sits AFTER an order-date
+   * phrase and within reach of it. Both halves, and the first had nothing
+   * standing over it: loosen the conjunction and a date sitting BEFORE the
+   * label satisfies the reach test with a negative distance, so the shipping
+   * line above "Order date" becomes the purchase.
+   *
+   * Found by mutation — `&&` to `||` survived the whole suite — and it is the
+   * same question as the two fixes above, asked of the label rather than of
+   * the qualifier: which side of the date is the word on.
+   */
+  const read = new Date(2026, 8, 20);
+  const bought = (body: string) => {
+    const outcome = parseReceiptText(`Zara\n${body}\nTotal £61.00`, read);
+    if (!outcome.ok) throw new Error(outcome.reason);
+    return outcome.value.purchasedOn;
+  };
+
+  it('does not let a date above the label be read as the labelled one', () => {
+    expect(bought('12 August 2026 delivered\nOrder date: 1 August 2026')).toBe('2026-08-01');
+  });
+
+  it('reads it the usual way round too', () => {
+    // The guard rail: a rule that rejected everything would satisfy the case
+    // above and lose the labelled date entirely.
+    expect(bought('Order date: 1 August 2026\n12 August 2026 delivered')).toBe('2026-08-01');
+  });
+});

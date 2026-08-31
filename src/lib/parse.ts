@@ -207,6 +207,10 @@ function pickDate(text: string, today: Date): Date | null {
   if (past.length === 0) return null;
 
   const labels = [...text.matchAll(ORDER_DATE_LABEL)].map((m) => (m.index ?? 0) + m[0].length);
+  // Both halves of that conjunction matter and only one was ever tested: with
+  // `||`, a date sitting BEFORE the label satisfies the reach test with a
+  // negative distance, and the shipping line above "Order date" becomes the
+  // purchase. See the last describe in parse.test.ts.
   const labelled = past.find((hit) => labels.some((end) => hit.index >= end && hit.index - end <= LABEL_REACH));
   if (labelled) return labelled.date;
 

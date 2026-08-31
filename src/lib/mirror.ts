@@ -147,6 +147,11 @@ export function filesystem(): Promise<FilesystemPlugin> {
  * cannot see, because nothing threw and nothing rendered. Three seconds is
  * long enough for a disk read of a file measured in kilobytes and short enough
  * that a person meets the app rather than a white rectangle.
+ *
+ * The number itself is deliberately not pinned by a test — three seconds is a
+ * judgement, and 3001 would serve the sentence above equally. What is pinned
+ * is the behaviour, in mirror-budget.test.ts, which passes its own budget in
+ * for exactly that reason.
  */
 export const MIRROR_READ_BUDGET_MS = 3000;
 

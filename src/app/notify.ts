@@ -32,7 +32,18 @@ import type { DeadlineAlert } from '../lib/alerts';
 
 export type NotifyState = 'unsupported' | 'default' | 'granted' | 'denied';
 
-/** At most this many at once — an app that stacks up notifications gets muted. */
+/**
+ * At most this many at once — an app that stacks up notifications gets muted.
+ *
+ * Deliberately NOT pinned by a test, on this codebase's rule that a threshold
+ * we chose is not a fact: three or four both serve the sentence above, and a
+ * test asserting the literal would only restate it. What IS asserted, in
+ * notify-delivery.test.ts, is the property — that a cap exists and bites, that
+ * the overflow is left unrecorded so it comes up again rather than vanishing,
+ * and that the batch is taken from the FRONT of a list that arrives most
+ * urgent first. This is the one surviving mutant in the file, and it survives
+ * on purpose.
+ */
 const MAX_PER_WAKE = 3;
 
 /**

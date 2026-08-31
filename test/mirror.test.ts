@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chooseSource, looksLikeState } from '../src/lib/mirror';
+import { chooseSource, isNative, looksLikeState, writeMirror } from '../src/lib/mirror';
 
 const library = (n: number) =>
   JSON.stringify({ version: 1, receipts: Array.from({ length: n }, (_, i) => ({ id: `r${i}` })) });
@@ -65,3 +65,23 @@ describe('which copy the app boots from', () => {
     expect(chooseSource(library(0), library(12))).toBe('local');
   });
 });
+
+describe('the two answers the web build must give', () => {
+  /*
+   * Both of these are one line of guard each, and both survived mutation
+   * because nothing had ever asked. They are what makes the whole native half
+   * inert off-device, which is the promise this file opens with.
+   */
+  it('is not native where there is no window at all', () => {
+    // Every native path is gated on this, so a throw here would take down
+    // whatever called it rather than quietly answering no.
+    expect(typeof window).toBe('undefined');
+    expect(isNative()).toBe(false);
+  });
+
+  it('reports that a mirror write did NOT land, when there is no mirror', async () => {
+    // The function says it returns whether the write landed. On the web
+    // nothing landed, and `false` is that answer rather than a placeholder.
+    expect(await writeMirror('{"receipts":[]}')).toBe(false);
+  });
+})

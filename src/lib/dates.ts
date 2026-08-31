@@ -34,6 +34,12 @@ export function currentDay(current: Date, now: Date): Date {
   return today.getTime() === current.getTime() ? current : today;
 }
 
+/*
+ * Equivalent under mutation, and recorded rather than left to be rediscovered:
+ * bumping this by a millisecond changes no answer this app can produce.
+ * `daysBetween` rounds, so the error only reaches half a day after about
+ * forty-three million of them.
+ */
 const MS_PER_DAY = 86_400_000;
 
 /** Whole days from `a` to `b`; negative when `b` is earlier. */
