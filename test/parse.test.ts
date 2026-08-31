@@ -392,3 +392,88 @@ describe('date boundaries nothing pinned', () => {
     expect(r.dateFound).toBe(true);
   });
 });
+
+describe('the dates themselves, which are facts rather than heuristics', () => {
+  /*
+   * Most of parse.ts is judgement — how far a date may sit from its label, how
+   * far back to look for a disqualifying phrase — and those constants want a
+   * real corpus rather than a reflex test each. I deferred the whole file on
+   * that basis, and that was too broad a brush.
+   *
+   * The month table is not a judgement. "Mar" is the third month, and mutating
+   * that entry to 3 makes every March purchase parse as April — a deadline a
+   * month out, from a paste that looked right. Eight mutations of that table
+   * survived the suite, together with the day-first reading and the two-digit
+   * year, and none of them needs a corpus to state: they need the calendar.
+   *
+   * (The range check beside them is a documented equivalent — the round-trip
+   * that follows rejects everything it would have, which the source says.)
+   */
+  const on = (when: string) => parse(`Currys · Order placed ${when} · £20.00`).purchasedOn;
+
+  it.each([
+    ['Jan', '01'], ['Feb', '02'], ['Mar', '03'], ['Apr', '04'],
+    ['May', '05'], ['Jun', '06'], ['Jul', '07'], ['Aug', '08'],
+    ['Sep', '09'], ['Oct', '10'], ['Nov', '11'], ['Dec', '12'],
+  ])('reads %s as month %s', (name, mm) => {
+    expect(on(`15 ${name} 2025`)).toBe(`2025-${mm}-15`);
+  });
+
+  it.each([
+    ['the full name', '15 March 2025', '2025-03-15'],
+    ['an ordinal', '15th Feb 2025', '2025-02-15'],
+    ['the last day of a month', '31 Dec 2025', '2025-12-31'],
+  ])('reads %s', (_label, text, expected) => {
+    expect(on(text)).toBe(expected);
+  });
+
+  it('reads a slashed date DAY first, because this is a UK app', () => {
+    // 05/08 is the fifth of August and never the eighth of May. Swap the two
+    // group indices and every slashed date in the app moves by months.
+    expect(on('05/08/2026')).toBe('2026-08-05');
+    expect(on('11/12/2025')).toBe('2025-12-11');
+  });
+
+  it('reads a two-digit year as this century', () => {
+    expect(on('05/08/26')).toBe('2026-08-05');
+    expect(on('05/08/26')).toBe(on('05/08/2026'));
+  });
+
+  it('reads an ISO date as itself', () => {
+    expect(on('2026-08-05')).toBe('2026-08-05');
+  });
+
+  it.each([
+    ['a month that has not come round yet is LAST year', '25 Dec', '2025-12-25'],
+    ['a month already past is this year', '1 Jan', '2026-01-01'],
+    ['today itself is this year, not last', '28 Aug', '2026-08-28'],
+    ['and so is yesterday', '27 Aug', '2026-08-27'],
+  ])('with no year written down, %s', (_label, when, expected) => {
+    /*
+     * The comment on `resolveYear` says what is at stake: a bare "25 Dec"
+     * pasted in August, read as this coming December, starts a return clock on
+     * a date that has not arrived and reports a window months too generous.
+     *
+     * Both edges of that decision survived the suite. `> 0` loosened to `>= 0`
+     * throws TODAY back a year, and the `- 1` flipped to `+ 1` sends an
+     * undated future month forward instead of back. Neither needs a corpus to
+     * state — it is the calendar and the clock.
+     */
+    expect(on(when)).toBe(expected);
+  });
+
+  it('reads a two-digit year beside a month name as this century', () => {
+    expect(on('5 Aug 26')).toBe('2026-08-05');
+    expect(on('5 Aug 26')).toBe(on('5 Aug 2026'));
+  });
+
+  it('refuses a day that does not exist in its month', () => {
+    /*
+     * The round trip: `new Date(2026, 1, 31)` rolls into 3 March, so the date
+     * is discarded rather than silently moved. A deadline computed from a day
+     * that never happened is worse than no date at all.
+     */
+    const out = parseReceiptText('Currys · Order placed 31 Feb 2026 · £20.00', TODAY);
+    expect(out.ok ? out.value.purchasedOn : null).not.toBe('2026-03-03');
+  });
+});
