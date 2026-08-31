@@ -13,18 +13,24 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const removed: string[] = [];
 const dirsRemoved: string[] = [];
 let listing: { name: string }[] = [];
+let readdirThrows = false;
+let readFileReturns: unknown;
 
 vi.mock('@capacitor/filesystem', () => ({
   Directory: { Documents: 'DOCUMENTS' },
   Encoding: { UTF8: 'utf8' },
   Filesystem: {
-    readdir: async () => ({ files: listing }),
+    readdir: async () => {
+      if (readdirThrows) throw new Error('ENOENT');
+      return { files: listing };
+    },
     deleteFile: async ({ path }: { path: string }) => void removed.push(path),
     rmdir: async ({ path }: { path: string }) => void dirsRemoved.push(path),
     mkdir: async () => {},
     writeFile: async () => {},
     readFile: async () => {
-      throw new Error('ENOENT');
+      if (readFileReturns === undefined) throw new Error('ENOENT');
+      return { data: readFileReturns };
     },
   },
 }));
@@ -115,5 +121,72 @@ describe('on the web', () => {
     expect(await savePhoto('a', 'AAAA')).toBe(false);
     expect(dirsRemoved).toEqual([]);
     expect(removed).toEqual([]);
+  });
+});
+
+describe('deleting one picture', () => {
+  it('does nothing at all on the web, where there is no filesystem', () => {
+    // `!isNative() || path === null` — both limbs, only ever exercised together.
+    // Loosened to `&&`, the web build calls a plugin that is not there.
+    delete (globalThis.window as unknown as Record<string, unknown>).Capacitor;
+    return import('../src/lib/photos').then(async ({ deletePhoto }) => {
+      await deletePhoto('r_ok');
+      expect(removed).toEqual([]);
+    });
+  });
+
+  it('does nothing for an id that leaves no usable filename', () => {
+    /*
+     * `photoPath` returns null for an id that sanitises away to nothing, and
+     * this is the guard that stops that null reaching the plugin as a path.
+     * Flip the `===` and a delete is attempted with no path at all.
+     */
+    return import('../src/lib/photos').then(async ({ deletePhoto }) => {
+      await deletePhoto('///');
+      expect(removed).toEqual([]);
+    });
+  });
+});
+
+describe('when there is nothing to clear up', () => {
+  it('reports none cleared when the directory is not there at all', async () => {
+    /*
+     * The CATCH returns 0, and an empty listing does not reach it — the try
+     * succeeds and returns 0 by the ordinary route, so the first version of
+     * this test passed with the catch returning anything. `readdir` has to
+     * throw, which is what happens on a device where nothing was ever
+     * photographed. Claiming one deletion there would be inventing it.
+     */
+    readdirThrows = true;
+    const { cleanupPhotos } = await import('../src/lib/photos');
+    expect(await cleanupPhotos([])).toBe(0);
+    readdirThrows = false;
+  });
+});
+
+describe('reading one picture back', () => {
+  it('returns nothing for an id that leaves no usable filename', async () => {
+    const { readPhoto } = await import('../src/lib/photos');
+    expect(await readPhoto('///')).toBeNull();
+  });
+
+  it('hands back the data when the platform gives a string', async () => {
+    readFileReturns = 'QkFTRTY0';
+    const { readPhoto } = await import('../src/lib/photos');
+    expect(await readPhoto('r_ok')).toBe('QkFTRTY0');
+    readFileReturns = undefined;
+  });
+
+  it('returns nothing when the platform gives something that is not a string', async () => {
+    /*
+     * Capacitor's Filesystem hands back a base64 STRING on a device and a Blob
+     * on the web, and this is the line that tells them apart. Every test here
+     * had `readFile` throwing, so it was never reached at all — flip the
+     * comparison and a Blob is handed to an <img src> as if it were base64.
+     */
+    readFileReturns = { size: 12, type: 'image/jpeg' };
+    const { readPhoto } = await import('../src/lib/photos');
+    expect(await readPhoto('r_ok')).toBeNull();
+    readFileReturns = undefined;
   });
 });

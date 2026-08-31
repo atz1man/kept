@@ -70,6 +70,9 @@ async function fs() {
 /** Base64 in, no data-URI prefix — what @capacitor/camera hands back. */
 export async function savePhoto(receiptId: string, base64: string): Promise<boolean> {
   const path = photoPath(receiptId);
+  // Same as `readPhoto` below: this guard saves a call rather than changing an
+  // answer, because a null path reaches a plugin that rejects and the catch
+  // returns false anyway. Equivalent under mutation, and recorded as such.
   if (!isNative() || path === null) return false;
   try {
     const { Filesystem, Directory } = await fs();
@@ -85,6 +88,9 @@ export async function savePhoto(receiptId: string, base64: string): Promise<bool
 
 export async function readPhoto(receiptId: string): Promise<string | null> {
   const path = photoPath(receiptId);
+  // The `path === null` half saves a call rather than changing an answer: a null
+  // path reaches a plugin that rejects, and the catch below returns null too.
+  // Equivalent, and recorded so it is not chased again.
   if (!isNative() || path === null) return null;
   try {
     const { Filesystem, Directory } = await fs();
