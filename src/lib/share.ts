@@ -27,6 +27,28 @@ export function sharedTextFrom(params: URLSearchParams): string | null {
 export const SHARE_PARAMS = ['title', 'text', 'url'] as const;
 
 /**
+ * The address to leave behind once a shared payload is in hand.
+ *
+ * A reload must not silently re-add the same receipt, and an order email — a
+ * shop, a total, sometimes an address — has no business sitting in browser
+ * history. Returns null when there is nothing to strip, so the caller can skip
+ * a `replaceState` that would otherwise run on every launch.
+ *
+ * It strips the three share keys and NOTHING else, which is the part worth
+ * stating: `?embed` rides on the same URL in the landing page's demo iframe,
+ * and taking it out would turn that frame into the real app — reading and
+ * writing the visitor's own receipts, which is the exact defect `embedded`
+ * exists to prevent. Path and fragment are preserved for the same reason:
+ * this is meant to remove a payload, not to navigate.
+ */
+export function strippedShareUrl(href: string): string | null {
+  const url = new URL(href);
+  if (!SHARE_PARAMS.some((k) => url.searchParams.has(k))) return null;
+  for (const k of SHARE_PARAMS) url.searchParams.delete(k);
+  return url.pathname + url.search + url.hash;
+}
+
+/**
  * Whether an order email can actually be SHARED into kept, on this build.
  *
  * The Add screen taught one route and taught it unconditionally: add kept to

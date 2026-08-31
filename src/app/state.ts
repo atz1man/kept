@@ -4,8 +4,8 @@ import { planAlerts } from '../lib/schedule';
 import { isNative } from '../lib/mirror';
 import { cleanupPhotos } from '../lib/photos';
 import { onNotificationTap, syncScheduled } from './schedule-native';
-import { startOfDay, toISODate } from '../lib/dates';
-import { SHARE_PARAMS, sharedTextFrom } from '../lib/share';
+import { currentDay, startOfDay, toISODate } from '../lib/dates';
+import { sharedTextFrom, strippedShareUrl } from '../lib/share';
 import { derive, makeReceiptId } from '../lib/receipts';
 import { freshState, load, onExternalChange, save, type KeptState, type Settings } from '../lib/storage';
 import { quotaFull as quotaFullFor } from '../lib/quota';
@@ -291,10 +291,7 @@ export function useApp() {
    */
   const [today, setToday] = useState(() => startOfDay(new Date()));
   useEffect(() => {
-    const check = () => {
-      const now = startOfDay(new Date());
-      setToday((current) => (now.getTime() === current.getTime() ? current : now));
-    };
+    const check = () => setToday((current) => currentDay(current, new Date()));
     const onVisible = () => {
       if (document.visibilityState === 'visible') check();
     };
@@ -346,10 +343,8 @@ export function useApp() {
   // no business sitting in browser history.
   useEffect(() => {
     if (typeof location === 'undefined' || typeof history === 'undefined') return;
-    const url = new URL(location.href);
-    if (!SHARE_PARAMS.some((k) => url.searchParams.has(k))) return;
-    for (const k of SHARE_PARAMS) url.searchParams.delete(k);
-    history.replaceState(null, '', url.pathname + url.search + url.hash);
+    const stripped = strippedShareUrl(location.href);
+    if (stripped !== null) history.replaceState(null, '', stripped);
   }, []);
 
   /**

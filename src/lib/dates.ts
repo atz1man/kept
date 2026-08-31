@@ -14,6 +14,26 @@ export function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
+/**
+ * The day it is now, given the day the app currently thinks it is.
+ *
+ * Returns the SAME OBJECT when the calendar day has not turned over, and that
+ * identity is the point rather than a detail: `useApp` holds `today` in state
+ * and feeds it to the reducer, every screen's day-counts, the alert plan and
+ * the scheduler. Called on a sixty-second interval and on every return to the
+ * foreground, a fresh Date each time would re-run all of that once a minute
+ * for the life of the session.
+ *
+ * Lifted out of the effect because it is the judgement, and an effect is the
+ * one place here nothing can exercise. What the effect had was a comment
+ * saying it "sets state only when the date actually turns over" — a claim
+ * about behaviour, in prose, with nothing able to contradict it.
+ */
+export function currentDay(current: Date, now: Date): Date {
+  const today = startOfDay(now);
+  return today.getTime() === current.getTime() ? current : today;
+}
+
 const MS_PER_DAY = 86_400_000;
 
 /** Whole days from `a` to `b`; negative when `b` is earlier. */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseReceiptText } from '../src/lib/parse';
-import { shareRoute, sharedTextFrom } from '../src/lib/share';
+import { shareRoute, sharedTextFrom, strippedShareUrl } from '../src/lib/share';
 
 const q = (s: string) => new URLSearchParams(s);
 
@@ -85,6 +85,43 @@ describe('what the Add screen teaches about sharing', () => {
       const body = shareRoute(native).body;
       const promisesSheet = /share sheet/i.test(body);
       if (promisesSheet) expect(body).toMatch(/android/i);
+    }
+  });
+});
+
+describe('clearing a shared payload out of the address bar', () => {
+  it('removes the three share keys once the text is in hand', () => {
+    // A reload must not silently re-add the same receipt, and an order email
+    // has no business sitting in browser history.
+    expect(strippedShareUrl('https://kept.app/app/?title=Order&text=Zara+%C2%A361&url=https%3A%2F%2Fz.com'))
+      .toBe('/app/');
+  });
+
+  it('leaves ?embed alone, which is the whole reason it strips by name', () => {
+    /*
+     * The landing page's demo iframe carries `embed` on the same URL, and
+     * `embedded` is what stops that frame reading and writing the visitor's
+     * real receipts. A strip that cleared the query would turn the marketing
+     * page's demo into the app.
+     */
+    expect(strippedShareUrl('https://kept.app/app/?embed&text=Zara')).toBe('/app/?embed=');
+  });
+
+  it('keeps the path and the fragment', () => {
+    // Removing a payload, not navigating.
+    expect(strippedShareUrl('https://kept.app/app/?text=Zara#receipt-3')).toBe('/app/#receipt-3');
+  });
+
+  it('says there is nothing to do when no share arrived', () => {
+    // So the caller can skip a replaceState that would otherwise run on every
+    // single launch.
+    expect(strippedShareUrl('https://kept.app/app/')).toBeNull();
+    expect(strippedShareUrl('https://kept.app/app/?embed')).toBeNull();
+  });
+
+  it('acts on any one of the three, not only all three', () => {
+    for (const key of ['title', 'text', 'url']) {
+      expect(strippedShareUrl(`https://kept.app/app/?${key}=x`), key).toBe('/app/');
     }
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, addMonths, daysBetween, fmtDate, fmtDateNear, fmtDatesTogether, fromISODate, relativeAgo, startOfDay, toISODate } from '../src/lib/dates';
+import { addDays, addMonths, currentDay, daysBetween, fmtDate, fmtDateNear, fmtDatesTogether, fromISODate, relativeAgo, startOfDay, toISODate } from '../src/lib/dates';
 
 /**
  * This suite runs under TZ=America/New_York on purpose (see package.json).
@@ -207,5 +207,52 @@ describe('fmtDatesTogether — a pair that cannot be read as the same year', () 
     const a = new Date(2026, 2, 1);
     const b = new Date(2026, 4, 9);
     expect(fmtDatesTogether([a, b], today)).toEqual([fmtDate(a), fmtDate(b)]);
+  });
+});
+
+describe('the day the app thinks it is', () => {
+  /*
+   * `currentDay` is called on a sixty-second interval and on every return to
+   * the foreground, and what it returns is held in state and fed to the
+   * reducer, every screen's day-counts, the alert plan and the scheduler. So
+   * both halves matter: it has to turn over, and it has to not.
+   *
+   * The effect it came out of asserted this in prose — "sets state only when
+   * the date actually turns over" — where nothing could contradict it.
+   */
+  it('hands back the very same object while the day has not turned', () => {
+    const current = startOfDay(new Date(2026, 5, 30, 9, 0));
+    const later = new Date(2026, 5, 30, 23, 59, 59);
+    // Identity, not equality: a fresh Date each minute would re-run the
+    // reducer, every derivation and the scheduler for the life of the session.
+    expect(currentDay(current, later)).toBe(current);
+  });
+
+  it('turns over at midnight, not at the twenty-four hour mark', () => {
+    const current = startOfDay(new Date(2026, 5, 30, 23, 0));
+    const justAfter = new Date(2026, 6, 1, 0, 0, 1);
+    const next = currentDay(current, justAfter);
+    expect(next).not.toBe(current);
+    expect(toISODate(next)).toBe('2026-07-01');
+  });
+
+  it('turns over exactly once across a 23-hour spring-forward day', () => {
+    /*
+     * The suite runs in America/New_York for this: on 8 March 2026 the day is
+     * 23 hours long, so anything comparing elapsed milliseconds against
+     * 86_400_000 turns the date over early or late. Two calls, one either side
+     * of the short night.
+     */
+    const before = startOfDay(new Date(2026, 2, 8, 12, 0));
+    expect(currentDay(before, new Date(2026, 2, 8, 23, 30))).toBe(before);
+    const after = currentDay(before, new Date(2026, 2, 9, 0, 30));
+    expect(toISODate(after)).toBe('2026-03-09');
+  });
+
+  it('goes backwards if the clock does', () => {
+    // A phone whose time is corrected backwards is not a case to be clever
+    // about: the app should report the day it now is, not the latest it saw.
+    const current = startOfDay(new Date(2026, 5, 30));
+    expect(toISODate(currentDay(current, new Date(2026, 5, 28, 8, 0)))).toBe('2026-06-28');
   });
 });
