@@ -34,6 +34,9 @@ const KEY = 'kept.v1';
  * Recorded here rather than guessed at: a migration written before there is
  * anything to migrate is a branch that has never run.
  */
+// One version, because nothing has needed migrating yet — the comment above
+// says why a migration is not written. No test pins the number: what would
+// break is the migration that does not exist.
 const SCHEMA_VERSION = 1;
 
 export interface Settings {
@@ -213,6 +216,8 @@ export async function restoreFromMirror(): Promise<boolean> {
    */
   if (chooseSource(local, null) === 'local') return false;
   const mirror = await readMirror();
+  // The `!mirror` limb is belt and braces: `chooseSource` cannot answer 'mirror'
+  // for a null one, so no test can tell this from `&&`. Equivalent, recorded.
   if (!mirror || chooseSource(local, mirror) !== 'mirror') return false;
   try {
     store.setItem(KEY, mirror);
@@ -418,7 +423,12 @@ export function rescueBackup(): { text: string; readable: boolean } | null {
   }
 }
 
-/** The Settings screen's "Export a backup" — the user's data, in their hands. */
+/**
+ * The Settings screen's "Export a backup" — the user's data, in their hands.
+ *
+ * The indent is two because a backup is a file somebody may open and read, not
+ * because any width is required; three would do, which is why no test pins it.
+ */
 export function exportBackup(state: KeptState): string {
   return JSON.stringify(
     { app: 'kept', exportedAt: new Date().toISOString(), version: state.version, receipts: state.receipts, settings: state.settings },

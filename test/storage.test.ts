@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { afterEach } from 'vitest';
-import { hydrate, rescueBackup, DEFAULT_SETTINGS, URGENT_DAYS_MIN, URGENT_DAYS_MAX } from '../src/lib/storage';
+import { hydrate, onExternalChange, rescueBackup, DEFAULT_SETTINGS, URGENT_DAYS_MIN, URGENT_DAYS_MAX } from '../src/lib/storage';
 import { MAX_AMOUNT_PENCE, MAX_WINDOW_DAYS } from '../src/lib/draft';
 import { MAX_UPDATES } from '../src/lib/policy-feed';
 import { toPence } from '../src/lib/money';
@@ -143,8 +143,21 @@ describe('surviving whatever is on disk', () => {
       expect(hydrate(stored({ settings: { plan: 'enterprise' } }), TODAY).settings.plan).toBe('free');
     });
 
-    it('survives settings that are not an object at all', () => {
-      expect(hydrate(stored({ settings: 'not an object' }), TODAY).settings).toEqual(DEFAULT_SETTINGS);
+    it.each([
+      ['a string', 'not an object'],
+      ['null, which typeof still calls an object', null],
+      ['a number', 42],
+      ['an array', []],
+    ])('survives settings stored as %s', (_label, settings) => {
+      /*
+       * NULL is the one that was missing, and it is the only one that mattered.
+       * The guard is `typeof raw !== 'object' || raw === null`, and for every
+       * other shape both limbs reach the same answer — a number falls through
+       * and its absent properties default. `typeof null` is 'object', so
+       * loosening that `||` to `&&` lets null through to a property access and
+       * takes the whole load down with it.
+       */
+      expect(hydrate(stored({ settings }), TODAY).settings).toEqual(DEFAULT_SETTINGS);
     });
   });
 
@@ -187,6 +200,19 @@ describe('the rescue, for when the app cannot render', () => {
     // person's receipt, and a human can repair it in a text editor.
     withStore({ getItem: () => JSON.stringify({ receipts: [{ id: 'r9', store: 'Boots' }] }) });
     expect(JSON.parse(rescueBackup()!.text).receipts).toEqual([{ id: 'r9', store: 'Boots' }]);
+  });
+
+  it.each([
+    ['keeps a version the store already had', 3, 3],
+    ['stamps the current one over a version that is not a number', 'three', 1],
+  ])('%s', (_label, version, expected) => {
+    /*
+     * `typeof parsed.version === 'number'` in the rescue export. Flip it and a
+     * real version is thrown away while a string one is written verbatim into a
+     * file the importer will later read. Neither side was tested.
+     */
+    withStore({ getItem: () => JSON.stringify({ version, receipts: [good] }) });
+    expect(JSON.parse(rescueBackup()!.text).version).toBe(expected);
   });
 
   it('hands back unparseable storage verbatim rather than nothing', () => {
@@ -260,5 +286,68 @@ describe('the app never discards what it already holds', () => {
     // The reason hydrate validates at all: one bad row used to blank the app.
     const s = hydrate(stored({ receipts: [{ ...good, id: 'ok' }, { ...good, id: 'bad', amount: 12.5 }] }), TODAY);
     expect(s.receipts.map((r) => r.id)).toEqual(['ok']);
+  });
+});
+
+describe('hearing another tab write', () => {
+  /*
+   * Two tabs of a local-first app both hold the whole library and both write
+   * all of it, so the one with older state destroys whatever the other added
+   * unless it adopts what it hears. The listener's guard —
+   * `e.key !== KEY || e.newValue === null` — has three mutations and every one
+   * survived, because nothing ever fired an event it was supposed to ignore.
+   *
+   * Both limbs matter. A different key is another app on the same origin. A
+   * null newValue is a REMOVAL, and adopting one would hand `JSON.parse` the
+   * string "null" and this tab a state with no receipts in it.
+   */
+  const listeners: ((e: StorageEvent) => void)[] = [];
+  const fakeWindow = {
+    addEventListener: (_t: string, fn: (e: StorageEvent) => void) => void listeners.push(fn),
+    removeEventListener: () => {},
+  };
+
+  const fire = (key: string | null, newValue: string | null) => {
+    const seen: unknown[] = [];
+    listeners.length = 0;
+    (globalThis as Record<string, unknown>).window = fakeWindow;
+    const stop = onExternalChange((incoming) => seen.push(incoming), TODAY);
+    listeners[0]?.({ key, newValue } as StorageEvent);
+    stop();
+    delete (globalThis as Record<string, unknown>).window;
+    return seen;
+  };
+
+  it('adopts what the other tab stored', () => {
+    expect(fire('kept.v1', JSON.stringify(stored()))).toHaveLength(1);
+  });
+
+  it('ignores a key that is not ours', () => {
+    expect(fire('something.else', JSON.stringify(stored()))).toEqual([]);
+  });
+
+  it('ignores a removal rather than adopting an empty library', () => {
+    expect(fire('kept.v1', null)).toEqual([]);
+  });
+
+  it('keeps what it has when the other tab wrote something unreadable', () => {
+    expect(fire('kept.v1', 'not json')).toEqual([]);
+  });
+});
+
+describe('the slider bounds and the rung they have to reach', () => {
+  it('lets the urgent threshold go below the fixed "soon" rung', () => {
+    /*
+     * `alerts.ts` puts anything three days out or nearer on the 'soon' rung,
+     * whatever the slider says, and `schedule.ts` drops the gentle rung below
+     * four because at three they land on the same morning. That collision is
+     * only reachable because the slider goes lower than three — raise the
+     * minimum to four and the whole case those two files handle stops existing,
+     * with nothing to say so.
+     */
+    expect(URGENT_DAYS_MIN).toBeLessThan(3);
+    // And the top of the slider is three weeks, which is what the Settings row
+    // says it offers — tied to the words rather than pinned as a bare 21.
+    expect(URGENT_DAYS_MAX).toBe(7 * 3);
   });
 });

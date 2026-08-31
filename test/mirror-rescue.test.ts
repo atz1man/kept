@@ -102,6 +102,24 @@ describe('on iOS', () => {
     expect(JSON.parse(store.getItem(KEY)!).receipts).toHaveLength(2);
   });
 
+  it('does not write an empty store when there is no mirror to read', async () => {
+    /*
+     * A real property, and one this suite did not state: a launch with no
+     * mirror leaves the store exactly as it found it rather than writing
+     * anything into it.
+     *
+     * It does not, however, discriminate the `!mirror ||` guard beside it —
+     * `chooseSource` can never answer 'mirror' when the mirror is null, so both
+     * halves of that condition reach the same answer and no test can separate
+     * them. Said here rather than left looking like coverage it is not.
+     */
+    boot(true);
+    const { restoreFromMirror } = await import('../src/lib/storage');
+    expect(files.has('kept-receipts.json')).toBe(false);
+    expect(await restoreFromMirror()).toBe(false);
+    expect(store.getItem(KEY)).toBeNull();
+  });
+
   it('leaves a healthy store alone', async () => {
     boot(true);
     const { save, restoreFromMirror } = await import('../src/lib/storage');
@@ -127,6 +145,31 @@ describe('on iOS', () => {
     expect(JSON.parse(files.get('kept-receipts.json')!).receipts).toEqual([]);
   });
 
+
+  it.each([
+    ['an array', '[1,2,3]'],
+    ['a bare number', '42'],
+    ['unparseable junk', 'not json'],
+  ])('erases to a clean empty library when the store held %s', async (_label, raw) => {
+    /*
+     * `erasedFrom` keeps the rest of a stored object and empties the receipts,
+     * guarded by `parsed && typeof parsed === 'object' && !Array.isArray`. Both
+     * `&&`s survived the suite, and the array is why the last limb is there: an
+     * array parses as an object, and spreading one writes
+     * `{"0":1,"1":2,"2":3,"receipts":[],"alertsSent":[]}` — a shape
+     * `looksLikeState` accepts, so the next launch boots on that instead of
+     * falling through to a fresh install.
+     *
+     * Reached through `wipe`, which is the only caller.
+     */
+    boot(true);
+    const { wipe } = await import('../src/lib/storage');
+    store.setItem(KEY, raw);
+    wipe();
+    const after = JSON.parse(store.getItem(KEY)!);
+    expect(after.receipts).toEqual([]);
+    expect(Object.keys(after).sort()).toEqual(['receipts', 'version']);
+  });
 
   it('an erase survives the app being killed before the next save', async () => {
     /*
