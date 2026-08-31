@@ -22,7 +22,22 @@ import { STORE_POLICIES, findStore } from '../lib/stores';
  * The line is computed from the longest window now, and worded so a tie is
  * still true.
  */
+/*
+ * Taking [1] instead of [0] survives mutation, and only because the table has
+ * a tie at the top — IKEA and Decathlon both at 365, which is the very tie the
+ * old hand-typed line got wrong. The wording is true of either, so both are
+ * right answers. Break the tie in `stores.ts` and this stops being equivalent
+ * and the test starts catching it, which is the correct behaviour rather than
+ * a gap.
+ */
 const longest = [...STORE_POLICIES].sort((a, b) => b.windowDays - a.windowDays)[0];
+
+/*
+ * The fallback is unreachable while every name below is in the table, which is
+ * what ticker.test.ts holds. It exists because a missing shop must not throw
+ * on the marketing page — but a bar reading "ASOS: 0-day window" is its own
+ * kind of wrong, so the test names the coupling rather than trusting it.
+ */
 const days = (name: string) => findStore(name)?.windowDays ?? 0;
 
 /**
