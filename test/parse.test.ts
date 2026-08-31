@@ -477,3 +477,74 @@ describe('the dates themselves, which are facts rather than heuristics', () => {
     expect(out.ok ? out.value.purchasedOn : null).not.toBe('2026-03-03');
   });
 });
+
+describe('a promised delivery is not a delivery', () => {
+  /*
+   * Both statutory clocks run from the day the parcel landed, and `arrivedOn`
+   * is the one field the app treats as fact rather than hedging — it is the
+   * difference between "at least until 27 September" and "27 September". So
+   * reading a PROMISE as an event starts both clocks before the parcel
+   * existed, which makes a live right look expired: the expensive direction.
+   *
+   * The guard existed and looked only at the text BEFORE the label, so it
+   * caught the one word order it was written for. Measured before the fix, on
+   * an order dated 1 September read on 20 September: "Estimated delivery 3
+   * September" was correctly refused, while "Delivery expected", "Delivery
+   * due" and "Delivered by" all became an arrival of the 3rd, and "Dispatch
+   * scheduled" a dispatch of it — the last being the shape the code's own
+   * comment offered as its example of what it excluded.
+   *
+   * These are short and invented, and that is fine here in a way it would not
+   * be for the picking heuristics: what is being tested is the RULE the module
+   * already states — a promise is not an event — not a guess about how any
+   * particular shop writes its emails.
+   */
+  const read = new Date(2026, 8, 20);
+  const order = 'Zara\nOrder date: 1 September 2026\n';
+  const parse = (line: string) => {
+    const outcome = parseReceiptText(`${order}${line}\nTotal £61.00`, read);
+    if (!outcome.ok) throw new Error(outcome.reason);
+    return outcome.value;
+  };
+
+  it('refuses a promise whichever side of the label it sits', () => {
+    for (const line of [
+      'Estimated delivery 3 September 2026',
+      'Delivery expected 3 September 2026',
+      'Delivery due 3 September 2026',
+      'Expected delivery date 3 September 2026',
+      'Delivery scheduled 3 September 2026',
+    ]) {
+      expect(parse(line).arrivedOn, line).toBeNull();
+    }
+  });
+
+  it('refuses a promised dispatch too', () => {
+    for (const line of [
+      'Dispatch scheduled 3 September 2026',
+      'Dispatching by 3 September 2026',
+      'Estimated dispatch 3 September 2026',
+    ]) {
+      expect(parse(line).dispatchedOn, line).toBeNull();
+    }
+  });
+
+  it('still reads the event when the paste announces one', () => {
+    // The guard has to stay one-sided in the right direction: refusing every
+    // arrival would be safe and useless, since the field only exists to stop
+    // the app hedging when it does not need to.
+    expect(parse('Delivered 3 September 2026').arrivedOn).toBe('2026-09-03');
+    expect(parse('Dispatched 3 September 2026').dispatchedOn).toBe('2026-09-03');
+    expect(parse('Date delivered: 3 September 2026').arrivedOn).toBe('2026-09-03');
+  });
+
+  it('tells "by 3 September" from "by DPD on 3 September"', () => {
+    /*
+     * `by` is the one ambiguous word, which is why it is not in the list with
+     * the others: it means a promise only when it stands against the date.
+     * A courier's name between the two is an event.
+     */
+    expect(parse('Delivered by 3 September 2026').arrivedOn).toBeNull();
+    expect(parse('Delivered by DPD on 3 September 2026').arrivedOn).toBe('2026-09-03');
+  });
+});

@@ -204,8 +204,71 @@ const DELIVERY_DATE_LABEL =
  * expensive direction, since it makes a live right look expired. Most such
  * dates are in the future and are excluded anyway; this is for the email read
  * a fortnight late, where the estimate has quietly become the past.
+ *
+ * It used to be tested against the text BEFORE the label, and so caught only
+ * the one word order it was written for. Measured: "Estimated delivery 3
+ * September" was correctly refused, while "Delivery expected 3 September",
+ * "Delivery due 3 September" and "Delivered by 3 September" all became an
+ * arrival, and "Dispatch scheduled 3 September" a dispatch — including the
+ * shape this comment's neighbour offers as its own example, "dispatching by
+ * Friday". The window now runs from before the label to the date itself, so a
+ * qualifier counts wherever it sits between the two.
  */
-const NOT_AN_ARRIVAL = /\b(?:estimat\w*|expect\w*|due|scheduled|between|by)\b[^\n]{0,20}$/i;
+const NOT_AN_ARRIVAL = /\b(?:estimat\w*|expect\w*|due|scheduled|between)\b[^\n]{0,30}$/i;
+
+/**
+ * `by` on its own, kept apart from the list above because it is the only
+ * ambiguous one: "delivered by DPD on 3 September" is an event and "delivered
+ * by 3 September" is a promise, and the difference is entirely whether it sits
+ * against the date. So it only counts adjacent to one — which is also why it
+ * was inert in the old backward-looking window, since nothing writes the "by"
+ * of a promise before the word delivery.
+ */
+const PROMISED_BY = /\bby\b[^\n]{0,3}$/i;
+
+/**
+ * Whether what stands between a label and its date makes the date a promise.
+ *
+ * The window deliberately spans BOTH sides of the label — an email writes the
+ * qualifier before it ("estimated delivery") or after it ("delivery expected")
+ * with no preference, and reading only one side is how four of the five shapes
+ * got through.
+ */
+function promised(text: string, labelStart: number, dateIndex: number): boolean {
+  const around = text.slice(Math.max(0, labelStart - 30), dateIndex);
+  return NOT_AN_ARRIVAL.test(around) || PROMISED_BY.test(around);
+}
+
+/**
+ * Dates a paste actually announces, under a given kind of label.
+ *
+ * The three conditions `pickArrival` and `pickDispatch` share, in the one
+ * place, because they were written twice and the second copy said "same three
+ * conditions as pickArrival, for the same reasons" — which is a comment doing
+ * the job of an import. They differ only in which label they look for and, at
+ * the end, in which of the answers they want.
+ */
+function labelledEvents(
+  text: string,
+  today: Date,
+  purchased: Date | null,
+  label: RegExp,
+): DateHit[] {
+  const labels = [...text.matchAll(label)].map((m) => ({ end: (m.index ?? 0) + m[0].length, start: m.index ?? 0 }));
+  if (labels.length === 0) return [];
+  return datesIn(text, today)
+    // A date still to come has not happened, whatever introduces it.
+    .filter((hit) => daysBetween(today, hit.date) <= 0)
+    .filter((hit) =>
+      labels.some(
+        (l) => hit.index >= l.end && hit.index - l.end <= LABEL_REACH && !promised(text, l.start, hit.index),
+      ),
+    )
+    // A parcel cannot land, or leave, before it is ordered. Such a pair means
+    // the label was read off some other order, and the app refuses the
+    // combination when it is typed by hand — it must not put it there itself.
+    .filter((hit) => !purchased || daysBetween(purchased, hit.date) >= 0);
+}
 
 /**
  * The day it arrived, and only when the paste actually says so.
@@ -216,16 +279,7 @@ const NOT_AN_ARRIVAL = /\b(?:estimat\w*|expect\w*|due|scheduled|between|by)\b[^\
  * worse than none, so every condition below has to hold.
  */
 function pickArrival(text: string, today: Date, purchased: Date | null): Date | null {
-  const labels = [...text.matchAll(DELIVERY_DATE_LABEL)].map((m) => ({ end: (m.index ?? 0) + m[0].length, start: m.index ?? 0 }));
-  if (labels.length === 0) return null;
-  const candidates = datesIn(text, today)
-    .filter((hit) => daysBetween(today, hit.date) <= 0)
-    .filter((hit) => labels.some((l) => hit.index >= l.end && hit.index - l.end <= LABEL_REACH
-      && !NOT_AN_ARRIVAL.test(text.slice(Math.max(0, l.start - 30), l.start))))
-    // A parcel cannot land before it is ordered. Such a pair means the label
-    // was read off some other order, and the app refuses the combination when
-    // it is typed by hand — it must not put it there itself.
-    .filter((hit) => !purchased || daysBetween(purchased, hit.date) >= 0);
+  const candidates = labelledEvents(text, today, purchased, DELIVERY_DATE_LABEL);
   if (candidates.length === 0) return null;
   // The latest, because an email that mentions delivery twice is describing a
   // redelivery or a second parcel, and the clock the person cares about is the
@@ -253,19 +307,14 @@ const DISPATCH_DATE_LABEL =
 /**
  * The day it was dispatched, and only when the paste actually says so.
  *
- * Same three conditions as `pickArrival`, for the same reasons: labelled,
- * already happened, and not before the order — a parcel cannot leave before
- * it is bought. An estimate is excluded too, since "dispatching by Friday" is
- * a promise rather than an event.
+ * The same three conditions as `pickArrival` — labelled, already happened,
+ * and not before the order — because they are now literally the same code.
+ * An estimate is excluded with them: "dispatching by Friday" is a promise
+ * rather than an event, and until this commit that exact sentence was read as
+ * a dispatch.
  */
 function pickDispatch(text: string, today: Date, purchased: Date | null): Date | null {
-  const labels = [...text.matchAll(DISPATCH_DATE_LABEL)].map((m) => ({ end: (m.index ?? 0) + m[0].length, start: m.index ?? 0 }));
-  if (labels.length === 0) return null;
-  const candidates = datesIn(text, today)
-    .filter((hit) => daysBetween(today, hit.date) <= 0)
-    .filter((hit) => labels.some((l) => hit.index >= l.end && hit.index - l.end <= LABEL_REACH
-      && !NOT_AN_ARRIVAL.test(text.slice(Math.max(0, l.start - 30), l.start))))
-    .filter((hit) => !purchased || daysBetween(purchased, hit.date) >= 0);
+  const candidates = labelledEvents(text, today, purchased, DISPATCH_DATE_LABEL);
   if (candidates.length === 0) return null;
   // The EARLIEST, where `pickArrival` takes the latest. A second dispatch is a
   // second parcel or a replacement, and the clock the shop is running started
