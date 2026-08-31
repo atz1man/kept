@@ -93,10 +93,15 @@ export function isNative(): boolean {
 const MIRROR_FILE = 'kept-receipts.json';
 
 /**
- * Imported here and nowhere else, and only once the platform check has passed,
- * so a browser never loads it.
+ * The one place that knows how to reach the filesystem plugin, and only once
+ * the platform check has passed, so a browser never loads it.
+ *
+ * Exported because `save-file.ts` needs the same plugin for a different
+ * purpose — the mirror is kept's own copy, that one is the file a person
+ * asked for. Two dynamic imports of the same module would be two places to
+ * get the lazy-loading rule wrong.
  */
-async function fs() {
+export async function filesystem() {
   const mod = await import('@capacitor/filesystem');
   return { Filesystem: mod.Filesystem, Directory: mod.Directory, Encoding: mod.Encoding };
 }
@@ -135,7 +140,7 @@ export async function readMirror(budgetMs = MIRROR_READ_BUDGET_MS): Promise<stri
    * lands late, because nothing is still coming.
    */
   const read = (async () => {
-    const { Filesystem, Directory, Encoding } = await fs();
+    const { Filesystem, Directory, Encoding } = await filesystem();
     const file = await Filesystem.readFile({
       path: MIRROR_FILE,
       directory: Directory.Documents,
@@ -168,7 +173,7 @@ export async function readMirror(budgetMs = MIRROR_READ_BUDGET_MS): Promise<stri
 export async function writeMirror(raw: string): Promise<boolean> {
   if (!isNative()) return false;
   try {
-    const { Filesystem, Directory, Encoding } = await fs();
+    const { Filesystem, Directory, Encoding } = await filesystem();
     await Filesystem.writeFile({
       path: MIRROR_FILE,
       directory: Directory.Documents,

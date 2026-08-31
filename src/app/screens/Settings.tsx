@@ -3,6 +3,7 @@ import { color, font, radius } from '../../tokens';
 import { isNative } from '../../lib/mirror';
 import { fmtDateLong, fromISODate } from '../../lib/dates';
 import { mergeBackup, parseBackup } from '../../lib/backup';
+import { savedWhere, type SaveOutcome } from '../../lib/save-file';
 import { alertsRow, currentNotifyState, notifyState, requestNotifyPermission, type NotifyState } from '../notify';
 import type { Receipt } from '../../lib/types';
 import { TAGLINE } from '../../lib/brand';
@@ -16,7 +17,7 @@ import { Pressable } from '../components/Pressable';
 interface Props {
   settings: SettingsShape;
   receipts: Receipt[];
-  onExport: () => void;
+  onExport: () => Promise<SaveOutcome>;
   onRestore: (receipts: Receipt[]) => void;
   onWipe: () => void;
   onUpgrade: (plan: 'monthly' | 'yearly' | 'lifetime') => void;
@@ -31,7 +32,11 @@ const RESTORE_FAILURES = {
 
 export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUpgrade, onChange }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
-  const [restoreNote, setRestoreNote] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
+  // One note under both buttons, because they are one pair: a backup taken and
+  // a backup put back. It said nothing at all after an export, which was
+  // survivable while the browser's own download shelf answered for it and is
+  // not in an app where there is no shelf — see save-file.ts.
+  const [backupNote, setBackupNote] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
   /*
    * Seeded synchronously so the row has something to render, then corrected.
    *
@@ -81,10 +86,15 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
     native: isNative(),
   });
 
+  const exportNow = async () => {
+    const outcome = await onExport();
+    setBackupNote({ tone: outcome.to === 'nowhere' ? 'bad' : 'ok', text: savedWhere(outcome) });
+  };
+
   const restore = async (file: File) => {
     const outcome = parseBackup(await file.text());
     if (!outcome.ok) {
-      setRestoreNote({ tone: 'bad', text: RESTORE_FAILURES[outcome.reason] });
+      setBackupNote({ tone: 'bad', text: RESTORE_FAILURES[outcome.reason] });
       return;
     }
     const { receipts: merged, added, replaced } = mergeBackup(receipts, outcome.summary.receipts);
@@ -94,7 +104,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
       ...(replaced ? [`${replaced} updated`] : []),
       ...(outcome.summary.skipped ? [`${outcome.summary.skipped} unreadable and skipped`] : []),
     ];
-    setRestoreNote({ tone: 'ok', text: `${parts.join(' · ')}. Nothing already here was lost.` });
+    setBackupNote({ tone: 'ok', text: `${parts.join(' · ')}. Nothing already here was lost.` });
   };
 
   const free = settings.plan === 'free';
@@ -123,7 +133,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
           <Pressable
             className="k-soft"
-            onClick={onExport}
+            onClick={() => void exportNow()}
             style={{ flex: 1, padding: 12, textAlign: 'center', background: color.creamAlt, borderRadius: 999, fontWeight: 700, fontSize: 13 }}
           >
             Export a backup
@@ -150,16 +160,16 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
             e.target.value = '';
           }}
         />
-        {restoreNote && (
+        {backupNote && (
           <div
             role="status"
             style={{
               marginTop: 10, padding: '10px 13px', borderRadius: 14, fontSize: 12.5, fontWeight: 600, lineHeight: 1.5,
-              background: restoreNote.tone === 'ok' ? color.yellowLight : 'rgba(216,66,46,0.10)',
-              color: restoreNote.tone === 'ok' ? color.ink : color.danger,
+              background: backupNote.tone === 'ok' ? color.yellowLight : 'rgba(216,66,46,0.10)',
+              color: backupNote.tone === 'ok' ? color.ink : color.danger,
             }}
           >
-            {restoreNote.text}
+            {backupNote.text}
           </div>
         )}
       </section>
@@ -277,7 +287,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
             <Pressable
               onClick={() => {
                 setConfirmingWipe(false);
-                setRestoreNote(null);
+                setBackupNote(null);
                 onWipe();
               }}
               style={{ flex: 1, padding: 12, textAlign: 'center', background: color.danger, color: color.white, borderRadius: 999, fontWeight: 700, fontSize: 13 }}

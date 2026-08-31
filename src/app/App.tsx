@@ -7,6 +7,7 @@ import { deliver } from './notify';
 import { money, sumPence } from '../lib/money';
 import { midSentence } from '../lib/words';
 import { exportBackup, wipe } from '../lib/storage';
+import { backupFilename, saveJsonFile } from '../lib/save-file';
 import { FEATURED_TIER } from '../lib/pricing';
 import { SaveFailedBanner } from './components/SaveFailedBanner';
 import { TabBar } from './components/TabBar';
@@ -212,17 +213,11 @@ export function App() {
     setAnnounced(heading);
   }, [screen, state.selId]);
 
-  const exportNow = () => {
-    // A backup that leaves the device only if the user says so — it goes to
-    // their own file system through the browser's download, not to us.
-    const blob = new Blob([exportBackup(state)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `kept-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  // A backup that leaves the device only if the user says so — it goes to
+  // their own file system, not to us. Where that is differs by platform, and
+  // on iOS the browser's download does not exist at all: see save-file.ts.
+  const exportNow = () =>
+    saveJsonFile(backupFilename('backup', new Date()), exportBackup(state));
 
   /**
    * The sentence the share puts on the clipboard — built here rather than

@@ -32,6 +32,17 @@
 	<string>kept never opens your photo library. It only takes a new photograph of a receipt, which stays on this device.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>kept does not add anything to your photo library. A receipt photograph is kept inside the app and is deleted when you erase your receipts.</string>
+	<!-- Both are what make the app's Documents directory a place a person can
+	     actually reach: without them it exists but appears nowhere, and the
+	     backup written into it is exactly as lost as the download WKWebView
+	     refuses — with the added harm of having looked like it worked.
+	     UIFileSharingEnabled puts "kept" under On My iPhone in the Files app;
+	     LSSupportsOpeningDocumentsInPlace lets a file be opened from there
+	     rather than only copied out. See src/lib/save-file.ts. -->
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
