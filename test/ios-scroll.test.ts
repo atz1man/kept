@@ -5,18 +5,26 @@ import { describe, expect, it } from 'vitest';
 /**
  * The webview's scroll view and the page's own scrolling have to agree.
  *
- * `ios.scrollEnabled` governs WKWebView's own UIScrollView. This app gives
- * that scroll view nothing to do — the column in `main.tsx` is fixed at one
- * viewport with `overflow: hidden`, and every screen that can outgrow the
- * phone carries its own `overflow: auto` pane — so the only thing enabling it
- * contributes is the rubber-band, dragging the whole app off its own ground.
- * The config said `true` under a comment arguing for the opposite, and `true`
- * is the default, so the line had no effect at all.
+ * `ios.scrollEnabled` governs WKWebView's own UIScrollView, and the config
+ * set `true` under a comment arguing for the opposite — that nothing in this
+ * app wants a scroll bouncing past its own background. `true` is also the
+ * default, so the line read as a decision and was not one.
  *
- * Both halves are checked, because turning it off is only right WHILE the
- * root is fixed. If someone later lets the document scroll, a disabled scroll
- * view is a page that cannot be reached — the opposite defect, silent in the
- * same way. This fails then, naming which half moved.
+ * What is asserted here is the premise underneath that argument, which is the
+ * part this repository can actually settle: the app scrolls itself. The column
+ * in `main.tsx` is fixed at one viewport and clipped, and every screen that
+ * can outgrow the phone carries its own `overflow: auto` pane. While that
+ * holds, the webview's scroll view has no content to move and enabling it
+ * contributes only the rubber-band.
+ *
+ * The value itself is deliberately NOT asserted. Turning the scroll view off
+ * is the standard shape for a page that scrolls itself, but without
+ * @capacitor/keyboard — not installed — it is also the only thing lifting a
+ * focused field clear of the iOS keyboard, which does not shrink 100dvh. That
+ * is the Add screen's paste box against a bounce, and it wants a device rather
+ * than a guess; capacitor.config.ts records the open question. If the root
+ * ever starts scrolling, the premise is gone and this fails, which is when
+ * the question needs asking again anyway.
  */
 const read = (rel: string) => readFileSync(join(__dirname, '..', rel), 'utf8');
 
@@ -40,7 +48,11 @@ describe('scrolling in the native shell', () => {
     }
   });
 
-  it('turns the webview scroll view off, so nothing rubber-bands', () => {
-    expect(read('capacitor.config.ts')).toMatch(/scrollEnabled:\s*false/);
+  it('says which way it went, and why, rather than restating a default', () => {
+    // Not the value — see above. That the reasoning is written down where the
+    // next person meets the setting, and names the keyboard as what is unsettled.
+    const config = read('capacitor.config.ts');
+    expect(config).toMatch(/scrollEnabled/);
+    expect(config).toMatch(/keyboard/i);
   });
 });
