@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { color, font, radius } from '../../tokens';
 import { isNative } from '../../lib/mirror';
 import { fmtDateLong, fromISODate } from '../../lib/dates';
 import { mergeBackup, parseBackup } from '../../lib/backup';
-import { notifyState, requestNotifyPermission, type NotifyState } from '../notify';
+import { alertsRow, currentNotifyState, notifyState, requestNotifyPermission, type NotifyState } from '../notify';
 import type { Receipt } from '../../lib/types';
 import { TAGLINE } from '../../lib/brand';
 import { LEGAL_DISCLAIMER } from '../../lib/legal';
@@ -32,7 +32,27 @@ const RESTORE_FAILURES = {
 export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUpgrade, onChange }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [restoreNote, setRestoreNote] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
-  const [permission, setPermission] = useState<NotifyState>(() => notifyState());
+  /*
+   * Seeded synchronously so the row has something to render, then corrected.
+   *
+   * The seed cannot be the web answer on native: WKWebView has no
+   * `Notification`, so `notifyState()` says 'unsupported' there and the switch
+   * would render disabled for the one frame before the real answer lands —
+   * and it is a switch, so a person could reach it in that frame. 'default'
+   * is the honest seed for a question that has not come back yet.
+   */
+  const [permission, setPermission] = useState<NotifyState>(() =>
+    isNative() ? 'default' : notifyState(),
+  );
+  useEffect(() => {
+    let live = true;
+    void currentNotifyState().then((state) => {
+      if (live) setPermission(state);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
   // Two steps, not an eight-second undo. The undo bar is right for one receipt
   // taken back by mistake; this is everything, and it wants a decision.
   const [confirmingWipe, setConfirmingWipe] = useState(false);
@@ -52,18 +72,14 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
     onChange({ deadlineAlerts: next === 'granted' });
   };
 
-  // Must agree with the switch beside it, which is gated on permission as well
-  // as the preference — otherwise the row reads "On" next to a switch sitting
-  // in the off position, which is exactly what it did.
-  const alertsLive = settings.deadlineAlerts && permission === 'granted';
-  const alertDetail =
-    permission === 'unsupported'
-      ? 'Not available here'
-      : permission === 'denied'
-        ? 'Blocked by your browser'
-        : alertsLive
-          ? 'On'
-          : 'Off';
+  // The position, the label and the sentence under it all have to agree with
+  // one another — the row read "On" beside a switch sitting off, once — so
+  // they are decided in one place, next to the permission states they turn on.
+  const alerts = alertsRow({
+    permission,
+    preference: settings.deadlineAlerts,
+    native: isNative(),
+  });
 
   const restore = async (file: File) => {
     const outcome = parseBackup(await file.text());
@@ -203,26 +219,14 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
         <div style={{ borderBottom: `1.5px solid ${color.borderHair}` }}>
           <Toggle
             label="Deadline alerts"
-            value={alertsLive}
-            detail={alertDetail}
-            disabled={permission === 'unsupported' || permission === 'denied'}
+            value={alerts.on}
+            detail={alerts.detail}
+            disabled={alerts.disabled}
             separator={false}
             onChange={(v) => void toggleAlerts(v)}
           />
-          {/* Two different truths, and the screen has to tell the right one.
-              On the web this is a genuine ceiling, stated where the switch is
-              rather than implied away: Notification Triggers never shipped and
-              periodic background sync is one engine's, at its discretion. In
-              the iOS app the deadlines are lodged with the system in advance,
-              so they do arrive with kept closed — and leaving the web sentence
-              up there would be the app understating what it does, which is the
-              same species of untruth as overstating it. */}
           <div style={{ padding: '0 18px 14px', fontSize: 12, color: color.muted, lineHeight: 1.5 }}>
-            {permission === 'denied'
-              ? 'Your browser is blocking notifications for kept. Turn them back on in site settings.'
-              : isNative()
-                ? 'Lodged with iOS in advance, so they arrive at 9am on the day even if kept is closed. Turning this off cancels the ones already waiting.'
-                : 'Checked each time you open kept. Nothing arrives while kept is closed — a web app cannot wake itself.'}
+            {alerts.note}
           </div>
         </div>
         {/* "Daily · on" was a cadence nothing kept. The feed is fetched once
