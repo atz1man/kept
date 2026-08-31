@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+	kept's privacy manifest.
+
+	Every entry here was derived from the code that actually ships, not from
+	memory. `test/ios-privacy-manifest.test.ts` re-derives it on every run by
+	walking the installed plugin sources for the symbols Apple's required-reason
+	list names, so a plugin upgrade that starts touching a new category fails
+	the suite instead of failing review.
+
+	WHY THE APP DECLARES THE PLUGINS' USE. A pod that ships its own
+	PrivacyInfo.xcprivacy answers for itself: @capacitor/ios does, and declares
+	that it accesses nothing. @capacitor/camera, @capacitor/filesystem and
+	@capacitor/local-notifications ship none at all, so whatever they touch is
+	the app's to declare. That is the boundary the test walks.
+
+	NSPrivacyTracking is false and both arrays are empty because they are true,
+	not because they are the defaults: nothing leaves the device, there is no
+	account, no analytics and no third party — which is the claim the Settings
+	screen, the onboarding and the landing page all make, and which
+	`e2e third-party` proves for the web build on every CI run.
+-->
+<plist version="1.0">
+<dict>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<!--
+			File timestamps, reason C617.1: "files inside the app container".
+
+			Measured, not assumed. @capacitor/filesystem calls
+			`FileManager.default.attributesOfItem` and reads `.creationDate` and
+			`.modificationDate` (Filesystem.swift:109, FilesystemPlugin.swift:214-260)
+			to answer `stat` and `readdir`. kept reaches that plugin for the
+			mirror, for receipt photographs and for an exported backup — all of
+			them inside its own Documents directory and nowhere else, which is
+			exactly what C617.1 covers. The other three reasons in that category
+			are for files outside the container, which this app never touches.
+		-->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>C617.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>
