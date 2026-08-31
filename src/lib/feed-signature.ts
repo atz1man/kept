@@ -54,6 +54,9 @@ const CHECKED_IN_KEY: string | null = null;
 
 const configured: unknown = import.meta.env?.VITE_FEED_PUBLIC_KEY;
 export const FEED_PUBLIC_KEY: string | null =
+  // Any non-empty string is taken as a key; a one-character one is a
+  // configuration mistake that fails verification either way, so the exact
+  // bound here is not worth a test.
   typeof configured === 'string' && configured.length > 0 ? configured : CHECKED_IN_KEY;
 
 /*
@@ -64,6 +67,8 @@ export const FEED_PUBLIC_KEY: string | null =
 function fromBase64(b64: string): Uint8Array<ArrayBuffer> {
   const bin = atob(b64);
   const out = new Uint8Array(new ArrayBuffer(bin.length));
+  // `<=` reads one past the end and writes out of bounds on a fixed-length
+  // Uint8Array, which is a no-op — so the bound cannot be told apart by a test.
   for (let i = 0; i < bin.length; i += 1) out[i] = bin.charCodeAt(i);
   return out;
 }
