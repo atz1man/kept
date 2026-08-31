@@ -74,9 +74,18 @@ export async function syncScheduled(plan: readonly PlannedAlert[]): Promise<bool
 
     await LocalNotifications.schedule({
       notifications: plan.map((p, i) => ({
+        // Any distinct number does; these are positions in the current plan,
+        // not identities that survive between runs, and everything lodged is
+        // cancelled above before anything is written. So `i + 1` versus
+        // `i + 2` is equivalent under mutation — recorded here rather than
+        // left for the next person to try it.
         id: i + 1,
         title: p.title,
         body: p.body,
+        // `allowWhileIdle` is Android's, and this shell is iOS only — the
+        // plugin ignores it here, which is why flipping it changes no test.
+        // Kept as the statement of intent for the day there is an Android
+        // build, where a 9am alert that will not fire in Doze is no alert.
         schedule: { at: p.at, allowWhileIdle: true },
         // The key rides along so a tapped notification can be traced back to
         // the receipt it is about, rather than only to a position in a list.

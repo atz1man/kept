@@ -107,6 +107,9 @@ export async function verifyFeed(body: string, signature: string, publicKey: str
       'spki',
       fromBase64(publicKey),
       { name: 'ECDSA', namedCurve: 'P-256' },
+      // Not extractable. Equivalent under mutation and kept anyway: this is a
+      // PUBLIC key, so nothing is protected by it, but a key imported with no
+      // more capability than the one use it has is the habit worth keeping.
       false,
       ['verify'],
     );
