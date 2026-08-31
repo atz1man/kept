@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { color, font, radius } from '../../tokens';
 import { isNative } from '../../lib/mirror';
-import { fmtDateLong, fromISODate } from '../../lib/dates';
+import { fmtDateLong } from '../../lib/dates';
 import { mergeBackup, parseBackup } from '../../lib/backup';
 import { savedWhere, type SaveOutcome } from '../../lib/save-file';
 import { alertsRow, currentNotifyState, notifyState, requestNotifyPermission, type NotifyState } from '../notify';
 import type { Receipt } from '../../lib/types';
 import { TAGLINE } from '../../lib/brand';
 import { LEGAL_DISCLAIMER } from '../../lib/legal';
-import { STORE_COUNT, TABLE_CHECKED_ON } from '../../lib/stores';
+import { STORE_COUNT, tableCheck } from '../../lib/stores';
 import { URGENT_DAYS_MAX, URGENT_DAYS_MIN, type Settings as SettingsShape } from '../../lib/storage';
 import { TIERS } from '../../lib/pricing';
 import { countedAgainstQuota, FREE_TIER_LIMIT } from '../../lib/quota';
@@ -31,6 +31,9 @@ const RESTORE_FAILURES = {
 } as const;
 
 export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUpgrade, onChange }: Props) {
+  // How current the retailer table is, decided in `tableCheck` so that a date
+  // set once cannot go on reassuring people years later.
+  const check = tableCheck(new Date());
   const fileInput = useRef<HTMLInputElement>(null);
   // One note under both buttons, because they are one pair: a backup taken and
   // a backup put back. It said nothing at all after an export, which was
@@ -252,17 +255,25 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
             <span style={{ fontSize: 14, fontWeight: 600 }}>Retailer policies</span>
             <span style={{ fontSize: 14, color: color.muted }}>
               {STORE_COUNT} shops
-              {TABLE_CHECKED_ON ? ` · checked ${fmtDateLong(fromISODate(TABLE_CHECKED_ON))}` : ''}
+              {check.state === 'never' ? '' : ` · checked ${fmtDateLong(check.on)}`}
             </span>
           </div>
           {/* It said "20 verified today", which nothing recorded — the table is
               maintained by hand. Until someone has checked it, the screen says
               that, the way the landing page says its social proof is
-              illustrative. See TABLE_CHECKED_ON in stores.ts. */}
-          {!TABLE_CHECKED_ON && (
+              illustrative. And a check goes off: the date alone would have sat
+              here reading the same in 2029, which is the same claim decaying
+              rather than being false on the day it was written. See
+              `tableCheck` in stores.ts. */}
+          {check.state === 'never' && (
             <div style={{ fontSize: 12, color: color.muted, lineHeight: 1.5, marginTop: 6 }}>
               Kept’s own list, not yet checked against each retailer’s published terms. Always trust your receipt over
               this.
+            </div>
+          )}
+          {check.state === 'stale' && (
+            <div style={{ fontSize: 12, color: color.muted, lineHeight: 1.5, marginTop: 6 }}>
+              That was over a year ago and shops do change their windows. Always trust your receipt over this.
             </div>
           )}
         </div>

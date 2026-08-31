@@ -1,4 +1,4 @@
-import { fmtDateLong, fromISODate } from './dates';
+import { daysBetween, fmtDateLong, fromISODate } from './dates';
 import type { Category } from './types';
 
 /**
@@ -163,6 +163,46 @@ export const STORE_COUNT = STORE_POLICIES.length;
  * same reason: content that is not yet true says so, visibly, until it is.
  */
 export const TABLE_CHECKED_ON: string | null = null;
+
+/**
+ * How long a check stays worth quoting.
+ *
+ * Our judgement, not a fact, so no test asserts the number — what is asserted
+ * is the property: that there IS an expiry and that it bites. A year is the
+ * unit retailers themselves review terms in, and it is long enough that the
+ * caveat means something when it appears.
+ */
+const CHECK_GOOD_FOR_DAYS = 365;
+
+export type TableCheck =
+  | { state: 'never' }
+  | { state: 'fresh'; on: Date }
+  | { state: 'stale'; on: Date };
+
+/**
+ * What the Settings row may honestly say about the table.
+ *
+ * `TABLE_CHECKED_ON` was added because "20 verified today" claimed a freshness
+ * nothing recorded. It fixed the claim and stopped one step short: a date, once
+ * set, sits there forever. Measured — with the date at 3 September 2026, the
+ * row reads "20 shops · checked 3 September 2026" on the 4th and reads exactly
+ * the same in 2029, presented as reassurance on the screen where somebody goes
+ * to ask how current the data is.
+ *
+ * That matters here more than it would elsewhere: this table is maintained by
+ * hand, and the app has a whole policy feed precisely BECAUSE shops change
+ * their windows. A check that is three years old is not a check.
+ *
+ * A date in the future reads as fresh rather than stale. A device clock behind
+ * the day of the check is the ordinary cause, and calling a check that has just
+ * happened "old" would be the worse mistake of the two.
+ */
+export function tableCheck(today: Date, checkedOn: string | null = TABLE_CHECKED_ON): TableCheck {
+  if (checkedOn === null) return { state: 'never' };
+  const on = fromISODate(checkedOn);
+  const age = daysBetween(on, today);
+  return age > CHECK_GOOD_FOR_DAYS ? { state: 'stale', on } : { state: 'fresh', on };
+}
 
 const BY_ALIAS = new Map<string, StorePolicy>();
 for (const s of STORE_POLICIES) for (const a of s.aliases) BY_ALIAS.set(a, s);

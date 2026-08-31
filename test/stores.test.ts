@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ALIASES_BY_LENGTH, STORE_POLICIES, findStore, type StorePolicy } from '../src/lib/stores';
+import { ALIASES_BY_LENGTH, STORE_POLICIES, findStore, tableCheck, type StorePolicy } from '../src/lib/stores';
+import { addDays, fromISODate, toISODate } from '../src/lib/dates';
 import { parseReceiptText } from '../src/lib/parse';
 
 /**
@@ -193,3 +194,61 @@ describe('the order aliases are matched in', () => {
     expect(out.value.store).toBe(long.store.name);
   });
 });
+
+describe('how current the retailer table claims to be', () => {
+  /*
+   * `TABLE_CHECKED_ON` was added because "20 verified today" claimed a
+   * freshness nothing recorded. It fixed the claim and stopped one step short:
+   * a date, once set, sits there forever. Measured with the date at 3
+   * September 2026 — the row reads "20 shops · checked 3 September 2026" on
+   * the 4th, and reads exactly the same in 2029.
+   *
+   * Which matters more here than it would elsewhere. This table is maintained
+   * by hand, and the app has a whole policy feed precisely BECAUSE shops
+   * change their windows.
+   */
+  const CHECKED = '2026-09-03';
+
+  it('says nothing about a check that has not happened', () => {
+    expect(tableCheck(new Date(2026, 8, 4), null)).toEqual({ state: 'never' });
+  });
+
+  it('quotes a recent check', () => {
+    expect(tableCheck(new Date(2026, 8, 4), CHECKED).state).toBe('fresh');
+  });
+
+  it('stops quoting one that has gone off', () => {
+    // The defect in one line: without this, 2029 reads the same as the day
+    // after.
+    expect(tableCheck(new Date(2029, 8, 4), CHECKED).state).toBe('stale');
+  });
+
+  it('has an expiry that bites within a plausible life of the app', () => {
+    /*
+     * The number is our judgement and no test asserts it — but that an expiry
+     * EXISTS is the property, and one that only bit after a century would
+     * satisfy the case above while changing nothing real.
+     */
+    expect(tableCheck(new Date(2028, 0, 1), CHECKED).state).toBe('stale');
+    expect(tableCheck(new Date(2026, 9, 1), CHECKED).state).toBe('fresh');
+  });
+
+  it('does not call a check stale on the day it stops being fresh', () => {
+    // The last-day edge this codebase has got wrong twice elsewhere: a window
+    // is open on its final day.
+    const on = fromISODate(CHECKED);
+    expect(tableCheck(addDays(on, 365), CHECKED).state).toBe('fresh');
+    expect(tableCheck(addDays(on, 366), CHECKED).state).toBe('stale');
+  });
+
+  it('reads a date in the future as fresh, not stale', () => {
+    // A device clock behind the day of the check is the ordinary cause, and
+    // calling a check that has just happened "old" is the worse of the two.
+    expect(tableCheck(new Date(2026, 0, 1), CHECKED).state).toBe('fresh');
+  });
+
+  it('hands back the date, so the screen quotes the record rather than reformatting it', () => {
+    const check = tableCheck(new Date(2026, 8, 4), CHECKED);
+    expect(check.state === 'never' ? null : toISODate(check.on)).toBe(CHECKED);
+  });
+})
