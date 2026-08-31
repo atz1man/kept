@@ -3,6 +3,7 @@ import { Logo, Wordmark } from '../app/components/Icons';
 import { TIERS as PRICING_TIERS, type Period } from '../lib/pricing';
 import { FREE_TIER_LIMIT } from '../lib/quota';
 import { STORE_COUNT, findStore } from '../lib/stores';
+import { COOLING_OFF_DAYS, REJECT_DAYS } from '../lib/legal';
 import { TAGLINE, TAGLINE_CAPS } from '../lib/brand';
 import { seedUpdates } from '../lib/seed';
 import { fromISODate, relativeAgo } from '../lib/dates';
@@ -67,7 +68,11 @@ const days = (name: string) => findStore(name)?.windowDays ?? 0;
 
 const WHY = [
   { n: '01', title: 'Knows the real policies', body: `IKEA’s ${days('IKEA')} days, Boots’ ${days('Boots')}, Apple’s ${days('Apple')} — Kept’s own list of windows for ${STORE_COUNT} major UK retailers, plus the gotchas: Zara’s clock starts at dispatch, Uniqlo won’t refund online orders in store.` },
-  { n: '02', title: 'Knows your legal rights', body: 'The Consumer Rights Act gives you 30 days to reject faulty goods for a full refund, and online orders carry a 14-day cooling-off by law. Kept shows the legal deadline beside the shop’s own.' },
+  // The two numbers the whole legal half of the product turns on, taken from
+  // the module that computes them rather than typed again here. They were
+  // prose, beside three shop windows that had already been made derived for
+  // exactly this reason.
+  { n: '02', title: 'Knows your legal rights', body: `The Consumer Rights Act gives you ${REJECT_DAYS} days to reject faulty goods for a full refund, and online orders carry a ${COOLING_OFF_DAYS}-day cooling-off by law. Kept shows the legal deadline beside the shop’s own.` },
   { n: '03', title: 'Paste or scan, done', body: 'Paste an order email and Kept reads the store, total and date, and sets the deadline for you. Scanning a paper receipt lands in a later release.' },
   { n: '04', title: 'Warranties too', body: 'Put a warranty length on a receipt and Kept counts it down beside the return window, so you know whether the repair is still free before you pay for one.' },
   // "No server" was the loose word — the app is served from one and downloads

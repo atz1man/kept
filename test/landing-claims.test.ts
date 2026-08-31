@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { STORE_COUNT, STORE_POLICIES, findStore } from '../src/lib/stores';
+import { COOLING_OFF_DAYS, REJECT_DAYS } from '../src/lib/legal';
 
 /**
  * The landing page quotes the table, and only the numbers were held to it.
@@ -74,3 +75,32 @@ describe('the claims beside them, which are not derived', () => {
     expect(STORE_COUNT).toBe(STORE_POLICIES.length);
   });
 });
+
+describe('the statutory numbers the page quotes', () => {
+  /*
+   * The two the whole legal half of the product turns on, and they were prose
+   * on the landing page while `legal.ts` computed from private constants —
+   * beside three shop windows that had already been made derived for exactly
+   * this reason.
+   *
+   * These ARE pinned as literals, unlike `MAX_PER_WAKE` or `MAX_UPDATES`,
+   * because they are not thresholds we chose. Parliament chose them, and the
+   * same call was made for `MAX_PENDING` at 64 because that is iOS's and
+   * `AA_TEXT` at 4.5 because that is WCAG's. A test that let these drift would
+   * be letting the app misstate somebody's rights.
+   */
+  it('is the Consumer Rights Act 2015 s.22 short-term right to reject: 30 days', () => {
+    expect(REJECT_DAYS).toBe(30);
+  });
+
+  it('is the Consumer Contracts Regulations 2013 cancellation period: 14 days', () => {
+    expect(COOLING_OFF_DAYS).toBe(14);
+  });
+
+  it('takes them from that module rather than typing them again', () => {
+    // The prose said "30 days" and "14-day" as literals. Interpolated now, so
+    // the page cannot disagree with the screen computing the same deadline.
+    expect(LANDING).toContain('${REJECT_DAYS} days to reject');
+    expect(LANDING).toContain('${COOLING_OFF_DAYS}-day cooling-off');
+  });
+})
