@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { midSentence } from '../src/lib/words';
+import { midSentence, winSentence } from '../src/lib/words';
 import { seedReceipts } from '../src/lib/seed';
 
 describe('fitting an item name into the middle of a sentence', () => {
@@ -31,3 +31,45 @@ describe('fitting an item name into the middle of a sentence', () => {
     }
   });
 });
+
+describe('the sentence somebody sends their friends', () => {
+  /*
+   * The only thing this app writes for an audience other than its owner, and
+   * the second half is a claim about the PRODUCT rather than about the
+   * receipt. "kept. reminded me before the window shut" was said whether or
+   * not kept had done any such thing — a receipt marked returned on the day it
+   * was added, or with deadline alerts switched off, produced it just the
+   * same. Made conditional and then left as a nested ternary in App.tsx, which
+   * nothing here can render.
+   */
+  const win = (warned: boolean, inTime: boolean) =>
+    winSentence({ amount: '£61.00', store: 'Zara', warned, inTime });
+
+  it('says kept reminded them only when kept did, and in time', () => {
+    expect(win(true, true)).toContain('reminded me before the window shut');
+  });
+
+  it('needs both halves, not either', () => {
+    // Warned but too late is not a reminder that worked; in time without a
+    // warning is the person's own doing.
+    expect(win(true, false)).not.toContain('reminded me');
+    expect(win(false, true)).not.toContain('reminded me');
+    expect(win(false, false)).not.toContain('reminded me');
+  });
+
+  it('still says something true when it did not', () => {
+    // A share button that produces half a sentence is worse than one that
+    // makes the smaller claim: kept does keep them in one place, always.
+    for (const [w, t] of [[true, false], [false, true], [false, false]] as const) {
+      expect(win(w, t)).toContain('keeps every return deadline in one place');
+    }
+  });
+
+  it('carries the money and the shop either way', () => {
+    // The first half is about the receipt and is true regardless.
+    for (const [w, t] of [[true, true], [false, false]] as const) {
+      expect(win(w, t)).toContain('£61.00');
+      expect(win(w, t)).toContain('Zara');
+    }
+  });
+})

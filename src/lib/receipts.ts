@@ -186,3 +186,32 @@ export function makeReceiptId(now: Date = new Date()): string {
   const rand = Math.random().toString(36).slice(2, 8);
   return `r_${startOfDay(now).getTime().toString(36)}_${rand}`;
 }
+
+/**
+ * Whether every return in a library actually made it back before its deadline.
+ *
+ * The "All squared away" card says "Every return made it back in time" above
+ * the total recovered, and that sentence used to be unconditional — a claim
+ * about timing that nothing checked, on a screen where a return CAN be made
+ * after the shop's window shuts, by goodwill or the faulty-goods route. It was
+ * made conditional and then lived as an inline `.every` in a component nothing
+ * here can render, which is the same claim with a thinner guard.
+ *
+ * Two rules worth stating rather than reading out of the expression:
+ *
+ * A return with no date recorded counts AGAINST it. The record cannot support
+ * the claim either way, and the boast is the half that has to be earned.
+ *
+ * An empty library answers FALSE, where `.every` answers true. "Every return
+ * made it back in time" about no returns at all is not a claim worth making,
+ * and leaving it vacuously true made the sentence depend on a separate
+ * emptiness check sitting somewhere else on the screen.
+ */
+export function everyReturnInTime(returned: readonly Receipt[], today: Date): boolean {
+  if (returned.length === 0) return false;
+  return returned.every(
+    (r) =>
+      r.returnedOn !== undefined &&
+      daysBetween(fromISODate(r.returnedOn), derive(r, today).deadline) >= 0,
+  );
+}

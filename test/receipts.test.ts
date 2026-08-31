@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { addDays, toISODate } from '../src/lib/dates';
 import { photoName } from '../src/lib/photos';
 import { toPence } from '../src/lib/money';
-import { bucket, derive, makeReceiptId, stillReturnablePence, timelineDots } from '../src/lib/receipts';
+import { bucket, derive, everyReturnInTime, makeReceiptId, stillReturnablePence, timelineDots } from '../src/lib/receipts';
 import type { Receipt } from '../src/lib/types';
 
 const TODAY = new Date(2026, 7, 28);
@@ -395,3 +395,59 @@ describe('what "still returnable" counts', () => {
     expect(stillReturnablePence(bucket(rs, today, 7))).toBe(1000);
   });
 });
+
+describe('the claim on the “All squared away” card', () => {
+  /*
+   * "Every return made it back in time" was unconditional once — a claim about
+   * timing that nothing checked, on a screen where a return CAN be made after
+   * the shop's window shuts, by goodwill or the faulty-goods route. Made
+   * conditional and then left as an inline `.every` in a component nothing
+   * here can render, which is the same claim with a thinner guard.
+   */
+  const returned = (id: string, purchasedOn: string, returnedOn?: string): Receipt =>
+    receipt({
+      id,
+      purchasedOn,
+      windowDays: 30,
+      status: 'returned',
+      ...(returnedOn === undefined ? {} : { returnedOn }),
+    });
+  const today = new Date(2026, 8, 20);
+
+  it('counts the last day of the window as in time', () => {
+    // Bought 1 August with 30 days: the deadline is the 31st, and going back
+    // ON the 31st made it. The off-by-one here would tell somebody they had
+    // missed a deadline they met.
+    expect(everyReturnInTime([returned('a', '2026-08-01', '2026-08-31')], today)).toBe(true);
+  });
+
+  it('does not claim it for a return made the day after', () => {
+    expect(everyReturnInTime([returned('a', '2026-08-01', '2026-09-01')], today)).toBe(false);
+  });
+
+  it('counts a return with no date recorded against the claim', () => {
+    // The record cannot support it either way, and the boast is the half that
+    // has to be earned.
+    expect(everyReturnInTime([returned('a', '2026-08-01')], today)).toBe(false);
+  });
+
+  it('needs every one of them, not most', () => {
+    expect(
+      everyReturnInTime(
+        [returned('a', '2026-08-01', '2026-08-10'), returned('b', '2026-08-01', '2026-09-05')],
+        today,
+      ),
+    ).toBe(false);
+  });
+
+  it('claims nothing about an empty library', () => {
+    /*
+     * Where `.every` says true. "Every return made it back in time" about no
+     * returns at all is not a claim worth making, and leaving it vacuous made
+     * the sentence depend on a separate emptiness check elsewhere on the
+     * screen — which is exactly the arrangement that let the original
+     * unconditional version survive as long as it did.
+     */
+    expect(everyReturnInTime([], today)).toBe(false);
+  });
+})

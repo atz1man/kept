@@ -31,3 +31,26 @@
 export function midSentence(name: string): string {
   return name.trim();
 }
+
+/**
+ * The sentence somebody sends their friends after getting money back.
+ *
+ * It is the only thing this app writes for an audience other than its owner,
+ * and the second half is a claim about the PRODUCT rather than about the
+ * receipt: "kept. reminded me before the window shut" was said whether or not
+ * kept had done any such thing — a receipt marked returned on the day it was
+ * added, or with deadline alerts switched off, produced it just the same.
+ *
+ * Made conditional, and then left as a nested ternary inside `App.tsx`, which
+ * is one of the files nothing here can render. So the claim moved to where it
+ * can be held: both halves have to be true, and the fallback says something
+ * kept does unconditionally.
+ */
+export function winSentence(
+  { amount, store, warned, inTime }: { amount: string; store: string; warned: boolean; inTime: boolean },
+): string {
+  const earned = warned && inTime;
+  return `Just got ${amount} back from ${store} — kept. ${
+    earned ? 'reminded me before the window shut.' : 'keeps every return deadline in one place.'
+  }`;
+}
