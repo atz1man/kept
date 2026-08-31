@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { reducer, type AppState } from '../src/app/state';
+import { openingScreen, reducer, type AppState } from '../src/app/state';
 import { addDays, toISODate } from '../src/lib/dates';
 import { ONBOARDING_STEPS } from '../src/app/screens/Onboarding';
 import { toPence } from '../src/lib/money';
@@ -254,5 +254,70 @@ describe('a receipt cannot be returned twice', () => {
   it('ignores a return of a receipt that is not there', () => {
     const s = base();
     expect(reducer(s, { type: 'return', id: 'nope' }, TODAY)).toBe(s);
+  });
+});
+
+describe('putting a receipt back after a swipe', () => {
+  /*
+   * `unreturn` had no test at all, and neither did `update`. Both map over the
+   * whole library changing the one whose id matches, and flipping that `===` to
+   * `!==` changes every OTHER receipt instead — one accidental swipe, or one
+   * saved edit, and the rest of somebody's library is overwritten.
+   *
+   * The assertion that catches it is the one about the receipt NOT being acted
+   * on. Checking only the target passes either way.
+   */
+  const returned = (id: string) => ({
+    ...receipt(id), status: 'returned' as const, returnedOn: '2026-08-20',
+  });
+
+  it('makes the swiped one active again', () => {
+    const start = base({ receipts: [returned('a'), receipt('b')] });
+    const next = reducer(start, { type: 'unreturn', id: 'a' }, TODAY);
+    expect(next.receipts.find((r) => r.id === 'a')).toMatchObject({ status: 'active' });
+    expect(next.receipts.find((r) => r.id === 'a')!.returnedOn).toBeUndefined();
+  });
+
+  it('leaves every other receipt exactly as it was', () => {
+    const start = base({ receipts: [returned('a'), returned('b')] });
+    const next = reducer(start, { type: 'unreturn', id: 'a' }, TODAY);
+    expect(next.receipts.find((r) => r.id === 'b')).toEqual(returned('b'));
+  });
+});
+
+describe('saving an edit', () => {
+  it('replaces the one that was edited', () => {
+    const edited = { ...receipt('a'), item: 'Stand mixer, cream' };
+    const next = reducer(base(), { type: 'update', receipt: edited }, TODAY);
+    expect(next.receipts.find((r) => r.id === 'a')!.item).toBe('Stand mixer, cream');
+    expect(next.screen).toBe('detail');
+    expect(next.selId).toBe('a');
+  });
+
+  it('leaves every other receipt exactly as it was', () => {
+    // The one that matters. With the comparison flipped, saving a single edit
+    // rewrites every receipt in the library with the edited one's contents.
+    const edited = { ...receipt('a'), item: 'Stand mixer, cream' };
+    const next = reducer(base(), { type: 'update', receipt: edited }, TODAY);
+    expect(next.receipts.find((r) => r.id === 'b')).toEqual(receipt('b'));
+    expect(next.receipts).toHaveLength(2);
+  });
+});
+
+describe('which screen a launch opens on', () => {
+  /*
+   * Lifted out of `useReducer`'s initialiser, where it was three conditions
+   * nothing could reach: mutating either half of `onboardingSeen || embedded`
+   * left the whole suite green, and that decides whether a first-time visitor
+   * meets the app or a flow they never asked for.
+   */
+  it.each([
+    ['a shared order beats everything else', { shared: true, onboardingSeen: false, embedded: false }, 'add'],
+    ['even inside the demo frame', { shared: true, onboardingSeen: true, embedded: true }, 'add'],
+    ['a returning visitor goes to their receipts', { shared: false, onboardingSeen: true, embedded: false }, 'home'],
+    ['a first-time visitor is onboarded', { shared: false, onboardingSeen: false, embedded: false }, 'onboard'],
+    ['the demo frame skips onboarding', { shared: false, onboardingSeen: false, embedded: true }, 'home'],
+  ])('%s', (_label, input, expected) => {
+    expect(openingScreen(input)).toBe(expected);
   });
 });

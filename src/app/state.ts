@@ -85,6 +85,26 @@ export type Action =
   | { type: 'upgrade-ask'; period: Period }
   | { type: 'upgrade-cancel' };
 
+/**
+ * Which screen a launch opens on.
+ *
+ * Three-way and easy to get subtly wrong, and it was inline in `useReducer`
+ * where nothing could reach it — mutating either half of its condition left the
+ * whole suite green.
+ *
+ * A shared order wins over everything: someone who shared an order email is
+ * telling you exactly what they came to do, whether or not they ever finished
+ * onboarding. The landing page's demo iframe skips onboarding too, because a
+ * visitor who has never opened the app should land on the receipts list rather
+ * than on step one of a flow they cannot see the point of yet.
+ */
+export function openingScreen(
+  { shared, onboardingSeen, embedded }: { shared: boolean; onboardingSeen: boolean; embedded: boolean },
+): Screen {
+  if (shared) return 'add';
+  return onboardingSeen || embedded ? 'home' : 'onboard';
+}
+
 export function reducer(state: AppState, action: Action, today: Date): AppState {
   switch (action.type) {
     case 'go':
@@ -308,7 +328,7 @@ export function useApp() {
         // A shared order goes straight to Add, whether or not onboarding was
         // ever finished: someone who shared an email is telling you exactly
         // what they came to do.
-        screen: incoming ? 'add' : base.onboardingSeen || embedded ? 'home' : 'onboard',
+        screen: openingScreen({ shared: incoming !== null, onboardingSeen: base.onboardingSeen, embedded }),
         sharedText: incoming,
         embedded,
         justDeleted: null,
