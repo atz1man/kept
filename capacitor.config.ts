@@ -25,9 +25,26 @@ const config: CapacitorConfig = {
     // screen and the first paint is the kind of seam the design has no
     // patience for elsewhere.
     backgroundColor: '#FDFAF1',
-    // The receipts are the product. Nothing about this app wants a scroll
-    // that bounces past its own background.
-    scrollEnabled: true,
+    /*
+     * The comment here used to argue for exactly what the value did not do.
+     *
+     * `true` is Capacitor's default, so the line said nothing, and the reason
+     * written beside it — that nothing in this app wants a scroll bouncing
+     * past its own background — is an argument for the other value. What
+     * `scrollEnabled` governs is the WEBVIEW's own scroll view, and this app
+     * gives that scroll view nothing to do: `main.tsx` fixes the column at
+     * `100dvh` with `overflow: hidden`, and every screen that can outgrow the
+     * phone carries its own `overflow: auto` pane inside it. So the document
+     * never scrolls either way; all `true` adds is the rubber-band, dragging
+     * the whole app off its own ground and back.
+     *
+     * Turning it off is the standard shape for a webview whose page scrolls
+     * itself, and it cannot take scrolling away from anything: what scrolls
+     * here are inner panes, which WebKit handles inside the page. The pairing
+     * is checked in test/ios-scroll.test.ts, so a root that later starts
+     * scrolling cannot leave this silently wrong in the other direction.
+     */
+    scrollEnabled: false,
   },
 };
 
