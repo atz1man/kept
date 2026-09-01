@@ -58,6 +58,9 @@ const SWEEP = `() => {
   };
 
   const out = [];
+  // Counted, not just collected. A sweep that returns no failures because it
+  // examined nothing reports the same "✓" as one that examined everything.
+  let examined = 0;
   for (const el of document.querySelectorAll('*')) {
     // Only elements with their own visible text.
     const text = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent.trim()).join(' ').trim();
@@ -77,6 +80,7 @@ const SWEEP = `() => {
     const weight = parseInt(cs.fontWeight, 10) || 400;
     const large = size >= 24 || (size >= 18.66 && weight >= 700);
     const required = large ? 3 : 4.5;
+    examined += 1;
     const got = ratio(colour, bg);
     if (got < required) {
       out.push({
@@ -86,7 +90,7 @@ const SWEEP = `() => {
       });
     }
   }
-  return out;
+  return { examined, out };
 }`;
 
 
@@ -112,10 +116,33 @@ const failures = [];
 // reporter can reach it whenever the run stops.
 const deviceProblems = [];
 reportOnCrash(report);
-const sweep = async (label) => {
-  const found = await page.evaluate(eval(SWEEP));
-  for (const f of found) failures.push({ screen: label, ...f });
+/**
+ * Every screen has to have been looked at, and this is the whole of why.
+ *
+ * Measured: point the node selector at a tag that does not exist and this
+ * sweep prints "✓ every text node meets WCAG AA on every screen, on a light
+ * device and a dark one" and exits 0 — a green CI gate over nothing, on the
+ * accessibility claim the README and the PR body both lean on. Nothing in the
+ * old shape could tell "no failures" from "no elements": `SWEEP` returned only
+ * the failures.
+ *
+ * Per screen rather than per run, deliberately. A total collapse is the easy
+ * case; the one that would actually happen is a single navigation quietly not
+ * arriving, leaving one screen unaudited among twenty that were. `layout.mjs`
+ * has had this guard for the same reason, and its own comment records that the
+ * first version sat below the success path's `process.exit` and could never
+ * run.
+ */
+const emptyScreens = [];
+const sweepInto = async (target, label) => {
+  const { examined, out } = await target.evaluate(eval(SWEEP));
+  if (examined === 0) emptyScreens.push(label);
+  for (const f of out) failures.push({ screen: label, ...f });
 };
+// The app's own pages all go through this; the landing page and the crash
+// screen call `sweepInto` directly, so every caller is accounted for and a new
+// one cannot skip the counting by writing the old shape.
+const sweep = (label) => sweepInto(page, label);
 
 await page.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
 await page.waitForTimeout(500);
@@ -275,7 +302,7 @@ for (const y of [0, 900, 1800, 2700, 3600, 4500]) {
   await lp.evaluate((v) => window.scrollTo(0, v), y);
   await lp.waitForTimeout(200);
 }
-for (const f of await lp.evaluate(eval(SWEEP))) failures.push({ screen: 'landing', ...f });
+await sweepInto(lp, 'landing');
 
 
 /*
@@ -304,10 +331,10 @@ for (const f of await lp.evaluate(eval(SWEEP))) failures.push({ screen: 'landing
   });
   await brokenPage.reload({ waitUntil: 'domcontentloaded' });
   await brokenPage.waitForTimeout(700);
-  for (const f of await brokenPage.evaluate(eval(SWEEP))) failures.push({ screen: 'render failure', ...f });
+  await sweepInto(brokenPage, 'render failure');
   await brokenPage.getByRole('button', { name: 'Save my receipts to a file' }).click().catch(() => {});
   await brokenPage.waitForTimeout(300);
-  for (const f of await brokenPage.evaluate(eval(SWEEP))) failures.push({ screen: 'render failure · saved', ...f });
+  await sweepInto(brokenPage, 'render failure · saved');
   await brokenCtx.close();
 }
 
@@ -364,7 +391,12 @@ function report(crash) {
       if (e.examples.length < 3) e.examples.push(f.text);
     }
   }
-  if (!crash && deviceProblems.length === 0 && seen.size === 0) {
+  if (emptyScreens.length > 0) {
+    console.log(`✗ ${emptyScreens.length} screen(s) had no text to weigh, so "every text node meets AA" passed over nothing:\n`);
+    for (const label of emptyScreens) console.log(`    ${label}`);
+    console.log('');
+  }
+  if (!crash && deviceProblems.length === 0 && seen.size === 0 && emptyScreens.length === 0) {
     console.log('✓ every text node meets WCAG AA on every screen, on a light device and a dark one');
     process.exit(0);
   }

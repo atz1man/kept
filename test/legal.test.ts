@@ -1,6 +1,15 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import { addDays, toISODate } from '../src/lib/dates';
-import { legalRights, type LegalRight } from '../src/lib/legal';
+import {
+  COOLING_OFF_DAYS,
+  REJECT_DAYS,
+  RETURN_AFTER_CANCEL_DAYS,
+  legalRights,
+  type LegalRight,
+} from '../src/lib/legal';
 import { toPence } from '../src/lib/money';
 import type { Receipt } from '../src/lib/types';
 
@@ -313,5 +322,82 @@ describe('when both clocks have run out, it still says what is left', () => {
     expect(cooling?.body).toContain('The shop’s own window above is still open either way');
     // And not both, which would be two answers to one question.
     expect(cooling?.body).not.toContain('You keep the rights above for anything');
+  });
+});
+
+/**
+ * Every period these sentences state, against the constant that produced the
+ * date sitting beside it.
+ *
+ * They were typed out — "30-day right to reject", "then 14 more days to send
+ * it back" — so the sentence and the date could disagree, and mutation says
+ * nothing would have noticed: changing the numeral in any of the ten literals
+ * that carry one left the whole suite green. That is a statement of UK law
+ * shown to somebody as a right they have, drifting from the clock the app
+ * counts on.
+ *
+ * The fix is the one the landing page already has (`${REJECT_DAYS} days to
+ * reject`) and the one `brand.ts` and `pricing.ts` exist for: not a guard over
+ * a second copy, but no second copy. What is below is what stops one coming
+ * back.
+ */
+describe('the periods are written from the constants, not typed twice', () => {
+  const SOURCE = join(__dirname, '..', 'src', 'lib', 'legal.ts');
+
+  /**
+   * The literal halves only. A template's `${...}` is not part of any of these
+   * nodes, so an interpolated period leaves nothing here to find — which is
+   * exactly the property being asked about, and why this reads the file with
+   * the TypeScript parser rather than a regex: a regex over the source would
+   * see the `30` in `${REJECT_DAYS}` nowhere and the `30` in a comment
+   * everywhere.
+   */
+  const literals = (): string[] => {
+    const sf = ts.createSourceFile(SOURCE, readFileSync(SOURCE, 'utf8'), ts.ScriptTarget.Latest, true);
+    const out: string[] = [];
+    const walk = (n: ts.Node) => {
+      if (ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n)) out.push(n.text);
+      if (ts.isTemplateHead(n) || ts.isTemplateMiddle(n) || ts.isTemplateTail(n)) out.push(n.text);
+      ts.forEachChild(n, walk);
+    };
+    walk(sf);
+    return out;
+  };
+
+  it('finds the sentences it is meant to be reading', () => {
+    // A parse that returned nothing — a renamed file, a TypeScript API change —
+    // would leave the check below comparing an empty list with empty.
+    const found = literals();
+    expect(found.length).toBeGreaterThan(20);
+    expect(found.filter((t) => t.includes('cooling-off')).length).toBeGreaterThanOrEqual(4);
+    expect(found.filter((t) => t.includes('reject')).length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('states no period as a typed numeral', () => {
+    // Negative on purpose: it asks that NO literal here states a period, not
+    // that the ten known sentences state the right one, so an eleventh is
+    // covered on the day it is written.
+    const typed = literals().filter((t) => /\b\d+[- ](?:days?|weeks?|months?|years?)\b/.test(t));
+    expect(typed, `typed out rather than interpolated: ${typed.join(' | ')}`).toEqual([]);
+  });
+
+  it('and the sentences a person reads carry those numbers', () => {
+    // The other direction. Interpolation removes the second copy; this says
+    // the first one still reaches the screen, so the constants cannot be
+    // interpolated somewhere nobody sees.
+    const live = legalRights(online, TODAY, false);
+    const lapsed = legalRights({ ...online, purchasedOn: ago(200) }, TODAY, false);
+    for (const rs of [live, lapsed]) {
+      expect(find(rs, 'Consumer Rights Act').body).toContain(`${REJECT_DAYS}-day`);
+      expect(find(rs, 'Consumer Contracts Regs').body).toContain(`${COOLING_OFF_DAYS}-day`);
+    }
+    expect(find(live, 'Consumer Contracts Regs').body)
+      .toContain(`${RETURN_AFTER_CANCEL_DAYS} more days to send it back`);
+    // Both branches of each right were exercised, or the loop above proved
+    // whichever one it happened to hit twice.
+    expect(find(live, 'Consumer Rights Act').live).toBe(true);
+    expect(find(lapsed, 'Consumer Rights Act').live).toBe(false);
+    expect(find(live, 'Consumer Contracts Regs').live).toBe(true);
+    expect(find(lapsed, 'Consumer Contracts Regs').live).toBe(false);
   });
 });

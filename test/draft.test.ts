@@ -35,6 +35,15 @@ describe('amounts, as people actually type them', () => {
     [' 1,299.99 ', '£1,299.99'],
     ['0', '£0.00'],
     ['0.05', '£0.05'],
+    // The half-typed states, which the field is left in more often than the
+    // tidy ones: a trailing point on the way to the pence, a leading point
+    // instead of "0.", and a single decimal that means ten pence and not one.
+    // Found by mutation — tightening the accepted shape to `\d{1,2}` after the
+    // point, which refuses "89." and tells someone their £89 is not to the
+    // penny, changed nothing any test could see.
+    ['89.', '£89.00'],
+    ['.50', '£0.50'],
+    ['89.5', '£89.50'],
   ])('reads %s as %s', (typed, expected) => {
     expect(money(valid({ amountText: typed }).amount)).toBe(expected);
   });

@@ -44,14 +44,35 @@ const SEED_MORE = () => {
 
 const browser = await chromium.launch(EXEC ? { executablePath: EXEC } : {});
 
+/**
+ * Screens where axe ran and decided nothing, which is not the same as a clean
+ * screen.
+ *
+ * Measured: stub `axe.run` to return no violations — the shape of axe silently
+ * failing to load — and this sweep prints "✓ no accessibility violations on
+ * any screen" and exits 0. Nothing in the old shape could tell "no violations"
+ * from "no audit": `audit` recorded only what it found wrong.
+ *
+ * The signal is axe's own rule accounting. A real run reports every rule it
+ * considered across passes, incomplete and inapplicable even when none is
+ * violated; a run that never happened reports none of them. `layout.mjs` has
+ * had a guard of this shape for the same reason.
+ */
+const unaudited = [];
+
 async function audit(page, label, findings) {
   await page.evaluate(AXE_SOURCE);
   const results = await page.evaluate(async () => {
     return await window.axe.run(document, {
-      resultTypes: ['violations'],
       rules: { 'color-contrast': { enabled: false } },
     });
   });
+  const ruled =
+    (results.passes?.length ?? 0) +
+    (results.violations?.length ?? 0) +
+    (results.incomplete?.length ?? 0) +
+    (results.inapplicable?.length ?? 0);
+  if (ruled === 0) unaudited.push(label);
   for (const v of results.violations) {
     findings.push({
       screen: label,
@@ -563,7 +584,12 @@ function report(crash) {
     if (!byRule.has(f.id)) byRule.set(f.id, { ...f, screens: new Set([f.screen]) });
     else byRule.get(f.id).screens.add(f.screen);
   }
-  if (!crash && byRule.size === 0) {
+  if (unaudited.length > 0) {
+    console.log(`✗ axe decided nothing on ${unaudited.length} screen(s), so "no violations" passed over nothing:\n`);
+    for (const label of unaudited) console.log(`    ${label}`);
+    console.log('');
+  }
+  if (!crash && byRule.size === 0 && unaudited.length === 0) {
     console.log('✓ no accessibility violations on any screen');
     process.exit(0);
   }

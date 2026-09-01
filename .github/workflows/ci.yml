@@ -14,10 +14,30 @@ on:
     branches: [main]
   pull_request:
 
+# One run per pull request at a time, and the newest is the one that matters.
+#
+# The browser job builds, installs Chromium and runs eight sweeps, three of
+# which stand up servers of their own; it is about ten minutes, and this
+# repository is public so the runners are the free ones. Without this, a branch
+# that takes four pushes in an hour runs all four in full, three of them
+# answering a question about a commit nobody will merge. They do not currently
+# delay the fourth — runs here start within seconds of the push — so this is
+# about the ten minutes each, not about waiting.
+#
+# Only for pull requests. A push to `main` is the record of what that branch
+# does, and a later push must not delete it: two commits landing close together
+# would leave the first with no result at all, which is exactly the state this
+# repository refuses everywhere else — a green tree that was never asked.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   unit:
     name: unit
     runs-on: ubuntu-latest
+    # It takes half a minute. Ten is not a budget, it is a backstop.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -39,6 +59,19 @@ jobs:
   browser:
     name: browser
     runs-on: ubuntu-latest
+    # Ten minutes of work, so this is two and a half times it — a backstop for
+    # a step that stops answering rather than a budget anything runs near.
+    #
+    # Nothing has hung: every run of this job has finished in about ten minutes.
+    # The reason to have it anyway is what the DEFAULT is. With no
+    # `timeout-minutes` a step that stops answering holds this runner until
+    # GitHub's six-hour limit and reports nothing at all, so a pull request that
+    # is broken reads as one still deciding — and silence is the failure mode
+    # this repository is least equipped to notice, since every gate here is
+    # written to say what it found. `feed:wiring` carries a deadline per case as
+    # well, because it names WHICH case stopped; this is the backstop for the
+    # next thing that stops somewhere no script is watching.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
