@@ -206,6 +206,33 @@ async function sweep(width, seedState, label, steps, { blockFonts = false, expec
     await seedBeforeBoot(page, seedState, expectKind, `${label} · seeding`, width);
   }
   await page.waitForTimeout(500);
+  if (blockFonts) {
+    /*
+     * That the block actually took: this file already knows that a seed which
+     * silently does nothing is worse than no seed, and until now the FONT
+     * dimension had no such check.
+     *
+     * It is not hypothetical. The service worker precaches both typefaces in
+     * SHELL, and it calls skipWaiting, so it controls the page from the first
+     * load — a cached font answered from the worker is a font this route never
+     * sees. It is intercepted today, measured: `Space Grotesk:error` blocked
+     * against `Space Grotesk:loaded` allowed. What has no guarantee is that it
+     * stays intercepted, and the failure would be silent — the widest state
+     * this app ships in, reported as swept and never entered.
+     *
+     * The same reliance bit `feed:wiring`, in the other direction: a request
+     * the WORKER made, sometimes routed and sometimes not.
+     */
+    const fellBack = await page.evaluate(() => !document.fonts.check('16px "Space Grotesk"'));
+    if (!fellBack) {
+      failures.push({
+        label,
+        width,
+        kind: 'the webfont block did not take',
+        detail: 'Space Grotesk still loaded, so this pass swept the ordinary state twice',
+      });
+    }
+  }
   await page.getByRole('button', { name: 'Skip' }).click().catch(() => {});
   await page.waitForTimeout(400);
   for (const [name, act] of steps) {

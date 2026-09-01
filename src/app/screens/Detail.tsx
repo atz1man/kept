@@ -9,6 +9,7 @@ import { findStore } from '../../lib/stores';
 import { urgency } from '../../lib/urgency';
 import { ChevronLeft, Warning } from '../components/Icons';
 import { Pressable } from '../components/Pressable';
+import { ReceiptPhoto } from '../components/ReceiptPhoto';
 
 /** 2π × 40, the circumference of the ring the countdown draws on. */
 const RING_CIRCUMFERENCE = 251.3;
@@ -153,6 +154,8 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
 
       <div style={{ background: color.white, border: `1.5px solid ${color.border}`, borderRadius: radius.cardLg, marginTop: 12 }}>
         <div style={{ padding: '16px 18px 14px' }}>
+          <ReceiptPhoto receiptId={receipt.id} />
+
           <div style={cardLabel}>STORE POLICY</div>
           <div style={{ fontSize: 14, marginTop: 5, lineHeight: 1.5, color: color.bodyStrong }}>{receipt.policy}</div>
           {dispatchDiffers && (

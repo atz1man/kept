@@ -2,7 +2,7 @@
 #
 # Two jobs, split by what they need. The fast one is pure logic, strict types
 # and a build — no browser, so it fails in seconds rather than minutes when it
-# fails at all. The other serves the built app and runs six sweeps against a
+# fails at all. The other serves the built app and runs eight sweeps against a
 # real Chromium. Each of those sweeps found genuine defects the day it was
 # written, which is why they are gates and not a ritual someone remembers to
 # perform.
@@ -71,3 +71,15 @@ jobs:
       # fetches reaching the live server. Nothing above it is disturbed.
       - name: A deploy reaches the app, and the app works without one
         run: npm run freshness
+      # The bundle that actually ships to a phone. Every check above runs
+      # against the WEB build; this one builds dist-ios and boots it, which is
+      # a different document at a different path. It owns its own port.
+      - name: The iOS bundle boots as the app at its root
+        run: npm run build:ios && npm run ios
+      # Builds the app twice itself, with and without a feed key, and owns its
+      # own ports. It is here rather than in the unit job because the question
+      # is whether the running app drops an unproven feed, and only a browser
+      # can be asked that — the verifier's own tests pass whether or not
+      # anything calls it.
+      - name: An unproven policy feed does not reach the store
+        run: npm run feed:wiring

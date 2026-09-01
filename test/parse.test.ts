@@ -287,6 +287,29 @@ describe('the day it arrived — read, never guessed', () => {
 });
 
 describe('the day it was dispatched — a third clock, kept apart', () => {
+  it('takes a dispatch date of today, which is when most of these emails arrive', () => {
+    /*
+     * `daysBetween(today, hit.date) <= 0` — already happened, today included.
+     * Every case here used a date safely in the past, so tightening it to
+     * `< 0` threw away the commonest one of all: the dispatch email that
+     * arrives the day the parcel leaves.
+     *
+     * Not cosmetic. `dispatchedOn` becomes `windowStartsOn`, and the shops
+     * that count from dispatch — Zara among them — have their whole deadline
+     * moved by it. Losing it falls back to the order date and shortens the
+     * window the app counts down, silently.
+     */
+    const p = parse('Zara · Order placed 13 Aug 2026 · £34.99 · Dispatched 28 Aug 2026');
+    expect(p.dispatchedOn).toBe('2026-08-28');
+  });
+
+  it('refuses a dispatch date still in the future, which is a promise', () => {
+    // The other side of the same comparison. "Dispatching by Friday" is not an
+    // event, and the field is null rather than a date it has not happened on.
+    const p = parse('Zara · Order placed 13 Aug 2026 · £34.99 · Dispatched 30 Aug 2026');
+    expect(p.dispatchedOn).toBeNull();
+  });
+
   it('reads a labelled dispatch date', () => {
     const p = parse('Zara · Order placed 13 Aug 2026 · £34.99 · Dispatched 15 Aug 2026');
     expect(p.purchasedOn).toBe('2026-08-13');
@@ -367,5 +390,243 @@ describe('date boundaries nothing pinned', () => {
     const r = parse(`Currys · Order placed ${toISODate(TODAY).split('-').reverse().join('/')} · Kettle · Total £29.00`);
     expect(r.purchasedOn).toBe(toISODate(TODAY));
     expect(r.dateFound).toBe(true);
+  });
+});
+
+describe('the dates themselves, which are facts rather than heuristics', () => {
+  /*
+   * Most of parse.ts is judgement — how far a date may sit from its label, how
+   * far back to look for a disqualifying phrase — and those constants want a
+   * real corpus rather than a reflex test each. I deferred the whole file on
+   * that basis, and that was too broad a brush.
+   *
+   * The month table is not a judgement. "Mar" is the third month, and mutating
+   * that entry to 3 makes every March purchase parse as April — a deadline a
+   * month out, from a paste that looked right. Eight mutations of that table
+   * survived the suite, together with the day-first reading and the two-digit
+   * year, and none of them needs a corpus to state: they need the calendar.
+   *
+   * (The range check beside them is a documented equivalent — the round-trip
+   * that follows rejects everything it would have, which the source says.)
+   */
+  const on = (when: string) => parse(`Currys · Order placed ${when} · £20.00`).purchasedOn;
+
+  it.each([
+    ['Jan', '01'], ['Feb', '02'], ['Mar', '03'], ['Apr', '04'],
+    ['May', '05'], ['Jun', '06'], ['Jul', '07'], ['Aug', '08'],
+    ['Sep', '09'], ['Oct', '10'], ['Nov', '11'], ['Dec', '12'],
+  ])('reads %s as month %s', (name, mm) => {
+    expect(on(`15 ${name} 2025`)).toBe(`2025-${mm}-15`);
+  });
+
+  it.each([
+    ['the full name', '15 March 2025', '2025-03-15'],
+    ['an ordinal', '15th Feb 2025', '2025-02-15'],
+    ['the last day of a month', '31 Dec 2025', '2025-12-31'],
+  ])('reads %s', (_label, text, expected) => {
+    expect(on(text)).toBe(expected);
+  });
+
+  it('reads a slashed date DAY first, because this is a UK app', () => {
+    // 05/08 is the fifth of August and never the eighth of May. Swap the two
+    // group indices and every slashed date in the app moves by months.
+    expect(on('05/08/2026')).toBe('2026-08-05');
+    expect(on('11/12/2025')).toBe('2025-12-11');
+  });
+
+  it('reads a two-digit year as this century', () => {
+    expect(on('05/08/26')).toBe('2026-08-05');
+    expect(on('05/08/26')).toBe(on('05/08/2026'));
+  });
+
+  it('reads an ISO date as itself', () => {
+    expect(on('2026-08-05')).toBe('2026-08-05');
+  });
+
+  it.each([
+    ['a month that has not come round yet is LAST year', '25 Dec', '2025-12-25'],
+    ['a month already past is this year', '1 Jan', '2026-01-01'],
+    ['today itself is this year, not last', '28 Aug', '2026-08-28'],
+    ['and so is yesterday', '27 Aug', '2026-08-27'],
+  ])('with no year written down, %s', (_label, when, expected) => {
+    /*
+     * The comment on `resolveYear` says what is at stake: a bare "25 Dec"
+     * pasted in August, read as this coming December, starts a return clock on
+     * a date that has not arrived and reports a window months too generous.
+     *
+     * Both edges of that decision survived the suite. `> 0` loosened to `>= 0`
+     * throws TODAY back a year, and the `- 1` flipped to `+ 1` sends an
+     * undated future month forward instead of back. Neither needs a corpus to
+     * state — it is the calendar and the clock.
+     */
+    expect(on(when)).toBe(expected);
+  });
+
+  it('reads a two-digit year beside a month name as this century', () => {
+    expect(on('5 Aug 26')).toBe('2026-08-05');
+    expect(on('5 Aug 26')).toBe(on('5 Aug 2026'));
+  });
+
+  it('refuses a day that does not exist in its month', () => {
+    /*
+     * The round trip: `new Date(2026, 1, 31)` rolls into 3 March, so the date
+     * is discarded rather than silently moved. A deadline computed from a day
+     * that never happened is worse than no date at all.
+     */
+    const out = parseReceiptText('Currys · Order placed 31 Feb 2026 · £20.00', TODAY);
+    expect(out.ok ? out.value.purchasedOn : null).not.toBe('2026-03-03');
+  });
+});
+
+describe('a promised delivery is not a delivery', () => {
+  /*
+   * Both statutory clocks run from the day the parcel landed, and `arrivedOn`
+   * is the one field the app treats as fact rather than hedging — it is the
+   * difference between "at least until 27 September" and "27 September". So
+   * reading a PROMISE as an event starts both clocks before the parcel
+   * existed, which makes a live right look expired: the expensive direction.
+   *
+   * The guard existed and looked only at the text BEFORE the label, so it
+   * caught the one word order it was written for. Measured before the fix, on
+   * an order dated 1 September read on 20 September: "Estimated delivery 3
+   * September" was correctly refused, while "Delivery expected", "Delivery
+   * due" and "Delivered by" all became an arrival of the 3rd, and "Dispatch
+   * scheduled" a dispatch of it — the last being the shape the code's own
+   * comment offered as its example of what it excluded.
+   *
+   * These are short and invented, and that is fine here in a way it would not
+   * be for the picking heuristics: what is being tested is the RULE the module
+   * already states — a promise is not an event — not a guess about how any
+   * particular shop writes its emails.
+   */
+  const read = new Date(2026, 8, 20);
+  const order = 'Zara\nOrder date: 1 September 2026\n';
+  const parse = (line: string) => {
+    const outcome = parseReceiptText(`${order}${line}\nTotal £61.00`, read);
+    if (!outcome.ok) throw new Error(outcome.reason);
+    return outcome.value;
+  };
+
+  it('refuses a promise whichever side of the label it sits', () => {
+    for (const line of [
+      'Estimated delivery 3 September 2026',
+      'Delivery expected 3 September 2026',
+      'Delivery due 3 September 2026',
+      'Expected delivery date 3 September 2026',
+      'Delivery scheduled 3 September 2026',
+    ]) {
+      expect(parse(line).arrivedOn, line).toBeNull();
+    }
+  });
+
+  it('refuses a promised dispatch too', () => {
+    for (const line of [
+      'Dispatch scheduled 3 September 2026',
+      'Dispatching by 3 September 2026',
+      'Estimated dispatch 3 September 2026',
+    ]) {
+      expect(parse(line).dispatchedOn, line).toBeNull();
+    }
+  });
+
+  it('still reads the event when the paste announces one', () => {
+    // The guard has to stay one-sided in the right direction: refusing every
+    // arrival would be safe and useless, since the field only exists to stop
+    // the app hedging when it does not need to.
+    expect(parse('Delivered 3 September 2026').arrivedOn).toBe('2026-09-03');
+    expect(parse('Dispatched 3 September 2026').dispatchedOn).toBe('2026-09-03');
+    expect(parse('Date delivered: 3 September 2026').arrivedOn).toBe('2026-09-03');
+  });
+
+  it('tells "by 3 September" from "by DPD on 3 September"', () => {
+    /*
+     * `by` is the one ambiguous word, which is why it is not in the list with
+     * the others: it means a promise only when it stands against the date.
+     * A courier's name between the two is an event.
+     */
+    expect(parse('Delivered by 3 September 2026').arrivedOn).toBeNull();
+    expect(parse('Delivered by DPD on 3 September 2026').arrivedOn).toBe('2026-09-03');
+  });
+});
+
+describe('a shipping date is not a purchase date, whichever side its word sits', () => {
+  /*
+   * `pickDate` prefers a date NOT announced as a delivery or a dispatch, and
+   * read only backwards for that word — so it saw "Dispatched 12 August" and
+   * missed "12 August dispatched". Measured on an order placed 1 August, read
+   * on 20 September: the first correctly gave the 1st, the second, the table
+   * column and the parenthesised form all gave the 12th. Eleven days late, and
+   * late is the direction that matters — the return window then runs from a
+   * day after the purchase, so the app promises days the shop will not honour.
+   */
+  const read = new Date(2026, 8, 20);
+  const bought = (body: string) => {
+    const outcome = parseReceiptText(`Zara\n${body}\nTotal £61.00`, read);
+    if (!outcome.ok) throw new Error(outcome.reason);
+    return outcome.value.purchasedOn;
+  };
+
+  it('ignores a shipping date whose word follows it', () => {
+    for (const line of [
+      '12 August 2026 dispatched',
+      '12 August 2026    Delivered',
+      '12 August 2026 (delivery)',
+      '12 August 2026 — shipped',
+    ]) {
+      expect(bought(`1 August 2026\n${line}`), line).toBe('2026-08-01');
+    }
+  });
+
+  it('still ignores one whose word precedes it', () => {
+    expect(bought('1 August 2026\nDispatched 12 August 2026')).toBe('2026-08-01');
+  });
+
+  it('does not throw away a purchase date because a later clause mentions shipping', () => {
+    /*
+     * The guard rail on the rule above, and the reason only whitespace, a
+     * bracket or a dash may stand between the date and the word. A comma
+     * starts a new clause: "Ordered 1 August 2026, dispatch to follow" is a
+     * purchase date, and reading it as a shipping date would hand the answer
+     * to the delivery date underneath — which is the very defect being fixed,
+     * arriving by way of the fix.
+     */
+    expect(bought('Ordered 1 August 2026, dispatch to follow\nDelivered 5 August 2026')).toBe('2026-08-01');
+    expect(bought('1 August 2026 order confirmed\nDelivered 5 August 2026')).toBe('2026-08-01');
+  });
+
+  it('leaves a labelled order date alone either way', () => {
+    // The label wins before any of this is consulted, which is the point of
+    // having it: a shop that writes "Order date" is not being second-guessed.
+    expect(bought('Order date: 1 August 2026\n12 August 2026 delivered')).toBe('2026-08-01');
+  });
+});
+
+describe('a label claims only the date that follows it', () => {
+  /*
+   * `pickDate` treats a date as labelled when it sits AFTER an order-date
+   * phrase and within reach of it. Both halves, and the first had nothing
+   * standing over it: loosen the conjunction and a date sitting BEFORE the
+   * label satisfies the reach test with a negative distance, so the shipping
+   * line above "Order date" becomes the purchase.
+   *
+   * Found by mutation — `&&` to `||` survived the whole suite — and it is the
+   * same question as the two fixes above, asked of the label rather than of
+   * the qualifier: which side of the date is the word on.
+   */
+  const read = new Date(2026, 8, 20);
+  const bought = (body: string) => {
+    const outcome = parseReceiptText(`Zara\n${body}\nTotal £61.00`, read);
+    if (!outcome.ok) throw new Error(outcome.reason);
+    return outcome.value.purchasedOn;
+  };
+
+  it('does not let a date above the label be read as the labelled one', () => {
+    expect(bought('12 August 2026 delivered\nOrder date: 1 August 2026')).toBe('2026-08-01');
+  });
+
+  it('reads it the usual way round too', () => {
+    // The guard rail: a rule that rejected everything would satisfy the case
+    // above and lose the labelled date entirely.
+    expect(bought('Order date: 1 August 2026\n12 August 2026 delivered')).toBe('2026-08-01');
   });
 });

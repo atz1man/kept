@@ -19,7 +19,7 @@ which is the only real test that claim ever had.
 ```bash
 npm install
 npm run dev        # landing page at /, app at /app/
-npm test           # 635 unit tests over the decision logic
+npm test           # 759 unit tests over the decision logic
 npm run typecheck  # strict, noUnusedLocals
 npm run build      # both entries
 ```
@@ -37,10 +37,213 @@ npm run layout     # 320px and 402px, adversarial content, empty states, covered
 npm run agreement  # the same fact, on more than one screen, has to match
 npm run perf       # diagnostic, not a gate: how it behaves as the list grows
 npm run freshness  # starts and stops its OWN server — see below, no preview needed
+npm run ios        # boots dist-ios, the bundle that ships — also its own server
 ```
 
 In a sandbox whose Chromium is not the build Playwright expects, point it at
 the installed binary: `CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome npm run smoke`.
+
+And the iOS app:
+
+```bash
+npm run build:ios  # builds to dist-ios and makes the APP the entry, not the landing page
+npx cap sync ios   # copies it into the Xcode project and updates the plugins
+```
+
+The rest needs macOS — `pod install`, signing, and the build itself. Everything
+above this line runs anywhere.
+
+**Setting the real bundle identifier takes two edits, not one.** `appId` in
+`capacitor.config.ts` is `uk.co.kept.REPLACE_ME`, and the same string is in
+`ios/App/App.xcodeproj/project.pbxproj` twice, once for Debug and once for
+Release. `npx cap sync ios` will NOT bring them into line — the CLI writes
+`PRODUCT_BUNDLE_IDENTIFIER` and `CFBundleDisplayName` from
+`editProjectSettingsIOS`, and that runs from `cap add` only, once, when the
+project is first created. Change the config and the pbxproj together, by hand.
+
+Do NOT re-create the project to get it done for you. `ios/` is not purely
+generated any more: it carries the three camera usage descriptions and kept's
+own icon and launch screen, none of which `cap add` would write.
+
+`test/ios-identity.test.ts` is what says so: it compares all three and fails
+naming the mismatch, which is the first thing that will happen if only one is
+edited. That is the point of it — the check exists for the day this is done for
+real, and it does not care what the identifier is, only that the three agree.
+
+## iOS
+
+kept is a native app by **wrapping** the web app, not by being rewritten.
+
+The reason is where the risk lands. `src/lib` is the return windows, the two
+statutory clocks and the parser, held by the unit suite and eight browser sweeps.
+A SwiftUI rewrite would move exactly that into a language the web toolchain
+cannot check, making the money-and-dates code this app exists to get right the
+least verified part of it. Wrapping keeps every test applying to what ships.
+
+Three things about the platform genuinely change the app, and each is written
+where it happens rather than only here.
+
+**The receipts need somewhere better than the web view.** WKWebView keeps its
+storage under `Library/WebKit`, which the system may reclaim and which is not
+in a device backup — and there is no server holding a copy, so that is a total
+loss with no error and no signal. `lib/mirror.ts` keeps a second copy in the
+app's Documents directory. One rule: it holds whatever `save` last committed.
+That is what makes erasing safe, and it is why an empty library has to count as
+a library rather than as an absence.
+
+**Alerts can be lodged in advance.** This is the reason to have a native app at
+all: `lib/schedule.ts` works out what will be worth saying and when, and iOS
+raises it with kept closed. The web cannot, which is why `notify.ts` says so and
+Settings says so — and why Settings now says something different on iOS, since
+leaving the web sentence up there would have the app understating itself.
+
+One thing this leaves imperfect, on purpose. `alertsSent` is not only dedup —
+the celebration reads it to decide whether to say "kept reminded me before the
+window shut", a line that was once printed whether or not kept had said
+anything. When iOS raises an alert with the app closed, nothing records it, so
+a person who saw the warning, dismissed it, and returned the coat a day later
+gets the plain celebration. A tap records it, because a tap is proof. The
+clock is not proof: "its 9am has passed, so it was delivered" is false whenever
+notifications are refused at the system level, and being wrong that way puts
+the original defect back — claiming a warning that never arrived. Understating
+is the direction to be wrong in.
+
+**The service worker is a web mechanism, and stays there.** Its scope is
+`/app/`, because that is where the app lives on the web. The native shell loads
+the app from the ROOT, so in the iOS bundle the registration succeeded and the
+page it exists to serve sat outside its scope — running on every launch, able
+to control nothing. Measured, not guessed: `registrations: ["/app/"],
+controlled: false`. Widening the scope would be the wrong fix, because a
+Capacitor app's assets are already local files, so offline there is a property
+of the bundle rather than of a cache. `npm run ios` boots `dist-ios` and
+refuses if a worker registers, and it exists because every other sweep runs
+against the web build and nothing had ever loaded the one that ships.
+
+**The paper receipt can be photographed, and the picture is not read.** What a
+shop asks for at the counter is proof of purchase, and for a counter purchase
+that is the slip. `lib/photos.ts` keeps it on the filesystem, because a photo is
+megabytes against a `localStorage` quota in single figures — one snap would
+evict every receipt the app had. The control says outright that kept keeps the
+picture and does not read it: OCR is a separate problem with a separate failure
+mode, and a total this app got wrong from a blurry thermal print would be worse
+than no total at all. The disabled "Scan a paper receipt" button still says
+scanning is not built, because it is not.
+
+Three decisions there are worth knowing. There is deliberately **no `photo`
+field on `Receipt`** — the file is the truth, because a flag could not stay in
+step with the disk at the one moment that matters, a backup restored onto a
+different phone, where every flag would arrive set and every file be missing. A
+receipt id is **not a filename**: `readReceipt` accepts any non-empty string as
+an id and a backup file is untrusted input, so an id of `../kept-receipts.json`
+would point a write at the mirror that holds every receipt — ids are reduced to
+characters that cannot mean anything to a path. And orphaned pictures are
+cleared **at launch, not at delete**, because deleting a receipt here is
+undoable and the undo would otherwise restore a receipt whose picture had
+already gone.
+
+Erasing takes them with it. That needed saying in code as well as here: `wipe`
+removed the localStorage key and nothing else, which was complete while
+everything lived there.
+
+**The bottom 34px belong to the home indicator.** Anything anchored to the
+bottom edge has to account for `env(safe-area-inset-bottom)`, and no browser
+check can see that it does not: the inset is 0 here, so the wrong layout looks
+perfect. `test/safe-area.test.ts` reads the source instead.
+
+**A missing purpose string does not crash — it goes quiet.** `Info.plist` had
+none of the three usage descriptions, and `@capacitor/camera` checks all three
+in `getPhoto` *before* it dispatches on source, even though kept only ever asks
+for a new photograph and never opens the library. A missing key makes the call
+**reject**. That would have been survivable if the rejection were visible, and
+it was not: `take()` caught everything with a comment saying cancelling is the
+ordinary case, so a build with no purpose strings, and a phone whose owner had
+refused camera permission, both looked exactly like a tap on Cancel. A button
+that does nothing, on every device, with nothing anywhere saying why.
+
+Both halves are fixed. The strings are in `Info.plist`, and
+`test/ios-usage-strings.test.ts` reads the required list out of the **plugin's
+own Swift source** rather than a copy of it, so a key added by an upgrade is
+caught the day the upgrade lands. It also holds the strings to the code: two of
+them say kept never opens the photo library, which is true only while the source
+is `CameraSource.Camera`, so changing that fails the test rather than quietly
+making a sentence in a plist untrue. And `isCameraCancellation` is lifted out of
+the component — the component cannot be exercised here, and the judgement can —
+with anything unrecognised counting as a failure on purpose: wrong in that
+direction shows a banner to someone who cancelled, wrong in the other hides a
+broken camera. The banner itself split in two, because the existing one blamed a
+full phone, which is right for a write that did not land and simply false for a
+camera that never opened.
+
+**The home screen carried Capacitor's logo.** `npx cap add ios` writes its own
+blue mark as the app icon and again as the launch screen, and says nothing about
+having done it. It sat there for eight commits. Nothing here could see it: every
+browser sweep runs against the web build, which has kept's own icons and never
+opens those files.
+
+`scripts/make-icons.mjs` renders them now, from the same single SVG the web
+icons come from, and iOS gets its own variant because it has two rules the web
+does not — both silent. An app icon carrying an **alpha channel** is rejected at
+submission, and every Playwright screenshot is RGBA, so the generator writes the
+PNG itself with the channel dropped rather than merely unused. And a **rounded**
+icon is masked twice, showing dark wedges inside the system's own curve, so the
+iOS variant squares its corners off. `test/ios-assets.test.ts` decodes the files
+and checks the corners are kept ink, the mark is actually on them, and the
+launch screen is painted the colour `capacitor.config.ts` tells the shell to
+paint — the same fact in two files, which is the pairing this codebase keeps
+finding quietly disagreeing.
+
+The first attempt at the launch screen was wrong and the generator called it a
+success. A nested `<svg x y width height>` is the obvious way to place the mark,
+and Chromium did not scale it by the inner viewBox: it rendered several times
+too large and ran off the canvas. Only looking at the file caught it, which is
+why the guard now also asserts the mark is *not* where it should not be.
+
+**An erase could undo itself.** `wipe` removed the localStorage key and left
+the emptied library to the save effect that follows a moment later. Between the
+two, localStorage held nothing and the mirror still held everything — which
+`chooseSource` reads, correctly for every other situation, as "the web view lost
+the store, put it back". So erasing and then closing the app, which is exactly
+what somebody does after erasing, brought every receipt back on the next launch.
+Measured before it was changed: two receipts, restored. `wipe` writes the
+emptied library synchronously now, so the window does not exist rather than
+being made small, and it takes the mirror with it. Two smaller things came out
+of the same reading: it returned early on a store that would not answer, which
+on Safari in private mode meant the photographs survived an erase; and the
+emptied blob it writes keeps settings and onboarding, because the reducer's own
+`wipe` does, and two paths writing different post-erase states would be the same
+fact disagreeing with itself.
+
+**Two of the three plugins were not in the app at all.** The Podfile listed
+`CapacitorFilesystem` and nothing else, while the app had been importing
+`@capacitor/camera` and `@capacitor/local-notifications` for several commits. A
+Capacitor plugin is a JavaScript wrapper over a native pod: the wrapper arrives
+with `npm install`, the pod does not, and the Podfile is regenerated by
+`npx cap sync ios`. Add a plugin, forget the sync, and everything still builds —
+the JS is there, the native half is missing, and the call fails on the device.
+The mirror would have worked. The camera and every deadline alert — the whole
+reason this app has a native build — would not.
+
+Nothing here could see it either. The Podfile is read by CocoaPods, which needs
+a Mac; nothing in this repository compiles anything, and `npm run ios` boots the
+web bundle with the bridge stubbed, so a missing pod looks exactly like a
+browser. `test/ios-plugins.test.ts` walks the real dependency list and the real
+podspec names out of `node_modules` — a hand-kept list would have been written
+on the day of the mistake and had the same gap in it.
+
+That is the shape of the whole exercise. Six of the defects found building
+this — the storage location, the home indicator, the purpose strings, the
+vendor's logo on the home screen, the erase that undid itself, and two plugins
+that were never in the build — are
+invisible to every test that existed when they were introduced, because they
+are facts about a device none of this runs on. They were found by reading for the platform, and the
+guards against them are guards a reader can check rather than a runner.
+
+**Not verified here, and it should not be claimed otherwise:** nothing has been
+run on a device or a simulator. `appId` in `capacitor.config.ts` is
+deliberately `uk.co.kept.REPLACE_ME` — it must match the bundle identifier on
+the Apple developer account, cannot be guessed, and is obviously wrong rather
+than plausibly wrong on purpose, the same choice as `TABLE_CHECKED_ON` and
+`SOCIAL_PROOF_IS_PLACEHOLDER`.
 
 ## Stack, and why
 
@@ -57,8 +260,10 @@ The service worker is what makes the deadline checkable with no signal.
 
 `.github/workflows/ci.yml` runs on every push to `main` and every pull
 request. Two jobs: a fast one (typecheck, unit tests, build) and a browser one
-that serves the built app and runs five sweeps against it, plus `freshness`,
-which starts and stops a server of its own. Each of those found real defects
+that serves the built app and runs five sweeps against it, plus three that own
+their servers: `freshness`, which starts and stops one so it can cut a service
+worker's network; `ios`, which boots the bundle that actually ships; and
+`feed:wiring`, which builds the app twice, with a signing key and without. Each of those found real defects
 the day it was written, which is why they are gates rather than a ritual
 someone remembers to perform.
 
@@ -1639,14 +1844,32 @@ exactly what was wrong. None of it reached the screen — and the check written
 for that defect, `onboarding is not shown again`, sat two hundred lines further
 down, where it could only ever be reached in the world where it passed.
 
-The report is a function now in **all six** sweeps — fixed where it is true,
+The report is a function now in **all eight** sweeps — fixed where it is true,
 not only where it was noticed — installed on the way out however the run ends,
 and the check has moved up to the first launch that reads `onboardingSeen` off
 the disk. Two of them needed a small rearrangement to get there: `contrast` and
 `a11y` grouped their findings into rows *after* the browser work, so a reporter
 that read those rows could not run during the work. The grouping is
 presentation and now lives inside the reporter, which leaves it depending on
-nothing declared later. The same mutation now prints:
+nothing declared later.
+
+That count said **six** for a long time, and it was six sweeps ago. It went
+stale twice without anybody noticing, and the second time it went false:
+`feed:wiring` was written later — by someone who did not know this file existed
+— and became a CI gate with no reporter at all. So the failure most likely in a
+sandbox, a Chromium the pinned Playwright does not have, would have printed a
+bare stack trace and nothing else, which reads as the feature being broken
+rather than the environment being wrong. Precisely the misdiagnosis this whole
+mechanism was built to prevent, reintroduced by the person who had just read
+about it.
+
+`test/sweeps-report.test.ts` now walks the browser job's own `npm run` steps,
+resolves them through `package.json` to the files they execute, keeps the ones
+that drive a browser, and asks each for the reporter. A claim in a README with
+nothing enforcing it is how this came to be false; a ninth sweep will be caught
+on the day it is added. It also asks that the handler go in EARLY, because the
+first fix installed it after two `build()` calls and left the likeliest failure
+escaping it anyway. The same mutation now prints:
 
 ```
 ✗ onboarding is not shown again
@@ -1892,24 +2115,98 @@ spending minutes a mutation on it.
   feed — parse, confirm, edit before saving — already exists and is where a
   scan should land, so adding it later is a contained change rather than a
   redesign.
-- **Background notifications.** Deadline alerts are real — `lib/alerts.ts`
-  decides which deadlines are worth an interruption and `app/notify.ts`
-  delivers them — but a web app cannot wake itself at 9am. Notification
-  Triggers never shipped, and Periodic Background Sync is one engine's, for
-  installed apps only, granted at the browser's discretion. So alerts are
-  computed whenever kept is opened or brought back to the foreground, and
-  Settings says exactly that instead of implying a service that does not
-  exist. A native shell or a push path replaces `notify.ts` alone; the
-  decision engine does not change.
+- **Background notifications, on the web.** Still not possible, and still
+  stated rather than implied: Notification Triggers never shipped, and Periodic
+  Background Sync is one engine's, for installed apps only, granted at the
+  browser's discretion. So on the web alerts are computed whenever kept is
+  opened or brought back to the foreground, and Settings says exactly that.
+
+  **On iOS they are real.** The prediction this entry made — that a native
+  shell replaces the delivery alone and the decision engine does not change —
+  held: `lib/alerts.ts` was not touched. `lib/schedule.ts` works out what will
+  be worth saying and when, and `app/schedule-native.ts` lodges it with the
+  system, so a deadline arrives at 9am with kept closed. Both paths read the
+  same `copyFor`, so the words cannot drift apart. Settings now tells whichever
+  truth applies, because leaving the web sentence up on iOS would be the app
+  understating itself, which is the same species of untruth as overstating.
 - **Payments.** The pricing tiers unlock the local plan flag and say plainly
   that nothing was charged. No card, no billing, nothing to cancel.
 - **Signing the policy feed.** The feed is fetched from the app's own origin,
   validated entry by entry and merged (`lib/policy-feed.ts`), and the download
   is of *all* changes — never a query naming the shops a particular user
-  holds, which would be the leak the privacy notice rules out. What is missing
-  is provenance: the entries in `public/policy-feed.json` are maintained by
-  hand and nothing proves they came from us. Production wants them signed, and
-  a pipeline that verifies each retailer's published terms before publishing.
+  holds, which would be the leak the privacy notice rules out.
+
+  What was missing was provenance, and this entry said so three times before
+  anything was done about it. The limits on the feed bound the *damage* — a
+  window must be a positive integer under ten years, a note is capped, the feed
+  at `MAX_UPDATES` — but none of them asks whether the thing that answered was
+  the right thing at all, and `windowInForceFor` hands a new purchase whatever
+  the feed says. Anything able to respond to that URL could tell every
+  installation that Currys now gives seven days, and the direction that costs
+  money is the short one.
+
+  So `lib/feed-signature.ts` verifies a detached ECDSA P-256 / SHA-256
+  signature served beside the feed at `/policy-feed.sig`. Three things about it
+  are deliberate:
+
+  - **The signature covers the bytes that arrived**, not a re-serialised parse.
+    `App.tsx` reads the response as text and hands those exact bytes to the
+    verifier, because signing `JSON.stringify(JSON.parse(body))` would let two
+    different documents share one signature anywhere serialisation normalised a
+    difference away — key order, whitespace, `1.0` against `1`.
+  - **The policy is separate from the cryptography.** `feedIsAcceptable` is a
+    four-line function with its own tests, because the policy is where the
+    mistake would be: with a key configured an *unsigned* feed is refused, so a
+    server that quietly stopped signing cannot undo the feature. And "the
+    environment has no WebCrypto" returns false — cannot check must never read
+    as checked.
+  - **`FEED_PUBLIC_KEY` is `null`, and that ships.** Not a placeholder that
+    looks real: a fake key would fail every genuine feed and silently switch the
+    policy watch off, and a security feature that breaks the product is one
+    nobody keeps. While it is null the app behaves exactly as it did before —
+    which is why no on-screen copy claims the feed is verified, and why the
+    shipping build never even requests the signature. Turning it on is
+    `npm run feed:keygen`, the public half into that constant or into
+    `VITE_FEED_PUBLIC_KEY` at build time, the private half kept off this machine
+    and out of this repository, and `npm run feed:sign` over each published
+    feed. Neither script writes a key to disk. The override is build time only:
+    a key a running page could set would be no key at all.
+
+  `npm run feed:wiring` is the part that took the longest to get honest. The
+  unit tests prove the verifier verifies and the policy is the policy; neither
+  says whether `App.tsx` *calls* them, on the right bytes, and drops the feed
+  when the answer is no — a check whose result is ignored passes every unit test
+  it has. So that script builds the real app twice, with and without a key it
+  generates, serves five feeds at it, and reads `localStorage` to see which ones
+  reached the store. Its first draft could not tell the bytes-versus-parsed
+  difference apart, because the probe it served was already canonical JSON and
+  both readings hashed the same; it now serves the feed pretty-printed, the way
+  the real file is, and fails itself if that ever stops being true.
+
+  **The half that is deliberately not built: saying so.** A refused feed is
+  silent. The app keeps the list it already holds, which is the right thing to
+  do — the held copy was accepted under the same rule, and quietly taking an
+  unproven one would defeat the check — but the Watch screen still reads *"Kept's
+  own list of changes, fetched each time you open the app"*. Literally true: it
+  is fetched. Misleading all the same, because the list on screen is not what
+  came back, and a person looking at a stale one has nothing to tell them so.
+  This codebase has removed a sentence for less — "Policies verified daily by
+  kept · last check today 06:00" invented both the verification and the hour.
+
+  It is not built because it cannot occur in the shipping build. With
+  `FEED_PUBLIC_KEY` null nothing is ever refused, so the copy would render on no
+  device and no sweep could check it — the exact blind spot that let
+  `ReceiptPhoto` go unseen until `npm run ios` grew to open a receipt. The
+  groundwork is done rather than guessed at: `feedIsAcceptable` already returns
+  `reason: 'refused'` instead of a bare boolean, precisely so the caller can
+  distinguish this from an ordinary offline failure. Whoever sets a real key
+  should carry that reason into the state and give the Watch footer a second
+  sentence — and extend `feed:wiring`, which already builds with a key, to
+  assert it appears.
+
+  Still wanted for production: a pipeline that verifies each retailer's
+  published terms before publishing, and somewhere to hold the private key that
+  is not a laptop.
 
 ## Before this ships
 
@@ -1923,3 +2220,31 @@ can substantiate.
 The retailer windows in `stores.ts` were written from the handoff and public
 policy pages. Verify each one against the retailer's current published terms
 before launch — the app's core claim is that these are right.
+
+**The iOS privacy manifest is not written, and it is the one place the App
+Store reads this app's central claim mechanically.** What was measured here,
+rather than assumed:
+
+- `ios/App/App/` contains no `PrivacyInfo.xcprivacy`.
+- `@capacitor/ios` ships one for the Capacitor and CapacitorCordova targets,
+  declaring no tracking, no tracking domains, no collected data and no accessed
+  API types.
+- `@capacitor/camera`, `@capacitor/filesystem` and `@capacitor/local-notifications`
+  — the three plugins this app uses — ship none at any version installed here.
+
+kept's own declaration is the knowable part, and it is the same shape as
+Capacitor's, because it is true: nothing tracked, no tracking domains, nothing
+collected. An app whose whole promise is that the receipts never leave the
+device should say exactly that in the file Apple parses, not only in a privacy
+notice a person has to read.
+
+What could NOT be settled from here is which required-reason APIs the plugin
+code reaches once compiled — that needs the Mac toolchain, and declaring an API
+the app does not use is as wrong as omitting one it does.
+
+It is deliberately not half-done. Dropping the file into `ios/App/App/` without
+also registering it in `project.pbxproj` — a PBXFileReference, a PBXBuildFile,
+the group, and the target's Resources build phase — leaves it out of the built
+app entirely, which is worse than its absence: it looks finished. No pbxproj
+parser is available here and the project cannot be opened to check, so that
+edit belongs on the machine that can build it.

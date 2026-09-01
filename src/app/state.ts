@@ -1,7 +1,11 @@
 import { useEffect, useReducer, useState } from 'react';
 import { pruneSent } from '../lib/alerts';
-import { startOfDay, toISODate } from '../lib/dates';
-import { SHARE_PARAMS, sharedTextFrom } from '../lib/share';
+import { planAlerts } from '../lib/schedule';
+import { isNative } from '../lib/mirror';
+import { cleanupPhotos } from '../lib/photos';
+import { onNotificationTap, syncScheduled } from './schedule-native';
+import { currentDay, startOfDay, toISODate } from '../lib/dates';
+import { sharedTextFrom, strippedShareUrl } from '../lib/share';
 import { derive, makeReceiptId } from '../lib/receipts';
 import { freshState, load, onExternalChange, save, type KeptState, type Settings } from '../lib/storage';
 import { quotaFull as quotaFullFor } from '../lib/quota';
@@ -81,6 +85,26 @@ export type Action =
   | { type: 'upgrade-ask'; period: Period }
   | { type: 'upgrade-cancel' };
 
+/**
+ * Which screen a launch opens on.
+ *
+ * Three-way and easy to get subtly wrong, and it was inline in `useReducer`
+ * where nothing could reach it — mutating either half of its condition left the
+ * whole suite green.
+ *
+ * A shared order wins over everything: someone who shared an order email is
+ * telling you exactly what they came to do, whether or not they ever finished
+ * onboarding. The landing page's demo iframe skips onboarding too, because a
+ * visitor who has never opened the app should land on the receipts list rather
+ * than on step one of a flow they cannot see the point of yet.
+ */
+export function openingScreen(
+  { shared, onboardingSeen, embedded }: { shared: boolean; onboardingSeen: boolean; embedded: boolean },
+): Screen {
+  if (shared) return 'add';
+  return onboardingSeen || embedded ? 'home' : 'onboard';
+}
+
 export function reducer(state: AppState, action: Action, today: Date): AppState {
   switch (action.type) {
     case 'go':
@@ -92,8 +116,27 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         screen: action.screen,
         selId: action.screen === 'detail' || action.screen === 'edit' ? state.selId : null,
       };
-    case 'open':
-      return { ...state, justDeleted: null, screen: 'detail', selId: action.id };
+    case 'open': {
+      /*
+       * Only if it is still held.
+       *
+       * Every caller inside the app passes an id off a row that is on screen,
+       * so this could not previously miss. A tapped notification can: it was
+       * lodged with iOS days or weeks earlier and the receipt may have been
+       * returned, deleted, or erased since. `App.tsx` renders the detail screen
+       * as `screen === 'detail' && selected`, so a missing one is not an error
+       * — it is a blank page under the tab bar, which is the exact failure
+       * `Recovery` exists for and a miserable thing to meet from a lock screen.
+       *
+       * The list is the honest answer: the receipt is genuinely not there. The
+       * same reasoning the `sync` case applies when another tab deletes what
+       * this one has open.
+       */
+      const held = state.receipts.some((r) => r.id === action.id);
+      return held
+        ? { ...state, justDeleted: null, screen: 'detail', selId: action.id }
+        : { ...state, justDeleted: null, screen: 'home', selId: null };
+    }
     case 'ob-next':
       return state.obStep >= ONBOARDING_STEPS - 1
         ? { ...state, screen: 'home', onboardingSeen: true }
@@ -248,10 +291,7 @@ export function useApp() {
    */
   const [today, setToday] = useState(() => startOfDay(new Date()));
   useEffect(() => {
-    const check = () => {
-      const now = startOfDay(new Date());
-      setToday((current) => (now.getTime() === current.getTime() ? current : now));
-    };
+    const check = () => setToday((current) => currentDay(current, new Date()));
     const onVisible = () => {
       if (document.visibilityState === 'visible') check();
     };
@@ -285,7 +325,7 @@ export function useApp() {
         // A shared order goes straight to Add, whether or not onboarding was
         // ever finished: someone who shared an email is telling you exactly
         // what they came to do.
-        screen: incoming ? 'add' : base.onboardingSeen || embedded ? 'home' : 'onboard',
+        screen: openingScreen({ shared: incoming !== null, onboardingSeen: base.onboardingSeen, embedded }),
         sharedText: incoming,
         embedded,
         justDeleted: null,
@@ -303,10 +343,8 @@ export function useApp() {
   // no business sitting in browser history.
   useEffect(() => {
     if (typeof location === 'undefined' || typeof history === 'undefined') return;
-    const url = new URL(location.href);
-    if (!SHARE_PARAMS.some((k) => url.searchParams.has(k))) return;
-    for (const k of SHARE_PARAMS) url.searchParams.delete(k);
-    history.replaceState(null, '', url.pathname + url.search + url.hash);
+    const stripped = strippedShareUrl(location.href);
+    if (stripped !== null) history.replaceState(null, '', stripped);
   }, []);
 
   /**
@@ -335,6 +373,101 @@ export function useApp() {
     });
     setSaveFailed(!ok);
   }, [state.embedded, state.version, state.receipts, state.updates, state.onboardingSeen, state.settings, state.alertsSent]);
+
+  /*
+   * Pictures whose receipt has gone, cleared once per launch.
+   *
+   * Not at the moment of deletion, because deleting is UNDOABLE here — the
+   * undo bar restores the receipt, and it would come back to a photo already
+   * thrown away. By the next launch the undo has been taken or it has not, and
+   * the disk can safely follow the library. It also catches what no delete
+   * path could: a photo left by a restore that replaced the library.
+   *
+   * Once, on the receipts the app booted with. Re-running it on every change
+   * would race the undo it exists to respect.
+   */
+  useEffect(() => {
+    if (state.embedded || !isNative()) return;
+    void cleanupPhotos(state.receipts.map((r) => r.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.embedded]);
+
+  /*
+   * A tapped notification opens the receipt it is about.
+   *
+   * The scheduler has been attaching `receiptId` to every alert since it was
+   * written and nothing read it — a thing declared with nothing reading it,
+   * which is a defect class this codebase has caught four times and had no
+   * business reintroducing. Either the field goes or it is used; it earns its
+   * place by taking someone from the lock screen to the coat.
+   *
+   * Registered once, not on every state change: the handler dispatches, and
+   * the reducer is what knows whether the receipt is still held.
+   */
+  useEffect(() => {
+    if (state.embedded || !isNative()) return undefined;
+    let stop: (() => void) | undefined;
+    let done = false;
+    void onNotificationTap((id, key) => {
+      /*
+       * A tap is PROOF the system delivered it, and proof is the only thing
+       * worth recording here.
+       *
+       * `alertsSent` is not only dedup: the celebration reads it to decide
+       * whether to say "kept reminded me before the window shut", and that
+       * line was once printed whether or not kept had said anything. On iOS
+       * the system delivers while the app is closed, so nothing was recorded
+       * and the celebration UNDERSTATED — it omitted credit kept had earned.
+       *
+       * Deliberately not inferred from the clock instead. "Its 9am has passed,
+       * so it must have been delivered" is false whenever notifications are
+       * refused at the system level, and being wrong THAT way puts the
+       * original defect back: claiming a warning that never arrived. An
+       * untapped alert therefore still goes unrecorded, which understates
+       * rather than overstates, and that is the direction to be wrong in.
+       */
+      rawDispatch({ type: 'alerted', keys: [key] });
+      rawDispatch({ type: 'open', id });
+    }).then((off) => {
+      if (done) off();
+      else stop = off;
+    });
+    return () => {
+      done = true;
+      stop?.();
+    };
+  }, [state.embedded]);
+
+  /*
+   * Lodge the deadlines with iOS, so they arrive when the app is closed.
+   *
+   * Re-run whenever anything the plan is derived from moves: the receipts, the
+   * urgency slider, and the record of what has already been said. `today`
+   * too — a phone left overnight rolls the date and every deadline with it.
+   *
+   * The switch has to SWITCH. Turning deadline alerts off cancels what is
+   * already lodged rather than merely declining to add more; otherwise
+   * everything scheduled before the toggle keeps arriving for weeks, and the
+   * control would be a stored boolean nothing acted on — which is exactly what
+   * `policyWatch` turned out to be, on the row directly above it in Settings.
+   */
+  useEffect(() => {
+    if (state.embedded || !isNative()) return;
+    if (!state.settings.deadlineAlerts) {
+      void syncScheduled([]);
+      return;
+    }
+    void syncScheduled(
+      planAlerts(state.receipts, today, state.settings.urgentDays, new Set(state.alertsSent)),
+    );
+  }, [
+    state.embedded,
+    state.receipts,
+    state.settings.deadlineAlerts,
+    state.settings.urgentDays,
+    state.alertsSent,
+    today,
+  ]);
 
   return { state, dispatch: rawDispatch, today, saveFailed };
 }

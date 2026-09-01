@@ -58,6 +58,30 @@ describe('the landing ticker', () => {
     expect(lines[0].startsWith(feed[0].store.toUpperCase())).toBe(true);
   });
 
+  it('names only shops that are actually in the table', () => {
+    /*
+     * The three the module quotes by literal, which is the coupling that rots:
+     * whoever does the README's pre-ship pass over all twenty windows could
+     * rename or drop one of these, and the bar would fall back to a silent
+     * default — "ASOS: 0-day window for frequent returners" on the page whose
+     * entire claim is that kept knows the real numbers.
+     */
+    for (const name of ['ASOS', 'Apple', 'Uniqlo']) {
+      expect(findStore(name), name).toBeDefined();
+    }
+  });
+
+  it('never prints a fallback where a window should be', () => {
+    expect(lines.some((l) => /\b0[- ]day\b/.test(l))).toBe(false);
+  });
+
+  it('puts an actual gotcha after UNIQLO, not just the label', () => {
+    // `gotchaOf` falls back to an empty string, and "every line is non-empty"
+    // is satisfied by the word UNIQLO alone.
+    const line = lines.find((l) => l.startsWith('UNIQLO:'))!;
+    expect(line.replace('UNIQLO:', '').trim().length).toBeGreaterThan(10);
+  });
+
   it('does not name a shop twice in one line', () => {
     // The Uniqlo line is built from a gotcha that opens with "Uniqlo", after
     // a bar that has already said UNIQLO.

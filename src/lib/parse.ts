@@ -63,6 +63,13 @@ function pickAmount(text: string): Pence | null {
 interface DateHit {
   date: Date;
   index: number;
+  /**
+   * How many characters the date itself took, so a caller can look at what
+   * comes immediately AFTER it. Guessing that from `index` alone means
+   * allowing for the longest date form, and an allowance long enough for
+   * "12 September 2026" is long enough to reach into the next clause.
+   */
+  length: number;
 }
 
 /** Candidate dates in the text, with their positions. */
@@ -81,10 +88,10 @@ function datesIn(text: string, today: Date): DateHit[] {
    * invalid date, and `getMonth()` is NaN, which equals nothing. Both are
    * belt and braces over a check that already holds.
    */
-  const push = (y: number, m: number, d: number, index: number) => {
+  const push = (y: number, m: number, d: number, index: number, length: number) => {
     if (m < 0 || m > 11 || d < 1 || d > 31) return;
     const dt = new Date(y, m, d);
-    if (dt.getMonth() === m && dt.getDate() === d) found.push({ date: dt, index });
+    if (dt.getMonth() === m && dt.getDate() === d) found.push({ date: dt, index, length });
   };
 
   // "25 Aug", "25 August 2026", "25th Aug"
@@ -92,23 +99,23 @@ function datesIn(text: string, today: Date): DateHit[] {
   for (const m of text.matchAll(dmy)) {
     const mon = MONTHS[m[2].slice(0, 3).toLowerCase()];
     if (mon === undefined) continue;
-    push(resolveYear(m[3], mon, Number(m[1]), today), mon, Number(m[1]), m.index ?? 0);
+    push(resolveYear(m[3], mon, Number(m[1]), today), mon, Number(m[1]), m.index ?? 0, m[0].length);
   }
   // "Aug 25", "August 25, 2026"
   const mdy = /\b([a-z]{3,9})\.?[ .\-/]+(\d{1,2})(?:st|nd|rd|th)?,?(?:[ .\-/]+(\d{2,4}))?\b/gi;
   for (const m of text.matchAll(mdy)) {
     const mon = MONTHS[m[1].slice(0, 3).toLowerCase()];
     if (mon === undefined) continue;
-    push(resolveYear(m[3], mon, Number(m[2]), today), mon, Number(m[2]), m.index ?? 0);
+    push(resolveYear(m[3], mon, Number(m[2]), today), mon, Number(m[2]), m.index ?? 0, m[0].length);
   }
   // "25/08/2026" — day first. This is a UK app; 05/08 is 5 August, never 8 May.
   for (const m of text.matchAll(/\b(\d{1,2})\/(\d{1,2})\/(\d{2,4})\b/g)) {
     const y = Number(m[3]);
-    push(y < 100 ? 2000 + y : y, Number(m[2]) - 1, Number(m[1]), m.index ?? 0);
+    push(y < 100 ? 2000 + y : y, Number(m[2]) - 1, Number(m[1]), m.index ?? 0, m[0].length);
   }
   // ISO
   for (const m of text.matchAll(/\b(\d{4})-(\d{2})-(\d{2})\b/g)) {
-    push(Number(m[1]), Number(m[2]) - 1, Number(m[3]), m.index ?? 0);
+    push(Number(m[1]), Number(m[2]) - 1, Number(m[3]), m.index ?? 0, m[0].length);
   }
   return found;
 }
@@ -148,7 +155,32 @@ const LABEL_REACH = 40;
  * alternative fallback — assuming today — is further from the truth and in the
  * same dangerous direction.
  */
-const NOT_A_PURCHASE = /\b(?:deliver\w*|arriv\w*|dispatch\w*|ship\w*|expect\w*|estimat\w*|return\w*|collect\w*|due)\b[^\n]{0,24}$/i;
+const OTHER_CLOCK = 'deliver\\w*|arriv\\w*|dispatch\\w*|ship\\w*|expect\\w*|estimat\\w*|return\\w*|collect\\w*|due';
+
+const NOT_A_PURCHASE = new RegExp(`\\b(?:${OTHER_CLOCK})\\b[^\\n]{0,24}$`, 'i');
+
+/**
+ * The same words on the OTHER side of the date.
+ *
+ * The check above reads backwards, and so saw only the word order it was
+ * written for. Measured, on an order placed 1 August read on 20 September:
+ * "Dispatched 12 August" correctly yielded the 1st, while "12 August
+ * dispatched", "12 August    Delivered" and "12 August (delivery)" all yielded
+ * the 12th — the shipping-history table and the parenthesised column, which is
+ * how a great many order emails set exactly this. Eleven days late, in the
+ * direction this function's own comment names: the app promises days the shop
+ * will not honour.
+ *
+ * Anchored tight against the end of the date, and that is the whole of what
+ * keeps it safe. Only whitespace, a bracket or a dash may stand between the
+ * two — never another word and never a comma — so "12 August 2026 dispatched"
+ * is caught while "Ordered 1 August 2026, dispatch to follow" is not, and the
+ * genuine purchase date in the second is not thrown away for a delivery date
+ * further down. Which is why `DateHit` had to learn its own length: a lead
+ * allowance generous enough for "12 September 2026" would reach into the next
+ * clause on its own.
+ */
+const NOT_A_PURCHASE_AFTER = new RegExp(`^[ \\t]*[([–—-]?[ \\t]*(?:${OTHER_CLOCK})\\b`, 'i');
 
 /**
  * The purchase date.
@@ -175,11 +207,19 @@ function pickDate(text: string, today: Date): Date | null {
   if (past.length === 0) return null;
 
   const labels = [...text.matchAll(ORDER_DATE_LABEL)].map((m) => (m.index ?? 0) + m[0].length);
+  // Both halves of that conjunction matter and only one was ever tested: with
+  // `||`, a date sitting BEFORE the label satisfies the reach test with a
+  // negative distance, and the shipping line above "Order date" becomes the
+  // purchase. See the last describe in parse.test.ts.
   const labelled = past.find((hit) => labels.some((end) => hit.index >= end && hit.index - end <= LABEL_REACH));
   if (labelled) return labelled.date;
 
   const newest = (hits: DateHit[]) => hits.reduce((best, hit) => (hit.date > best ? hit.date : best), hits[0].date);
-  const plain = past.filter((hit) => !NOT_A_PURCHASE.test(text.slice(Math.max(0, hit.index - 40), hit.index)));
+  const plain = past.filter(
+    (hit) =>
+      !NOT_A_PURCHASE.test(text.slice(Math.max(0, hit.index - 40), hit.index)) &&
+      !NOT_A_PURCHASE_AFTER.test(text.slice(hit.index + hit.length)),
+  );
   return newest(plain.length > 0 ? plain : past);
 }
 
@@ -204,8 +244,71 @@ const DELIVERY_DATE_LABEL =
  * expensive direction, since it makes a live right look expired. Most such
  * dates are in the future and are excluded anyway; this is for the email read
  * a fortnight late, where the estimate has quietly become the past.
+ *
+ * It used to be tested against the text BEFORE the label, and so caught only
+ * the one word order it was written for. Measured: "Estimated delivery 3
+ * September" was correctly refused, while "Delivery expected 3 September",
+ * "Delivery due 3 September" and "Delivered by 3 September" all became an
+ * arrival, and "Dispatch scheduled 3 September" a dispatch — including the
+ * shape this comment's neighbour offers as its own example, "dispatching by
+ * Friday". The window now runs from before the label to the date itself, so a
+ * qualifier counts wherever it sits between the two.
  */
-const NOT_AN_ARRIVAL = /\b(?:estimat\w*|expect\w*|due|scheduled|between|by)\b[^\n]{0,20}$/i;
+const NOT_AN_ARRIVAL = /\b(?:estimat\w*|expect\w*|due|scheduled|between)\b[^\n]{0,30}$/i;
+
+/**
+ * `by` on its own, kept apart from the list above because it is the only
+ * ambiguous one: "delivered by DPD on 3 September" is an event and "delivered
+ * by 3 September" is a promise, and the difference is entirely whether it sits
+ * against the date. So it only counts adjacent to one — which is also why it
+ * was inert in the old backward-looking window, since nothing writes the "by"
+ * of a promise before the word delivery.
+ */
+const PROMISED_BY = /\bby\b[^\n]{0,3}$/i;
+
+/**
+ * Whether what stands between a label and its date makes the date a promise.
+ *
+ * The window deliberately spans BOTH sides of the label — an email writes the
+ * qualifier before it ("estimated delivery") or after it ("delivery expected")
+ * with no preference, and reading only one side is how four of the five shapes
+ * got through.
+ */
+function promised(text: string, labelStart: number, dateIndex: number): boolean {
+  const around = text.slice(Math.max(0, labelStart - 30), dateIndex);
+  return NOT_AN_ARRIVAL.test(around) || PROMISED_BY.test(around);
+}
+
+/**
+ * Dates a paste actually announces, under a given kind of label.
+ *
+ * The three conditions `pickArrival` and `pickDispatch` share, in the one
+ * place, because they were written twice and the second copy said "same three
+ * conditions as pickArrival, for the same reasons" — which is a comment doing
+ * the job of an import. They differ only in which label they look for and, at
+ * the end, in which of the answers they want.
+ */
+function labelledEvents(
+  text: string,
+  today: Date,
+  purchased: Date | null,
+  label: RegExp,
+): DateHit[] {
+  const labels = [...text.matchAll(label)].map((m) => ({ end: (m.index ?? 0) + m[0].length, start: m.index ?? 0 }));
+  if (labels.length === 0) return [];
+  return datesIn(text, today)
+    // A date still to come has not happened, whatever introduces it.
+    .filter((hit) => daysBetween(today, hit.date) <= 0)
+    .filter((hit) =>
+      labels.some(
+        (l) => hit.index >= l.end && hit.index - l.end <= LABEL_REACH && !promised(text, l.start, hit.index),
+      ),
+    )
+    // A parcel cannot land, or leave, before it is ordered. Such a pair means
+    // the label was read off some other order, and the app refuses the
+    // combination when it is typed by hand — it must not put it there itself.
+    .filter((hit) => !purchased || daysBetween(purchased, hit.date) >= 0);
+}
 
 /**
  * The day it arrived, and only when the paste actually says so.
@@ -216,16 +319,7 @@ const NOT_AN_ARRIVAL = /\b(?:estimat\w*|expect\w*|due|scheduled|between|by)\b[^\
  * worse than none, so every condition below has to hold.
  */
 function pickArrival(text: string, today: Date, purchased: Date | null): Date | null {
-  const labels = [...text.matchAll(DELIVERY_DATE_LABEL)].map((m) => ({ end: (m.index ?? 0) + m[0].length, start: m.index ?? 0 }));
-  if (labels.length === 0) return null;
-  const candidates = datesIn(text, today)
-    .filter((hit) => daysBetween(today, hit.date) <= 0)
-    .filter((hit) => labels.some((l) => hit.index >= l.end && hit.index - l.end <= LABEL_REACH
-      && !NOT_AN_ARRIVAL.test(text.slice(Math.max(0, l.start - 30), l.start))))
-    // A parcel cannot land before it is ordered. Such a pair means the label
-    // was read off some other order, and the app refuses the combination when
-    // it is typed by hand — it must not put it there itself.
-    .filter((hit) => !purchased || daysBetween(purchased, hit.date) >= 0);
+  const candidates = labelledEvents(text, today, purchased, DELIVERY_DATE_LABEL);
   if (candidates.length === 0) return null;
   // The latest, because an email that mentions delivery twice is describing a
   // redelivery or a second parcel, and the clock the person cares about is the
@@ -253,19 +347,14 @@ const DISPATCH_DATE_LABEL =
 /**
  * The day it was dispatched, and only when the paste actually says so.
  *
- * Same three conditions as `pickArrival`, for the same reasons: labelled,
- * already happened, and not before the order — a parcel cannot leave before
- * it is bought. An estimate is excluded too, since "dispatching by Friday" is
- * a promise rather than an event.
+ * The same three conditions as `pickArrival` — labelled, already happened,
+ * and not before the order — because they are now literally the same code.
+ * An estimate is excluded with them: "dispatching by Friday" is a promise
+ * rather than an event, and until this commit that exact sentence was read as
+ * a dispatch.
  */
 function pickDispatch(text: string, today: Date, purchased: Date | null): Date | null {
-  const labels = [...text.matchAll(DISPATCH_DATE_LABEL)].map((m) => ({ end: (m.index ?? 0) + m[0].length, start: m.index ?? 0 }));
-  if (labels.length === 0) return null;
-  const candidates = datesIn(text, today)
-    .filter((hit) => daysBetween(today, hit.date) <= 0)
-    .filter((hit) => labels.some((l) => hit.index >= l.end && hit.index - l.end <= LABEL_REACH
-      && !NOT_AN_ARRIVAL.test(text.slice(Math.max(0, l.start - 30), l.start))))
-    .filter((hit) => !purchased || daysBetween(purchased, hit.date) >= 0);
+  const candidates = labelledEvents(text, today, purchased, DISPATCH_DATE_LABEL);
   if (candidates.length === 0) return null;
   // The EARLIEST, where `pickArrival` takes the latest. A second dispatch is a
   // second parcel or a replacement, and the clock the shop is running started

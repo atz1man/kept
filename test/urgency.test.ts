@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { heroCount, urgency } from '../src/lib/urgency';
+import { DEFAULT_URGENT_DAYS, heroCount, urgency } from '../src/lib/urgency';
+
+describe('the default urgent threshold', () => {
+  it('is a week, which is what the rung it drives is called', () => {
+    /*
+     * `rungFor` calls everything inside this threshold the 'week' rung, and
+     * the alert copy is written for someone with about a week to act. The
+     * number and the name are the same fact in two files, and nothing held
+     * them together — every other test passes a threshold explicitly, so the
+     * default was free to drift away from the word for it.
+     */
+    expect(DEFAULT_URGENT_DAYS).toBe(7);
+  });
+});
 
 describe('urgency ladder', () => {
   it('calls the last day "today"', () => {

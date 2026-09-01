@@ -78,7 +78,14 @@ export function TabBar({ screen, alert, onGo }: Props) {
       aria-label="Main"
       style={{
         position: 'absolute',
-        bottom: 24,
+        // The home indicator owns roughly the bottom 34px of an iPhone, and
+        // this is the app's ONLY navigation. `UpgradeNotice` already sits at
+        // `84px + inset` — a sum that only clears the bar if the bar moves up
+        // by the inset too, which it did not. So on any device with an
+        // indicator the tab bar sat partly underneath it while the notice
+        // floated a full inset too high. Zero everywhere else, so the web is
+        // pixel-identical.
+        bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
         left: '50%',
         transform: 'translateX(-50%)',
         display: 'flex',

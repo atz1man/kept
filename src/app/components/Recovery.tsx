@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { color, font, radius } from '../../tokens';
 import { rescueBackup } from '../../lib/storage';
+import { backupFilename, savedWhere, saveJsonFile } from '../../lib/save-file';
 
 /**
  * What is on screen when the app cannot render.
@@ -23,7 +24,16 @@ import { rescueBackup } from '../../lib/storage';
  */
 interface State {
   failed: boolean;
-  saved: 'idle' | 'done' | 'nothing';
+  /**
+   * `done` was a claim, not an observation. It was set the moment the anchor
+   * was clicked, and an anchor click reports nothing — so in the iOS app,
+   * where WKWebView ignores the download attribute entirely, this screen told
+   * somebody their receipts were saved while no file existed anywhere. On the
+   * only screen in the app whose entire purpose is being believable about the
+   * last copy of their data. The message now comes from what the write
+   * returned; see save-file.ts.
+   */
+  saved: 'idle' | 'saving' | 'nothing' | { note: string; ok: boolean };
 }
 
 export class Recovery extends Component<{ children: ReactNode }, State> {
@@ -40,19 +50,17 @@ export class Recovery extends Component<{ children: ReactNode }, State> {
     console.error('kept could not render:', error, info.componentStack);
   }
 
-  private rescue = () => {
+  private rescue = async () => {
     const backup = rescueBackup();
     if (!backup) {
       this.setState({ saved: 'nothing' });
       return;
     }
-    const url = URL.createObjectURL(new Blob([backup.text], { type: 'application/json' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `kept-rescue-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    this.setState({ saved: 'done' });
+    this.setState({ saved: 'saving' });
+    const outcome = await saveJsonFile(backupFilename('rescue', new Date()), backup.text);
+    this.setState({
+      saved: { note: savedWhere(outcome), ok: outcome.to !== 'nowhere' },
+    });
   };
 
   render() {
@@ -75,7 +83,7 @@ export class Recovery extends Component<{ children: ReactNode }, State> {
         </p>
         <button
           type="button"
-          onClick={this.rescue}
+          onClick={() => void this.rescue()}
           style={{
             padding: '14px 18px', borderRadius: radius.pill, border: `1.5px solid ${color.ink}`,
             background: color.yellow, color: color.ink, fontWeight: 700, fontSize: 14.5, cursor: 'pointer',
@@ -83,9 +91,22 @@ export class Recovery extends Component<{ children: ReactNode }, State> {
         >
           Save my receipts to a file
         </button>
-        {this.state.saved === 'done' && (
-          <p role="status" style={{ fontSize: 13.5, color: color.body, margin: 0 }}>
-            Saved. You can bring it back with <strong>Restore from a backup</strong> in Settings.
+        {typeof this.state.saved === 'object' && (
+          <p
+            role="status"
+            style={{
+              fontSize: 13.5,
+              color: this.state.saved.ok ? color.body : color.danger,
+              margin: 0,
+            }}
+          >
+            {this.state.saved.note}
+            {this.state.saved.ok ? (
+              <>
+                {' '}
+                You can bring it back with <strong>Restore from a backup</strong> in Settings.
+              </>
+            ) : null}
           </p>
         )}
         {this.state.saved === 'nothing' && (

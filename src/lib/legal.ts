@@ -47,10 +47,18 @@ export interface LegalRight {
   live: boolean;
 }
 
-/** Consumer Rights Act 2015, s.22 — every purchase, faulty goods only. */
-const REJECT_DAYS = 30;
+/**
+ * Consumer Rights Act 2015, s.22 — every purchase, faulty goods only.
+ *
+ * Exported because the landing page states it in prose, and a statutory number
+ * quoted in two places is a number that can disagree with itself. Pinned by a
+ * test as a literal, on this codebase's rule that a threshold WE chose is not
+ * a fact but one Parliament chose is — the same call as `MAX_PENDING` at 64
+ * because that is iOS's, and `AA_TEXT` at 4.5 because that is WCAG's.
+ */
+export const REJECT_DAYS = 30;
 /** Consumer Contracts Regs 2013 — distance and off-premises only, any reason. */
-const COOLING_OFF_DAYS = 14;
+export const COOLING_OFF_DAYS = 14;
 
 const days = (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`;
 

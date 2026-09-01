@@ -35,4 +35,6 @@ export const TIERS: readonly Tier[] = [
 ];
 
 /** The tier every upsell in the app points at. */
+// The fallback index is unreachable while exactly one tier is featured, which
+// `pricing.test.ts` asserts — so no test can tell TIERS[0] from TIERS[1] here.
 export const FEATURED_TIER: Tier = TIERS.find((t) => t.featured) ?? TIERS[0];

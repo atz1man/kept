@@ -69,6 +69,19 @@ describe('the cooling-off clock', () => {
     expect(coolingOff({ ...online, purchasedOn: ago(15) }).live).toBe(false);
   });
 
+  it('does not say a live right has run out, on the last day of it', () => {
+    /*
+     * `live` was checked at this boundary; the WORDS were not. The flag and the
+     * prose are two `left >= 0` comparisons, and only one of them was pinned —
+     * so the card could carry live: true above a sentence saying the right had
+     * gone, which is the same lie the inverted prototype told, one field along.
+     */
+    const r = coolingOff({ ...online, purchasedOn: ago(14) });
+    expect(r.live).toBe(true);
+    expect(r.body).not.toMatch(/passed|run out/i);
+    expect(r.body).toContain('0 days left');
+  });
+
   it('points at the shop window when cooling-off has run out but the shop has not', () => {
     const r = coolingOff({ ...online, purchasedOn: ago(20) });
     expect(r.live).toBe(false);
@@ -81,6 +94,37 @@ describe('the cooling-off clock', () => {
     // It points at the rights above rather than repeating them, because the
     // 30-day one is on the same screen and may still be live.
     expect(r.body).toContain('rights above');
+  });
+});
+
+describe('the 30-day right to reject', () => {
+  const reject = (r: Receipt) => find(legalRights(r, TODAY, true), 'Consumer Rights Act');
+
+  /*
+   * The stronger of the two rights, and the one every purchase carries —
+   * counter or online. Its last day had no test at all: neither the flag nor
+   * the wording. Both are `left >= 0`, and tightening either to `> 0` tells
+   * somebody the right to a full refund on faulty goods ran out on the day
+   * they still held it.
+   */
+  it('is still live on its final day', () => {
+    const r = reject({ ...inStore, purchasedOn: ago(30) });
+    expect(r.live).toBe(true);
+    expect(r.body).not.toMatch(/passed|run out/i);
+    expect(r.body).toContain('0 days left');
+  });
+
+  it('has gone the day after, and says so', () => {
+    const r = reject({ ...inStore, purchasedOn: ago(31) });
+    expect(r.live).toBe(false);
+    expect(r.body).toMatch(/passed|run out/i);
+  });
+
+  it('still offers the repair right once the thirty days are gone', () => {
+    // The sentence that matters after the window: six years in England and
+    // Wales, five in Scotland. Losing it would leave the card saying only that
+    // something has expired.
+    expect(reject({ ...inStore, purchasedOn: ago(31) }).body).toMatch(/six years|five in Scotland/i);
   });
 });
 

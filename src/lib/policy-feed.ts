@@ -170,6 +170,8 @@ function impactFor(update: PolicyUpdate, receipt: Receipt, today: Date): Receipt
   // bought under. The derived sentence is both more specific and true.
   const days = Math.abs(next - receipt.windowDays);
   const unit = days === 1 ? 'day' : 'days';
+  // Equality already returned above, so `<` and `<=` cannot disagree here and
+  // no test can tell them apart. Recorded rather than left to be re-derived.
   if (next < receipt.windowDays) {
     // The frightening case, and the one the app exists for. Deliberately
     // reassuring about what does NOT change: the receipt keeps its own terms.
@@ -217,6 +219,10 @@ export function assess(updates: readonly PolicyUpdate[], receipts: readonly Rece
  * what gets forgotten is the oldest, which is also the least likely to be
  * about a receipt still inside its window.
  */
+// The exact number is a judgement, not a property: 201 would do as well, so no
+// test pins it. What is asserted next door is that the cap APPLIES, that the
+// newest survive it, and that what is kept stays inside the size it was chosen
+// for — which is what a much larger value would actually break.
 export const MAX_UPDATES = 200;
 
 /** Newest first, and no more of them than we are willing to keep. */
@@ -307,3 +313,16 @@ export function readFeed(doc: unknown): PolicyUpdate[] | null {
 
 /** Where the feed lives — this app's own origin, never anyone else's. */
 export const FEED_URL = '/policy-feed.json';
+
+/**
+ * The signature, detached, beside the feed.
+ *
+ * Detached rather than a field inside the document, because a signature over a
+ * document that contains it is a knot: the field has to be excluded, which
+ * means agreeing exactly how to remove it, and any disagreement between signer
+ * and verifier is a hole. A separate file signs the whole thing as served.
+ *
+ * Only requested when there is a public key to check it against, so the state
+ * this ships in makes no extra request.
+ */
+export const FEED_SIG_URL = '/policy-feed.sig';

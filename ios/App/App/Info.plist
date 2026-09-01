@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+        <string>kept</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<!-- The camera plugin checks for ALL THREE of these before it dispatches on
+	     source, so a missing one rejects getPhoto even though kept only ever
+	     asks for a new photograph. test/ios-usage-strings.test.ts reads the
+	     plugin's own list rather than this comment. -->
+	<key>NSCameraUsageDescription</key>
+	<string>kept uses the camera only to photograph a paper receipt, so you have proof of purchase when you go back to the shop. The picture stays on this device and is never uploaded.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>kept never opens your photo library. It only takes a new photograph of a receipt, which stays on this device.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>kept does not add anything to your photo library. A receipt photograph is kept inside the app and is deleted when you erase your receipts.</string>
+	<!-- Both are what make the app's Documents directory a place a person can
+	     actually reach: without them it exists but appears nowhere, and the
+	     backup written into it is exactly as lost as the download WKWebView
+	     refuses — with the added harm of having looked like it worked.
+	     UIFileSharingEnabled puts "kept" under On My iPhone in the Files app;
+	     LSSupportsOpeningDocumentsInPlace lets a file be opened from there
+	     rather than only copied out. See src/lib/save-file.ts.
+
+	     What it also does, and this is a real trade rather than a free win:
+	     Documents is where the mirror (kept-receipts.json) and the receipt
+	     photographs already live, and they were put there deliberately —
+	     unlike Library/NoCloud it is included in a device backup, which is
+	     the whole reason the mirror exists. So opting in makes all of it
+	     visible in the Files app: someone holding the unlocked phone can
+	     read a receipt photograph there, and can delete the mirror. Nothing
+	     is uploaded and the privacy claim in Settings is unaffected — this
+	     is the person's own device and their own files — and a deleted
+	     mirror is recovered on the next save, since localStorage is the
+	     primary copy and chooseSource writes it back. Worth revisiting if
+	     kept ever ships a share extension, which would let a backup be
+	     handed straight to the share sheet with nothing left in a browsable
+	     folder. -->
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>armv7</string>
+	</array>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<true/>
+</dict>
+</plist>

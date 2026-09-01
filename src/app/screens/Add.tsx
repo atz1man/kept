@@ -9,6 +9,8 @@ import { findStore, policyFor } from '../../lib/stores';
 import { windowInForceFor } from '../../lib/policy-feed';
 import { FEATURED_TIER } from '../../lib/pricing';
 import { FREE_TIER_LIMIT } from '../../lib/quota';
+import { isNative } from '../../lib/mirror';
+import { shareRoute } from '../../lib/share';
 import type { PolicyUpdate, Receipt } from '../../lib/types';
 import { ArrowRight, CameraGlyph, LogoMark, MailGlyph, ShareGlyph, Warning } from '../components/Icons';
 import { HowBought } from '../components/HowBought';
@@ -31,6 +33,7 @@ interface Props {
 }
 
 export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSave, onUpgrade }: Props) {
+  const route = shareRoute(isNative());
   const [text, setText] = useState(sharedText ?? '');
   const [parsed, setParsed] = useState<ParsedReceipt | null>(null);
   const [error, setError] = useState(false);
@@ -377,18 +380,25 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
         <span style={{ fontSize: 10, fontWeight: 700, background: color.creamAlt, padding: '2px 8px', borderRadius: 999 }}>SOON</span>
       </Pressable>
 
+      {/* The three steps are a promise about the device holding them, and it
+          was made everywhere: Web Share Target is Chromium's, so an iPhone
+          following them adds an icon that appears in no share sheet, and the
+          iOS app has no share extension to appear in one either. See
+          `shareRoute` for why this is copy rather than a feature test. */}
       <div style={{ background: color.creamAlt, border: '1.5px dashed rgba(23,20,16,0.2)', borderRadius: radius.card, padding: '16px 18px', marginTop: 20 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1.4px', color: color.muted }}>COMING FROM YOUR EMAIL APP?</div>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1.4px', color: color.muted }}>{route.heading}</div>
         <div style={{ fontSize: 12, color: color.muted, lineHeight: 1.5, marginTop: 6 }}>
-          Add kept to your home screen and it appears in the share sheet — the order lands here already read.
+          {route.body}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
-          <Step icon={<MailGlyph />} label="Open the order" />
-          <ArrowRight stroke={color.fainter} />
-          <Step icon={<ShareGlyph />} label="Tap share" />
-          <ArrowRight stroke={color.fainter} />
-          <Step icon={<LogoMark size={18} />} label="Pick kept — done" dark />
-        </div>
+        {route.steps && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
+            <Step icon={<MailGlyph />} label="Open the order" />
+            <ArrowRight stroke={color.fainter} />
+            <Step icon={<ShareGlyph />} label="Tap share" />
+            <ArrowRight stroke={color.fainter} />
+            <Step icon={<LogoMark size={18} />} label="Pick kept — done" dark />
+          </div>
+        )}
       </div>
     </div>
   );

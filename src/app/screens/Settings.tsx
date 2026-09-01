@@ -1,12 +1,14 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { color, font, radius } from '../../tokens';
-import { fmtDateLong, fromISODate } from '../../lib/dates';
+import { isNative } from '../../lib/mirror';
+import { fmtDateLong } from '../../lib/dates';
 import { mergeBackup, parseBackup } from '../../lib/backup';
-import { notifyState, requestNotifyPermission, type NotifyState } from '../notify';
+import { savedWhere, type SaveOutcome } from '../../lib/save-file';
+import { alertsRow, currentNotifyState, notifyState, requestNotifyPermission, type NotifyState } from '../notify';
 import type { Receipt } from '../../lib/types';
 import { TAGLINE } from '../../lib/brand';
 import { LEGAL_DISCLAIMER } from '../../lib/legal';
-import { STORE_COUNT, TABLE_CHECKED_ON } from '../../lib/stores';
+import { STORE_COUNT, tableCheck } from '../../lib/stores';
 import { URGENT_DAYS_MAX, URGENT_DAYS_MIN, type Settings as SettingsShape } from '../../lib/storage';
 import { TIERS } from '../../lib/pricing';
 import { countedAgainstQuota, FREE_TIER_LIMIT } from '../../lib/quota';
@@ -15,7 +17,7 @@ import { Pressable } from '../components/Pressable';
 interface Props {
   settings: SettingsShape;
   receipts: Receipt[];
-  onExport: () => void;
+  onExport: () => Promise<SaveOutcome>;
   onRestore: (receipts: Receipt[]) => void;
   onWipe: () => void;
   onUpgrade: (plan: 'monthly' | 'yearly' | 'lifetime') => void;
@@ -29,9 +31,36 @@ const RESTORE_FAILURES = {
 } as const;
 
 export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUpgrade, onChange }: Props) {
+  // How current the retailer table is, decided in `tableCheck` so that a date
+  // set once cannot go on reassuring people years later.
+  const check = tableCheck(new Date());
   const fileInput = useRef<HTMLInputElement>(null);
-  const [restoreNote, setRestoreNote] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
-  const [permission, setPermission] = useState<NotifyState>(() => notifyState());
+  // One note under both buttons, because they are one pair: a backup taken and
+  // a backup put back. It said nothing at all after an export, which was
+  // survivable while the browser's own download shelf answered for it and is
+  // not in an app where there is no shelf — see save-file.ts.
+  const [backupNote, setBackupNote] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
+  /*
+   * Seeded synchronously so the row has something to render, then corrected.
+   *
+   * The seed cannot be the web answer on native: WKWebView has no
+   * `Notification`, so `notifyState()` says 'unsupported' there and the switch
+   * would render disabled for the one frame before the real answer lands —
+   * and it is a switch, so a person could reach it in that frame. 'default'
+   * is the honest seed for a question that has not come back yet.
+   */
+  const [permission, setPermission] = useState<NotifyState>(() =>
+    isNative() ? 'default' : notifyState(),
+  );
+  useEffect(() => {
+    let live = true;
+    void currentNotifyState().then((state) => {
+      if (live) setPermission(state);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
   // Two steps, not an eight-second undo. The undo bar is right for one receipt
   // taken back by mistake; this is everything, and it wants a decision.
   const [confirmingWipe, setConfirmingWipe] = useState(false);
@@ -51,23 +80,24 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
     onChange({ deadlineAlerts: next === 'granted' });
   };
 
-  // Must agree with the switch beside it, which is gated on permission as well
-  // as the preference — otherwise the row reads "On" next to a switch sitting
-  // in the off position, which is exactly what it did.
-  const alertsLive = settings.deadlineAlerts && permission === 'granted';
-  const alertDetail =
-    permission === 'unsupported'
-      ? 'Not available here'
-      : permission === 'denied'
-        ? 'Blocked by your browser'
-        : alertsLive
-          ? 'On'
-          : 'Off';
+  // The position, the label and the sentence under it all have to agree with
+  // one another — the row read "On" beside a switch sitting off, once — so
+  // they are decided in one place, next to the permission states they turn on.
+  const alerts = alertsRow({
+    permission,
+    preference: settings.deadlineAlerts,
+    native: isNative(),
+  });
+
+  const exportNow = async () => {
+    const outcome = await onExport();
+    setBackupNote({ tone: outcome.to === 'nowhere' ? 'bad' : 'ok', text: savedWhere(outcome) });
+  };
 
   const restore = async (file: File) => {
     const outcome = parseBackup(await file.text());
     if (!outcome.ok) {
-      setRestoreNote({ tone: 'bad', text: RESTORE_FAILURES[outcome.reason] });
+      setBackupNote({ tone: 'bad', text: RESTORE_FAILURES[outcome.reason] });
       return;
     }
     const { receipts: merged, added, replaced } = mergeBackup(receipts, outcome.summary.receipts);
@@ -77,7 +107,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
       ...(replaced ? [`${replaced} updated`] : []),
       ...(outcome.summary.skipped ? [`${outcome.summary.skipped} unreadable and skipped`] : []),
     ];
-    setRestoreNote({ tone: 'ok', text: `${parts.join(' · ')}. Nothing already here was lost.` });
+    setBackupNote({ tone: 'ok', text: `${parts.join(' · ')}. Nothing already here was lost.` });
   };
 
   const free = settings.plan === 'free';
@@ -106,7 +136,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
           <Pressable
             className="k-soft"
-            onClick={onExport}
+            onClick={() => void exportNow()}
             style={{ flex: 1, padding: 12, textAlign: 'center', background: color.creamAlt, borderRadius: 999, fontWeight: 700, fontSize: 13 }}
           >
             Export a backup
@@ -133,16 +163,16 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
             e.target.value = '';
           }}
         />
-        {restoreNote && (
+        {backupNote && (
           <div
             role="status"
             style={{
               marginTop: 10, padding: '10px 13px', borderRadius: 14, fontSize: 12.5, fontWeight: 600, lineHeight: 1.5,
-              background: restoreNote.tone === 'ok' ? color.yellowLight : 'rgba(216,66,46,0.10)',
-              color: restoreNote.tone === 'ok' ? color.ink : color.danger,
+              background: backupNote.tone === 'ok' ? color.yellowLight : 'rgba(216,66,46,0.10)',
+              color: backupNote.tone === 'ok' ? color.ink : color.danger,
             }}
           >
-            {restoreNote.text}
+            {backupNote.text}
           </div>
         )}
       </section>
@@ -202,19 +232,14 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
         <div style={{ borderBottom: `1.5px solid ${color.borderHair}` }}>
           <Toggle
             label="Deadline alerts"
-            value={alertsLive}
-            detail={alertDetail}
-            disabled={permission === 'unsupported' || permission === 'denied'}
+            value={alerts.on}
+            detail={alerts.detail}
+            disabled={alerts.disabled}
             separator={false}
             onChange={(v) => void toggleAlerts(v)}
           />
-          {/* The honest ceiling for a web app, stated where the switch is
-              rather than implied away: Notification Triggers never shipped,
-              and periodic background sync is one engine's, at its discretion. */}
           <div style={{ padding: '0 18px 14px', fontSize: 12, color: color.muted, lineHeight: 1.5 }}>
-            {permission === 'denied'
-              ? 'Your browser is blocking notifications for kept. Turn them back on in site settings.'
-              : 'Checked each time you open kept. Nothing arrives while kept is closed — a web app cannot wake itself.'}
+            {alerts.note}
           </div>
         </div>
         {/* "Daily · on" was a cadence nothing kept. The feed is fetched once
@@ -230,17 +255,25 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
             <span style={{ fontSize: 14, fontWeight: 600 }}>Retailer policies</span>
             <span style={{ fontSize: 14, color: color.muted }}>
               {STORE_COUNT} shops
-              {TABLE_CHECKED_ON ? ` · checked ${fmtDateLong(fromISODate(TABLE_CHECKED_ON))}` : ''}
+              {check.state === 'never' ? '' : ` · checked ${fmtDateLong(check.on)}`}
             </span>
           </div>
           {/* It said "20 verified today", which nothing recorded — the table is
               maintained by hand. Until someone has checked it, the screen says
               that, the way the landing page says its social proof is
-              illustrative. See TABLE_CHECKED_ON in stores.ts. */}
-          {!TABLE_CHECKED_ON && (
+              illustrative. And a check goes off: the date alone would have sat
+              here reading the same in 2029, which is the same claim decaying
+              rather than being false on the day it was written. See
+              `tableCheck` in stores.ts. */}
+          {check.state === 'never' && (
             <div style={{ fontSize: 12, color: color.muted, lineHeight: 1.5, marginTop: 6 }}>
               Kept’s own list, not yet checked against each retailer’s published terms. Always trust your receipt over
               this.
+            </div>
+          )}
+          {check.state === 'stale' && (
+            <div style={{ fontSize: 12, color: color.muted, lineHeight: 1.5, marginTop: 6 }}>
+              That was over a year ago and shops do change their windows. Always trust your receipt over this.
             </div>
           )}
         </div>
@@ -265,7 +298,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
             <Pressable
               onClick={() => {
                 setConfirmingWipe(false);
-                setRestoreNote(null);
+                setBackupNote(null);
                 onWipe();
               }}
               style={{ flex: 1, padding: 12, textAlign: 'center', background: color.danger, color: color.white, borderRadius: 999, fontWeight: 700, fontSize: 13 }}

@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { color, paperGrain } from '../tokens';
 import { dueAlerts, supersededKeys } from '../lib/alerts';
-import { FEED_URL, mergeFeed, readFeed } from '../lib/policy-feed';
+import { FEED_SIG_URL, FEED_URL, mergeFeed, readFeed } from '../lib/policy-feed';
+import { FEED_PUBLIC_KEY, feedIsAcceptable, verifyFeed } from '../lib/feed-signature';
 import { deliver } from './notify';
 import { money, sumPence } from '../lib/money';
-import { midSentence } from '../lib/words';
+import { midSentence, winSentence } from '../lib/words';
 import { exportBackup, wipe } from '../lib/storage';
+import { backupFilename, saveJsonFile } from '../lib/save-file';
 import { FEATURED_TIER } from '../lib/pricing';
 import { SaveFailedBanner } from './components/SaveFailedBanner';
 import { TabBar } from './components/TabBar';
@@ -66,17 +68,52 @@ export function App() {
     // directly below it.
     if (!settings.policyWatch) return;
     let cancelled = false;
-    fetch(FEED_URL, { cache: 'no-cache' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((doc) => {
-        const incoming = readFeed(doc);
+    /*
+     * Read as TEXT, not json, because a signature covers BYTES.
+     *
+     * Parsing first and signing the re-serialised object would let two
+     * different documents share one signature wherever JSON.stringify
+     * normalised a difference away — key order, whitespace, 1.0 against 1. What
+     * is checked here is exactly what arrived.
+     */
+    void (async () => {
+      try {
+        const res = await fetch(FEED_URL, { cache: 'no-cache' });
+        if (!res.ok) return;
+        const body = await res.text();
+
+        /*
+         * The signature is only fetched once there is a key to check it with,
+         * so the state this ships in makes no extra request at all.
+         */
+        let verified: boolean | null = null;
+        if (FEED_PUBLIC_KEY !== null) {
+          const sig = await fetch(FEED_SIG_URL, { cache: 'no-cache' })
+            .then((r) => (r.ok ? r.text() : ''))
+            .catch(() => '');
+          verified = sig.trim() ? await verifyFeed(body, sig.trim(), FEED_PUBLIC_KEY) : null;
+        }
+        if (!feedIsAcceptable(FEED_PUBLIC_KEY, verified).accept) {
+          /*
+           * Refused, and the app keeps the feed it already holds. That is the
+           * right failure: the held copy was accepted under the same rule, and
+           * silently taking an unproven one would defeat the check. Nothing is
+           * said on screen because the feed a person can see is unchanged —
+           * there is no consequence to report yet.
+           */
+          return;
+        }
+
+        const incoming = readFeed(JSON.parse(body));
         if (cancelled || !incoming || incoming.length === 0) return;
         dispatch({ type: 'feed', updates: mergeFeed(state.updates, incoming) });
-      })
-      .catch(() => {
+      } catch {
         // Offline is the normal case for this app, and the bundled feed is
-        // already on screen. A failed refresh is not worth telling anyone about.
-      });
+        // already on screen. A failed refresh is not worth telling anyone
+        // about — and unparseable JSON lands here too, which is the same
+        // answer: keep what is held.
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -176,36 +213,26 @@ export function App() {
     setAnnounced(heading);
   }, [screen, state.selId]);
 
-  const exportNow = () => {
-    // A backup that leaves the device only if the user says so — it goes to
-    // their own file system through the browser's download, not to us.
-    const blob = new Blob([exportBackup(state)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `kept-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  // A backup that leaves the device only if the user says so — it goes to
+  // their own file system, not to us. Where that is differs by platform, and
+  // on iOS the browser's download does not exist at all: see save-file.ts.
+  const exportNow = () =>
+    saveJsonFile(backupFilename('backup', new Date()), exportBackup(state));
 
   /**
    * The sentence the share puts on the clipboard — built here rather than
    * inside the handler, because the Celebrate screen has to be able to show it
    * when the copy fails.
    */
-  /*
-   * The second half is a claim about the product, and it was made whether or
-   * not the product had done it: a receipt marked returned on the day it was
-   * added, or with alerts switched off, still produced "kept. reminded me
-   * before the window shut" for the person to send to their friends. It says
-   * that only when kept actually said something first, and in time.
-   */
+  // Which half of it is earned is decided in `winSentence` — it is a claim
+  // about the product, made to somebody else, and this file cannot be rendered.
   const winLine = state.celebrating
-    ? `Just got ${money(state.celebrating.amount)} back from ${state.celebrating.store} — kept. ${
-        state.celebrating.warned && state.celebrating.inTime
-          ? 'reminded me before the window shut.'
-          : 'keeps every return deadline in one place.'
-      }`
+    ? winSentence({
+        amount: money(state.celebrating.amount),
+        store: state.celebrating.store,
+        warned: state.celebrating.warned,
+        inTime: state.celebrating.inTime,
+      })
     : '';
 
   const shareWin = async () => {

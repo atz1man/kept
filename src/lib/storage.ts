@@ -1,4 +1,6 @@
 import { readReceipt } from './backup';
+import { chooseSource, isNative, readMirror, writeMirror } from './mirror';
+import { erasePhotos } from './photos';
 import { readFeed } from './policy-feed';
 import { seedReceipts, seedUpdates } from './seed';
 import type { PolicyUpdate, Receipt } from './types';
@@ -32,6 +34,9 @@ const KEY = 'kept.v1';
  * Recorded here rather than guessed at: a migration written before there is
  * anything to migrate is a branch that has never run.
  */
+// One version, because nothing has needed migrating yet — the comment above
+// says why a migration is not written. No test pins the number: what would
+// break is the migration that does not exist.
 const SCHEMA_VERSION = 1;
 
 export interface Settings {
@@ -181,6 +186,47 @@ export function hydrate(raw: unknown, today: Date): KeptState {
   };
 }
 
+/**
+ * Put the mirror back, when the web view has lost the live store.
+ *
+ * Runs before the app mounts and only on iOS; on the web it resolves
+ * immediately having done nothing. It writes into `localStorage` rather than
+ * returning a state, so that `load` and every screen below it stay exactly as
+ * they were — the rescue is invisible to the rest of the app, which is the
+ * point. Returns whether it actually restored anything, so a caller can say so.
+ */
+export async function restoreFromMirror(): Promise<boolean> {
+  if (!isNative()) return false;
+  const store = storage();
+  if (!store) return false;
+  let local: string | null = null;
+  try {
+    local = store.getItem(KEY);
+  } catch {
+    local = null;
+  }
+  /*
+   * Ask before reading the file. I recorded this as saving a disk read, and
+   * that undersold it: an ordinary launch never touches the filesystem at all,
+   * so a plugin call that hangs cannot delay the app for anyone whose store is
+   * intact. The read has its own budget for when it IS reached
+   * (MIRROR_READ_BUDGET_MS), but the cheapest way to survive a hanging bridge
+   * is not to call it. The mutation that removes this line is only invisible
+   * while the bridge answers.
+   */
+  if (chooseSource(local, null) === 'local') return false;
+  const mirror = await readMirror();
+  // The `!mirror` limb is belt and braces: `chooseSource` cannot answer 'mirror'
+  // for a null one, so no test can tell this from `&&`. Equivalent, recorded.
+  if (!mirror || chooseSource(local, mirror) !== 'mirror') return false;
+  try {
+    store.setItem(KEY, mirror);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function load(today: Date): KeptState {
   const store = storage();
   const raw = store?.getItem(KEY);
@@ -212,6 +258,14 @@ export function save(state: KeptState): boolean {
     // the quota for nothing.
     if (store.getItem(KEY) === next) return true;
     store.setItem(KEY, next);
+    /*
+     * And again, outside the web view, on iOS only. Deliberately not awaited:
+     * the reducer saves synchronously and cannot wait, and a mirror that fails
+     * to write is a degraded state rather than a loss — the live store already
+     * has it. That is why this does not feed the failure banner, which means
+     * "your receipts are not saved" and would be untrue here. See mirror.ts.
+     */
+    void writeMirror(next);
     return true;
   } catch {
     // Quota exceeded, or a store that refuses writes entirely.
@@ -254,14 +308,75 @@ export function onExternalChange(handler: (state: KeptState) => void, today: Dat
  * hand means digging through browser settings.
  */
 export function wipe(): void {
+  /*
+   * The pictures and the mirror are dealt with OUTSIDE the localStorage guard,
+   * and the ordering here is the whole correctness of this function.
+   *
+   * Neither of them lives in localStorage, so returning early on a store that
+   * will not answer — Safari in private mode throws on access — would leave the
+   * photographs and the second copy of every receipt behind, on the one path
+   * where the person has explicitly asked for them to be gone.
+   */
+  void erasePhotos();
+
   const store = storage();
-  if (!store) return;
+  let existing: string | null = null;
   try {
-    store.removeItem(KEY);
+    existing = store?.getItem(KEY) ?? null;
   } catch {
-    // Nothing more to do — the in-memory state is reset by the caller either
-    // way, and a storage that refuses writes has nothing persisted to remove.
+    // Unreadable is not a reason to skip the write below.
   }
+
+  /*
+   * AN EMPTY LIBRARY IS WRITTEN, NOT THE KEY REMOVED, and the difference is a
+   * window in which an erase undoes itself.
+   *
+   * Removing the key left the app depending on the save effect that follows to
+   * commit the emptied state a moment later. Between the two, localStorage held
+   * nothing and the mirror still held everything — and `chooseSource` reads
+   * exactly that as "the web view lost the store, put it back". So an erase
+   * followed by the app being killed, which is precisely what somebody does
+   * after erasing, came back on the next launch with every receipt restored.
+   * Measured, not reasoned about: the probe returned two receipts.
+   *
+   * Writing the emptied library is synchronous, so the window does not exist
+   * rather than being made small. `chooseSource` then answers "local" from the
+   * instant this returns, whatever the mirror still holds.
+   *
+   * It keeps the rest of the blob — settings, the policy feed, whether
+   * onboarding has been seen — because that is what the reducer's `wipe` does
+   * a moment later, and two paths writing different post-erase states would be
+   * the same fact disagreeing with itself. Only the receipts and the record of
+   * having spoken about them go.
+   */
+  const erased = erasedFrom(existing);
+  try {
+    store?.setItem(KEY, erased);
+  } catch {
+    // A storage that refuses writes has nothing persisted to erase either; the
+    // in-memory state is reset by the caller regardless.
+  }
+  // And the second copy, so the file on disk stops holding what was erased.
+  void writeMirror(erased);
+}
+
+/** The stored blob with the receipts taken out — or a valid empty one. */
+function erasedFrom(raw: string | null): string {
+  try {
+    const parsed: unknown = JSON.parse(raw ?? '');
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return JSON.stringify({ ...(parsed as object), receipts: [], alertsSent: [] });
+    }
+  } catch {
+    // Unparseable is the same answer as absent: write a clean empty library.
+  }
+  /*
+   * Deliberately minimal. `hydrate` fills every other key from its own
+   * defaults, so spelling them out here would be a second copy of what a
+   * default is — and the one thing this MUST satisfy is `looksLikeState`, or
+   * the mirror wins on the next launch and the erase is undone after all.
+   */
+  return JSON.stringify({ version: SCHEMA_VERSION, receipts: [] });
 }
 
 /**
@@ -308,7 +423,12 @@ export function rescueBackup(): { text: string; readable: boolean } | null {
   }
 }
 
-/** The Settings screen's "Export a backup" — the user's data, in their hands. */
+/**
+ * The Settings screen's "Export a backup" — the user's data, in their hands.
+ *
+ * The indent is two because a backup is a file somebody may open and read, not
+ * because any width is required; three would do, which is why no test pins it.
+ */
 export function exportBackup(state: KeptState): string {
   return JSON.stringify(
     { app: 'kept', exportedAt: new Date().toISOString(), version: state.version, receipts: state.receipts, settings: state.settings },

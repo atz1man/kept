@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { STORE_POLICIES, findStore, type StorePolicy } from '../src/lib/stores';
+import { ALIASES_BY_LENGTH, STORE_POLICIES, findStore, tableCheck, type StorePolicy } from '../src/lib/stores';
+import { addDays, fromISODate, toISODate } from '../src/lib/dates';
 import { parseReceiptText } from '../src/lib/parse';
 
 /**
@@ -159,3 +160,95 @@ describe('where each entry says its clock starts', () => {
     expect(silent).toEqual([]);
   });
 });
+
+describe('the order aliases are matched in', () => {
+  /*
+   * `pickStore` returns the FIRST alias that matches, so the order of this list
+   * is the rule. Longest first, or a shop whose name contains another's — the
+   * comment names "john lewis" against a future "john", and "marks and spencer"
+   * against a bare "m&s" in the same email footer — resolves to the wrong one.
+   *
+   * Nothing tested it. Flipping the comparator's subtraction to an addition
+   * garbles the whole list and every parse test still passed, because no two
+   * shops' aliases overlap TODAY. That is exactly the state in which this
+   * ordering is protecting a future entry rather than a present one, and the
+   * state in which it is easiest to break without noticing.
+   */
+  it('is longest first, with no shorter alias ahead of a longer one', () => {
+    const lengths = ALIASES_BY_LENGTH.map((a) => a.alias.length);
+    expect(lengths.length).toBeGreaterThan(20);
+    expect([...lengths].sort((a, b) => b - a)).toEqual(lengths);
+  });
+
+  it('picks the longer alias when a text carries both', () => {
+    // Two real aliases from two different shops, the shorter one first in the
+    // text: only the ORDER of the list decides this, not where they appear.
+    const short = [...ALIASES_BY_LENGTH].reverse()[0];
+    const long = ALIASES_BY_LENGTH[0];
+    expect(long.alias.length).toBeGreaterThan(short.alias.length);
+    const out = parseReceiptText(
+      `Order confirmation from ${short.alias} and ${long.alias} · Total £20.00 · 20 Aug 2026`,
+      new Date(2026, 7, 28),
+    );
+    if (!out.ok) throw new Error(`expected a parse, got ${out.reason}`);
+    expect(out.value.store).toBe(long.store.name);
+  });
+});
+
+describe('how current the retailer table claims to be', () => {
+  /*
+   * `TABLE_CHECKED_ON` was added because "20 verified today" claimed a
+   * freshness nothing recorded. It fixed the claim and stopped one step short:
+   * a date, once set, sits there forever. Measured with the date at 3
+   * September 2026 — the row reads "20 shops · checked 3 September 2026" on
+   * the 4th, and reads exactly the same in 2029.
+   *
+   * Which matters more here than it would elsewhere. This table is maintained
+   * by hand, and the app has a whole policy feed precisely BECAUSE shops
+   * change their windows.
+   */
+  const CHECKED = '2026-09-03';
+
+  it('says nothing about a check that has not happened', () => {
+    expect(tableCheck(new Date(2026, 8, 4), null)).toEqual({ state: 'never' });
+  });
+
+  it('quotes a recent check', () => {
+    expect(tableCheck(new Date(2026, 8, 4), CHECKED).state).toBe('fresh');
+  });
+
+  it('stops quoting one that has gone off', () => {
+    // The defect in one line: without this, 2029 reads the same as the day
+    // after.
+    expect(tableCheck(new Date(2029, 8, 4), CHECKED).state).toBe('stale');
+  });
+
+  it('has an expiry that bites within a plausible life of the app', () => {
+    /*
+     * The number is our judgement and no test asserts it — but that an expiry
+     * EXISTS is the property, and one that only bit after a century would
+     * satisfy the case above while changing nothing real.
+     */
+    expect(tableCheck(new Date(2028, 0, 1), CHECKED).state).toBe('stale');
+    expect(tableCheck(new Date(2026, 9, 1), CHECKED).state).toBe('fresh');
+  });
+
+  it('does not call a check stale on the day it stops being fresh', () => {
+    // The last-day edge this codebase has got wrong twice elsewhere: a window
+    // is open on its final day.
+    const on = fromISODate(CHECKED);
+    expect(tableCheck(addDays(on, 365), CHECKED).state).toBe('fresh');
+    expect(tableCheck(addDays(on, 366), CHECKED).state).toBe('stale');
+  });
+
+  it('reads a date in the future as fresh, not stale', () => {
+    // A device clock behind the day of the check is the ordinary cause, and
+    // calling a check that has just happened "old" is the worse of the two.
+    expect(tableCheck(new Date(2026, 0, 1), CHECKED).state).toBe('fresh');
+  });
+
+  it('hands back the date, so the screen quotes the record rather than reformatting it', () => {
+    const check = tableCheck(new Date(2026, 8, 4), CHECKED);
+    expect(check.state === 'never' ? null : toISODate(check.on)).toBe(CHECKED);
+  });
+})

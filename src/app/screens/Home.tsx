@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { color, font, radius, shadow } from '../../tokens';
-import { addDays, daysBetween, fmtDate, fmtDateNear, fromISODate } from '../../lib/dates';
+import { addDays, fmtDate, fmtDateNear } from '../../lib/dates';
 import { money, sumPence } from '../../lib/money';
-import { bucket, derive, stillReturnablePence, timelineDots } from '../../lib/receipts';
+import { bucket, derive, everyReturnInTime, stillReturnablePence, timelineDots } from '../../lib/receipts';
 import { search, searchStatus, shouldOfferSearch } from '../../lib/search';
 import { midSentence } from '../../lib/words';
 import { heroCount, urgency } from '../../lib/urgency';
@@ -46,11 +46,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedStores, 
   const dots = timelineDots(receipts, today);
   const empty = receipts.length === 0;
   const allDone = !searching && active.length === 0 && returned.length > 0;
-  // Only where the record supports it: a return with no date recorded cannot
-  // be claimed either way, so it counts against the boast rather than for it.
-  const allInTime = returned.every(
-    (r) => r.returnedOn !== undefined && daysBetween(fromISODate(r.returnedOn), derive(r, today).deadline) >= 0,
-  );
+  const allInTime = everyReturnInTime(returned, today);
   const nothingMatched = searching && visible.length === 0;
 
   /*

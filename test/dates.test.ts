@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, addMonths, daysBetween, fmtDate, fmtDateNear, fmtDatesTogether, fromISODate, relativeAgo, startOfDay, toISODate } from '../src/lib/dates';
+import { addDays, addMonths, currentDay, daysBetween, fmtDate, fmtDateNear, fmtDatesTogether, fromISODate, relativeAgo, startOfDay, toISODate } from '../src/lib/dates';
 
 /**
  * This suite runs under TZ=America/New_York on purpose (see package.json).
@@ -54,6 +54,66 @@ describe('day arithmetic', () => {
     // regression that would actually mislead a UK user is US ordering.
     expect(fmtDate(new Date(2026, 7, 5))).toBe('5 Aug');
     expect(fmtDate(new Date(2026, 8, 5))).toMatch(/^5 Sep/);
+  });
+});
+
+describe('fromISODate on a string that is not a full date', () => {
+  /*
+   * `isISODate` in backup.ts enforces the shape and the round trip, so nothing
+   * stored ever reaches here short. The fallbacks exist so the function is
+   * TOTAL — every other date helper composes on top of it, and an Invalid Date
+   * escaping into `daysBetween` becomes a NaN days-left that renders as
+   * "NaN days" rather than failing anywhere anyone would notice.
+   *
+   * A missing part means the start of the period it names, which is the only
+   * reading of "2026" that is not a guess.
+   */
+  it('reads a bare year as the first of January', () => {
+    expect(toISODate(fromISODate('2026'))).toBe('2026-01-01');
+  });
+
+  it('reads a year and month as the first of that month', () => {
+    expect(toISODate(fromISODate('2026-08'))).toBe('2026-08-01');
+  });
+
+  it('never hands back an Invalid Date', () => {
+    // The property the fallbacks are actually for.
+    for (const iso of ['2026', '2026-08', '2026-08-28']) {
+      expect(Number.isNaN(fromISODate(iso).getTime())).toBe(false);
+    }
+  });
+});
+
+describe('relativeAgo — the chip on the policy feed', () => {
+  /*
+   * Coarse on purpose: the exact hour a retailer edited its terms is noise.
+   * But the bucket EDGES are what a reader sees, and they were untested — the
+   * weeks bucket rounded down with nothing saying it must.
+   */
+  const day = (n: number) => new Date(2026, 7, 28 - n);
+  const today = new Date(2026, 7, 28);
+  const ago = (n: number) => relativeAgo(day(n), today);
+
+  it('rounds weeks DOWN, so it never overstates how long ago it was', () => {
+    // ceil would call eight days "2w ago", which is a fortnight it has not been.
+    expect(ago(7)).toBe('1w ago');
+    expect(ago(8)).toBe('1w ago');
+    expect(ago(13)).toBe('1w ago');
+    expect(ago(14)).toBe('2w ago');
+  });
+
+  it('changes unit where it says it does', () => {
+    expect(ago(6)).toBe('6d ago');
+    expect(ago(29)).toBe('4w ago');
+    expect(ago(30)).toBe('1mo ago');
+    expect(ago(364)).toBe('12mo ago');
+    expect(ago(365)).toBe('1y ago');
+  });
+
+  it('says today and yesterday rather than counting them', () => {
+    expect(ago(0)).toBe('today');
+    expect(relativeAgo(new Date(2026, 7, 29), today)).toBe('today');
+    expect(ago(1)).toBe('yesterday');
   });
 });
 
@@ -147,5 +207,52 @@ describe('fmtDatesTogether — a pair that cannot be read as the same year', () 
     const a = new Date(2026, 2, 1);
     const b = new Date(2026, 4, 9);
     expect(fmtDatesTogether([a, b], today)).toEqual([fmtDate(a), fmtDate(b)]);
+  });
+});
+
+describe('the day the app thinks it is', () => {
+  /*
+   * `currentDay` is called on a sixty-second interval and on every return to
+   * the foreground, and what it returns is held in state and fed to the
+   * reducer, every screen's day-counts, the alert plan and the scheduler. So
+   * both halves matter: it has to turn over, and it has to not.
+   *
+   * The effect it came out of asserted this in prose — "sets state only when
+   * the date actually turns over" — where nothing could contradict it.
+   */
+  it('hands back the very same object while the day has not turned', () => {
+    const current = startOfDay(new Date(2026, 5, 30, 9, 0));
+    const later = new Date(2026, 5, 30, 23, 59, 59);
+    // Identity, not equality: a fresh Date each minute would re-run the
+    // reducer, every derivation and the scheduler for the life of the session.
+    expect(currentDay(current, later)).toBe(current);
+  });
+
+  it('turns over at midnight, not at the twenty-four hour mark', () => {
+    const current = startOfDay(new Date(2026, 5, 30, 23, 0));
+    const justAfter = new Date(2026, 6, 1, 0, 0, 1);
+    const next = currentDay(current, justAfter);
+    expect(next).not.toBe(current);
+    expect(toISODate(next)).toBe('2026-07-01');
+  });
+
+  it('turns over exactly once across a 23-hour spring-forward day', () => {
+    /*
+     * The suite runs in America/New_York for this: on 8 March 2026 the day is
+     * 23 hours long, so anything comparing elapsed milliseconds against
+     * 86_400_000 turns the date over early or late. Two calls, one either side
+     * of the short night.
+     */
+    const before = startOfDay(new Date(2026, 2, 8, 12, 0));
+    expect(currentDay(before, new Date(2026, 2, 8, 23, 30))).toBe(before);
+    const after = currentDay(before, new Date(2026, 2, 9, 0, 30));
+    expect(toISODate(after)).toBe('2026-03-09');
+  });
+
+  it('goes backwards if the clock does', () => {
+    // A phone whose time is corrected backwards is not a case to be clever
+    // about: the app should report the day it now is, not the latest it saw.
+    const current = startOfDay(new Date(2026, 5, 30));
+    expect(toISODate(currentDay(current, new Date(2026, 5, 28, 8, 0)))).toBe('2026-06-28');
   });
 });

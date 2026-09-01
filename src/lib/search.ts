@@ -41,6 +41,10 @@ export function search(receipts: readonly Receipt[], query: string): Receipt[] {
  * Below this the list fits on a screen or two and a search box is just
  * furniture in the way of the thing it would search.
  */
+// A judgement, and no test pins the number: what is asserted in seed.test.ts
+// is the relationship that matters — the demo library is short enough that a
+// first launch is not cluttered with a box searching five rows. Six or seven
+// both satisfy that, so neither is pinned.
 export const SEARCH_APPEARS_ABOVE = 6;
 
 export function shouldOfferSearch(receipts: readonly Receipt[]): boolean {

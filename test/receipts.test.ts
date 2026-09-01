@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { addDays, toISODate } from '../src/lib/dates';
+import { photoName } from '../src/lib/photos';
 import { toPence } from '../src/lib/money';
-import { bucket, derive, stillReturnablePence, timelineDots } from '../src/lib/receipts';
+import { bucket, derive, everyReturnInTime, makeReceiptId, stillReturnablePence, timelineDots } from '../src/lib/receipts';
 import type { Receipt } from '../src/lib/types';
 
 const TODAY = new Date(2026, 7, 28);
@@ -51,6 +52,27 @@ describe('derive', () => {
     const d = derive(receipt({ purchasedOn: toISODate(addDays(TODAY, 3)) }), TODAY);
     expect(d.daysUsed).toBe(0);
   });
+
+  it('is NOT expired on the last day of the window', () => {
+    /*
+     * The one thing this app must never do. `expired` is `daysLeft < 0`, and
+     * the whole suite tested it at minus six — where `<` and `<=` agree. On the
+     * last day they do not, and `<=` tells somebody they have missed a deadline
+     * they could still meet today, by walking into the shop.
+     *
+     * The deadline is INCLUSIVE, which is why zero days left is a live right
+     * rather than a spent one.
+     */
+    const d = derive(receipt({ purchasedOn: ago(14), windowDays: 14 }), TODAY);
+    expect(d.daysLeft).toBe(0);
+    expect(d.expired).toBe(false);
+  });
+
+  it('is expired the day after, and not before', () => {
+    const d = derive(receipt({ purchasedOn: ago(15), windowDays: 14 }), TODAY);
+    expect(d.daysLeft).toBe(-1);
+    expect(d.expired).toBe(true);
+  });
 });
 
 describe('bucketing', () => {
@@ -83,7 +105,48 @@ describe('bucketing', () => {
   });
 
   it('sorts soonest deadline first', () => {
-    expect(bucket(set, TODAY, 7).urgent.map((r) => r.id)).toEqual(['urgent']);
+    /*
+     * This asserted a bucket holding ONE receipt, which is an order no
+     * comparator can get wrong — the name promised sorting and the assertion
+     * could not see it. Flipping the comparator's subtraction to an addition
+     * left it green.
+     *
+     * Four in one bucket, handed over in the wrong order, is the smallest case
+     * that actually asks the question.
+     */
+    const many: Receipt[] = [
+      receipt({ id: 'in-9', purchasedOn: ago(21), windowDays: 30 }),
+      receipt({ id: 'in-2', purchasedOn: ago(12), windowDays: 14 }),
+      receipt({ id: 'in-20', purchasedOn: ago(10), windowDays: 30 }),
+      receipt({ id: 'in-5', purchasedOn: ago(9), windowDays: 14 }),
+    ];
+    expect(bucket(many, TODAY, 30).urgent.map((r) => r.id)).toEqual(['in-2', 'in-5', 'in-9', 'in-20']);
+  });
+
+  it('orders the closed ones by how recently they closed', () => {
+    // Negative days left sort the same way, and a sum comparator reverses them.
+    const shut: Receipt[] = [
+      receipt({ id: 'long-gone', purchasedOn: ago(60), windowDays: 14 }),
+      receipt({ id: 'just-shut', purchasedOn: ago(16), windowDays: 14 }),
+    ];
+    expect(bucket(shut, TODAY, 7).closed.map((r) => r.id)).toEqual(['long-gone', 'just-shut']);
+  });
+
+  it('counts the threshold day itself as urgent, not as later', () => {
+    // `<= urgentDays`. Nothing in the fixture above sat ON the boundary, so
+    // narrowing it to `<` changed no test — and the receipt with exactly the
+    // urgent number of days left is the one the setting is named for.
+    const onIt = receipt({ id: 'exactly-7', purchasedOn: ago(7), windowDays: 14 });
+    expect(bucket([onIt], TODAY, 7).urgent.map((r) => r.id)).toEqual(['exactly-7']);
+    expect(bucket([onIt], TODAY, 7).later).toHaveLength(0);
+    expect(bucket([onIt], TODAY, 6).later.map((r) => r.id)).toEqual(['exactly-7']);
+  });
+
+  it('files the last day as urgent rather than closed', () => {
+    // `daysLeft >= 0`. Zero is a live right — see derive above.
+    const lastDay = receipt({ id: 'today', purchasedOn: ago(14), windowDays: 14 });
+    expect(bucket([lastDay], TODAY, 7).urgent.map((r) => r.id)).toEqual(['today']);
+    expect(bucket([lastDay], TODAY, 7).closed).toHaveLength(0);
   });
 
   it('puts the closed ones above everything still running', () => {
@@ -113,6 +176,63 @@ describe('timeline', () => {
     const [dot] = timelineDots(set, TODAY);
     expect(dot.left).toBeGreaterThanOrEqual(2);
     expect(dot.left).toBeLessThanOrEqual(98);
+  });
+
+  it('includes the thirtieth day and excludes the thirty-first', () => {
+    // `<= 30`. Nothing sat on the edge, so narrowing it to `<` changed nothing
+    // — and the strip is named for the next thirty days.
+    const on = receipt({ id: 'day-30', purchasedOn: ago(0), windowDays: 30 });
+    const past = receipt({ id: 'day-31', purchasedOn: ago(0), windowDays: 31 });
+    expect(timelineDots([on, past], TODAY).map((d) => d.daysLeft)).toEqual([30]);
+  });
+
+  it('puts the far end of the rail at the far end, and the near end near', () => {
+    /*
+     * The clamp is `max(2, min(98, round(daysLeft / 30 * 100)))`, and the old
+     * pair of assertions only asked that a single dot fell somewhere between 2
+     * and 98 — which every value does. `min` swapped for `max` left it green,
+     * putting every dot at 98.
+     */
+    const dots = timelineDots([
+      receipt({ id: 'today', purchasedOn: ago(14), windowDays: 14 }),   // 0 left
+      receipt({ id: 'mid', purchasedOn: ago(0), windowDays: 15 }),      // 15 left
+      receipt({ id: 'end', purchasedOn: ago(0), windowDays: 30 }),      // 30 left
+    ], TODAY);
+    expect(dots.map((d) => d.left)).toEqual([2, 50, 98]);
+  });
+
+  it('rounds a dot to the nearest percent rather than truncating it', () => {
+    // Eight of thirty is 26.67: rounding puts it at 27, truncation at 26. The
+    // three values above all divide evenly, so neither could tell them apart.
+    const dots = timelineDots([receipt({ purchasedOn: ago(0), windowDays: 8 })], TODAY);
+    expect(dots.map((d) => d.left)).toEqual([27]);
+  });
+});
+
+describe('the id every receipt is minted with', () => {
+  /*
+   * Untested until now, and it is not merely an identifier: on iOS it becomes
+   * a FILENAME, through `photoName`, which is why that function reduces it to
+   * characters that cannot mean anything to a path. An id generator that drifts
+   * into producing something `photoName` rejects would leave receipts silently
+   * unable to hold a photograph.
+   */
+  it('is unique across a burst minted in the same millisecond', () => {
+    const ids = new Set(Array.from({ length: 500 }, () => makeReceiptId(TODAY)));
+    expect(ids.size).toBe(500);
+  });
+
+  it('survives the filename reduction unchanged', () => {
+    for (let i = 0; i < 50; i += 1) {
+      const id = makeReceiptId(TODAY);
+      expect(photoName(id)).toBe(`${id}.jpg`);
+    }
+  });
+
+  it('carries the day it was minted, so ids sort roughly by age', () => {
+    const older = makeReceiptId(new Date(2026, 0, 1));
+    const newer = makeReceiptId(TODAY);
+    expect(older < newer).toBe(true);
   });
 });
 
@@ -172,6 +292,45 @@ describe('the warranty clock', () => {
 
   it('uses the singular on the last day', () => {
     expect(withWarranty(12, 364).warranty!.label).toBe('1 day');
+  });
+
+  it('says "1 month", not "1 months"', () => {
+    /*
+     * Found by mutating the branches around it and noticing none of them was
+     * pinned. The days branch says "1 day" and the years branch says "1 year";
+     * this one said "1 months" for every warranty between 45 and 59 days from
+     * its end — six weeks of every cover period, on the detail screen.
+     */
+    expect(withWarranty(12, 320).warranty!.label).toBe('1 month');
+    expect(withWarranty(3, 0).warranty!.label).toBe('3 months');
+  });
+
+  it('switches from days to months at 45, and not before', () => {
+    // `days < 45`. Either side of the edge, so widening it to `<=` fails.
+    expect(withWarranty(12, 321).warranty!.label).toBe('44 days');
+    expect(withWarranty(12, 320).warranty!.label).toBe('1 month');
+  });
+
+  it('switches from months to years at twelve, and not before', () => {
+    // `months < 12`. Eleven months is still months; twelve is a year.
+    expect(withWarranty(12, 1).warranty!.label).toBe('11 months');
+    expect(withWarranty(12, 0).warranty!.label).toBe('1 year');
+  });
+
+  it('still says something on the last day of cover, rather than nothing', () => {
+    /*
+     * `days < 0` returns the empty label, and zero is not less than zero — the
+     * cover is live all of its last day, the same rule the return window
+     * follows. Widening it to `<=` blanks the label on exactly the day somebody
+     * checking their warranty most needs to see it, and an empty label renders
+     * as no warranty at all rather than as an expired one.
+     *
+     * "0 days" is terse, and it is honest.
+     */
+    const d = withWarranty(12, 365);
+    expect(d.warranty!.daysLeft).toBe(0);
+    expect(d.warranty!.expired).toBe(false);
+    expect(d.warranty!.label).toBe('0 days');
   });
 
   it('says nothing at all once cover has run out', () => {
@@ -236,3 +395,59 @@ describe('what "still returnable" counts', () => {
     expect(stillReturnablePence(bucket(rs, today, 7))).toBe(1000);
   });
 });
+
+describe('the claim on the “All squared away” card', () => {
+  /*
+   * "Every return made it back in time" was unconditional once — a claim about
+   * timing that nothing checked, on a screen where a return CAN be made after
+   * the shop's window shuts, by goodwill or the faulty-goods route. Made
+   * conditional and then left as an inline `.every` in a component nothing
+   * here can render, which is the same claim with a thinner guard.
+   */
+  const returned = (id: string, purchasedOn: string, returnedOn?: string): Receipt =>
+    receipt({
+      id,
+      purchasedOn,
+      windowDays: 30,
+      status: 'returned',
+      ...(returnedOn === undefined ? {} : { returnedOn }),
+    });
+  const today = new Date(2026, 8, 20);
+
+  it('counts the last day of the window as in time', () => {
+    // Bought 1 August with 30 days: the deadline is the 31st, and going back
+    // ON the 31st made it. The off-by-one here would tell somebody they had
+    // missed a deadline they met.
+    expect(everyReturnInTime([returned('a', '2026-08-01', '2026-08-31')], today)).toBe(true);
+  });
+
+  it('does not claim it for a return made the day after', () => {
+    expect(everyReturnInTime([returned('a', '2026-08-01', '2026-09-01')], today)).toBe(false);
+  });
+
+  it('counts a return with no date recorded against the claim', () => {
+    // The record cannot support it either way, and the boast is the half that
+    // has to be earned.
+    expect(everyReturnInTime([returned('a', '2026-08-01')], today)).toBe(false);
+  });
+
+  it('needs every one of them, not most', () => {
+    expect(
+      everyReturnInTime(
+        [returned('a', '2026-08-01', '2026-08-10'), returned('b', '2026-08-01', '2026-09-05')],
+        today,
+      ),
+    ).toBe(false);
+  });
+
+  it('claims nothing about an empty library', () => {
+    /*
+     * Where `.every` says true. "Every return made it back in time" about no
+     * returns at all is not a claim worth making, and leaving it vacuous made
+     * the sentence depend on a separate emptiness check elsewhere on the
+     * screen — which is exactly the arrangement that let the original
+     * unconditional version survive as long as it did.
+     */
+    expect(everyReturnInTime([], today)).toBe(false);
+  });
+})

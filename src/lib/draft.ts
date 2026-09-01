@@ -183,6 +183,8 @@ export function validateDraft(draft: ReceiptDraft, today: Date): DraftOutcome {
   // Accept what people actually type — a leading £, spaces, thousands commas.
   const cleaned = draft.amountText.replace(/[£\s,]/g, '');
   const amountNum = Number(cleaned);
+  // Any initial value does: it is overwritten on the path that uses it, and on
+  // every other path the function returns errors instead. Equivalent, recorded.
   let amount = 0;
   if (!cleaned || !Number.isFinite(amountNum)) {
     errors.amountText = 'Enter the amount, like 24.99';
@@ -304,6 +306,9 @@ function draftWindowStart(draft: ReceiptDraft): string | undefined {
     arrivedOn: draft.distance ? draft.arrivedOnText.trim() : '',
   });
   if (!start) return undefined;
+  // `>` would answer the same through `effectiveWindowStart`, whose `?? purchasedOn`
+  // turns the undefined back into the purchase date — so no test can separate
+  // them. It stays as `>=` because that is what it means, not because it shows.
   return start >= draft.purchasedOn ? start : undefined;
 }
 

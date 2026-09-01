@@ -594,3 +594,106 @@ describe('a date that is shaped right and does not exist', () => {
     if (!out.ok) expect(out.errors.dispatchedOnText).toBe('Pick the day it was dispatched, or leave it blank');
   });
 });
+
+describe('the edges of every rule the add form enforces', () => {
+  /*
+   * Seventeen of this file's mutations survived the whole suite, and they all
+   * had the same shape: one side of a boundary was tested and the other was
+   * not. "Accepts today" was here; "rejects tomorrow" was not, so `> 0` could
+   * become `> 1` and a purchase dated tomorrow sailed through — starting a
+   * return clock in the future and reporting a window longer than any shop
+   * will honour.
+   *
+   * Every rule below is asserted from both sides. These are the messages a
+   * person sees while typing, so being wrong in either direction is either a
+   * refusal of something legitimate or a receipt the app will count down wrong.
+   */
+  const day = (n: number) => toISODate(new Date(2026, 7, 28 + n));
+
+  it('takes a purchase dated today and refuses one dated tomorrow', () => {
+    expect(valid({ purchasedOn: day(0) }).purchasedOn).toBe(day(0));
+    expect(errors({ purchasedOn: day(1) }).purchasedOn).toMatch(/future/i);
+  });
+
+  /*
+   * The dispatch field is only validated for a shop whose clock STARTS at
+   * dispatch — Currys counts from purchase, so its dispatch box is not shown
+   * and not checked. Zara is the one to ask.
+   */
+  const forField = { arrivedOnText: {}, dispatchedOnText: { store: 'Zara' } } as const;
+
+  it.each(['arrivedOnText', 'dispatchedOnText'] as const)(
+    'takes a %s of today and refuses tomorrow',
+    (field) => {
+      expect(valid({ distance: true, ...forField[field], [field]: day(0) })).toBeTruthy();
+      expect(errors({ distance: true, ...forField[field], [field]: day(1) })[field]).toMatch(/future/i);
+    },
+  );
+
+  it.each(['arrivedOnText', 'dispatchedOnText'] as const)(
+    'lets a %s fall on the very day it was ordered',
+    (field) => {
+      /*
+       * `daysBetween(purchased, date) < 0` rejects. Equal is not less, and the
+       * same day is ordinary — click and collect, a digital order, a shop that
+       * ships within the hour. Nothing sat on that edge, so tightening it to
+       * `<= 0` refused all of them.
+       */
+      const same = { distance: true, ...forField[field], purchasedOn: '2026-08-16' };
+      expect(valid({ ...same, [field]: '2026-08-16' })).toBeTruthy();
+      expect(errors({ ...same, [field]: '2026-08-15' })[field]).toMatch(/before you ordered it/i);
+    },
+  );
+
+  it.each([
+    ['a one-day window', { windowDaysText: '1' }],
+    ['the longest window it allows', { windowDaysText: String(MAX_WINDOW_DAYS) }],
+    ['a free item', { amountText: '0' }],
+    ['the largest amount it allows', { amountText: '1000000' }],
+    ['a one-month warranty', { warrantyMonthsText: '1' }],
+    ['a hundred-year warranty', { warrantyMonthsText: '1200' }],
+  ])('accepts %s', (_label, patch) => {
+    expect(valid(patch)).toBeTruthy();
+  });
+
+  it.each([
+    ['a zero-day window', { windowDaysText: '0' }, 'windowDaysText' as const],
+    ['a window longer than it allows', { windowDaysText: String(MAX_WINDOW_DAYS + 1) }, 'windowDaysText' as const],
+    ['an amount over the ceiling', { amountText: '1000000.01' }, 'amountText' as const],
+    ['a zero-month warranty', { warrantyMonthsText: '0' }, 'warrantyMonthsText' as const],
+    ['a warranty longer than it allows', { warrantyMonthsText: '1201' }, 'warrantyMonthsText' as const],
+  ])('refuses %s', (_label, patch, field) => {
+    expect(errors(patch)[field]).toBeTruthy();
+  });
+
+  it.each([
+    ['keeps a one-month warranty when the receipt is opened for editing', 1, '1'],
+    ['leaves the box empty for a note with no clock behind it', 0, ''],
+  ])('%s', (_label, months, expected) => {
+    /*
+     * `draftFrom` turns a saved receipt back into the form. Its
+     * `warranty.months > 0` decides whether the box is filled, and neither side
+     * was tested — so `>= 0` would put a literal "0" in front of somebody
+     * editing, and `> 1` would BLANK a one-month warranty, losing it the moment
+     * they saved any other change.
+     */
+    const r: Receipt = {
+      id: 'r', store: 'Currys', item: 'Headphones', cat: 'audio', amount: toPence(89),
+      purchasedOn: '2026-08-16', windowDays: 14, policy: 'p', distance: false,
+      status: 'active', warranty: { months },
+    };
+    expect(draftFrom(r).warrantyMonthsText).toBe(expected);
+  });
+
+  it('ties its two ceilings to the years they are described as', () => {
+    /*
+     * Neither number is pinned as a bare literal — both are judgements, and
+     * mutating either moves the constant and every assertion reading it
+     * together. What is not a judgement is what the comments beside them SAY:
+     * ten years, and a hundred years. Held to that.
+     */
+    expect(MAX_WINDOW_DAYS).toBe(365 * 10);
+    expect(valid({ warrantyMonthsText: String(12 * 100) })).toBeTruthy();
+    expect(errors({ warrantyMonthsText: String(12 * 100 + 1) }).warrantyMonthsText).toBeTruthy();
+  });
+});
