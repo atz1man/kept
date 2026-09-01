@@ -123,6 +123,22 @@ function report(crash) {
 }
 reportOnCrash(report);
 
+/*
+ * A fresh install opens onboarding at its FIRST card.
+ *
+ * `obStep: 0` in the state this app boots with, and nothing held it: mutation
+ * to 1 left the whole suite green, because everything here — this line
+ * included — skips onboarding without looking at it, so the app would have
+ * opened on the second of three cards with the first one unreachable. Asked
+ * through the progress element's own accessible text, which is the sentence a
+ * screen reader is given and therefore has to be right anyway.
+ */
+results['a fresh install opens onboarding at the first card'] =
+  (await page
+    .getByRole('progressbar', { name: 'Onboarding progress' })
+    .getAttribute('aria-valuetext')
+    .catch(() => null)) === 'Step 1 of 3';
+
 await page.getByRole('button', { name: 'Skip' }).click();
 await page.waitForTimeout(300);
 
