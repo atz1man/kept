@@ -33,19 +33,19 @@ const SETTLE_MS = 6000;
 /*
  * And how long the whole of one case gets, browser and server included.
  *
- * Every wait INSIDE `launch` is already bounded — Playwright's own default
- * covers the navigation and the two `waitForFunction`s — but `browser.close()`
- * in its `finally` is not, and neither is a `server.listen` that resolves onto
- * a Chromium that never comes back. Observed in CI: this sweep takes twenty-
- * five seconds, and one run sat in the same step for fifty minutes with no
- * output, on a commit that changed only the README. A hung step is worse than
- * a failing one — it reports nothing, holds the runner until GitHub's six-hour
- * limit, and shows a pull request as still deciding rather than as broken.
+ * From reading rather than from an incident, and worth saying so: nothing has
+ * hung here. Every wait INSIDE `launch` is already bounded, by Playwright's own
+ * default — the navigation and both `waitForFunction`s. Two are not.
+ * `browser.close()` in the `finally` takes no timeout and returns when the
+ * browser process does, and `execFileSync` below waits on a build for as long
+ * as the build takes. A step that stops answering is worse than one that
+ * fails: it reports nothing, holds a runner until GitHub's six-hour limit, and
+ * shows a pull request as still deciding rather than as broken.
  *
  * Five cases in twenty-five seconds is five apiece, so two minutes is twenty
  * times the room the work needs, and exceeding it is a fault rather than a
- * slow afternoon. The build gets its own, an order of magnitude over the two
- * seconds it takes, because `execFileSync` will otherwise wait forever too.
+ * slow afternoon. The build gets an order of magnitude over the two seconds it
+ * takes. Both numbers are ours, so neither is pinned by a test.
  */
 const CASE_BUDGET_MS = 120_000;
 const BUILD_BUDGET_MS = 300_000;

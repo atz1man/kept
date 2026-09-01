@@ -267,25 +267,25 @@ worker's network; `ios`, which boots the bundle that actually ships; and
 the day it was written, which is why they are gates rather than a ritual
 someone remembers to perform.
 
-Both jobs carry a timeout, and one of them earned it. `feed:wiring` normally
-takes twenty-five seconds; a run on a commit that changed only this file sat in
-that step for fifty minutes with no output, and with no `timeout-minutes` it
-would have held the runner until GitHub's six-hour limit. A hang is worse than
-a failure: it reports nothing, and a pull request that is broken reads as one
-still deciding. The script now carries a deadline per case — two minutes
-against the five seconds each takes — so it says WHICH case stopped answering
-instead of stopping, and the job timeout is the backstop for the next thing
-that hangs somewhere else. Every wait inside it was already bounded by
-Playwright's own default; `browser.close()` was not, and neither was the build
-it shells out to.
+Both jobs carry a timeout, and `feed:wiring` carries a deadline per case. From
+reading rather than from an incident — nothing has hung, and every run of the
+browser job has finished in about ten minutes. What is true is the default:
+with no `timeout-minutes` a step that stops answering holds a runner until
+GitHub's six-hour limit and reports nothing, so a pull request that is broken
+reads as one still deciding, and silence is the failure this repository is
+least equipped to notice. Inside `feed:wiring` every wait is already bounded by
+Playwright's own default except two — `browser.close()`, which returns when the
+browser process does, and the build it shells out to — so each case gets two
+minutes against the five seconds it takes, and says which one stopped rather
+than stopping.
 
 One run per pull request at a time, and the newest is the one that matters.
 The browser job is about ten minutes and this repository is public, so the
-runners are the free ones; without a concurrency group a branch that took four
-pushes in an hour queued four of them, each answering a question about a commit
-nobody would merge, and the answer about the commit somebody would merge
-arrived last — measured at fifty minutes behind the push that asked it. It
-applies to pull requests only. A push to `main` is the record of what that
+runners are the free ones; without a concurrency group a branch that takes four
+pushes in an hour runs all four in full, three of them answering a question
+about a commit nobody will merge. They do not delay the fourth — runs here
+start within seconds of the push — so this is about the ten minutes each rather
+than about waiting. It applies to pull requests only. A push to `main` is the record of what that
 branch does, and a later push must not delete it: two commits landing close
 together would leave the first with no result at all, which is the state this
 repository refuses everywhere else — a green tree that was never asked.

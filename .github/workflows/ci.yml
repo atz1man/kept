@@ -19,10 +19,10 @@ on:
 # The browser job builds, installs Chromium and runs eight sweeps, three of
 # which stand up servers of their own; it is about ten minutes, and this
 # repository is public so the runners are the free ones. Without this, a branch
-# that took four pushes in an hour queued four of those, each one answering a
-# question about a commit nobody would merge, and the answer about the commit
-# somebody WOULD merge arrived last — measured here at fifty minutes behind the
-# push that asked it.
+# that takes four pushes in an hour runs all four in full, three of them
+# answering a question about a commit nobody will merge. They do not currently
+# delay the fourth — runs here start within seconds of the push — so this is
+# about the ten minutes each, not about waiting.
 #
 # Only for pull requests. A push to `main` is the record of what that branch
 # does, and a later push must not delete it: two commits landing close together
@@ -62,13 +62,15 @@ jobs:
     # Ten minutes of work, so this is two and a half times it — a backstop for
     # a step that stops answering rather than a budget anything runs near.
     #
-    # It exists because one did. `feed:wiring` normally takes twenty-five
-    # seconds; a run on a README-only commit sat in that step for fifty minutes
-    # with no output and would have held this runner until GitHub's six-hour
-    # limit. A job with no timeout turns a hang into silence, and a pull request
-    # that is broken then reads as one that is still deciding. That script now
-    # carries a deadline of its own, which says WHICH case stopped answering;
-    # this is the backstop for the next thing that hangs somewhere else.
+    # Nothing has hung: every run of this job has finished in about ten minutes.
+    # The reason to have it anyway is what the DEFAULT is. With no
+    # `timeout-minutes` a step that stops answering holds this runner until
+    # GitHub's six-hour limit and reports nothing at all, so a pull request that
+    # is broken reads as one still deciding — and silence is the failure mode
+    # this repository is least equipped to notice, since every gate here is
+    # written to say what it found. `feed:wiring` carries a deadline per case as
+    # well, because it names WHICH case stopped; this is the backstop for the
+    # next thing that stops somewhere no script is watching.
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
