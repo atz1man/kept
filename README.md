@@ -2221,30 +2221,53 @@ The retailer windows in `stores.ts` were written from the handoff and public
 policy pages. Verify each one against the retailer's current published terms
 before launch — the app's core claim is that these are right.
 
-**The iOS privacy manifest is not written, and it is the one place the App
-Store reads this app's central claim mechanically.** What was measured here,
-rather than assumed:
+**The iOS privacy manifest is written, and so are the four project edits that
+make it more than a file.** It is the one place the App Store reads this app's
+central claim mechanically, and it now says there what the Settings screen, the
+onboarding and the landing page all say: nothing tracked, no tracking domains,
+nothing collected. `NSPrivacyTracking` is false and both arrays are empty
+because that is true, not because they are the defaults.
 
-- `ios/App/App/` contains no `PrivacyInfo.xcprivacy`.
-- `@capacitor/ios` ships one for the Capacitor and CapacitorCordova targets,
-  declaring no tracking, no tracking domains, no collected data and no accessed
-  API types.
-- `@capacitor/camera`, `@capacitor/filesystem` and `@capacitor/local-notifications`
-  — the three plugins this app uses — ship none at any version installed here.
+One required-reason category is declared: file timestamps, reason `C617.1` —
+files inside the app container. Derived rather than recalled.
+`@capacitor/filesystem` reads `.creationDate` and `.modificationDate` through
+`FileManager.attributesOfItem` to answer `stat` and `readdir`, and kept reaches
+that plugin for the mirror, for receipt photographs and for an exported backup,
+all of them inside its own Documents directory and nowhere else. The other
+three reasons in that category are for files outside the container, which this
+app never touches.
 
-kept's own declaration is the knowable part, and it is the same shape as
-Capacitor's, because it is true: nothing tracked, no tracking domains, nothing
-collected. An app whose whole promise is that the receipts never leave the
-device should say exactly that in the file Apple parses, not only in a privacy
-notice a person has to read.
+The boundary is which code has to answer for itself. `@capacitor/ios` ships its
+own manifest declaring that it accesses nothing. `@capacitor/camera`,
+`@capacitor/filesystem` and `@capacitor/local-notifications` ship none at any
+version installed here, so whatever they touch is the app's to declare — and
+that is exactly where `test/ios-privacy-manifest.test.ts` walks. It re-derives
+the declaration from the installed plugin sources on every run against Apple's
+five required-reason categories and the symbols that give each away, so a
+plugin upgrade that starts reaching a new one fails the suite instead of
+failing review. It fails just as loudly on a category declared that nothing
+reaches: declaring an API the app does not use is as wrong as omitting one it
+does.
 
-What could NOT be settled from here is which required-reason APIs the plugin
-code reaches once compiled — that needs the Mac toolchain, and declaring an API
-the app does not use is as wrong as omitting one it does.
+Registration is checked from the other end, because an unregistered manifest is
+worse than none — it is not copied into the bundle, review never sees it, and
+it looks finished. The same test asserts all four edits Xcode needs: the
+`PBXFileReference`, the `PBXBuildFile` pointing at it, membership of the `App`
+group so the file appears where it is on disk, and the entry in the target's
+Resources build phase without which it ships nowhere. Then it asks whether the
+project file is still a project file at all — balanced braces, every object id
+unique, no build file pointing at a reference that does not exist, every
+section closed. Those structural checks were written and run against the
+UNTOUCHED template first, which is how two wrong drafts of them were caught: a
+`fileRef` may legitimately point at a `PBXVariantGroup` rather than a file, and
+pbxproj objects come in two forms — one line, or several with `isa` on the next
+one. A structural check that only understood one of those would have failed the
+template Apple ships.
 
-It is deliberately not half-done. Dropping the file into `ios/App/App/` without
-also registering it in `project.pbxproj` — a PBXFileReference, a PBXBuildFile,
-the group, and the target's Resources build phase — leaves it out of the built
-app entirely, which is worse than its absence: it looks finished. No pbxproj
-parser is available here and the project cannot be opened to check, so that
-edit belongs on the machine that can build it.
+What still cannot be settled from here is the compiled side: no pbxproj parser
+is available, the project cannot be opened, and nothing here builds anything.
+So the last step belongs on the Mac that can build it — confirm
+`PrivacyInfo.xcprivacy` is present in the built `.app`, and read Apple's own
+privacy report on the first upload against what this file claims. The static
+derivation is the best answer available without that machine; it is not a
+substitute for it.
