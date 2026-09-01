@@ -20,6 +20,42 @@ const ORIGIN = process.env.KEPT_ORIGIN ?? 'http://localhost:5183';
 const EXEC = process.env.CHROMIUM_PATH;
 
 const browser = await chromium.launch(EXEC ? { executablePath: EXEC } : {});
+
+/**
+ * "Nobody else" is a promise on the privacy card, so every request this suite
+ * can see is checked against it.
+ *
+ * Watched at the CONTEXT rather than the page, because it was on the page and
+ * the page is only the app. The landing page opens as a second page in this
+ * same context, and the landing page is where a Google Fonts <link> would
+ * plausibly come back — measured: one added there was loaded by the browser
+ * and the check still reported a clean pass. The verdict is read at the very
+ * end, so a request made on the last screen counts the same as one made on the
+ * first.
+ *
+ * Watched at CREATION rather than by a line under each `newContext`, because
+ * that was fourteen hand-kept lines and the promise is about all of them: the
+ * one somebody forgets to add contributes nothing to `foreign`, and a check
+ * looking for an empty set reads silence as a pass. Wrapping the constructor
+ * makes the fifteenth context watched the day it is written.
+ */
+const foreign = new Set();
+let requestsSeen = 0;
+const newContext = browser.newContext.bind(browser);
+browser.newContext = async (options) => {
+  const context = await newContext(options);
+  // Page-initiated requests only, which is the right scope: Chromium itself
+  // dials accounts.google.com and its own component updater on startup, and
+  // that is the harness, not the app. Checked rather than assumed — opening
+  // this page records no non-origin request at all, and about:blank in the
+  // same browser records the same nothing.
+  context.on('request', (r) => {
+    requestsSeen += 1;
+    const u = new URL(r.url());
+    if (u.origin !== ORIGIN && u.protocol !== 'data:' && u.protocol !== 'blob:') foreign.add(u.origin);
+  });
+  return context;
+};
 const ctx = await browser.newContext({
   viewport: { width: 402, height: 874 },
   acceptDownloads: true,
@@ -48,33 +84,6 @@ await page.addInitScript(() => {
 });
 
 const problems = [];
-const foreign = new Set();
-
-/**
- * "Nobody else" is a promise on the privacy card, so every request this suite
- * can see is checked against it.
- *
- * Watched at the CONTEXT rather than the page, because it was on the page and
- * the page is only the app. The landing page opens as a second page in this
- * same context, and the landing page is where a Google Fonts <link> would
- * plausibly come back — measured: one added there was loaded by the browser
- * and the check still reported a clean pass. Every context this script opens
- * is watched now, and the verdict is read at the very end so a request made on
- * the last screen counts the same as one made on the first.
- */
-const watchOrigins = (context) => {
-  // Page-initiated requests only, which is the right scope: Chromium itself
-  // dials accounts.google.com and its own component updater on startup, and
-  // that is the harness, not the app. Checked rather than assumed — opening
-  // this page records no non-origin request at all, and about:blank in the
-  // same browser records the same nothing.
-
-  context.on('request', (r) => {
-    const u = new URL(r.url());
-    if (u.origin !== ORIGIN && u.protocol !== 'data:' && u.protocol !== 'blob:') foreign.add(u.origin);
-  });
-};
-watchOrigins(ctx);
 
 page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
 page.on('console', (m) => {
@@ -107,6 +116,7 @@ function report(crash) {
     if (!ok) failed = true;
   }
   if (foreign.size) console.log('  third-party origins:', [...foreign].join(', '));
+  if (requestsSeen === 0) console.log('  no request was observed at all — the origin watch is not running');
   for (const p of problems) console.log('  ' + p);
   if (crash) sayCrash(crash);
   process.exit(failed ? 1 : 0);
@@ -126,7 +136,6 @@ await page.waitForTimeout(300);
  */
 {
   const alertCtx = await browser.newContext({ viewport: { width: 402, height: 874 }, permissions: ['notifications'] });
-  watchOrigins(alertCtx);
   const alertPage = await alertCtx.newPage();
   // Both delivery paths, like the main harness above: with a worker
   // registered, deliver() goes through registration.showNotification and the
@@ -163,6 +172,26 @@ await page.waitForTimeout(300);
   const raised = await alertPage.evaluate(() => window.__notes);
   results['a due deadline on your own receipt raises exactly one alert'] =
     raised.length === 1 && raised[0].tag === 'mine_urgent:soon';
+  /*
+   * And the sent list is on disk, so the NEXT launch must not say it again.
+   *
+   * Asked here rather than on the main harness, where it used to sit. Down
+   * there it read `window.__notes` — asserted empty two hundred lines earlier,
+   * on a page that never raises an alert at all, because its receipts are the
+   * sample set and samples do not interrupt. Empty was still empty, so it
+   * passed. Measured: with the recording that suppresses the repeat deleted
+   * outright (`dispatch({ type: 'alerted', ... })` in App.tsx), the whole smoke
+   * suite still went green, this check included.
+   *
+   * Here there is something to repeat. `__notes` is re-created empty by the
+   * init script on every load, so a second launch that says it again lands one
+   * entry in the fresh list, and `raised.length === 1` keeps the question
+   * honest: it can only be answered once an alert has actually been raised.
+   */
+  await alertPage.reload({ waitUntil: 'networkidle' });
+  await alertPage.waitForTimeout(900);
+  const relaunched = await alertPage.evaluate(() => window.__notes);
+  results['an alert is not repeated on the next launch'] = raised.length === 1 && relaunched.length === 0;
   await alertCtx.close();
 }
 
@@ -198,7 +227,6 @@ for (const [label, refuse] of [['confirms a copy that happened', false], ['does 
     viewport: { width: 402, height: 874 },
     permissions: refuse ? [] : ['clipboard-write'],
   });
-  watchOrigins(shareCtx);
   const sharePage = await shareCtx.newPage();
   if (refuse) {
     await sharePage.addInitScript(() => {
@@ -264,8 +292,6 @@ results['onboarding is not shown again'] = !(await page
   .isVisible()
   .catch(() => false));
 results['the return survives a reload'] = await page.getByText('MONEY BACK ✓').isVisible();
-// The sent list is on disk, so a reload must not re-announce anything.
-results['an alert is never repeated'] = (await page.evaluate(() => window.__notes)).length === 0;
 // A returned receipt has to stay reachable: the swipe is a one-finger gesture
 // on a row you might have meant to open, so it will fire by accident.
 await page.getByRole('button', { name: /Currys, JBL.*returned/ }).click();
@@ -487,7 +513,6 @@ results['the policy feed arrives and does not duplicate the bundled one'] =
  */
 {
   const watchCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
-  watchOrigins(watchCtx);
   const watchPage = await watchCtx.newPage();
   let feedHits = 0;
   watchPage.on('request', (r) => {
@@ -609,7 +634,6 @@ results['a delivery date in the paste is read, not asked for'] =
  */
 {
   const lastCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
-  watchOrigins(lastCtx);
   const lastPage = await lastCtx.newPage();
   await lastPage.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
   await lastPage.waitForTimeout(400);
@@ -665,7 +689,6 @@ results['a delivery date in the paste is read, not asked for'] =
  */
 {
   const doneCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
-  watchOrigins(doneCtx);
   const donePage = await doneCtx.newPage();
   await donePage.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
   await donePage.waitForTimeout(400);
@@ -707,7 +730,6 @@ results['a delivery date in the paste is read, not asked for'] =
  */
 {
   const backlogCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
-  watchOrigins(backlogCtx);
   const backlogPage = await backlogCtx.newPage();
   await backlogPage.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
   await backlogPage.waitForTimeout(400);
@@ -804,7 +826,6 @@ results['a dispatch-clocked shop counts from dispatch, and only that shop'] =
  */
 {
   const feedCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
-  watchOrigins(feedCtx);
   const feedPage = await feedCtx.newPage();
   await feedPage.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
   await feedPage.waitForTimeout(400);
@@ -942,7 +963,6 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
  */
 {
   const brokenCtx = await browser.newContext({ viewport: { width: 402, height: 874 }, acceptDownloads: true });
-  watchOrigins(brokenCtx);
   const broken = await brokenCtx.newPage();
   await broken.addInitScript(() => {
     // money() formats every amount on every screen through this.
@@ -997,7 +1017,6 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
  */
 {
   const freshCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
-  watchOrigins(freshCtx);
   const freshPage = await freshCtx.newPage();
   await freshPage.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
   await freshPage.getByRole('button', { name: 'Skip' }).click().catch(() => {});
@@ -1172,7 +1191,6 @@ results['the manifest is installable and declares the share target'] =
  */
 {
   const tabsCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
-  watchOrigins(tabsCtx);
   const tabOne = await tabsCtx.newPage();
   await tabOne.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
   await tabOne.getByRole('button', { name: 'Skip' }).click().catch(() => {});
@@ -1212,7 +1230,6 @@ results['the manifest is installable and declares the share target'] =
  */
 {
   const fullCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
-  watchOrigins(fullCtx);
   const fullPage = await fullCtx.newPage();
   await fullPage.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
   await fullPage.getByRole('button', { name: 'Skip' }).click().catch(() => {});
@@ -1244,7 +1261,6 @@ results['the manifest is installable and declares the share target'] =
  */
 {
   const clockCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
-  watchOrigins(clockCtx);
   const clockPage = await clockCtx.newPage();
   await clockPage.clock.install({ time: new Date('2026-09-10T22:00:00Z') });
   await clockPage.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
@@ -1304,7 +1320,14 @@ results['erasing clears the disk and does not reseed'] =
   (await receiptCount()) === 0 && (await page.getByText('Nothing tracked yet').isVisible());
 
 // Last, so that everything every context loaded has been seen.
-results['nothing is fetched from a third party'] = foreign.size === 0;
+/*
+ * `requestsSeen > 0` is the vacuity guard, not decoration: an empty `foreign`
+ * is the same value whether nothing foreign was fetched or nothing was
+ * watched at all, and the second is what a broken wrapper or a Playwright
+ * event rename would produce. A run that observed no request whatsoever has
+ * not answered the question, so it does not get to say yes.
+ */
+results['nothing is fetched from a third party'] = requestsSeen > 0 && foreign.size === 0;
 results['no console or page errors'] = problems.length === 0;
 
 await browser.close();
