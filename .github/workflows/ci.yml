@@ -14,6 +14,24 @@ on:
     branches: [main]
   pull_request:
 
+# One run per pull request at a time, and the newest is the one that matters.
+#
+# The browser job builds, installs Chromium and runs eight sweeps, three of
+# which stand up servers of their own; it is about ten minutes, and this
+# repository is public so the runners are the free ones. Without this, a branch
+# that took four pushes in an hour queued four of those, each one answering a
+# question about a commit nobody would merge, and the answer about the commit
+# somebody WOULD merge arrived last — measured here at fifty minutes behind the
+# push that asked it.
+#
+# Only for pull requests. A push to `main` is the record of what that branch
+# does, and a later push must not delete it: two commits landing close together
+# would leave the first with no result at all, which is exactly the state this
+# repository refuses everywhere else — a green tree that was never asked.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   unit:
     name: unit

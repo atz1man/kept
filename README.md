@@ -267,6 +267,17 @@ worker's network; `ios`, which boots the bundle that actually ships; and
 the day it was written, which is why they are gates rather than a ritual
 someone remembers to perform.
 
+One run per pull request at a time, and the newest is the one that matters.
+The browser job is about ten minutes and this repository is public, so the
+runners are the free ones; without a concurrency group a branch that took four
+pushes in an hour queued four of them, each answering a question about a commit
+nobody would merge, and the answer about the commit somebody would merge
+arrived last — measured at fifty minutes behind the push that asked it. It
+applies to pull requests only. A push to `main` is the record of what that
+branch does, and a later push must not delete it: two commits landing close
+together would leave the first with no result at all, which is the state this
+repository refuses everywhere else — a green tree that was never asked.
+
 There are no path filters, and that is now simply because there is nothing
 here to filter out. While this lived beside another product both workflows
 carried them, and the lesson from that arrangement is worth keeping even
