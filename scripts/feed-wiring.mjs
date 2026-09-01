@@ -30,6 +30,31 @@ const EXEC = process.env.CHROMIUM_PATH;
 const PROBE = 'u_wiring_probe';
 /** How long a feed gets to reach the store before it counts as refused. */
 const SETTLE_MS = 6000;
+/*
+ * And how long the whole of one case gets, browser and server included.
+ *
+ * Every wait INSIDE `launch` is already bounded — Playwright's own default
+ * covers the navigation and the two `waitForFunction`s — but `browser.close()`
+ * in its `finally` is not, and neither is a `server.listen` that resolves onto
+ * a Chromium that never comes back. Observed in CI: this sweep takes twenty-
+ * five seconds, and one run sat in the same step for fifty minutes with no
+ * output, on a commit that changed only the README. A hung step is worse than
+ * a failing one — it reports nothing, holds the runner until GitHub's six-hour
+ * limit, and shows a pull request as still deciding rather than as broken.
+ *
+ * Five cases in twenty-five seconds is five apiece, so two minutes is twenty
+ * times the room the work needs, and exceeding it is a fault rather than a
+ * slow afternoon. The build gets its own, an order of magnitude over the two
+ * seconds it takes, because `execFileSync` will otherwise wait forever too.
+ */
+const CASE_BUDGET_MS = 120_000;
+const BUILD_BUDGET_MS = 300_000;
+
+/** Rejects rather than waiting forever. The caller names the case it was for. */
+const withDeadline = (work, ms) => new Promise((resolve, reject) => {
+  const timer = setTimeout(() => reject(new Error(`nothing came back in ${ms / 1000}s`)), ms);
+  work.then(resolve, reject).finally(() => clearTimeout(timer));
+});
 
 /*
  * Findings are gathered rather than printed as they happen, so a run that dies
@@ -177,7 +202,11 @@ async function launch(dir, port, { body, signature }) {
 
 const build = (outDir, key) => execFileSync(
   'npx', ['vite', 'build', '--outDir', outDir],
-  { stdio: 'pipe', env: key ? { ...process.env, VITE_FEED_PUBLIC_KEY: key } : process.env },
+  {
+    stdio: 'pipe',
+    timeout: BUILD_BUDGET_MS,
+    env: key ? { ...process.env, VITE_FEED_PUBLIC_KEY: key } : process.env,
+  },
 );
 
 build('dist-wiring-unsigned', null);
@@ -205,7 +234,19 @@ const CASES = [
 
 let port = 4361;
 for (const c of CASES) {
-  const got = await launch(c.dir, port++, c);
+  let got;
+  try {
+    got = await withDeadline(launch(c.dir, port++, c), CASE_BUDGET_MS);
+  } catch (e) {
+    /*
+     * Reported and exited here rather than left to the crash handler, because
+     * this is not a crash: the run simply stopped answering, and the honest
+     * word for the cases below it is unrun rather than failed. `report` says
+     * how many never ran; this says which one stopped.
+     */
+    results.push({ name: c.name, ok: false, stopped: e.message, got: {}, want: c });
+    report();
+  }
   results.push({
     name: c.name,
     ok: got.applied === c.applied && got.askedForSignature === c.askedForSignature,
@@ -218,6 +259,10 @@ function report(crash) {
   console.log('');
   for (const r of results) {
     console.log(`  ${r.ok ? '✓' : '✗'} ${r.name}`);
+    if (r.stopped) {
+      console.log(`      ${r.stopped} — a check that never returns is not a check that passed`);
+      continue;
+    }
     if (!r.ok) {
       console.log(`      used the feed: ${r.got.applied} (wanted ${r.want.applied})`);
       console.log(`      asked for a signature: ${r.got.askedForSignature} (wanted ${r.want.askedForSignature})`);

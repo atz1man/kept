@@ -267,6 +267,18 @@ worker's network; `ios`, which boots the bundle that actually ships; and
 the day it was written, which is why they are gates rather than a ritual
 someone remembers to perform.
 
+Both jobs carry a timeout, and one of them earned it. `feed:wiring` normally
+takes twenty-five seconds; a run on a commit that changed only this file sat in
+that step for fifty minutes with no output, and with no `timeout-minutes` it
+would have held the runner until GitHub's six-hour limit. A hang is worse than
+a failure: it reports nothing, and a pull request that is broken reads as one
+still deciding. The script now carries a deadline per case — two minutes
+against the five seconds each takes — so it says WHICH case stopped answering
+instead of stopping, and the job timeout is the backstop for the next thing
+that hangs somewhere else. Every wait inside it was already bounded by
+Playwright's own default; `browser.close()` was not, and neither was the build
+it shells out to.
+
 One run per pull request at a time, and the newest is the one that matters.
 The browser job is about ten minutes and this repository is public, so the
 runners are the free ones; without a concurrency group a branch that took four

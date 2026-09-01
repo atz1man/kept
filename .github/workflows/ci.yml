@@ -36,6 +36,8 @@ jobs:
   unit:
     name: unit
     runs-on: ubuntu-latest
+    # It takes half a minute. Ten is not a budget, it is a backstop.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -57,6 +59,17 @@ jobs:
   browser:
     name: browser
     runs-on: ubuntu-latest
+    # Ten minutes of work, so this is two and a half times it — a backstop for
+    # a step that stops answering rather than a budget anything runs near.
+    #
+    # It exists because one did. `feed:wiring` normally takes twenty-five
+    # seconds; a run on a README-only commit sat in that step for fifty minutes
+    # with no output and would have held this runner until GitHub's six-hour
+    # limit. A job with no timeout turns a hang into silence, and a pull request
+    # that is broken then reads as one that is still deciding. That script now
+    # carries a deadline of its own, which says WHICH case stopped answering;
+    # this is the backstop for the next thing that hangs somewhere else.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
