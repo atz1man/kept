@@ -59,6 +59,17 @@ export interface LegalRight {
 export const REJECT_DAYS = 30;
 /** Consumer Contracts Regs 2013 — distance and off-premises only, any reason. */
 export const COOLING_OFF_DAYS = 14;
+/**
+ * And how long there is to actually send it back once cancelled — reg. 35(4):
+ * without undue delay, and no later than 14 days after telling the trader.
+ *
+ * Its own constant although it is also fourteen, because it is a DIFFERENT
+ * fourteen. The cancellation period and the return period are separate
+ * provisions that could move apart, and one constant serving both would
+ * quietly rewrite the sentence about sending the goods back the day somebody
+ * changed the sentence about cancelling.
+ */
+export const RETURN_AFTER_CANCEL_DAYS = 14;
 
 const days = (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`;
 
@@ -100,11 +111,11 @@ function shortTermRejectRight(bought: Date, today: Date, hedged: boolean): Legal
     body:
       left >= 0
         ? hedged
-          ? `30-day right to reject faulty goods for a full refund — at least until ${fmtDate(ends)} (${days(left)} left). ${AFTER_ARRIVAL}`
-          : `30-day right to reject faulty goods for a full refund — ends ${fmtDate(ends)} (${days(left)} left). This one applies wherever you bought it.`
+          ? `${REJECT_DAYS}-day right to reject faulty goods for a full refund — at least until ${fmtDate(ends)} (${days(left)} left). ${AFTER_ARRIVAL}`
+          : `${REJECT_DAYS}-day right to reject faulty goods for a full refund — ends ${fmtDate(ends)} (${days(left)} left). This one applies wherever you bought it.`
         : hedged
-          ? `Counting from your order, the 30-day window to reject faulty goods has run out — ${CHECK_ARRIVAL}. Once it has, ${repair}`
-          : `The 30-day window to reject faulty goods has passed — ${repair}`,
+          ? `Counting from your order, the ${REJECT_DAYS}-day window to reject faulty goods has run out — ${CHECK_ARRIVAL}. Once it has, ${repair}`
+          : `The ${REJECT_DAYS}-day window to reject faulty goods has passed — ${repair}`,
   };
 }
 
@@ -118,11 +129,11 @@ function coolingOffRight(bought: Date, today: Date, storeWindowOpen: boolean, he
     body:
       left >= 0
         ? hedged
-          ? `14-day cooling-off on distance purchases — you can cancel for any reason until at least ${fmtDate(ends)} (${days(left)} left), then 14 more days to send it back. ${AFTER_ARRIVAL}`
-          : `14-day cooling-off on distance purchases — you can cancel for any reason until ${fmtDate(ends)} (${days(left)} left), counting from the day it arrived, then 14 more days to send it back.`
+          ? `${COOLING_OFF_DAYS}-day cooling-off on distance purchases — you can cancel for any reason until at least ${fmtDate(ends)} (${days(left)} left), then ${RETURN_AFTER_CANCEL_DAYS} more days to send it back. ${AFTER_ARRIVAL}`
+          : `${COOLING_OFF_DAYS}-day cooling-off on distance purchases — you can cancel for any reason until ${fmtDate(ends)} (${days(left)} left), counting from the day it arrived, then ${RETURN_AFTER_CANCEL_DAYS} more days to send it back.`
         : hedged
-          ? `Counting from your order, the 14-day cooling-off has run out — ${CHECK_ARRIVAL}.${shopStillOpen || ' You keep the rights above for anything that turns out to be faulty.'} ${UNTOLD_EXTENSION}`
-          : `The 14-day cooling-off has passed, counting from the day it arrived.${shopStillOpen || ' You keep the rights above for anything that turns out to be faulty.'} ${UNTOLD_EXTENSION}`,
+          ? `Counting from your order, the ${COOLING_OFF_DAYS}-day cooling-off has run out — ${CHECK_ARRIVAL}.${shopStillOpen || ' You keep the rights above for anything that turns out to be faulty.'} ${UNTOLD_EXTENSION}`
+          : `The ${COOLING_OFF_DAYS}-day cooling-off has passed, counting from the day it arrived.${shopStillOpen || ' You keep the rights above for anything that turns out to be faulty.'} ${UNTOLD_EXTENSION}`,
   };
 }
 
