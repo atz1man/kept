@@ -280,19 +280,32 @@ touch. It reads exactly like a broken filter and is not one.
 
 ```
 src/lib/          the decision logic — pure, tested, no React
+  types.ts        the Receipt, and the shapes every other module agrees on
   dates.ts        whole-day arithmetic in the user's timezone
   money.ts        integer pence
   receipts.ts     days left, deadlines, bucketing, the 30-day timeline
   urgency.ts      the red / yellow / neutral ladder
   alerts.ts       which deadlines are worth interrupting someone about
+  schedule.ts     the same decisions, lodged with iOS days in advance
+  words.ts        fitting a name someone typed into the middle of a sentence
   contrast.ts     WCAG luminance and ratio, used to hold the palette to AA
   share.ts        reading an order email shared in from another app
-  policy-feed.ts  downloading policy changes, and what they mean for you
-  quota.ts        what the free tier counts, and when it is full
-  legal.ts        Consumer Rights Act + distance-selling rights, cumulative
   parse.ts        the paste parser (on-device, rule-based)
+  draft.ts        the editable shape of a receipt, and what makes one valid
+  search.ts       matching the library as someone types
+  seed.ts         the sample set a fresh install opens on
   stores.ts       the verified UK retailer policy table
-  storage.ts      localStorage persistence + backup export
+  policy-feed.ts  downloading policy changes, and what they mean for you
+  feed-signature.ts  whether the feed that answered was the right thing
+  legal.ts        Consumer Rights Act + distance-selling rights, cumulative
+  quota.ts        what the free tier counts, and when it is full
+  pricing.ts      the tiers, and what a tap on one is allowed to claim
+  storage.ts      localStorage persistence, and the shape a stored state is
+  backup.ts       reading a backup file back in, and merging it by id
+  save-file.ts    where a backup actually lands — Files on iOS, a download on the web
+  mirror.ts       the second copy, outside the web view, that survives a reclaim
+  photos.ts       the paper slip on the filesystem, never read
+  brand.ts        the tagline, in the one place all three surfaces read
 src/app/          the eight screens and their chrome
 src/landing/      the marketing page
 src/tokens.ts     every colour, shadow and typeface in one place

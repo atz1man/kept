@@ -52,6 +52,45 @@ describe('the policy table agrees with itself', () => {
     },
   );
 
+  it('finds the traps it is meant to be reading', () => {
+    // Without this the sweep below is a loop over whichever rows happen to
+    // carry a number today, and a table that stopped carrying any would report
+    // success for a question it never asked.
+    expect(STORE_POLICIES.filter((s) => /\d/.test(s.gotcha ?? '')).length).toBeGreaterThanOrEqual(4);
+  });
+
+  it.each(STORE_POLICIES.filter((s) => /\d/.test(s.gotcha ?? '')).map((s) => [s.name, s] as const))(
+    '%s: its trap quotes no figure the rest of its row does not',
+    (_name, store) => {
+      /*
+       * The gotcha is the differentiator — "kept knows the trap inside the
+       * window" — and it is a THIRD copy of the same numbers, after
+       * `windowDays` and the policy sentence. The check above holds the
+       * sentence to the number the app counts with. Nothing held the trap to
+       * either, so Apple's "counts the 14 days" and IKEA's "not 365" could
+       * each drift away from the row they sit in unnoticed.
+       *
+       * Found by mutation: five numerals inside those strings could be changed
+       * and the whole suite stayed green.
+       *
+       * Every numeral, not only the ones followed by "days" — IKEA's trap
+       * names its long window as a bare "not 365", and that is the figure most
+       * worth holding, since the trap exists to say the 365 does not apply.
+       *
+       * One-way on purpose. A policy may name a figure the trap does not
+       * repeat, because a trap is a warning and not a summary — ASOS's 45 days
+       * for some categories is in the sentence and not in the warning. A trap
+       * naming a figure that appears nowhere else in its row is the direction
+       * that means something: it is quoting a window this table does not hold.
+       */
+      const figures = (text: string) => [...text.matchAll(/\d+(?:\.\d+)?/g)].map((m) => m[0]);
+      const known = new Set([...figures(store.policy), String(store.windowDays)]);
+      const strays = figures(store.gotcha ?? '').filter((n) => !known.has(n));
+      expect(strays, `${store.name}'s trap names ${strays.join(', ')}, which the rest of its row does not`)
+        .toEqual([]);
+    },
+  );
+
   it('no alias resolves to a shop other than its own', () => {
     /*
      * This guards the INDEX, not the aliases: two shops claiming overlapping
