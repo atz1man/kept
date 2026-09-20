@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { afterEach } from 'vitest';
-import { hydrate, onExternalChange, rescueBackup, DEFAULT_SETTINGS, URGENT_DAYS_MIN, URGENT_DAYS_MAX } from '../src/lib/storage';
+import { hydrate, load, save, onExternalChange, rescueBackup, DEFAULT_SETTINGS, URGENT_DAYS_MIN, URGENT_DAYS_MAX } from '../src/lib/storage';
 import { MAX_AMOUNT_PENCE, MAX_WINDOW_DAYS } from '../src/lib/draft';
 import { MAX_UPDATES } from '../src/lib/policy-feed';
 import { toPence } from '../src/lib/money';
@@ -349,5 +349,116 @@ describe('the slider bounds and the rung they have to reach', () => {
     // And the top of the slider is three weeks, which is what the Settings row
     // says it offers — tied to the words rather than pinned as a bare 21.
     expect(URGENT_DAYS_MAX).toBe(7 * 3);
+  });
+});
+
+describe('the round trip, which is the whole promise', () => {
+  /*
+   * `save` and `load` are the two ends of the only thing this app actually
+   * undertakes to do: what you put in comes back. Until now neither end was
+   * asked. `load` was imported by no test at all, and `save` was reached only
+   * sideways by the mirror suite, which watches the second copy and never
+   * reads the first one back.
+   *
+   * What that cost: inverting the `if (!raw)` in `load` — so that a store WITH
+   * something in it is thrown away and a store with nothing in it is parsed —
+   * left all 1068 tests passing. That mutant is every launch silently losing
+   * every receipt, which is the worst thing this app can do, and the suite had
+   * nothing to say about it.
+   *
+   * The discriminator these lean on is that a fresh state is NOT empty — it
+   * carries the seed receipts (see `hydrate(null, …)` above). So a saved
+   * library of zero receipts coming back as zero receipts is a fact only a
+   * real read can produce; the inverted guard returns the seed instead.
+   */
+  const withStore = (impl: Partial<Storage>) => {
+    (globalThis as { window?: unknown }).window = { localStorage: impl };
+  };
+  const memoryStore = () => {
+    const cells = new Map<string, string>();
+    return {
+      cells,
+      getItem: (k: string) => cells.get(k) ?? null,
+      setItem: (k: string, v: string) => void cells.set(k, v),
+      removeItem: (k: string) => void cells.delete(k),
+    };
+  };
+  afterEach(() => {
+    delete (globalThis as { window?: unknown }).window;
+  });
+
+  const library = (receipts: Receipt[]) => ({
+    version: 3, receipts, updates: [], onboardingSeen: true,
+    settings: DEFAULT_SETTINGS, alertsSent: [],
+  });
+
+  it('gives back the receipts that were saved', () => {
+    const store = memoryStore();
+    withStore(store);
+    expect(save(library([good]))).toBe(true);
+    const back = load(TODAY);
+    expect(back.receipts).toEqual([good]);
+    expect(back.onboardingSeen).toBe(true);
+  });
+
+  it('gives back an EMPTY library as empty, rather than reseeding it', () => {
+    // The sharp one. Someone who has deleted every receipt has an empty store
+    // that is not a fresh install, and a read that cannot tell those apart
+    // hands them back the demo data they just cleared.
+    const store = memoryStore();
+    withStore(store);
+    save(library([]));
+    expect(load(TODAY).receipts).toEqual([]);
+  });
+
+  it('opens a fresh library when nothing has ever been saved', () => {
+    withStore(memoryStore());
+    const fresh = load(TODAY);
+    expect(fresh.receipts.length).toBeGreaterThan(0);
+    expect(fresh.onboardingSeen).toBe(false);
+  });
+
+  it('opens a fresh library rather than throwing on a store it cannot parse', () => {
+    const store = memoryStore();
+    withStore(store);
+    save(library([good]));
+    for (const k of store.cells.keys()) store.cells.set(k, '{ not json');
+    expect(load(TODAY).receipts.length).toBeGreaterThan(0);
+  });
+
+  it('survives a launch with no store at all', () => {
+    delete (globalThis as { window?: unknown }).window;
+    expect(load(TODAY).receipts.length).toBeGreaterThan(0);
+  });
+
+  it('reports a write that did not land, so the banner has something true to say', () => {
+    // The comment on `save` argues that swallowing this means someone adds a
+    // receipt, watches it appear and loses it with no indication. That
+    // argument had nothing holding it.
+    withStore({
+      getItem: () => null,
+      setItem: () => { throw new Error('QuotaExceededError'); },
+    });
+    expect(save(library([good]))).toBe(false);
+  });
+
+  it('reports a write that did land', () => {
+    withStore(memoryStore());
+    expect(save(library([good]))).toBe(true);
+  });
+
+  it('declines to rewrite an identical library, and still says it is saved', () => {
+    const store = memoryStore();
+    let writes = 0;
+    withStore({ ...store, setItem: (k: string, v: string) => { writes += 1; store.setItem(k, v); } });
+    save(library([good]));
+    expect(writes).toBe(1);
+    expect(save(library([good]))).toBe(true);
+    expect(writes).toBe(1);
+  });
+
+  it('has no store to read when there is no window', () => {
+    delete (globalThis as { window?: unknown }).window;
+    expect(save(library([good]))).toBe(false);
   });
 });
