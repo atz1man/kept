@@ -135,6 +135,15 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
               uses. */}
           Everything lives on this device. No account, nothing uploaded, no one reading your purchases.
         </p>
+        {/* Guideline 5.1.1 wants the policy reachable inside the app, not only
+            from the store listing. A plain link: /privacy/ is built into the
+            iOS bundle beside the app, so it opens with no network. */}
+        <a
+          href="/privacy/"
+          style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, fontSize: 13, fontWeight: 600, color: color.ink }}
+        >
+          Privacy policy
+        </a>
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
           <Pressable
             className="k-soft"

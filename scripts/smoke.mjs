@@ -1142,6 +1142,22 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
   const bothWays = async (name, key) => (await flip(name, key)) && (await flip(name, key));
   results['the policy watch switch writes what it shows, both ways'] = await bothWays(/Policy watch/, 'policyWatch');
   results['the deadline alerts switch writes what it shows, both ways'] = await bothWays(/Deadline alerts/, 'deadlineAlerts');
+
+  /*
+   * The privacy policy, reached the way guideline 5.1.1 asks for: from inside
+   * the app. And back again, because in the iOS app there is no browser
+   * chrome — the page's own link is the only way out.
+   */
+  await sp.getByRole('link', { name: 'Privacy policy' }).click();
+  await sp.waitForLoadState('networkidle');
+  const onPolicy =
+    new URL(sp.url()).pathname === '/privacy/' &&
+    (await sp.getByRole('heading', { level: 1, name: 'Privacy' }).isVisible().catch(() => false)) &&
+    (await sp.locator('#contact').count()) === 1;
+  await sp.getByRole('link', { name: /kept\./ }).first().click();
+  await sp.waitForLoadState('networkidle');
+  results['the privacy policy is one tap from Settings, with a way back'] =
+    onPolicy && new URL(sp.url()).pathname === '/';
   await switchCtx.close();
 }
 

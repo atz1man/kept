@@ -63,6 +63,9 @@ export default defineConfig({
       input: {
         landing: resolve(__dirname, 'index.html'),
         app: resolve(__dirname, 'app/index.html'),
+        // Its own entry so it is in the iOS bundle as well, where Settings links
+        // to it with no network — see src/privacy/Privacy.tsx.
+        privacy: resolve(__dirname, 'privacy/index.html'),
       },
     },
   },

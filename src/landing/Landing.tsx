@@ -293,7 +293,7 @@ export function Landing() {
           </div>
           <div style={{ fontFamily: font.figures, fontWeight: 600, color: color.amber }}>{TAGLINE}</div>
           <div>
-            local-first receipt &amp; return tracking · <a href="#how">how it works</a> · <a href="#pricing">pricing</a>
+            local-first receipt &amp; return tracking · <a href="#how">how it works</a> · <a href="#pricing">pricing</a> · <a href="/privacy/">privacy</a>
           </div>
         </div>
       </footer>
