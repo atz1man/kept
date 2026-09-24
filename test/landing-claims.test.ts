@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { STORE_COUNT, STORE_POLICIES, findStore } from '../src/lib/stores';
@@ -104,3 +104,64 @@ describe('the statutory numbers the page quotes', () => {
     expect(LANDING).toContain('${COOLING_OFF_DAYS}-day cooling-off');
   });
 })
+
+/**
+ * Claims about kept's own users, which there are none of yet.
+ *
+ * The page carried "£1.4M+ recovered by kept users", "4.8 ★ · 2,300 ratings"
+ * and three named reviewers, all from the design handoff, all marked
+ * illustrative, behind a flag and a visible notice. They were cut rather than
+ * filled (APN-17): before launch there is nothing of the kind to substantiate,
+ * and a UK consumer reads a rating and a testimonial as facts.
+ *
+ * This refuses them anywhere in the landing page's source, so they cannot
+ * drift back in as copy. It is meant to be CHANGED — the day there are real
+ * figures, whoever adds them edits this and says where the number comes from.
+ */
+describe('what the page says about kept’s users', () => {
+  const LANDING_DIR = join(__dirname, '..', 'src', 'landing');
+  const corpus = (): { file: string; text: string }[] => {
+    const out: { file: string; text: string }[] = [];
+    const walk = (dir: string) => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const p = join(dir, e.name);
+        if (e.isDirectory()) walk(p);
+        else if (/\.(tsx?|html)$/.test(e.name)) out.push({ file: p, text: readFileSync(p, 'utf8') });
+      }
+    };
+    walk(LANDING_DIR);
+    out.push({ file: 'index.html', text: readFileSync(join(__dirname, '..', 'index.html'), 'utf8') });
+    return out;
+  };
+
+  /** What a claim about kept's users looks like, however it is worded. */
+  const TELLS: [string, RegExp][] = [
+    ['a star rating', /★|\b\d(?:\.\d)?\s*(?:out of 5|stars?)\b/i],
+    ['a count of ratings or reviews', /\b\d[\d,.]*\s*[kKmM]?\+?\s*(?:ratings|reviews|downloads)\b/i],
+    ['a figure about kept’s users', /\b(?:kept users|our users|customers)\b|recovered by/i],
+    ['a named reviewer', /\b[A-Z][a-z]+, \d{2} · [A-Z]/],
+  ];
+  const offences = (text: string) => TELLS.filter(([, re]) => re.test(text)).map(([what]) => what);
+
+  it('reads the real page', () => {
+    // A sweep over nothing passes silently.
+    const all = corpus();
+    expect(all.length).toBeGreaterThanOrEqual(3);
+    expect(all.some((f) => f.text.includes('Zara’s clock starts at dispatch'))).toBe(true);
+  });
+
+  it('would have caught what was cut', () => {
+    // The exact strings removed, each of which must trip at least one tell.
+    for (const was of [
+      '£1.4M+ recovered by kept users', '4.8 ★', '2,300 ratings',
+      'Maya, 24 · Manchester', 'Jade, 21 · London', 'Sam, 27 · Bristol',
+    ]) {
+      expect(offences(was), was).not.toEqual([]);
+    }
+  });
+
+  it('makes no such claim anywhere on the page', () => {
+    const found = corpus().flatMap((f) => offences(f.text).map((what) => `${f.file.split('/src/')[1] ?? f.file}: ${what}`));
+    expect(found).toEqual([]);
+  });
+});

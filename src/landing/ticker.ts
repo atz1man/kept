@@ -7,7 +7,8 @@ import { STORE_POLICIES, findStore } from '../lib/stores';
  * to be reporting.
  *
  * These were five hand-typed strings, and they lived in
- * `placeholder-content.ts` — a module whose own header says "nothing here is
+ * `placeholder-content.ts` (since cut, with the social proof it held) — a
+ * module whose own header said "nothing here is
  * measured" — under a note exempting them from it because they "restate
  * published retailer policies". That is exactly the reason they do not belong
  * there: a restatement is only true while it matches what it restates, and

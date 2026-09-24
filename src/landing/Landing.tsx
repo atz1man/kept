@@ -7,7 +7,6 @@ import { COOLING_OFF_DAYS, REJECT_DAYS } from '../lib/legal';
 import { TAGLINE, TAGLINE_CAPS } from '../lib/brand';
 import { seedUpdates } from '../lib/seed';
 import { fromISODate, relativeAgo } from '../lib/dates';
-import { REVIEWS, SOCIAL_PROOF_IS_PLACEHOLDER, STATS } from './placeholder-content';
 import { tickerLines } from './ticker';
 import { FinePrintArt, HaulArt, LostReceiptsArt } from './sections/ProblemArt';
 import { Card, Eyebrow, OpenAppButton, SectionTitle, WRAP } from './sections/primitives';
@@ -109,7 +108,6 @@ export function Landing() {
         </a>
         <nav style={{ display: 'flex', alignItems: 'center', gap: 24, fontSize: 14.5, fontWeight: 600, flexWrap: 'wrap' }}>
           <a href="#how">How it works</a>
-          <a href="#reviews">Reviews</a>
           <a href="#pricing">Pricing</a>
           <a className="k-ink" href="/app/" style={{ display: 'flex', alignItems: 'center', gap: 8, background: color.ink, color: color.cream, padding: '10px 20px', borderRadius: 999, fontWeight: 700, fontSize: 14 }}>
             Open kept
@@ -217,53 +215,6 @@ export function Landing() {
               <div style={{ fontSize: 14, color: color.body, lineHeight: 1.6, marginTop: 12 }}>{u.text}</div>
             </Card>
           ))}
-        </div>
-      </section>
-
-      {/* Social proof */}
-      <section id="reviews" style={{ background: color.creamAlt, borderTop: `1.5px solid ${color.borderHair}`, borderBottom: `1.5px solid ${color.borderHair}`, padding: '80px 28px' }}>
-        <div style={{ maxWidth: 1160, margin: '0 auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: 18, textAlign: 'center', marginBottom: SOCIAL_PROOF_IS_PLACEHOLDER ? 20 : 56 }}>
-            {STATS.map((s) => (
-              <div key={s.label}>
-                <div style={{ fontFamily: font.figures, fontSize: 'clamp(34px, 4vw, 46px)', fontWeight: 700, letterSpacing: '-2px', color: color.amber }}>{s.value}</div>
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: color.muted, marginTop: 4 }}>{s.label}</div>
-              </div>
-            ))}
-          </div>
-
-          {SOCIAL_PROOF_IS_PLACEHOLDER && (
-            /*
-             * Deliberately visible. These figures and reviews are the
-             * handoff's illustrative copy, not measurements or real
-             * customers — and a page that presents them as either is
-             * misleading the people reading it. The notice comes out when
-             * `SOCIAL_PROOF_IS_PLACEHOLDER` does, which is the same edit that
-             * requires putting substantiated numbers in their place.
-             */
-            <div
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center', margin: '0 auto 44px',
-                maxWidth: 720, padding: '10px 16px', border: `1.5px dashed ${color.borderSoft}`, borderRadius: 999,
-                fontSize: 12.5, fontWeight: 600, color: color.muted, textAlign: 'center',
-              }}
-            >
-              <span style={{ width: 8, height: 8, borderRadius: 999, background: color.danger, flexShrink: 0 }} />
-              Placeholder: these figures and reviews are illustrative pre-launch copy, not real customers or measured results.
-            </div>
-          )}
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 18 }}>
-            {REVIEWS.map((r) => (
-              <Card key={r.who} style={{ padding: 26 }}>
-                {/* Amber, not the brand yellow: five yellow stars on white measured
-                    1.79:1, and a rating nobody can see is not a rating. */}
-                <div style={{ color: color.amber, fontSize: 15, letterSpacing: '2px' }} aria-label="Five stars">★★★★★</div>
-                <div style={{ fontSize: 15, lineHeight: 1.6, marginTop: 12, fontWeight: 500 }}>“{r.quote}”</div>
-                <div style={{ fontSize: 13, color: color.muted, marginTop: 14, fontWeight: 600 }}>{r.who}</div>
-              </Card>
-            ))}
-          </div>
         </div>
       </section>
 

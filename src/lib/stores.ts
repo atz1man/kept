@@ -159,8 +159,9 @@ export const STORE_COUNT = STORE_POLICIES.length;
  * freshness for the data the whole product rests on, on the screen where
  * someone would go to ask about it, is the worst place to be vague.
  *
- * Same shape as `SOCIAL_PROOF_IS_PLACEHOLDER` on the landing page, for the
- * same reason: content that is not yet true says so, visibly, until it is.
+ * Same shape as the flag the landing page's social proof carried until it was
+ * cut, for the same reason: content that is not yet true says so, visibly,
+ * until it is.
  */
 export const TABLE_CHECKED_ON: string | null = null;
 
