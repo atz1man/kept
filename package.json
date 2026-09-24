@@ -23,7 +23,8 @@
     "feed:keygen": "node scripts/feed-keygen.mjs",
     "feed:sign": "node scripts/feed-sign.mjs",
     "feed:wiring": "node scripts/feed-wiring.mjs",
-    "bundle-id": "node scripts/set-bundle-id.mjs"
+    "bundle-id": "node scripts/set-bundle-id.mjs",
+    "store:screenshots": "node scripts/store-screenshots.mjs"
   },
   "dependencies": {
     "@capacitor/camera": "^6.1.3",

@@ -1,0 +1,23 @@
+{
+  "_readme": "App Store Connect listing for kept. Paste each field as written. Held to the app by test/store-listing.test.ts: Apple's length limits, every figure against the constant it restates, the privacy answers against PrivacyInfo.xcprivacy and the in-app sentence, and no retailer names in the keywords. Fields marked REPLACE_ME need your domain before submission.",
+  "name": "kept. — return deadlines",
+  "subtitle": "Receipts, refunds, your rights",
+  "promotionalText": "Every receipt, the shop’s real return window and the legal rights running alongside it — on your phone, with nothing uploaded and no account to make.",
+  "description": "kept remembers what you bought and tells you, before it is too late, when you can still take it back.\n\nEvery shop counts its returns window differently. Some start on the day you pay, some on the day the parcel leaves the warehouse, some on the day it lands on your mat. kept has the return windows of 20 UK retailers built in, with where each one starts counting, and works the deadline out from the right day.\n\nThe shop’s window is not the only clock. UK law gives you rights of your own:\n• 30 days to reject faulty goods for a full refund, on anything you buy, in a shop or online (Consumer Rights Act 2015)\n• 14 days to cancel most things bought online, for any reason, and 14 more to send them back (Consumer Contracts Regulations 2013)\n\nkept runs both legal clocks alongside the shop’s and shows you which one closes first.\n\nWHAT IT DOES\n• Paste an order email and kept reads the shop, the total and the date — and asks rather than guesses when it is not sure\n• Everything due in the next 30 days, the most urgent first\n• A reminder on your phone before a deadline passes\n• Swipe to mark something returned, and keep a record of the money that came back\n• A photo of the receipt, kept with it\n• Export a backup file whenever you like, and restore it on a new phone\n\nPRIVATE BY DESIGN\nEverything lives on this device. No account, nothing uploaded, no one reading your purchases. No analytics, no advertising, no third parties.\n\nkept is guidance, not legal advice.",
+  "keywords": "returns,refund,receipt,deadline,consumer rights,warranty,cooling off,reminder,shopping,tracker",
+  "primaryCategory": "Finance",
+  "secondaryCategory": "Productivity",
+  "ageRating": "4+",
+  "price": "Free — no in-app purchases in this version",
+  "privacy": {
+    "tracking": false,
+    "dataCollected": false,
+    "statement": "Everything lives on this device. No account, nothing uploaded, no one reading your purchases."
+  },
+  "urls": {
+    "privacyPolicy": "https://REPLACE_ME/privacy/",
+    "support": "https://REPLACE_ME/privacy/#contact",
+    "marketing": "https://REPLACE_ME/"
+  },
+  "reviewNotes": "kept needs no account and no sign-in: everything is stored on the device. It opens with five sample receipts so the reviewer can try every screen at once; each is labelled “sample”, and Settings → Erase everything removes them for good (they are not re-added). Deadline reminders are local notifications scheduled on the device — there is no server and no push service. This version has no in-app purchases and no paid features. The app may download an updated list of retailer return policies; that request carries nothing about the person or their receipts."
+}

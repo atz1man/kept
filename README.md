@@ -330,7 +330,9 @@ src/lib/          the decision logic — pure, tested, no React
   brand.ts        the tagline, in the one place all three surfaces read
 src/app/          the eight screens and their chrome
 src/landing/      the marketing page
+src/privacy/      the privacy policy — its own entry, so it ships inside the iOS bundle too
 src/tokens.ts     every colour, shadow and typeface in one place
+store/            the App Store listing, held to the app by a test, and the route to submission
 ```
 
 ## What the prototype said, and what this does instead
