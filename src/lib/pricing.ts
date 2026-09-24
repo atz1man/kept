@@ -34,6 +34,29 @@ export const TIERS: readonly Tier[] = [
   { period: 'lifetime', price: '£39.99', suffix: ' once' },
 ];
 
+/**
+ * Whether this build may offer a paid tier at all.
+ *
+ * Not on iOS, until StoreKit exists (APN-18). Guideline 3.1.1 requires
+ * In-App Purchase for anything that unlocks a feature, and these tiers unlock
+ * a local flag with no payment at all — honest on the web, where the sheet
+ * says plainly that nothing was charged, and a likely rejection on the App
+ * Store, where a £39.99 button that bypasses IAP reads as circumventing it
+ * whatever it actually does.
+ *
+ * And no CAP where there is nothing to buy. A limit with no way past it is not
+ * a free tier, it is a wall: someone would add their eleventh receipt and be
+ * told to "go unlimited" by an app with no way to let them. So on iOS the
+ * library is unlimited, which is also where APN-34 was leaning — cap features,
+ * not the library.
+ *
+ * A decision, not a fact about the world: the day StoreKit lands, this is the
+ * function that changes, and every surface that sells or limits reads it.
+ */
+export function sellsPaidTiers(native: boolean): boolean {
+  return !native;
+}
+
 /** The tier every upsell in the app points at. */
 // The fallback index is unreachable while exactly one tier is featured, which
 // `pricing.test.ts` asserts — so no test can tell TIERS[0] from TIERS[1] here.

@@ -10,7 +10,7 @@ import { derive, makeReceiptId } from '../lib/receipts';
 import { freshState, load, onExternalChange, save, type KeptState, type Settings } from '../lib/storage';
 import { quotaFull as quotaFullFor } from '../lib/quota';
 import { ONBOARDING_STEPS } from './screens/Onboarding';
-import type { Period } from '../lib/pricing';
+import { sellsPaidTiers, type Period } from '../lib/pricing';
 import type { PolicyUpdate, Receipt, Screen } from '../lib/types';
 
 export interface AppState extends KeptState {
@@ -473,7 +473,8 @@ export function useApp() {
 }
 
 export function quotaFull(state: AppState): boolean {
-  return quotaFullFor(state.receipts, state.settings.plan);
+  // No cap where there is nothing to buy — see sellsPaidTiers.
+  return sellsPaidTiers(isNative()) && quotaFullFor(state.receipts, state.settings.plan);
 }
 
 export { makeReceiptId };

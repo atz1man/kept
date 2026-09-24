@@ -223,6 +223,27 @@ if (!detail.onDetail) {
   }
 }
 
+/*
+ * No price and no plan anywhere in Settings on iOS (APN-18).
+ *
+ * The web build sells three tiers that unlock a local flag with no payment,
+ * and says so. On the App Store that is a 3.1.1 rejection, so the iOS build
+ * shows none of it — and since nothing can be bought there, no cap either.
+ * Asked here because this is the only sweep that boots the bundle as native:
+ * every other one would find the prices, correctly, on the web.
+ */
+await page.getByRole('button', { name: 'Settings', exact: true }).click().catch(() => {});
+await page.waitForTimeout(500);
+const settingsText = await page.evaluate(() => document.body.innerText);
+if (!/Deadline alerts/.test(settingsText)) {
+  failures.push({ what: 'could not open Settings to check the iOS build sells nothing', saw: '' });
+} else if (/£\d|Free plan|free receipts|Unlocked/.test(settingsText)) {
+  failures.push({
+    what: 'the iOS build shows a price or a plan, which App Review reads as unlocking outside In-App Purchase',
+    saw: (settingsText.match(/.*(£\d|Free plan|free receipts|Unlocked).*/) ?? [''])[0],
+  });
+}
+
 if (errors.length > 0) {
   failures.push({ what: 'the iOS bundle raised page errors', saw: errors.join(' | ') });
 }
