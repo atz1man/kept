@@ -331,6 +331,8 @@ src/lib/          the decision logic — pure, tested, no React
 src/app/          the eight screens and their chrome
 src/landing/      the marketing page
 src/privacy/      the privacy policy — its own entry, so it ships inside the iOS bundle too
+src/rights/       your rights when you take something back — the app's own legal constants and sentences, published
+src/pages/        the shell both reading pages share
 src/tokens.ts     every colour, shadow and typeface in one place
 store/            the App Store listing, held to the app by a test, and the route to submission
 ```

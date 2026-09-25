@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { color, font } from '../tokens';
+import { color } from '../tokens';
+import { Fine, ProsePage, Section } from '../pages/Prose';
 
 /**
  * The privacy policy.
@@ -25,32 +25,12 @@ export const CONTACT_EMAIL: string | null = null;
 /** Moves whenever what this page says moves. */
 export const UPDATED_ON = '24 September 2026';
 
-function Section({ id, title, children }: { id?: string; title: string; children: ReactNode }) {
-  return (
-    <section id={id} style={{ marginTop: 34 }}>
-      <h2 style={{ fontFamily: font.display, fontSize: 21, fontWeight: 700, letterSpacing: '-0.4px', margin: 0 }}>{title}</h2>
-      <div style={{ fontSize: 16, lineHeight: 1.65, color: color.body, marginTop: 10 }}>{children}</div>
-    </section>
-  );
-}
-
 export function Privacy() {
   return (
-    <main style={{ background: color.cream, color: color.ink, fontFamily: font.ui, minHeight: '100vh' }}>
-      <div style={{ maxWidth: 680, margin: '0 auto', padding: '44px 20px 80px' }}>
-        {/* The way back. In the iOS app there is no browser chrome, and "/" is
-            the app itself; on the web it is the home page. */}
-        <a href="/" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, fontFamily: font.display, fontWeight: 700, fontSize: 18, color: color.ink, textDecoration: 'none' }}>
-          ← kept.
-        </a>
-        <h1 style={{ fontFamily: font.display, fontSize: 'clamp(32px, 6vw, 44px)', fontWeight: 700, letterSpacing: '-1.4px', lineHeight: 1.05, margin: '28px 0 0' }}>
-          Privacy
-        </h1>
-        <p style={{ fontSize: 18, lineHeight: 1.6, color: color.bodyStrong, marginTop: 16 }}>
-          Everything lives on this device. No account, nothing uploaded, no one reading your purchases. This page says
-          exactly what that means.
-        </p>
-
+    <ProsePage
+      title="Privacy"
+      lede="Everything lives on this device. No account, nothing uploaded, no one reading your purchases. This page says exactly what that means."
+    >
         <Section title="What kept collects">
           Nothing. There is no account, no sign-in and no server that receives your receipts. kept has no analytics,
           no advertising and no crash-reporting service, and it shares nothing with anyone, because it holds nothing
@@ -109,8 +89,7 @@ export function Privacy() {
           )}
         </Section>
 
-        <p style={{ fontSize: 13, color: color.muted, marginTop: 44 }}>Last updated {UPDATED_ON}.</p>
-      </div>
-    </main>
+        <Fine>Last updated {UPDATED_ON}.</Fine>
+    </ProsePage>
   );
 }

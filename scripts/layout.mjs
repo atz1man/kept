@@ -429,6 +429,13 @@ for (const width of WIDTHS) {
     await page.waitForTimeout(150);
     await checkOverflow(page, `privacy @${y}`, width);
   }
+  await page.goto(`${ORIGIN}/rights/`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(300);
+  for (const y of [0, 1200, 2400]) {
+    await page.evaluate((v) => window.scrollTo(0, v), y);
+    await page.waitForTimeout(150);
+    await checkOverflow(page, `rights @${y}`, width);
+  }
   await ctx.close();
 }
 

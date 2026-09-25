@@ -309,6 +309,9 @@ await sweepInto(lp, 'landing');
 await lp.goto(`${ORIGIN}/privacy/`, { waitUntil: 'networkidle' });
 await lp.waitForTimeout(400);
 await sweepInto(lp, 'privacy');
+await lp.goto(`${ORIGIN}/rights/`, { waitUntil: 'networkidle' });
+await lp.waitForTimeout(400);
+await sweepInto(lp, 'rights');
 
 
 /*

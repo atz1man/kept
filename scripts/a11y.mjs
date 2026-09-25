@@ -249,6 +249,9 @@ await audit(lp, 'landing', findings);
 await lp.goto(`${ORIGIN}/privacy/`, { waitUntil: 'networkidle' });
 await lp.waitForTimeout(400);
 await audit(lp, 'privacy', findings);
+await lp.goto(`${ORIGIN}/rights/`, { waitUntil: 'networkidle' });
+await lp.waitForTimeout(400);
+await audit(lp, 'rights', findings);
 
 /*
  * Reduced motion, which axe does not check and nothing else here exercised.

@@ -65,13 +65,13 @@ const UPDATES = seedUpdates(new Date())
  */
 const days = (name: string) => findStore(name)?.windowDays ?? 0;
 
-const WHY = [
+const WHY: { n: string; title: string; body: string; link?: { href: string; label: string } }[] = [
   { n: '01', title: 'Knows the real policies', body: `IKEA’s ${days('IKEA')} days, Boots’ ${days('Boots')}, Apple’s ${days('Apple')} — Kept’s own list of windows for ${STORE_COUNT} major UK retailers, plus the gotchas: Zara’s clock starts at dispatch, Uniqlo won’t refund online orders in store.` },
   // The two numbers the whole legal half of the product turns on, taken from
   // the module that computes them rather than typed again here. They were
   // prose, beside three shop windows that had already been made derived for
   // exactly this reason.
-  { n: '02', title: 'Knows your legal rights', body: `The Consumer Rights Act gives you ${REJECT_DAYS} days to reject faulty goods for a full refund, and online orders carry a ${COOLING_OFF_DAYS}-day cooling-off by law. Kept shows the legal deadline beside the shop’s own.` },
+  { n: '02', title: 'Knows your legal rights', body: `The Consumer Rights Act gives you ${REJECT_DAYS} days to reject faulty goods for a full refund, and online orders carry a ${COOLING_OFF_DAYS}-day cooling-off by law. Kept shows the legal deadline beside the shop’s own.`, link: { href: '/rights/', label: 'What the law gives you →' } },
   { n: '03', title: 'Paste or scan, done', body: 'Paste an order email and Kept reads the store, total and date, and sets the deadline for you. Scanning a paper receipt lands in a later release.' },
   { n: '04', title: 'Warranties too', body: 'Put a warranty length on a receipt and Kept counts it down beside the return window, so you know whether the repair is still free before you pay for one.' },
   // "No server" was the loose word — the app is served from one and downloads
@@ -229,6 +229,11 @@ export function Landing() {
                 <div style={{ fontFamily: font.figures, fontSize: 22, color: color.yellow }}>{w.n}</div>
                 <div style={{ fontWeight: 700, fontSize: 17, marginTop: 14 }}>{w.title}</div>
                 <div style={{ fontSize: 14, lineHeight: 1.6, color: color.fainter, marginTop: 8 }}>{w.body}</div>
+                {w.link && (
+                  <a href={w.link.href} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 4, fontSize: 14, fontWeight: 700, color: color.yellow }}>
+                    {w.link.label}
+                  </a>
+                )}
               </div>
             ))}
           </div>
@@ -293,7 +298,7 @@ export function Landing() {
           </div>
           <div style={{ fontFamily: font.figures, fontWeight: 600, color: color.amber }}>{TAGLINE}</div>
           <div>
-            local-first receipt &amp; return tracking · <a href="#how">how it works</a> · <a href="#pricing">pricing</a> · <a href="/privacy/">privacy</a>
+            local-first receipt &amp; return tracking · <a href="#how">how it works</a> · <a href="#pricing">pricing</a> · <a href="/rights/">your rights</a> · <a href="/privacy/">privacy</a>
           </div>
         </div>
       </footer>

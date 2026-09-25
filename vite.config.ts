@@ -66,6 +66,7 @@ export default defineConfig({
         // Its own entry so it is in the iOS bundle as well, where Settings links
         // to it with no network — see src/privacy/Privacy.tsx.
         privacy: resolve(__dirname, 'privacy/index.html'),
+        rights: resolve(__dirname, 'rights/index.html'),
       },
     },
   },
