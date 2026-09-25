@@ -105,8 +105,9 @@ export const STORE_POLICIES: readonly StorePolicy[] = [
     policy: 'John Lewis · 35 days with proof of purchase, unused and in original packaging.',
   },
   {
-    name: 'M&S', aliases: ['m&s', 'marks and spencer', 'marks & spencer'], windowDays: 35, clockStart: 'purchase', cat: 'clothing',
-    policy: 'M&S · 35 days with receipt, unworn with labels. Food and bought-in-store bras excluded.',
+    name: 'M&S', aliases: ['m&s', 'marks and spencer', 'marks & spencer'], windowDays: 28, clockStart: 'purchase', cat: 'clothing',
+    policy: 'M&S · 28 days with receipt, unworn with labels. Food and bought-in-store bras excluded.',
+    gotcha: 'Older M&S terms gave longer. kept counts the shorter window until it has been checked against the current terms, because the shorter one is the one that cannot cost you the return.',
   },
   {
     name: 'H&M', aliases: ['h&m', 'hennes'], windowDays: 28, clockStart: 'purchase', cat: 'clothing',
@@ -130,8 +131,9 @@ export const STORE_POLICIES: readonly StorePolicy[] = [
     policy: 'Wickes · 30 days, unused and in original packaging, with proof of purchase.',
   },
   {
-    name: 'Decathlon', aliases: ['decathlon'], windowDays: 365, clockStart: 'purchase',
-    policy: 'Decathlon · 365 days, unused with proof of purchase. Worn items assessed in store.',
+    name: 'Decathlon', aliases: ['decathlon'], windowDays: 30, clockStart: 'purchase',
+    policy: 'Decathlon · 30 days, unused with proof of purchase — 365 days for Decathlon members. Worn items assessed in store.',
+    gotcha: 'The 365 days are for Decathlon members whose card was scanned when they paid; everyone else gets 30. If that was you, change the window on this receipt.',
   },
   {
     name: 'Sainsbury’s', aliases: ['sainsbury', 'sainsburys', 'sainsbury’s'], windowDays: 30, clockStart: 'purchase',
