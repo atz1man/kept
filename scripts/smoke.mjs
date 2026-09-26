@@ -1124,6 +1124,22 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
  */
 {
   const switchCtx = await browser.newContext({ viewport: { width: 402, height: 874 }, permissions: ['notifications'] });
+  /*
+   * The same stand-in the main page uses, and for the same reason: CI runs
+   * Chromium's headless shell, where Notification.permission reads 'denied'
+   * whatever the context grants, so the app — correctly — says "Blocked by
+   * your browser" and disables the switch. Measured: full Chromium left it
+   * enabled, the headless shell did not, and this check hung CI on a click.
+   * The stand-in shows nothing, so turning alerts back on here cannot put a
+   * notification anywhere.
+   */
+  await switchCtx.addInitScript(() => {
+    class StubNotification {
+      static permission = 'granted';
+      static requestPermission() { return Promise.resolve('granted'); }
+    }
+    window.Notification = StubNotification;
+  });
   const sp = await switchCtx.newPage();
   await sp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
   await sp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
@@ -1132,6 +1148,9 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
   await sp.waitForTimeout(400);
   const flip = async (name, key) => {
     const sw = sp.getByRole('switch', { name });
+    // A disabled switch is a failed check, not a thirty-second hang that ends
+    // the run and hides every check after it.
+    if (await sw.isDisabled().catch(() => true)) return false;
     const before = await sw.getAttribute('aria-checked');
     await sw.click();
     await sp.waitForTimeout(400);
