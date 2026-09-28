@@ -49,10 +49,19 @@ const MAX_PER_WAKE = 3;
 /**
  * Imported only once the platform check has passed, so a browser never loads
  * it — the same rule `mirror.ts` follows for the filesystem plugin.
+ *
+ * Handed back INSIDE an object, never bare. A Capacitor plugin is a Proxy that
+ * answers every property with a native method call — `then` included — so an
+ * async function returning one bare returns a thenable: the `await` calls a
+ * native `then` that does not exist, the rejection escapes uncaught, and the
+ * await never settles. It did, here: on the iOS build Settings never learned
+ * the permission and switching deadline alerts on waited forever, while every
+ * test passed against a fake that was a plain object. See the proxy fake in
+ * notify-native.test.ts, which is now as strict as the real thing.
  */
 async function local() {
-  const mod = await import('@capacitor/local-notifications');
-  return mod.LocalNotifications;
+  const { LocalNotifications } = await import('@capacitor/local-notifications');
+  return { plugin: LocalNotifications };
 }
 
 /**
@@ -80,7 +89,7 @@ export function notifyState(): NotifyState {
 export async function currentNotifyState(): Promise<NotifyState> {
   if (!isNative()) return notifyState();
   try {
-    return fromDisplay((await (await local()).checkPermissions()).display);
+    return fromDisplay((await (await local()).plugin.checkPermissions()).display);
   } catch {
     return 'unsupported';
   }
@@ -99,7 +108,7 @@ function isEmbedded(): boolean {
 export async function requestNotifyPermission(): Promise<NotifyState> {
   if (isNative()) {
     try {
-      const LocalNotifications = await local();
+      const { plugin: LocalNotifications } = await local();
       // Asked first because iOS raises its dialog once and never again: after
       // a refusal `requestPermissions` returns denied silently, and reading
       // the standing answer keeps that one-shot rule visible here rather than

@@ -304,6 +304,15 @@ for (const y of [0, 900, 1800, 2700, 3600, 4500]) {
 }
 await sweepInto(lp, 'landing');
 
+// The privacy policy, including the red notice it shows until a contact
+// address is set — the one line on it that has to be read.
+await lp.goto(`${ORIGIN}/privacy/`, { waitUntil: 'networkidle' });
+await lp.waitForTimeout(400);
+await sweepInto(lp, 'privacy');
+await lp.goto(`${ORIGIN}/rights/`, { waitUntil: 'networkidle' });
+await lp.waitForTimeout(400);
+await sweepInto(lp, 'rights');
+
 
 /*
  * The screen shown when the app cannot render. It is a state, not a route, so

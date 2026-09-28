@@ -7,7 +7,8 @@ import { STORE_POLICIES, findStore } from '../lib/stores';
  * to be reporting.
  *
  * These were five hand-typed strings, and they lived in
- * `placeholder-content.ts` — a module whose own header says "nothing here is
+ * `placeholder-content.ts` (since cut, with the social proof it held) — a
+ * module whose own header said "nothing here is
  * measured" — under a note exempting them from it because they "restate
  * published retailer policies". That is exactly the reason they do not belong
  * there: a restatement is only true while it matches what it restates, and
@@ -23,12 +24,11 @@ import { STORE_POLICIES, findStore } from '../lib/stores';
  * still true.
  */
 /*
- * Taking [1] instead of [0] survives mutation, and only because the table has
- * a tie at the top — IKEA and Decathlon both at 365, which is the very tie the
- * old hand-typed line got wrong. The wording is true of either, so both are
- * right answers. Break the tie in `stores.ts` and this stops being equivalent
- * and the test starts catching it, which is the correct behaviour rather than
- * a gap.
+ * Taking [1] instead of [0] used to survive mutation, only because the table
+ * had a tie at the top — IKEA and Decathlon both at 365, the very tie the old
+ * hand-typed line got wrong. Decathlon's 365 turned out to be members-only and
+ * the table now says 30, so the tie is broken and the test catches [1], which
+ * is what the note here said would happen.
  */
 const longest = [...STORE_POLICIES].sort((a, b) => b.windowDays - a.windowDays)[0];
 

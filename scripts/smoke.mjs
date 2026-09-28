@@ -143,6 +143,17 @@ await page.getByRole('button', { name: 'Skip' }).click();
 await page.waitForTimeout(300);
 
 /*
+ * The policy banner has to be where someone reads their receipts.
+ *
+ * It is the only place a changed window is announced, and nothing looked for
+ * it: gating it on `searching` instead of `!searching` hid it from the list and
+ * showed it only mid-search, with every sweep green. The seed carries changes
+ * for two of its shops, so a fresh install always has one to show.
+ */
+results['a changed policy is announced on the receipts list'] =
+  await page.getByRole('button', { name: /changed (its|their) returns polic/ }).isVisible().catch(() => false);
+
+/*
  * And one alert for a receipt the person actually added — only one, because
  * the gentler rung it passed on the way is recorded silently.
  *
@@ -384,6 +395,38 @@ const detailDeadline = await page.evaluate(() => {
   const label = [...document.querySelectorAll('div')].find((d) => d.textContent.trim() === 'RETURN BY');
   return label?.nextElementSibling?.textContent?.trim() ?? null;
 });
+
+/*
+ * Zara is the seed's one distance purchase, fifteen days old: the fourteen-day
+ * cooling-off has just run out and the shop's own thirty days have not. That
+ * is the one state where the rights block has to say which door is still open
+ * — and `legalRights` is told by a boolean the screen passes in. Passing
+ * `d.expired` instead of `!d.expired` swapped the sentence, so an EXPIRED
+ * receipt would tell someone the shop will still take it back. The visible
+ * ring on this screen was held; the legal reasoning under it was not.
+ */
+const legalToggle = page.locator('[aria-expanded]').filter({ hasText: /YOUR LEGAL RIGHT/ });
+const legalText = async () => (await page.locator('main').textContent().catch(() => '')) ?? '';
+const rightsWhileOpen = await legalText();
+results['a lapsed cooling-off says the shop’s own window is still open, when it is'] =
+  rightsWhileOpen.includes('still open either way') &&
+  !rightsWhileOpen.includes('anything that turns out to be faulty');
+
+/*
+ * And the disclosure has to disclose. `setLegalOpen((v) => v)` left the
+ * section stuck while `aria-expanded` went on stating a position it never
+ * moved from.
+ */
+const expandedAtFirst = await legalToggle.getAttribute('aria-expanded');
+await legalToggle.click();
+await page.waitForTimeout(250);
+const expandedAfterOne = await legalToggle.getAttribute('aria-expanded');
+const hiddenWhenClosed = !(await legalText()).includes('still open either way');
+await legalToggle.click();
+await page.waitForTimeout(250);
+results['the legal rights section opens and closes, and says which'] =
+  expandedAtFirst === 'true' && expandedAfterOne === 'false' && hiddenWhenClosed &&
+  (await legalToggle.getAttribute('aria-expanded')) === 'true';
 await page.getByRole('button', { name: 'Edit', exact: true }).click();
 await page.waitForTimeout(300);
 const editDeadline = (await page.locator('#e-window-hint').textContent()) ?? '';
@@ -395,6 +438,17 @@ await page.waitForTimeout(300);
 results['an invalid edit is refused, not saved'] =
   (await page.getByRole('alert').count()) > 0 &&
   (await page.getByRole('button', { name: 'Save changes' }).isVisible());
+
+/*
+ * Refused to a screen reader too, and only the field that was refused.
+ * `Field` wires `aria-invalid` for exactly this, and a11y.mjs checks that what
+ * is shown is announced — not that what is announced is TRUE. `aria-invalid`
+ * computed as `!error` passed every sweep, with each valid field announcing
+ * itself as rejected and the rejected one announcing itself as fine.
+ */
+results['a refused field says so to a screen reader, and the others do not'] =
+  (await page.locator('#e-item').getAttribute('aria-invalid')) === 'true' &&
+  (await page.locator('#e-amount').getAttribute('aria-invalid')) === 'false';
 
 await page.fill('#e-item', 'Charcoal wool coat');
 await page.fill('#e-amount', '39.50');
@@ -609,8 +663,14 @@ results['an arrival before the purchase is refused, not saved'] =
   (await badDateSave.isDisabled().catch(() => false)) &&
   (await page.getByText('It cannot have arrived before you ordered it').isVisible().catch(() => false)) &&
   (await page.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.length)) === heldBeforeBadDate;
+// The visible error above was held; the announced one was not. Same defect
+// as the edit screen's, on an input this screen wires by hand.
+const arrivalInvalidWhenBad = await page.locator('#add-arrived').getAttribute('aria-invalid');
 await page.fill('#add-arrived', '');
 await page.waitForTimeout(300);
+results['a refused arrival date says so to a screen reader, and stops once cleared'] =
+  arrivalInvalidWhenBad === 'true' &&
+  (await page.locator('#add-arrived').getAttribute('aria-invalid')) === 'false';
 
 await page.getByRole('button', { name: /^Save/ }).click();
 await page.waitForTimeout(600);
@@ -1044,6 +1104,80 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
     JSON.parse(localStorage.getItem('kept.v1')).receipts.filter((r) => r.demo && r.status === 'active').length);
   results['the demo set does not spend the free tier'] = seededCount > 0 && meter === '0';
   await freshCtx.close();
+}
+
+/*
+ * The switches in Settings, driven from the screen.
+ *
+ * Every other check that depends on a setting writes it straight into storage
+ * — `policyWatch` is set that way above — which proves the app READS the
+ * setting and says nothing about whether the switch WRITES it. Measured:
+ * `Toggle` calling `onChange(value)` instead of `onChange(!value)` made every
+ * switch in Settings inert, and all eight sweeps passed. So did `toggleAlerts`
+ * reading `want` backwards, which switches alerts ON when someone switches
+ * them off — the defect `policyWatch` was fixed for, one layer up.
+ *
+ * Each switch is flipped twice and must land in the opposite state both times,
+ * on screen AND on disk, so neither direction can be the one that works.
+ * Its own context with notifications granted: turning alerts back on must not
+ * lodge anything against the page the alert checks below read.
+ */
+{
+  const switchCtx = await browser.newContext({ viewport: { width: 402, height: 874 }, permissions: ['notifications'] });
+  /*
+   * The same stand-in the main page uses, and for the same reason: CI runs
+   * Chromium's headless shell, where Notification.permission reads 'denied'
+   * whatever the context grants, so the app — correctly — says "Blocked by
+   * your browser" and disables the switch. Measured: full Chromium left it
+   * enabled, the headless shell did not, and this check hung CI on a click.
+   * The stand-in shows nothing, so turning alerts back on here cannot put a
+   * notification anywhere.
+   */
+  await switchCtx.addInitScript(() => {
+    class StubNotification {
+      static permission = 'granted';
+      static requestPermission() { return Promise.resolve('granted'); }
+    }
+    window.Notification = StubNotification;
+  });
+  const sp = await switchCtx.newPage();
+  await sp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await sp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await sp.waitForTimeout(300);
+  await sp.getByRole('button', { name: 'Settings', exact: true }).click();
+  await sp.waitForTimeout(400);
+  const flip = async (name, key) => {
+    const sw = sp.getByRole('switch', { name });
+    // A disabled switch is a failed check, not a thirty-second hang that ends
+    // the run and hides every check after it.
+    if (await sw.isDisabled().catch(() => true)) return false;
+    const before = await sw.getAttribute('aria-checked');
+    await sw.click();
+    await sp.waitForTimeout(400);
+    const after = await sw.getAttribute('aria-checked');
+    const stored = await sp.evaluate((k) => JSON.parse(localStorage.getItem('kept.v1')).settings[k], key);
+    return before !== null && after === String(before !== 'true') && stored === (after === 'true');
+  };
+  const bothWays = async (name, key) => (await flip(name, key)) && (await flip(name, key));
+  results['the policy watch switch writes what it shows, both ways'] = await bothWays(/Policy watch/, 'policyWatch');
+  results['the deadline alerts switch writes what it shows, both ways'] = await bothWays(/Deadline alerts/, 'deadlineAlerts');
+
+  /*
+   * The privacy policy, reached the way guideline 5.1.1 asks for: from inside
+   * the app. And back again, because in the iOS app there is no browser
+   * chrome — the page's own link is the only way out.
+   */
+  await sp.getByRole('link', { name: 'Privacy policy' }).click();
+  await sp.waitForLoadState('networkidle');
+  const onPolicy =
+    new URL(sp.url()).pathname === '/privacy/' &&
+    (await sp.getByRole('heading', { level: 1, name: 'Privacy' }).isVisible().catch(() => false)) &&
+    (await sp.locator('#contact').count()) === 1;
+  await sp.getByRole('link', { name: /kept\./ }).first().click();
+  await sp.waitForLoadState('networkidle');
+  results['the privacy policy is one tap from Settings, with a way back'] =
+    onPolicy && new URL(sp.url()).pathname === '/';
+  await switchCtx.close();
 }
 
 await page.evaluate(() => {

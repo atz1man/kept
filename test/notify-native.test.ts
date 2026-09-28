@@ -22,8 +22,36 @@ const calls: string[] = [];
 let display = 'prompt';
 let afterRequest = 'granted';
 
+/*
+ * A PROXY, the way Capacitor builds every plugin, not a plain object.
+ *
+ * This fake was a plain object, and a plain object is more forgiving than the
+ * thing it stands for: Capacitor's plugin proxy answers EVERY property — `then`
+ * included — with a method wrapper that calls into native code (see
+ * `registerPlugin` in @capacitor/core). So an async function that returns the
+ * plugin bare hands back a thenable; awaiting it calls a native `then` that
+ * does not exist, the rejection escapes uncaught, and the await never settles.
+ * `notify.ts` did exactly that and every test here stayed green, because an
+ * object literal has no `then` to call.
+ *
+ * Found by the iOS bundle sweep opening Settings on the native build: a page
+ * error, "LocalNotifications plugin is not implemented". On a phone the plugin
+ * IS implemented and the lookup still lands on a `then` it does not have, so
+ * the switch that turns deadline alerts on would wait forever.
+ */
+function capacitorPlugin(name: string, methods: Record<string, (...a: unknown[]) => unknown>) {
+  return new Proxy(methods, {
+    get(target, prop) {
+      if (prop === '$$typeof') return undefined;
+      if (prop === 'toJSON') return () => ({});
+      if (typeof prop === 'string' && prop in target) return target[prop];
+      return () => Promise.reject(new Error(`"${name}.${String(prop)}()" is not implemented on ios`));
+    },
+  });
+}
+
 vi.mock('@capacitor/local-notifications', () => ({
-  LocalNotifications: {
+  LocalNotifications: capacitorPlugin('LocalNotifications', {
     checkPermissions: async () => {
       calls.push('check');
       return { display };
@@ -32,7 +60,7 @@ vi.mock('@capacitor/local-notifications', () => ({
       calls.push('request');
       return { display: afterRequest };
     },
-  },
+  }),
 }));
 
 /** The iOS app: the bridge is there, and WKWebView exposes no Notification. */

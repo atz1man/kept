@@ -92,19 +92,26 @@ const CHECK_ARRIVAL = 'but it starts the day the parcel arrived, so check that d
  * the buyer has. While the right is plainly live there is nothing here worth
  * the words.
  */
-const UNTOLD_EXTENSION =
+export const UNTOLD_EXTENSION =
   'If the shop never told you about this right in writing, the law can extend it by up to a year — worth checking what came with the order.';
+
+/**
+ * What remains once the short-term right to reject has passed.
+ *
+ * Both jurisdictions, because the app is sold UK-wide and a Scottish reader
+ * given only "six years in England and Wales" is given no number at all. The
+ * periods are the Limitation Act 1980's six years and the Prescription and
+ * Limitation (Scotland) Act 1973's five. Exported so the rights page says the
+ * same sentence the detail screen does, rather than a second telling of it.
+ */
+export const LATER_FAULTS =
+  'you can still ask for a free repair or replacement if a fault appears, for up to six years in England and Wales, five in Scotland.';
 
 /** @param hedged True when the arrival date is unknown, so the end is a floor. */
 function shortTermRejectRight(bought: Date, today: Date, hedged: boolean): LegalRight {
   const ends = addDays(bought, REJECT_DAYS);
   const left = daysBetween(today, ends);
-  // Both jurisdictions, because the app is sold UK-wide and a Scottish reader
-  // given only "six years in England and Wales" is given no number at all.
-  // The periods are the Limitation Act 1980's six years and the Prescription
-  // and Limitation (Scotland) Act 1973's five.
-  const repair =
-    'you can still ask for a free repair or replacement if a fault appears, for up to six years in England and Wales, five in Scotland.';
+  const repair = LATER_FAULTS;
   return {
     chip: 'Consumer Rights Act',
     live: left >= 0,

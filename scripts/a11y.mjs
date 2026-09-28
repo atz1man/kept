@@ -244,6 +244,15 @@ await lp.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
 await lp.waitForTimeout(800);
 await audit(lp, 'landing', findings);
 
+// The privacy policy: its own page, linked from Settings and from the store
+// listing, and read by exactly the people most likely to be using a reader.
+await lp.goto(`${ORIGIN}/privacy/`, { waitUntil: 'networkidle' });
+await lp.waitForTimeout(400);
+await audit(lp, 'privacy', findings);
+await lp.goto(`${ORIGIN}/rights/`, { waitUntil: 'networkidle' });
+await lp.waitForTimeout(400);
+await audit(lp, 'rights', findings);
+
 /*
  * Reduced motion, which axe does not check and nothing else here exercised.
  *

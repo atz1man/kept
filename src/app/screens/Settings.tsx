@@ -10,7 +10,7 @@ import { TAGLINE } from '../../lib/brand';
 import { LEGAL_DISCLAIMER } from '../../lib/legal';
 import { STORE_COUNT, tableCheck } from '../../lib/stores';
 import { URGENT_DAYS_MAX, URGENT_DAYS_MIN, type Settings as SettingsShape } from '../../lib/storage';
-import { TIERS } from '../../lib/pricing';
+import { sellsPaidTiers, TIERS } from '../../lib/pricing';
 import { countedAgainstQuota, FREE_TIER_LIMIT } from '../../lib/quota';
 import { Pressable } from '../components/Pressable';
 
@@ -111,6 +111,8 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
   };
 
   const free = settings.plan === 'free';
+  // No plan, no prices and no unlock on iOS — see sellsPaidTiers.
+  const selling = sellsPaidTiers(isNative());
   // The meter has to count what the cap counts, or it reports a wall the app
   // will not actually put up.
   const used = countedAgainstQuota(receipts);
@@ -133,6 +135,15 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
               uses. */}
           Everything lives on this device. No account, nothing uploaded, no one reading your purchases.
         </p>
+        {/* Guideline 5.1.1 wants the policy reachable inside the app, not only
+            from the store listing. A plain link: /privacy/ is built into the
+            iOS bundle beside the app, so it opens with no network. */}
+        <a
+          href="/privacy/"
+          style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, fontSize: 13, fontWeight: 600, color: color.ink }}
+        >
+          Privacy policy
+        </a>
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
           <Pressable
             className="k-soft"
@@ -177,7 +188,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
         )}
       </section>
 
-      {free && (
+      {selling && free && (
         <section style={{ background: color.ink, color: color.cream, borderRadius: radius.cardLg, padding: 18, marginTop: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
             <span style={{ fontWeight: 700, fontSize: 15 }}>Free plan</span>
@@ -211,7 +222,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
           Someone coming back a week later would find no plan section at all,
           and no reason to doubt they were being billed. They are not: say so
           where the price used to be, not only in the sheet they tapped past. */}
-      {!free && (
+      {selling && !free && (
         <section style={{ background: color.ink, color: color.cream, borderRadius: radius.cardLg, padding: 18, marginTop: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
             <span style={{ fontWeight: 700, fontSize: 15 }}>Unlocked</span>

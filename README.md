@@ -242,8 +242,7 @@ guards against them are guards a reader can check rather than a runner.
 run on a device or a simulator. `appId` in `capacitor.config.ts` is
 deliberately `uk.co.kept.REPLACE_ME` — it must match the bundle identifier on
 the Apple developer account, cannot be guessed, and is obviously wrong rather
-than plausibly wrong on purpose, the same choice as `TABLE_CHECKED_ON` and
-`SOCIAL_PROOF_IS_PLACEHOLDER`.
+than plausibly wrong on purpose, the same choice as `TABLE_CHECKED_ON`.
 
 ## Stack, and why
 
@@ -331,7 +330,11 @@ src/lib/          the decision logic — pure, tested, no React
   brand.ts        the tagline, in the one place all three surfaces read
 src/app/          the eight screens and their chrome
 src/landing/      the marketing page
+src/privacy/      the privacy policy — its own entry, so it ships inside the iOS bundle too
+src/rights/       your rights when you take something back — the app's own legal constants and sentences, published
+src/pages/        the shell both reading pages share
 src/tokens.ts     every colour, shadow and typeface in one place
+store/            the App Store listing, held to the app by a test, and the route to submission
 ```
 
 ## What the prototype said, and what this does instead
@@ -935,7 +938,7 @@ deliberate departure, not an oversight:
   where someone goes to ask about it, is the worst place to be vague. It reads
   "20 shops" now, with a caption saying the list is Kept's own and not yet
   checked against published terms — the same shape as
-  `SOCIAL_PROOF_IS_PLACEHOLDER`, driven by a `TABLE_CHECKED_ON` that is `null`
+  the landing page's social-proof flag (since cut), driven by a `TABLE_CHECKED_ON` that is `null`
   until someone does it. "Alerts that arrive while the app is closed need the
   App Store version" implied an App Store version exists; nothing arrives
   while kept is closed, because a web app cannot wake itself, which is what
@@ -995,7 +998,7 @@ deliberate departure, not an oversight:
   reader of the news and is false of a receipt already held, which keeps the
   window it was bought under.
 - **The scrolling bar quoted the table from memory.** Five hand-typed lines
-  in `placeholder-content.ts` — the module whose header says "nothing here is
+  in `placeholder-content.ts` (since cut) — the module whose header said "nothing here is
   measured" — exempted from that warning on the grounds that they "restate
   published retailer policies". That is the reason they did not belong there:
   a restatement is true only while it matches what it restates, and nothing
@@ -2246,12 +2249,15 @@ spending minutes a mutation on it.
 
 ## Before this ships
 
-`src/landing/placeholder-content.ts` holds the social-proof figures and
-reviews from the handoff, which it marks as illustrative. Nothing there is
-measured and nobody named is a real customer. While
-`SOCIAL_PROOF_IS_PLACEHOLDER` is true the page renders a visible notice saying
-so; clearing the flag is the same edit as replacing the figures with ones you
-can substantiate.
+The step-by-step route to the App Store — who does what, and which items are
+already done and held by a test — is in [`store/SUBMISSION.md`](store/SUBMISSION.md).
+
+The landing page's social proof — figures and reviews from the handoff, marked
+illustrative — was cut rather than filled. Before launch there is nothing about
+kept's users to substantiate: no ratings, no recovered total, no customer who
+said anything. `test/landing-claims.test.ts` refuses star ratings, figures about
+kept's users and named reviewers anywhere on the page, so the section cannot
+come back as copy. It comes back when there are real people to measure.
 
 The retailer windows in `stores.ts` were written from the handoff and public
 policy pages. Verify each one against the retailer's current published terms

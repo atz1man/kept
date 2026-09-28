@@ -22,6 +22,15 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- Export compliance, answered here so App Store Connect does not stop
+	     every uploaded build to ask it. The app's only cryptography is
+	     verifying the policy feed's signature (WebCrypto importKey + verify)
+	     and HTTPS through the OS — authentication and OS-provided encryption,
+	     both exempt. test/ios-export-compliance.test.ts walks the source and
+	     fails if anything else appears, because this line is a declaration
+	     and it has to stay true. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<!-- The camera plugin checks for ALL THREE of these before it dispatches on
 	     source, so a missing one rejects getPhoto even though kept only ever
 	     asks for a new photograph. test/ios-usage-strings.test.ts reads the
