@@ -630,3 +630,46 @@ describe('a label claims only the date that follows it', () => {
     expect(bought('Order date: 1 August 2026\n12 August 2026 delivered')).toBe('2026-08-01');
   });
 });
+
+/**
+ * Three misreads of an ordinary order email, each one a wrong figure on a real
+ * receipt. Found by a review of src/lib and confirmed by running the parser.
+ */
+describe('what an order email actually looks like', () => {
+  it('reads the Total, not the Subtotal that comes before it', () => {
+    // `total` had no word boundary, so it matched inside "Subtotal" — which
+    // precedes the real total in almost every order email, and is the figure
+    // before delivery. £200.00 saved against a £204.99 refund.
+    const p = parse('Your Currys order\nSubtotal £200.00\nDelivery £4.99\nTotal £204.99');
+    expect(money(p.amount!)).toBe('£204.99');
+  });
+
+  it('is not fooled by "Sub-total" or "Sub total" either', () => {
+    expect(money(parse('Argos\nSub-total £80.00\nDelivery £3.95\nOrder total £83.95').amount!)).toBe('£83.95');
+    expect(money(parse('Argos\nSub total £80.00\nDelivery £3.95\nTotal: £83.95').amount!)).toBe('£83.95');
+  });
+
+  it('does not take a savings or VAT line for the total', () => {
+    expect(money(parse('Boots\nTotal savings £5.00\nTotal £19.99').amount!)).toBe('£19.99');
+    expect(money(parse('Boots\nTotal VAT £3.33\nTotal £19.99').amount!)).toBe('£19.99');
+  });
+
+  it('still reads a total that mentions VAT in passing', () => {
+    expect(money(parse('Currys\nTotal (inc. VAT) £204.99').amount!)).toBe('£204.99');
+  });
+
+  it('reads a thousand pounds written without a comma', () => {
+    // The comma-grouped alternative accepted ZERO groups, so "1299" stopped
+    // after three digits: £1,299.00 saved as £129.00 — a tenth of the refund.
+    expect(money(parse('Apple Store order\nOrder total: £1299.00').amount!)).toBe('£1,299.00');
+    expect(money(parse('Apple Store order\nMacBook £1299.00\nCase £49.00').amount!)).toBe('£1,299.00');
+  });
+
+  it('does not read a time of day as a date', () => {
+    // "1 Aug 23:10": `mdy` read "Aug 23" and `dmy` read 23 as the year 2023,
+    // and the newest-past-date rule chose 23 August — a clock starting 22 days
+    // late, promising days the shop will not honour.
+    expect(parse('Currys order\nOrdered Sat 1 Aug 23:10\nTotal £29.00').purchasedOn).toBe('2026-08-01');
+    expect(parse('Currys order\nPlaced Aug 1 09:45\nTotal £29.00').purchasedOn).toBe('2026-08-01');
+  });
+});

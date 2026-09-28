@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { color, font, radius, shadow } from '../../tokens';
 import { addDays, fmtDate, fmtDateNear } from '../../lib/dates';
 import { money, sumPence } from '../../lib/money';
-import { bucket, derive, everyReturnInTime, stillReturnablePence, timelineDots } from '../../lib/receipts';
+import { bucket, derive, everyReturnInTime, countsAsMoney, stillReturnablePence, timelineDots } from '../../lib/receipts';
 import { search, searchStatus, shouldOfferSearch } from '../../lib/search';
 import { midSentence } from '../../lib/words';
 import { heroCount, urgency } from '../../lib/urgency';
@@ -43,8 +43,12 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
   const { closed, urgent, later, returned } = bucket(visible, today, urgentDays);
   const active = [...closed, ...urgent, ...later];
   const next = searching ? undefined : active[0];
-  const stillReturnable = stillReturnablePence({ closed, urgent, later, returned });
-  const keptBack = sumPence(returned.map((r) => r.amount));
+  // Whether a sample still counts is decided over EVERY receipt, not the ones
+  // a search left visible: the samples stop being money the moment a real
+  // receipt exists, whatever is on screen.
+  const counts = countsAsMoney(receipts);
+  const stillReturnable = stillReturnablePence({ closed, urgent, later, returned }, receipts);
+  const keptBack = sumPence(returned.filter(counts).map((r) => r.amount));
   const dots = timelineDots(receipts, today);
   const empty = receipts.length === 0;
   const allDone = !searching && active.length === 0 && returned.length > 0;

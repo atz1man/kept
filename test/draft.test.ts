@@ -67,6 +67,19 @@ describe('amounts, as people actually type them', () => {
   it('catches an amount that is almost certainly a typo', () => {
     expect(errors({ amountText: '99999999' }).amountText).toContain('typo');
   });
+
+  it('asks about a decimal comma rather than reading it as thousands', () => {
+    // Every comma was stripped, so "12,50" saved as £1,250.00 — a hundred
+    // times the refund, added to the returnable total.
+    expect(errors({ amountText: '12,50' }).amountText).toContain('point');
+    expect(errors({ amountText: '1,2' }).amountText).toContain('point');
+    expect(errors({ amountText: '12,5000' }).amountText).toContain('point');
+  });
+
+  it('still reads commas that group thousands', () => {
+    expect(money(valid({ amountText: '1,299' }).amount)).toBe('£1,299.00');
+    expect(money(valid({ amountText: '£10,000.50' }).amount)).toBe('£10,000.50');
+  });
 });
 
 describe('dates', () => {
@@ -425,7 +438,14 @@ describe('where the window will actually start', () => {
     // the purchase-date case below is the one it broke on a second time —
     // applyDraft was not setting the field at all, so the spread carried a
     // stale one straight past the preview.
-    for (const patch of [{ store: 'Zara' }, { store: 'Argos' }, { purchasedOn: '2026-08-10' }, { dispatchedOnText: '2026-08-16' }, { dispatchedOnText: '' }]) {
+    // The last two change the shop to one that counts from ARRIVAL and give
+    // the arrival: applyDraft blanked every window start on a shop change, so
+    // the preview counted from the 20th and the saved receipt from the order.
+    for (const patch of [
+      { store: 'Zara' }, { store: 'Argos' }, { purchasedOn: '2026-08-10' }, { dispatchedOnText: '2026-08-16' }, { dispatchedOnText: '' },
+      { store: 'Amazon', distance: true, arrivedOnText: '2026-08-20' },
+      { store: 'ASOS', distance: true, arrivedOnText: '2026-08-20' },
+    ]) {
       const draft = { ...draftFrom(zara), ...patch };
       const out = validateDraft(draft, TODAY);
       if (!out.ok) throw new Error('expected valid');
@@ -704,5 +724,34 @@ describe('the edges of every rule the add form enforces', () => {
     expect(MAX_WINDOW_DAYS).toBe(365 * 10);
     expect(valid({ warrantyMonthsText: String(12 * 100) })).toBeTruthy();
     expect(errors({ warrantyMonthsText: String(12 * 100 + 1) }).warrantyMonthsText).toBeTruthy();
+  });
+});
+
+describe('a warranty that is only words', () => {
+  const legacy: Receipt = {
+    id: 'old', store: 'Currys', item: 'Kettel', cat: 'kitchen', amount: toPence(29),
+    purchasedOn: '2026-08-16', windowDays: 14, policy: 'p', distance: false, status: 'active',
+    warranty: { months: 0, note: '2-year guarantee, keep box' },
+  };
+
+  it('survives an edit to something else', () => {
+    // Restored from an old backup as { months: 0, note }. Its months field is
+    // blank because it has none, and saving any edit read that as "cleared".
+    const out = validateDraft({ ...draftFrom(legacy), item: 'Kettle' }, TODAY);
+    if (!out.ok) throw new Error('expected valid');
+    expect(applyDraft(legacy, out.value).warranty).toEqual({ months: 0, note: '2-year guarantee, keep box' });
+  });
+
+  it('takes a clock when one is given, keeping the words', () => {
+    const out = validateDraft({ ...draftFrom(legacy), warrantyMonthsText: '24' }, TODAY);
+    if (!out.ok) throw new Error('expected valid');
+    expect(applyDraft(legacy, out.value).warranty).toEqual({ months: 24, note: '2-year guarantee, keep box' });
+  });
+
+  it('while clearing a real clock still clears it', () => {
+    const timed = { ...legacy, warranty: { months: 24, note: 'n' } };
+    const out = validateDraft({ ...draftFrom(timed), warrantyMonthsText: '' }, TODAY);
+    if (!out.ok) throw new Error('expected valid');
+    expect(applyDraft(timed, out.value).warranty).toBeUndefined();
   });
 });

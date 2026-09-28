@@ -3,13 +3,13 @@ import { color, font, radius } from '../../tokens';
 import { isNative } from '../../lib/mirror';
 import { fmtDateLong } from '../../lib/dates';
 import { mergeBackup, parseBackup } from '../../lib/backup';
-import { savedWhere, type SaveOutcome } from '../../lib/save-file';
+import { backupFilename, saveJsonFile, savedWhere, type SaveOutcome } from '../../lib/save-file';
 import { alertsRow, currentNotifyState, notifyState, requestNotifyPermission, type NotifyState } from '../notify';
 import type { Receipt } from '../../lib/types';
 import { TAGLINE } from '../../lib/brand';
 import { LEGAL_DISCLAIMER } from '../../lib/legal';
 import { STORE_COUNT, tableCheck } from '../../lib/stores';
-import { URGENT_DAYS_MAX, URGENT_DAYS_MIN, type Settings as SettingsShape } from '../../lib/storage';
+import { discardSetAside, setAsideData, URGENT_DAYS_MAX, URGENT_DAYS_MIN, type Settings as SettingsShape } from '../../lib/storage';
 import { sellsPaidTiers, TIERS } from '../../lib/pricing';
 import { countedAgainstQuota, FREE_TIER_LIMIT } from '../../lib/quota';
 import { Pressable } from '../components/Pressable';
@@ -64,6 +64,25 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
   // Two steps, not an eight-second undo. The undo bar is right for one receipt
   // taken back by mistake; this is everything, and it wants a decision.
   const [confirmingWipe, setConfirmingWipe] = useState(false);
+
+  /*
+   * What a launch could not read, kept aside by `load` so the next save could
+   * not destroy it. Useless kept aside where nobody knows it exists, so this is
+   * where it is said, beside the backup it most resembles — and handed over as
+   * a file, which is the one thing a person can take to somebody who can read
+   * it. Forgotten once saved: the file is theirs now.
+   */
+  const [setAside, setSetAside] = useState(() => setAsideData());
+  const saveSetAside = async () => {
+    if (!setAside) return;
+    const outcome = await saveJsonFile(backupFilename('rescue', new Date()), setAside);
+    const saved = outcome.to !== 'nowhere';
+    setBackupNote({ tone: saved ? 'ok' : 'bad', text: savedWhere(outcome) });
+    if (saved) {
+      discardSetAside();
+      setSetAside(null);
+    }
+  };
 
   /**
    * Turning alerts on asks the browser first. A switch that flips to "on"
@@ -174,6 +193,25 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
             e.target.value = '';
           }}
         />
+        {setAside && (
+          <div
+            style={{
+              marginTop: 10, padding: '10px 13px', borderRadius: 14, fontSize: 12.5, lineHeight: 1.5,
+              background: 'rgba(216,66,46,0.10)', color: color.ink,
+            }}
+          >
+            <div style={{ fontWeight: 700 }}>
+              An earlier launch found receipts it couldn’t read, and kept them aside rather than lose them.
+            </div>
+            <Pressable
+              className="k-soft"
+              onClick={() => void saveSetAside()}
+              style={{ marginTop: 8, padding: '10px 14px', minHeight: 44, background: color.creamAlt, borderRadius: 999, fontWeight: 700, fontSize: 13 }}
+            >
+              Save them as a file
+            </Pressable>
+          </div>
+        )}
         {backupNote && (
           <div
             role="status"

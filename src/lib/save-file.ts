@@ -1,3 +1,4 @@
+import { toISODate } from './dates';
 import { filesystem, isNative } from './mirror';
 
 /**
@@ -80,7 +81,13 @@ export function savedWhere(outcome: SaveOutcome): string {
   }
 }
 
-/** The name both callers build, differing only in what it is a backup of. */
+/**
+ * The name both callers build, differing only in what it is a backup of.
+ *
+ * Dated by the person's own calendar, not UTC: `toISOString` named a backup
+ * taken at half past midnight in a British summer after the day before, and
+ * the date on the file is how someone picks which backup to restore.
+ */
 export function backupFilename(kind: 'backup' | 'rescue', today: Date): string {
-  return `kept-${kind}-${today.toISOString().slice(0, 10)}.json`;
+  return `kept-${kind}-${toISODate(today)}.json`;
 }

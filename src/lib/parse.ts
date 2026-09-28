@@ -36,10 +36,18 @@ const MONTHS: Record<string, number> = {
   jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
 };
 
+/**
+ * One £ figure. The comma-grouped form needs at least ONE comma group: with
+ * `*` it accepted none, matched the first three digits of "1299.00", and a
+ * £1,299 order was saved as £129. Written without a comma is how most order
+ * emails write a four-figure price.
+ */
+const POUNDS = '£\\s?(\\d{1,3}(?:,\\d{3})+(?:\\.\\d{1,2})?|\\d+(?:\\.\\d{1,2})?)';
+
 /** Every £ amount in the text, in order, as pence. */
 function amountsIn(text: string): Pence[] {
   const out: Pence[] = [];
-  const re = /£\s?(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)/g;
+  const re = new RegExp(POUNDS, 'g');
   for (const m of text.matchAll(re)) out.push(toPence(parseFloat(m[1].replace(/,/g, ''))));
   return out;
 }
@@ -50,8 +58,20 @@ function amountsIn(text: string): Pence[] {
  * picks a single sock out of a £240 basket. A labelled total wins; failing
  * that the largest figure is the only defensible guess.
  */
+/*
+ * "total" as a word, not as the end of "Subtotal" — which comes before the
+ * real total in nearly every order email and is the figure before delivery.
+ * "Sub-total" and "Sub total" are the same line written apart. A total OF
+ * something else (savings, VAT, discount) is not the order total either; a
+ * total that merely mentions VAT in passing — "Total (inc. VAT)" — is.
+ */
+const LABELLED_TOTAL = new RegExp(
+  '(?<![a-z])(?<!sub[\\s-])total(?!\\s*(?:savings?|saved|discounts?|vat|tax)\\b)[^£\\n]{0,40}' + POUNDS,
+  'i',
+);
+
 function pickAmount(text: string): Pence | null {
-  const labelled = /(?:order\s+)?(?:grand\s+)?total[^£\n]{0,40}£\s?(\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)/i.exec(text);
+  const labelled = LABELLED_TOTAL.exec(text);
   if (labelled) return toPence(parseFloat(labelled[1].replace(/,/g, '')));
   const all = amountsIn(text);
   if (all.length === 0) return null;
@@ -95,14 +115,16 @@ function datesIn(text: string, today: Date): DateHit[] {
   };
 
   // "25 Aug", "25 August 2026", "25th Aug"
-  const dmy = /\b(\d{1,2})(?:st|nd|rd|th)?[ .\-/]+([a-z]{3,9})\.?,?(?:[ .\-/]+(\d{2,4}))?\b/gi;
+  // A figure followed by ":NN" is a time of day, never a day or a year: "1 Aug
+  // 23:10" read 23 as the year 2023, and `mdy` below read it as 23 August.
+  const dmy = /\b(\d{1,2})(?:st|nd|rd|th)?[ .\-/]+([a-z]{3,9})\.?,?(?:[ .\-/]+(\d{2,4})(?!:\d))?\b/gi;
   for (const m of text.matchAll(dmy)) {
     const mon = MONTHS[m[2].slice(0, 3).toLowerCase()];
     if (mon === undefined) continue;
     push(resolveYear(m[3], mon, Number(m[1]), today), mon, Number(m[1]), m.index ?? 0, m[0].length);
   }
   // "Aug 25", "August 25, 2026"
-  const mdy = /\b([a-z]{3,9})\.?[ .\-/]+(\d{1,2})(?:st|nd|rd|th)?,?(?:[ .\-/]+(\d{2,4}))?\b/gi;
+  const mdy = /\b([a-z]{3,9})\.?[ .\-/]+(\d{1,2})(?!:\d)(?:st|nd|rd|th)?,?(?:[ .\-/]+(\d{2,4})(?!:\d))?\b/gi;
   for (const m of text.matchAll(mdy)) {
     const mon = MONTHS[m[1].slice(0, 3).toLowerCase()];
     if (mon === undefined) continue;

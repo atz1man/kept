@@ -192,6 +192,24 @@ function impactFor(update: PolicyUpdate, receipt: Receipt, today: Date): Receipt
   // bought under. The derived sentence is both more specific and true.
   const days = Math.abs(next - receipt.windowDays);
   const unit = days === 1 ? 'day' : 'days';
+  /*
+   * "Yours keeps the window it was bought under" is only true of a purchase
+   * made BEFORE the change. One made on or after it was bought under the NEW
+   * window — it carries the old number only because it was added before the
+   * feed reached this phone, and reassuring its holder that the longer window
+   * stands overstates the deadline by exactly the change. Said plainly, and
+   * not silently rewritten: the person edits it, as with any other number
+   * the app cannot be sure of.
+   */
+  if (receipt.purchasedOn >= update.changedOn) {
+    return {
+      receipt,
+      kind: next < receipt.windowDays ? 'shorter' : 'longer',
+      note:
+        `bought after this change, so the shop gives it ${next} days — ${days} ${unit} ` +
+        `${next < receipt.windowDays ? 'fewer' : 'more'} than this receipt counts. Edit it to match`,
+    };
+  }
   // Equality already returned above, so `<` and `<=` cannot disagree here and
   // no test can tell them apart. Recorded rather than left to be re-derived.
   if (next < receipt.windowDays) {

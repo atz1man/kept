@@ -161,8 +161,34 @@ export function bucket(receipts: readonly Receipt[], today: Date, urgentDays: nu
  * means; what is left to try is said per receipt in the section below, in the
  * language of rights rather than of refunds.
  */
-export function stillReturnablePence(b: Buckets): number {
-  return sumPence([...b.urgent, ...b.later].map((r) => r.amount));
+export function stillReturnablePence(b: Buckets, everything?: readonly Receipt[]): number {
+  const counts = countsAsMoney(everything ?? [...b.closed, ...b.urgent, ...b.later, ...b.returned]);
+  return sumPence([...b.urgent, ...b.later].filter(counts).map((r) => r.amount));
+}
+
+/** The money a person has actually had back — the same rule as the total above. */
+export function recoveredPence(receipts: readonly Receipt[]): number {
+  const counts = countsAsMoney(receipts);
+  return sumPence(receipts.filter((r) => r.status === 'returned' && counts(r)).map((r) => r.amount));
+}
+
+/**
+ * Whether a receipt's money belongs in a total.
+ *
+ * The five sample receipts are not anybody's money, and the rest of the app
+ * already knew it — alerts skip them, the quota does not charge for them —
+ * while the totals added them in: someone with £50 of real receipts who had
+ * not deleted the samples read "£462.96 still returnable", £412.96 of it
+ * purchases nobody made.
+ *
+ * Until the person has added anything, though, the samples ARE the whole
+ * point: a fresh install's totals are part of the demonstration, and "£0.00"
+ * beside five receipts would read as broken. So the samples count only while
+ * they are all there is. The first real receipt takes them out of every total.
+ */
+export function countsAsMoney(all: readonly Receipt[]): (r: Receipt) => boolean {
+  const anyReal = all.some((r) => !r.demo);
+  return (r) => !anyReal || !r.demo;
 }
 
 /** Receipts whose deadline lands inside the 30-day timeline strip. */
