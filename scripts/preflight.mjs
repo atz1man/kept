@@ -77,7 +77,7 @@ export function preflight(tree, env = {}) {
   add(
     'the retailer table has been checked against the shops',
     checked === undefined ? 'no TABLE_CHECKED_ON in src/lib/stores.ts' : checked === 'null' ? 'TABLE_CHECKED_ON is null — nobody has checked the windows' : null,
-    'check every window against the retailer’s own page, then set TABLE_CHECKED_ON (APN-16)',
+    'npm run check:retailers, correct stores.ts from the quotes, then set TABLE_CHECKED_ON (APN-16)',
   );
 
   // The key is `CHECKED_IN_KEY`, or VITE_FEED_PUBLIC_KEY at build time — NOT

@@ -2281,6 +2281,14 @@ come back as copy. It comes back when there are real people to measure.
 The retailer windows in `stores.ts` were written from the handoff and public
 policy pages. Verify each one against the retailer's current published terms
 before launch — the app's core claim is that these are right.
+`npm run check:retailers` does the reading: each shop's own returns page
+(`store/retailer-sources.json`), in a browser with a UK locale, every sentence
+about returns that states a period quoted into `store/retailer-check/<date>.md`
+with its URL. It needs a connection that reaches the shops — the cloud sandbox
+this was built in refuses them — and it never edits the table, because "30
+days" beside "for Members" is not the window a person gets. The report is the
+evidence the table changes from; `test/retailer-check.test.ts` holds the parts
+that decide what it says.
 
 **The iOS privacy manifest is written, and so are the four project edits that
 make it more than a file.** It is the one place the App Store reads this app's
