@@ -1,0 +1,25 @@
+{
+  "_readme": "Each shop's OWN UK returns page — where `npm run check:retailers` reads the window from. Starting points, not guarantees: retailers move these pages, and a moved one is reported as unreadable, never passed over. Fix the URL here, not the window in stores.ts. test/retailer-check.test.ts holds this list to exactly the shops in the table.",
+  "sources": {
+    "Apple": ["https://www.apple.com/uk/shop/help/returns_refund"],
+    "Amazon": ["https://www.amazon.co.uk/gp/help/customer/display.html?nodeId=GKM69DUUYKQWKWX7"],
+    "Currys": ["https://www.currys.co.uk/help/returns-and-cancellations"],
+    "Argos": ["https://www.argos.co.uk/help/returns/"],
+    "IKEA": ["https://www.ikea.com/gb/en/customer-service/returns-claims/return-policy/"],
+    "Zara": ["https://www.zara.com/uk/en/help-center/ReturnPolicy"],
+    "Boots": ["https://www.boots.com/help/returns"],
+    "Uniqlo": ["https://www.uniqlo.com/uk/en/help/returns"],
+    "ASOS": ["https://www.asos.com/customer-care/returns-refunds/what-is-your-returns-policy/"],
+    "Next": ["https://www.next.co.uk/help/returns"],
+    "John Lewis": ["https://www.johnlewis.com/customer-services/returns"],
+    "M&S": ["https://www.marksandspencer.com/c/help/returns-and-refunds"],
+    "H&M": ["https://www2.hm.com/en_gb/customer-service/returns.html"],
+    "Sports Direct": ["https://www.sportsdirect.com/customerservices/returns"],
+    "Screwfix": ["https://www.screwfix.com/help/returns/"],
+    "B&Q": ["https://www.diy.com/customer-support/returns"],
+    "Wickes": ["https://www.wickes.co.uk/returns"],
+    "Decathlon": ["https://www.decathlon.co.uk/landing/returns"],
+    "Sainsbury’s": ["https://help.sainsburys.co.uk/help/products/return-policy"],
+    "Tesco": ["https://www.tesco.com/help/returns"]
+  }
+}
