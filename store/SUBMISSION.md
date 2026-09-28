@@ -33,7 +33,7 @@ account, a decision, or an address only you can give.
 | ✅ | Export compliance answered once, in `Info.plist`, so builds are not held for it | done — **you are the one declaring it**; read the comment above `ITSAppUsesNonExemptEncryption` and confirm | `test/ios-export-compliance.test.ts` fails if the app ever does more than verify a signature |
 | ☐ | Every retailer window checked against the shop's live page | **you** or anyone with a browser | APN-16 — the listing says "20 UK retailers built in" and must be true when it ships. Currys is the likeliest to be wrong: the table says 14 days from purchase, several sources say 30 from delivery |
 | ☐ | The feed key pair, so policy updates are signed | **you** | APN-19 — optional for v1; the app works unsigned |
-| ☐ | The sample policy changes on the Watch tab are shown as news | **you** (decide) | A fresh install lists five retailer policy changes — "Zara: free postal returns ended", "ASOS: new 28-day window for frequent returners" — dated weeks ago and **not** labelled as samples, unlike the sample receipts. They are claims about named companies. Label them as samples, or verify each one, before launch |
+| ✅ | The sample policy changes are labelled as samples, and none is published as news | done | APN-84 — labelled on the Watch tab, never set a real window, never speak to a real receipt; the served feed is empty until a change is checked against the retailer. `test/sample-changes.test.ts` |
 
 ## 4. The listing
 

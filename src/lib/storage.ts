@@ -173,7 +173,7 @@ export function hydrate(raw: unknown, today: Date): KeptState {
   // always safe and keeps the feed current on an old install. Validated the
   // same way, through the reader the network path already uses.
   const storedUpdates = Array.isArray(parsed.updates)
-    ? readFeed({ feed: 'kept-policy', updates: parsed.updates }) ?? []
+    ? readFeed({ feed: 'kept-policy', updates: parsed.updates }, 'device') ?? []
     : [];
 
   return {

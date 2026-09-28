@@ -165,3 +165,30 @@ describe('what the page says about kept’s users', () => {
     expect(found).toEqual([]);
   });
 });
+
+/**
+ * The policy-watch section shows small print, not news (APN-84).
+ *
+ * Its three cards were the newest sample policy changes, each stamped
+ * "updated 2 days ago" relative to whatever day the page was opened —
+ * "ASOS: new 28-day window for frequent returners" read as reporting, about a
+ * named company, and nobody had checked it. The seed's changes are samples,
+ * labelled as such in the app, and the marketing page is not where a sample
+ * gets to pass as a fact.
+ */
+describe('the policy-watch section', () => {
+  it('reads nothing from the sample changes', () => {
+    expect(LANDING).not.toMatch(/seedUpdates/);
+  });
+
+  it('stamps nothing with a freshness it cannot know', () => {
+    expect(LANDING).not.toMatch(/relativeAgo|`updated /);
+  });
+
+  it('does not promise a delivery speed nobody runs', () => {
+    // "Kept ships policy updates the day they change" — there is no process
+    // behind "the day", and no change has been published through it.
+    expect(LANDING).not.toMatch(/the day\s+they change/);
+    expect(LANDING).not.toMatch(/LIVE POLICY WATCH/);
+  });
+});

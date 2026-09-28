@@ -1,6 +1,7 @@
 import { derive } from './receipts';
 import { canonicalStoreName } from './stores';
 import { MAX_WINDOW_DAYS } from './draft';
+import { midSentence } from './words';
 import type { PolicyUpdate, Receipt } from './types';
 
 /**
@@ -113,6 +114,22 @@ function updateNames(update: PolicyUpdate, store: string): boolean {
   return update.affectsStores.some((s) => canonicalStoreName(s).toLowerCase() === name);
 }
 
+/**
+ * Does this update speak to this receipt?
+ *
+ * The shop has to match, and a SAMPLE change speaks only to a sample receipt.
+ * The seed's changes are illustrations nobody verified; left to match by shop
+ * alone, a real Zara coat added on day one was told "Zara changed its returns
+ * policy — your coat is affected", on the list screen, over a change that may
+ * never have happened. Sample-to-sample keeps the demo whole — the sample Zara
+ * coat still shows what a change looks like when it lands — without the app
+ * making a claim about a named shop to someone's actual purchase.
+ */
+export function speaksTo(update: PolicyUpdate, receipt: Receipt): boolean {
+  if (update.demo && !receipt.demo) return false;
+  return updateNames(update, receipt.store);
+}
+
 export function windowInForceFor(
   store: string,
   purchasedOn: string,
@@ -122,6 +139,11 @@ export function windowInForceFor(
   let days: number | undefined;
   for (const u of updates) {
     if (u.newWindowDays === undefined) continue;
+    // A sample never moves a real deadline. The seed's windows happen to agree
+    // with the table today, which is exactly why this was invisible: the day
+    // someone corrects the table from the retailer's own page, a sample dated
+    // before the purchase would have quietly overruled the correction.
+    if (u.demo) continue;
     if (!updateNames(u, store)) continue;
     // ISO dates compare correctly as strings, which is half of why they are
     // stored this way.
@@ -195,10 +217,55 @@ export function assess(updates: readonly PolicyUpdate[], receipts: readonly Rece
   const active = receipts.filter((r) => r.status === 'active');
   return updates.map((update) => {
     const impacts = active
-      .filter((r) => updateNames(update, r.store))
+      .filter((r) => speaksTo(update, r))
       .map((r) => impactFor(update, r, today));
     return { update, impacts, affectsYou: impacts.length > 0 };
   });
+}
+
+/**
+ * What the receipts list says when a change lands on something held: the
+ * banner's line, and which rows carry the badge.
+ *
+ * It lived in App.tsx and asked its own question — `affectsStores` against
+ * the held shops by exact string — beside `assess`, which the Watch tab reads
+ * and which canonicalises names. Two answers to "is this yours?" on two
+ * screens one tap apart; and the App's copy knew nothing about samples, so
+ * the seed's invented Zara change announced itself over a real Zara coat.
+ * Now it is `assess`, filtered.
+ *
+ * The badges were keyed by SHOP name for the same reason, so they had the same
+ * hole. "Sample:" leads when every change behind the line is one. It also counts SHOPS by
+ * name rather than updates: one shop with two receipts used to read "1 shops
+ * changed their returns policies".
+ */
+export interface PolicyAlert {
+  /** The banner's sentence, or null when no change lands on anything held. */
+  line: string | null;
+  /** Ids of the receipts a change lands on — the row badges and the tab dot. */
+  changed: ReadonlySet<string>;
+}
+
+export function policyAlertFor(
+  updates: readonly PolicyUpdate[],
+  receipts: readonly Receipt[],
+  today: Date,
+): PolicyAlert {
+  const hits = assess(updates, receipts, today).filter((a) => a.affectsYou);
+  const held = new Map<string, Receipt>();
+  for (const a of hits) for (const i of a.impacts) held.set(i.receipt.id, i.receipt);
+  const affected = [...held.values()];
+  const changed = new Set(held.keys());
+  if (affected.length === 0) return { line: null, changed };
+  const lead = hits.every((a) => a.update.demo) ? 'Sample: ' : '';
+  const shops = new Set(affected.map((r) => r.store));
+  const line =
+    affected.length === 1
+      ? `${lead}${affected[0].store} changed its returns policy — your ${midSentence(affected[0].item)} is affected`
+      : shops.size === 1
+        ? `${lead}${affected[0].store} changed its returns policy — ${affected.length} of your receipts are affected`
+        : `${lead}${shops.size} shops changed their returns policies — your receipts are affected`;
+  return { line, changed };
 }
 
 /**
@@ -237,9 +304,16 @@ function newestFirst(updates: PolicyUpdate[]): PolicyUpdate[] {
  * discipline as a backup restore, for the same reason: a feed that failed to
  * mention an update must not delete it. Bounded, though: see MAX_UPDATES for
  * why "never delete" could not stay unqualified.
+ *
+ * The one thing a feed DOES remove is the samples, and only once it carries a
+ * real change. A sample is there so the tab is not empty; beside a real
+ * change it is noise that reads as news. An empty feed — the state this ships
+ * in — leaves them where they are, so an install with nothing published yet
+ * still shows what the tab is for.
  */
 export function mergeFeed(current: readonly PolicyUpdate[], incoming: readonly PolicyUpdate[]): PolicyUpdate[] {
-  const byId = new Map(current.map((u) => [u.id, u]));
+  const real = incoming.some((u) => !u.demo);
+  const byId = new Map(current.filter((u) => !(real && u.demo)).map((u) => [u.id, u]));
   for (const u of incoming) byId.set(u.id, u);
   return newestFirst([...byId.values()]);
 }
@@ -276,8 +350,13 @@ const fits = (v: unknown, max: number): v is string => isStr(v) && v.length <= m
  * and an oversized document is cut down to the newest MAX_UPDATES rather than
  * refused outright — a feed that grew past the cap should still deliver
  * today's change, not go quiet.
+ *
+ * `from` says where the document came from, and it decides one field: `demo`
+ * survives only from the device's own store. From the network it is dropped,
+ * because "this is only a sample" is a label that exempts an entry from being
+ * taken seriously, and nothing downloaded gets to award itself that.
  */
-export function readFeed(doc: unknown): PolicyUpdate[] | null {
+export function readFeed(doc: unknown, from: 'network' | 'device' = 'network'): PolicyUpdate[] | null {
   if (typeof doc !== 'object' || doc === null) return null;
   const d = doc as Record<string, unknown>;
   if (d.feed !== 'kept-policy' || !Array.isArray(d.updates)) return null;
@@ -306,6 +385,7 @@ export function readFeed(doc: unknown): PolicyUpdate[] | null {
       affectsStores: u.affectsStores as string[],
       affectNote: fits(u.affectNote, MAX_TEXT) ? u.affectNote : '',
       ...(u.newWindowDays !== undefined ? { newWindowDays: u.newWindowDays as number } : {}),
+      ...(from === 'device' && u.demo === true ? { demo: true } : {}),
     });
   }
   return newestFirst(out);

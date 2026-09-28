@@ -147,11 +147,12 @@ await page.waitForTimeout(300);
  *
  * It is the only place a changed window is announced, and nothing looked for
  * it: gating it on `searching` instead of `!searching` hid it from the list and
- * showed it only mid-search, with every sweep green. The seed carries changes
- * for two of its shops, so a fresh install always has one to show.
+ * showed it only mid-search, with every sweep green. The seed carries sample
+ * changes for two of its sample receipts, so a fresh install always has one to
+ * show — and says it is a sample, because it is (APN-84).
  */
 results['a changed policy is announced on the receipts list'] =
-  await page.getByRole('button', { name: /changed (its|their) returns polic/ }).isVisible().catch(() => false);
+  await page.getByRole('button', { name: /^Sample: .*changed (its|their) returns polic/ }).isVisible().catch(() => false);
 
 /*
  * And one alert for a receipt the person actually added — only one, because
@@ -561,13 +562,22 @@ results['a shared order lands on Add, already read'] =
 // The payload must not linger in the address bar, or a reload re-adds it.
 results['the shared payload is stripped from the URL'] = !/[?&]text=/.test(page.url());
 
-// The policy feed must arrive from this app's own origin and replace the
-// bundled copy rather than piling a second copy on top of it.
+// The sample policy changes stay samples after the served feed has been read
+// (APN-84). They used to carry the served feed's own ids and be replaced by
+// it — the same five unchecked claims about named shops, published as news.
+// The served feed is empty until a real change is checked; the samples are
+// labelled on the tab, keep the label on disk, and appear once each. That a
+// served change actually ARRIVES is feed:wiring's job, with a probe of its own.
 await page.getByRole('button', { name: /^Watch/ }).click();
 await page.waitForTimeout(600);
-const updateIds = await page.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).updates.map((u) => u.id));
-results['the policy feed arrives and does not duplicate the bundled one'] =
-  updateIds.length === new Set(updateIds).size && updateIds.includes('u_uniqlo_online_refunds');
+const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).updates);
+const updateIds = stored.map((u) => u.id);
+results['the sample policy changes are labelled, and held once each'] =
+  updateIds.length > 0 &&
+  updateIds.length === new Set(updateIds).size &&
+  stored.every((u) => u.demo === true) &&
+  (await page.getByText('sample', { exact: true }).count()) === stored.length &&
+  (await page.getByText(/These are samples/).isVisible().catch(() => false));
 // Both halves, because the reassurance alone is what this check used to
 // accept: Zara's fee change left the window at 30 days, so the card said
 // "deadline unchanged" and stopped — dropping the one sentence in the update

@@ -115,6 +115,23 @@ export interface PolicyUpdate {
    * — that is the line, and it is not "read on one screen only".
    */
   newWindowDays?: number;
+  /**
+   * True for the five changes a fresh install arrives with — the policy-watch
+   * twin of `Receipt.demo`.
+   *
+   * They exist so the Watch tab is not empty on a first launch with no signal,
+   * and they were shown as news: "ASOS: new 28-day window for frequent
+   * returners", dated a week ago on every install, unlabelled, beside receipts
+   * that WERE labelled as samples. Nobody had checked any of them against the
+   * retailer. A claim about a named company that nobody verified is not news,
+   * so a sample is labelled, only ever speaks to sample receipts, never sets a
+   * real purchase's window, and goes the moment a real change arrives.
+   *
+   * Never read from the network: `readFeed` keeps it only from the device's
+   * own store, so a downloaded entry cannot claim to be a harmless sample and
+   * a stored sample cannot lose the label on the next launch.
+   */
+  demo?: boolean;
 }
 
 export type Screen = 'onboard' | 'home' | 'watch' | 'detail' | 'edit' | 'add' | 'settings' | 'celebrate';

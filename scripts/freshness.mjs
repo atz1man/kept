@@ -153,7 +153,7 @@ try {
   results['the worker controls the page'] = await page.evaluate(() => !!navigator.serviceWorker.controller);
 
   const before = await askFeed();
-  results['the feed is readable through the worker'] = before.ok && before.ids.length > 0;
+  results['the feed is readable through the worker'] = before.ok && Array.isArray(before.ids);
 
   // Past onboarding, so the offline half lands on the screen that has to work
   // on the train rather than on a welcome card that would render regardless.
