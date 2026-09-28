@@ -116,6 +116,20 @@ describe('what a change means for a receipt already held', () => {
     expect(a.impacts[0].note).toContain('17 days left');
   });
 
+  it('does not tell a purchase made AFTER the change that it keeps the old window', () => {
+    // "Yours keeps the 30 days it was bought under" is true only of a purchase
+    // made before the change. One made on or after it was bought under the
+    // new window, and carries 30 only because it was added before the feed
+    // arrived — reassuring its holder overstated the deadline by the change.
+    for (const purchasedOn of [ago(2), ago(1)]) {
+      const later = { ...zaraReceipt, purchasedOn };
+      const [a] = assess([update({ newWindowDays: 14 })], [later], TODAY);
+      expect(a.impacts[0].kind, purchasedOn).toBe('shorter');
+      expect(a.impacts[0].note, purchasedOn).not.toContain('yours keeps');
+      expect(a.impacts[0].note, purchasedOn).toContain('bought after this change, so the shop gives it 14 days — 16 days fewer');
+    }
+  });
+
   it('says how much shorter, for the next purchase', () => {
     const [a] = assess([update({ newWindowDays: 29 })], [zaraReceipt], TODAY);
     expect(a.impacts[0].note).toContain('1 day less');

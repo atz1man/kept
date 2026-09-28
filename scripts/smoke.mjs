@@ -827,6 +827,12 @@ results['a delivery date in the paste is read, not asked for'] =
       { id: 'gone', store: 'M&S', item: 'Towels', cat: 'other', amount: 19325,
         purchasedOn: old.toISOString().slice(0, 10), windowDays: 35, policy: 'M&S · 35 days',
         distance: false, status: 'active' },
+      // A real receipt still inside its window, so the footer below has real
+      // money to show: once any real receipt exists the samples stop counting,
+      // and without this the right answer would be £0.00.
+      { id: 'fresh', store: 'Argos', item: 'Toaster', cat: 'kitchen', amount: 2499,
+        purchasedOn: new Date().toISOString().slice(0, 10), windowDays: 30, policy: 'Argos · 30 days',
+        distance: false, status: 'active' },
       ...s.receipts,
     ];
     s.onboardingSeen = true;
@@ -856,7 +862,9 @@ results['a delivery date in the paste is read, not asked for'] =
    */
   const footer = /(£[\d,]+\.\d\d) still returnable/.exec(shown);
   const sums = await backlogPage.evaluate(() => {
-    const rs = JSON.parse(localStorage.getItem('kept.v1')).receipts.filter((r) => r.status === 'active');
+    // Real receipts only: the samples stop counting towards a total the moment
+    // a real receipt exists (`countsAsMoney`), and there are two here.
+    const rs = JSON.parse(localStorage.getItem('kept.v1')).receipts.filter((r) => r.status === 'active' && !r.demo);
     return { all: rs.reduce((n, r) => n + r.amount, 0), gone: (rs.find((r) => r.id === 'gone') ?? {}).amount ?? 0 };
   });
   const shownPence = footer ? Math.round(parseFloat(footer[1].replace(/[£,]/g, '')) * 100) : -1;
@@ -1088,6 +1096,48 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
     !!rescued && rescued.app === 'kept' && Array.isArray(rescued.receipts) && rescued.receipts.length > 0;
 
   await brokenCtx.close();
+}
+
+/*
+ * A store the app cannot read must survive the save that follows.
+ *
+ * `load` falls back to a fresh state on corrupt JSON, and the first change
+ * after that used to save the fallback over the only copy. It is set aside
+ * now, and Settings hands it back as a file. Planted as a truncated write —
+ * the ordinary way a store becomes unreadable — in a context of its own.
+ */
+{
+  const badCtx = await browser.newContext({ viewport: { width: 402, height: 874 }, acceptDownloads: true });
+  const bad = await badCtx.newPage();
+  const truncated = '{"version":1,"onboardingSeen":true,"receipts":[{"id":"mine","store":"Currys","item":"Kettle"';
+  await bad.addInitScript((raw) => {
+    if (!sessionStorage.getItem('planted')) {
+      localStorage.setItem('kept.v1', raw);
+      sessionStorage.setItem('planted', '1');
+    }
+  }, truncated);
+  await bad.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await bad.waitForTimeout(600);
+  await bad.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await bad.getByRole('button', { name: 'Settings', exact: true }).click().catch(() => {});
+  await bad.waitForTimeout(400);
+  const aside = await bad.evaluate(() => localStorage.getItem('kept.v1.unreadable'));
+  const offered = await bad.getByRole('button', { name: 'Save them as a file' }).isVisible().catch(() => false);
+  const got = bad.waitForEvent('download', { timeout: 5000 }).catch(() => null);
+  await bad.getByRole('button', { name: 'Save them as a file' }).click().catch(() => {});
+  const file = await got;
+  let saved = null;
+  if (file) {
+    const path = join(tmpdir(), 'kept-smoke-set-aside.json');
+    await file.saveAs(path);
+    saved = readFileSync(path, 'utf8');
+  }
+  await bad.waitForTimeout(300);
+  results['an unreadable store survives the next save, and is offered back'] =
+    aside === truncated && offered && saved === truncated &&
+    (await bad.evaluate(() => localStorage.getItem('kept.v1.unreadable'))) === null &&
+    !(await bad.getByRole('button', { name: 'Save them as a file' }).isVisible().catch(() => false));
+  await badCtx.close();
 }
 
 // The free tier is claimed on the pricing page, in Settings and on the Add

@@ -227,15 +227,71 @@ export async function restoreFromMirror(): Promise<boolean> {
   }
 }
 
+/**
+ * Where a store this build could not fully read is kept, untouched.
+ *
+ * `load` falls back rather than trapping someone on a broken launch — corrupt
+ * JSON becomes a fresh state, an unreadable row is dropped — and that is still
+ * right. What was wrong is what happened NEXT: the first change saved the
+ * fallback over the only copy, so a truncated write, or a row from a newer
+ * build with a field this one does not know, took every real receipt with it
+ * on the web, where there is no mirror. The fallback now happens to a copy.
+ *
+ * The first one is kept and never overwritten: it is the one written before
+ * anything was lost.
+ */
+const SET_ASIDE_KEY = 'kept.v1.unreadable';
+
+function setAside(store: Storage | null | undefined, raw: string): void {
+  try {
+    if (store && store.getItem(SET_ASIDE_KEY) === null) store.setItem(SET_ASIDE_KEY, raw);
+  } catch {
+    // A store that will not take this write will not take the fallback's
+    // either, so nothing is about to be overwritten.
+  }
+}
+
+/** Did hydrating lose anything that was on disk? */
+function lostAnything(parsed: unknown, state: KeptState): boolean {
+  if (typeof parsed !== 'object' || parsed === null) return true;
+  const rows = (parsed as { receipts?: unknown }).receipts;
+  if (!Array.isArray(rows)) return true;
+  return state.receipts.length < rows.length;
+}
+
 export function load(today: Date): KeptState {
   const store = storage();
   const raw = store?.getItem(KEY);
   if (!raw) return freshState(today);
+  let parsed: unknown;
   try {
-    return hydrate(JSON.parse(raw), today);
+    parsed = JSON.parse(raw);
   } catch {
-    // Corrupt JSON: start clean rather than trap the user on a broken launch.
+    // Corrupt JSON: start clean rather than trap the user on a broken launch —
+    // with what was there set aside first, because the next save replaces it.
+    setAside(store, raw);
     return freshState(today);
+  }
+  const state = hydrate(parsed, today);
+  if (lostAnything(parsed, state)) setAside(store, raw);
+  return state;
+}
+
+/** What `load` set aside, for the Settings screen to offer as a file. */
+export function setAsideData(): string | null {
+  try {
+    return storage()?.getItem(SET_ASIDE_KEY) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Forget the set-aside copy, once it has been saved somewhere or refused. */
+export function discardSetAside(): void {
+  try {
+    storage()?.removeItem(SET_ASIDE_KEY);
+  } catch {
+    // Nothing to do: a store that refuses this refuses reads of it too.
   }
 }
 
@@ -350,6 +406,10 @@ export function wipe(): void {
    * having spoken about them go.
    */
   const erased = erasedFrom(existing);
+  // "Erase everything" includes what a bad launch set aside: it is the same
+  // receipts, and keeping them after being asked not to is the one thing an
+  // erase cannot do.
+  discardSetAside();
   try {
     store?.setItem(KEY, erased);
   } catch {

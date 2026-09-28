@@ -181,12 +181,22 @@ export function validateDraft(draft: ReceiptDraft, today: Date): DraftOutcome {
   if (!item) errors.item = 'What was it?';
 
   // Accept what people actually type — a leading £, spaces, thousands commas.
-  const cleaned = draft.amountText.replace(/[£\s,]/g, '');
+  const raw = draft.amountText.replace(/[£\s]/g, '');
+  const cleaned = raw.replace(/,/g, '');
   const amountNum = Number(cleaned);
   // Any initial value does: it is overwritten on the path that uses it, and on
   // every other path the function returns errors instead. Equivalent, recorded.
   let amount = 0;
-  if (!cleaned || !Number.isFinite(amountNum)) {
+  /*
+   * A comma is a thousands separator only where it groups thousands. Every
+   * comma used to be stripped, so "12,50" — a decimal comma, as a price copied
+   * from a European site or typed on a phone keypad reads — was saved as
+   * £1,250.00: a hundred times the refund, added to the total. It is not
+   * guessed at in either direction; the person is asked.
+   */
+  if (raw.includes(',') && !/^\d{1,3}(?:,\d{3})+(?:\.\d{0,2})?$/.test(raw)) {
+    errors.amountText = 'Use a point for pence, like 12.50';
+  } else if (!cleaned || !Number.isFinite(amountNum)) {
     errors.amountText = 'Enter the amount, like 24.99';
   } else if (amountNum < 0) {
     errors.amountText = 'An amount cannot be negative';
@@ -351,9 +361,17 @@ export function applyDraft(original: Receipt, valid: ValidDraft): Receipt {
     // Clearing the field clears the clock. The note, if any, came from the
     // manufacturer's own wording and is kept only while a clock is there to
     // caption.
+    //
+    // Except a warranty that never HAD a clock. An old backup carried the
+    // warranty as free text, and it is restored as `{ months: 0, note }`: the
+    // edit screen shows its months field blank because there are none, so a
+    // blank field on save meant "untouched" and was read as "cleared" — fixing
+    // a typo in the item name deleted "2-year guarantee, keep box" for good.
     warranty: valid.warrantyMonths
       ? { months: valid.warrantyMonths, ...(original.warranty?.note ? { note: original.warranty.note } : {}) }
-      : undefined,
+      : original.warranty && original.warranty.months === 0
+        ? original.warranty
+        : undefined,
     // Re-derived when the SHOP or the WINDOW changes, and only then.
     //
     // Editing the window alone used to leave the policy card quoting the
@@ -368,15 +386,17 @@ export function applyDraft(original: Receipt, valid: ValidDraft): Receipt {
     ...(storeChanged || valid.windowDays !== original.windowDays
       ? { policy: policyFor(store, valid.windowDays) }
       : {}),
-    ...(storeChanged
-      ? {
-          gotcha: policy?.gotcha,
-          // The old shop's dispatch clock does not follow the receipt to a new
-          // shop; without this, a Zara window start would keep governing an
-          // Argos purchase. effectiveWindowStart encodes the same condition,
-          // so the edit screen's deadline preview agrees with what lands here.
-          windowStartsOn: undefined,
-        }
-      : {}),
+    /*
+     * The gotcha follows the shop. The window start does NOT need clearing
+     * here, and clearing it was a bug: it is already computed above from the
+     * NEW shop's own rule, so a Zara dispatch date cannot govern an Argos
+     * purchase — `windowStartFor` returns nothing for a shop that counts from
+     * purchase. What the blanket `windowStartsOn: undefined` did was throw
+     * away a start the new shop DOES use: a receipt retyped to Amazon with an
+     * arrival date saved counting from the order, while the edit screen's
+     * preview (effectiveWindowStart) showed the arrival — the preview and the
+     * saved receipt disagreeing, which this file exists to prevent.
+     */
+    ...(storeChanged ? { gotcha: policy?.gotcha } : {}),
   };
 }

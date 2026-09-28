@@ -5,6 +5,7 @@ import { FEED_SIG_URL, FEED_URL, mergeFeed, policyAlertFor, readFeed } from '../
 import { FEED_PUBLIC_KEY, feedIsAcceptable, verifyFeed } from '../lib/feed-signature';
 import { deliver } from './notify';
 import { money, sumPence } from '../lib/money';
+import { countsAsMoney, recoveredPence } from '../lib/receipts';
 import { winSentence } from '../lib/words';
 import { exportBackup, wipe } from '../lib/storage';
 import { backupFilename, saveJsonFile } from '../lib/save-file';
@@ -38,7 +39,7 @@ export function App() {
     [state.updates, state.receipts, today],
   );
 
-  const recovered = sumPence(state.receipts.filter((r) => r.status === 'returned').map((r) => r.amount));
+  const recovered = recoveredPence(state.receipts);
 
   /**
    * Policy updates arrive rather than being frozen into the bundle. Served
@@ -331,7 +332,7 @@ export function App() {
           today={today}
           sharedText={state.sharedText ?? undefined}
           quotaFull={quotaFull(state)}
-          trackedTotal={money(sumPence(state.receipts.map((r) => r.amount)))}
+          trackedTotal={money(sumPence(state.receipts.filter(countsAsMoney(state.receipts)).map((r) => r.amount)))}
           updates={state.updates}
           onSave={(receipt) => dispatch({ type: 'add', receipt })}
           onUpgrade={() => dispatch({ type: 'upgrade-ask', period: FEATURED_TIER.period })}

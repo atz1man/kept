@@ -175,6 +175,14 @@ describe('the name on the file', () => {
     expect(backupFilename('backup', day)).toBe('kept-backup-2026-08-31.json');
     expect(backupFilename('rescue', day)).toBe('kept-rescue-2026-08-31.json');
   });
+
+  it('is dated by the local calendar, not by UTC', async () => {
+    // 9pm on 30 September where this suite runs (New York) is already 1
+    // October in UTC; `toISOString` put the next day on the file. In London
+    // the same slip happens after midnight in summer.
+    const { backupFilename } = await import('../src/lib/save-file');
+    expect(backupFilename('backup', new Date(2026, 8, 30, 21, 0))).toBe('kept-backup-2026-09-30.json');
+  });
 });
 
 describe('the Documents directory being reachable at all', () => {

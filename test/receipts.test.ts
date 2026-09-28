@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { addDays, toISODate } from '../src/lib/dates';
 import { photoName } from '../src/lib/photos';
 import { toPence } from '../src/lib/money';
-import { bucket, derive, everyReturnInTime, makeReceiptId, stillReturnablePence, timelineDots } from '../src/lib/receipts';
+import { bucket, countsAsMoney, derive, everyReturnInTime, makeReceiptId, recoveredPence, stillReturnablePence, timelineDots } from '../src/lib/receipts';
 import type { Receipt } from '../src/lib/types';
 
 const TODAY = new Date(2026, 7, 28);
@@ -451,3 +451,40 @@ describe('the claim on the “All squared away” card', () => {
     expect(everyReturnInTime([], today)).toBe(false);
   });
 })
+
+/**
+ * The sample receipts are nobody's money once somebody has money of their own.
+ * The totals added them in regardless: £50 of real receipts beside the five
+ * untouched samples read "£462.96 still returnable".
+ */
+describe('the sample receipts in a total', () => {
+  const today = new Date(2026, 7, 28);
+  const iso = (d: Date) => toISODate(d);
+  const r = (id: string, pence: number, extra: Partial<Receipt> = {}): Receipt => ({
+    id, store: 'Argos', item: id, cat: 'other', amount: pence as Receipt['amount'],
+    purchasedOn: iso(addDays(today, -3)), windowDays: 30, policy: 'p', distance: false, status: 'active', ...extra,
+  });
+
+  it('count while they are all there is — a fresh install is a demonstration', () => {
+    const rs = [r('s1', 8900, { demo: true }), r('s2', 6499, { demo: true })];
+    expect(stillReturnablePence(bucket(rs, today, 7))).toBe(15399);
+  });
+
+  it('stop counting the moment a real receipt exists', () => {
+    const rs = [r('s1', 8900, { demo: true }), r('mine', 5000)];
+    expect(stillReturnablePence(bucket(rs, today, 7))).toBe(5000);
+  });
+
+  it('decide on every receipt, not only the ones in the buckets passed', () => {
+    // A search can leave only samples visible while a real receipt exists.
+    const all = [r('s1', 8900, { demo: true }), r('mine', 5000)];
+    expect(stillReturnablePence(bucket([all[0]], today, 7), all)).toBe(0);
+  });
+
+  it('and the same for what has been recovered', () => {
+    const rs = [r('s1', 8900, { demo: true, status: 'returned' }), r('mine', 2500, { status: 'returned' })];
+    expect(recoveredPence(rs)).toBe(2500);
+    expect(recoveredPence([rs[0]])).toBe(8900);
+    expect(countsAsMoney(rs)(rs[0])).toBe(false);
+  });
+});

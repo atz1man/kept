@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { afterEach } from 'vitest';
-import { hydrate, load, save, onExternalChange, rescueBackup, DEFAULT_SETTINGS, URGENT_DAYS_MIN, URGENT_DAYS_MAX } from '../src/lib/storage';
+import { discardSetAside, hydrate, load, save, onExternalChange, rescueBackup, setAsideData, DEFAULT_SETTINGS, URGENT_DAYS_MIN, URGENT_DAYS_MAX } from '../src/lib/storage';
 import { MAX_AMOUNT_PENCE, MAX_WINDOW_DAYS } from '../src/lib/draft';
 import { MAX_UPDATES } from '../src/lib/policy-feed';
 import { toPence } from '../src/lib/money';
@@ -460,5 +460,71 @@ describe('the round trip, which is the whole promise', () => {
   it('has no store to read when there is no window', () => {
     delete (globalThis as { window?: unknown }).window;
     expect(save(library([good]))).toBe(false);
+  });
+});
+
+/**
+ * A launch that cannot read the store must not let the next save destroy it.
+ *
+ * `load` falls back — corrupt JSON to a fresh state, an unreadable row
+ * dropped — and the first change after that saved the fallback over the only
+ * copy. On the web there is no mirror: a truncated write, or one row from a
+ * newer build, and every real receipt was gone with the samples in their place.
+ */
+describe('what a bad launch sets aside', () => {
+  const memoryStore = () => {
+    const cells = new Map<string, string>();
+    return {
+      cells,
+      getItem: (k: string) => cells.get(k) ?? null,
+      setItem: (k: string, v: string) => void cells.set(k, v),
+      removeItem: (k: string) => void cells.delete(k),
+    };
+  };
+  const use = (m: ReturnType<typeof memoryStore>) => {
+    (globalThis as { window?: unknown }).window = { localStorage: m };
+  };
+  afterEach(() => {
+    delete (globalThis as { window?: unknown }).window;
+  });
+
+  it('keeps corrupt JSON through the save that replaces it', () => {
+    const m = memoryStore();
+    use(m);
+    const broken = '{"version":1,"receipts":[{"id":"r1","store":"Currys"';
+    m.cells.set('kept.v1', broken);
+    save(load(TODAY));
+    expect(m.cells.get('kept.v1')).not.toBe(broken);
+    expect(setAsideData()).toBe(broken);
+  });
+
+  it('keeps the whole store when a row cannot be read, not only the rows that could', () => {
+    const m = memoryStore();
+    use(m);
+    const raw = JSON.stringify({ version: 1, receipts: [good, { ...good, id: 'r2', status: 'archived' }] });
+    m.cells.set('kept.v1', raw);
+    const state = load(TODAY);
+    expect(state.receipts.map((r) => r.id)).toEqual(['r1']);
+    expect(setAsideData()).toBe(raw);
+  });
+
+  it('sets nothing aside when everything was read', () => {
+    const m = memoryStore();
+    use(m);
+    m.cells.set('kept.v1', JSON.stringify({ version: 1, receipts: [good] }));
+    load(TODAY);
+    expect(setAsideData()).toBeNull();
+  });
+
+  it('keeps the FIRST copy — the one written before anything was lost', () => {
+    const m = memoryStore();
+    use(m);
+    m.cells.set('kept.v1', 'first, broken');
+    save(load(TODAY));
+    m.cells.set('kept.v1', 'second, broken');
+    load(TODAY);
+    expect(setAsideData()).toBe('first, broken');
+    discardSetAside();
+    expect(setAsideData()).toBeNull();
   });
 });

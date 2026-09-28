@@ -234,6 +234,19 @@ describe('on iOS', () => {
     expect(Object.keys(after).sort()).toEqual(['receipts', 'version']);
   });
 
+  it('an erase takes what a bad launch set aside, too', async () => {
+    // `load` keeps an unreadable store under a key of its own so the next save
+    // cannot destroy it. Those are the same receipts; "Erase everything" that
+    // left them behind would be an erase that did not.
+    boot(true);
+    const { load, setAsideData, wipe } = await import('../src/lib/storage');
+    store.setItem(KEY, '{"receipts": [truncated');
+    load(new Date(2026, 7, 28));
+    expect(setAsideData()).not.toBeNull();
+    wipe();
+    expect(setAsideData()).toBeNull();
+  });
+
   it('an erase survives the app being killed before the next save', async () => {
     /*
      * The window this closes. `wipe` used to REMOVE the localStorage key and
