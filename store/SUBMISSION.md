@@ -13,6 +13,10 @@ account, a decision, or an address only you can give.
 | ☐ | A contact address for privacy questions → `CONTACT_EMAIL` in `src/privacy/Privacy.tsx` | **you** | the page shows a red notice until it is set |
 | ☐ | Your domain → replace `REPLACE_ME` in `store/listing.json` | **you** | |
 
+Then `npm run preflight`. It reads every placeholder above out of the files they
+live in and stays red until each is filled; the retailer-table check in section 3
+is on it too. Green before you Archive — `test/preflight.test.ts` holds the checks.
+
 ## 2. The first build
 
 | | Step | Who | Where |
