@@ -171,6 +171,36 @@ function dispatchProblem(dispatchedOn: string, purchasedOn: string, today: Date)
   return undefined;
 }
 
+/**
+ * An amount as a person types it, into pence — or what is wrong with it.
+ *
+ * One rule for every field that takes money: the edit screen, and the Add
+ * screen when a paste names no total. Two copies of this is how "12,50"
+ * could be refused on one screen and saved as £1,250 on the other.
+ */
+export function readAmount(text: string): { ok: true; pence: number } | { ok: false; error: string } {
+  // Accept what people actually type — a leading £, spaces, thousands commas.
+  const raw = text.replace(/[£\s]/g, '');
+  const cleaned = raw.replace(/,/g, '');
+  const amountNum = Number(cleaned);
+  /*
+   * A comma is a thousands separator only where it groups thousands. Every
+   * comma used to be stripped, so "12,50" — a decimal comma, as a price copied
+   * from a European site or typed on a phone keypad reads — was saved as
+   * £1,250.00: a hundred times the refund, added to the total. It is not
+   * guessed at in either direction; the person is asked.
+   */
+  if (raw.includes(',') && !/^\d{1,3}(?:,\d{3})+(?:\.\d{0,2})?$/.test(raw)) {
+    return { ok: false, error: 'Use a point for pence, like 12.50' };
+  }
+  if (!cleaned || !Number.isFinite(amountNum)) return { ok: false, error: 'Enter the amount, like 24.99' };
+  if (amountNum < 0) return { ok: false, error: 'An amount cannot be negative' };
+  if (!/^\d*\.?\d{0,2}$/.test(cleaned)) return { ok: false, error: 'Amounts go to the penny, like 24.99' };
+  const pence = toPence(amountNum);
+  if (pence > MAX_AMOUNT_PENCE) return { ok: false, error: 'That looks like a typo — check the amount' };
+  return { ok: true, pence };
+}
+
 export function validateDraft(draft: ReceiptDraft, today: Date): DraftOutcome {
   const errors: DraftErrors = {};
 
@@ -180,32 +210,12 @@ export function validateDraft(draft: ReceiptDraft, today: Date): DraftOutcome {
   const item = draft.item.trim();
   if (!item) errors.item = 'What was it?';
 
-  // Accept what people actually type — a leading £, spaces, thousands commas.
-  const raw = draft.amountText.replace(/[£\s]/g, '');
-  const cleaned = raw.replace(/,/g, '');
-  const amountNum = Number(cleaned);
+  const read = readAmount(draft.amountText);
   // Any initial value does: it is overwritten on the path that uses it, and on
   // every other path the function returns errors instead. Equivalent, recorded.
   let amount = 0;
-  /*
-   * A comma is a thousands separator only where it groups thousands. Every
-   * comma used to be stripped, so "12,50" — a decimal comma, as a price copied
-   * from a European site or typed on a phone keypad reads — was saved as
-   * £1,250.00: a hundred times the refund, added to the total. It is not
-   * guessed at in either direction; the person is asked.
-   */
-  if (raw.includes(',') && !/^\d{1,3}(?:,\d{3})+(?:\.\d{0,2})?$/.test(raw)) {
-    errors.amountText = 'Use a point for pence, like 12.50';
-  } else if (!cleaned || !Number.isFinite(amountNum)) {
-    errors.amountText = 'Enter the amount, like 24.99';
-  } else if (amountNum < 0) {
-    errors.amountText = 'An amount cannot be negative';
-  } else if (!/^\d*\.?\d{0,2}$/.test(cleaned)) {
-    errors.amountText = 'Amounts go to the penny, like 24.99';
-  } else {
-    amount = toPence(amountNum);
-    if (amount > MAX_AMOUNT_PENCE) errors.amountText = 'That looks like a typo — check the amount';
-  }
+  if (read.ok) amount = read.pence;
+  else errors.amountText = read.error;
 
   const purchasedOn = draft.purchasedOn;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(purchasedOn) || toISODate(fromISODate(purchasedOn)) !== purchasedOn) {

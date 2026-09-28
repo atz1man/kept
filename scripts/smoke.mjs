@@ -906,6 +906,56 @@ results['a dispatch-clocked shop counts from dispatch, and only that shop'] =
   argosAdded.store === 'Argos' && argosAdded.windowStartsOn === undefined;
 
 /*
+ * The Add card's deadline is the deadline that gets saved.
+ *
+ * The preview counted from the purchase date while the save stored the
+ * arrival date for a shop that counts from delivery: an Amazon paste delivered
+ * on the 10th previewed 1 Oct and saved 10 Oct — nine days early on the card,
+ * changing the moment it was saved. Read off the card, then off the receipt.
+ */
+await page.getByRole('button', { name: 'Add a receipt' }).click();
+await page.waitForTimeout(300);
+await page.fill('#paste', 'Your Amazon.co.uk order · Ordered 1 September 2026 · Delivered 10 September 2026 · Order total £49.99');
+await page.getByRole('button', { name: 'Read it' }).click();
+await page.waitForTimeout(400);
+const amazonCard = await page.locator('main').innerText();
+const previewed = /Deadline\s*\n?\s*([^\n]+)/.exec(amazonCard)?.[1]?.trim() ?? '';
+await page.fill('#add-item', 'Desk lamp');
+await page.getByRole('button', { name: /^Save/ }).click();
+await page.waitForTimeout(600);
+const amazonAdded = await page.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.at(-1));
+results['the Add card previews the deadline that is saved'] =
+  amazonAdded.store === 'Amazon' && amazonAdded.windowStartsOn === '2026-09-10' &&
+  /^10 Oct\b/.test(previewed);
+
+/*
+ * A paste with a shop and no total asks for the total.
+ *
+ * The card read "Total: Not found" above a live Save, which stored a £0.00
+ * receipt — understating the returnable total, the alerts and the
+ * celebration, with nothing ever asking for the figure.
+ */
+await page.getByRole('button', { name: 'Add a receipt' }).click();
+await page.waitForTimeout(300);
+await page.fill('#paste', 'Thanks for shopping at Zara, order 12345 · 20 September 2026');
+await page.getByRole('button', { name: 'Read it' }).click();
+await page.waitForTimeout(400);
+const saveBlocked = await page.getByRole('button', { name: 'Add the total to save' }).isDisabled().catch(() => false);
+const before = await page.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.length);
+await page.getByRole('button', { name: 'Add the total to save' }).click({ force: true }).catch(() => {});
+await page.waitForTimeout(300);
+const unchanged = (await page.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.length)) === before;
+await page.fill('#add-total', '12,50');
+const decimalComma = await page.locator('#add-total').getAttribute('aria-invalid');
+await page.fill('#add-total', '42.00');
+await page.fill('#add-item', 'Scarf');
+await page.getByRole('button', { name: /^Save receipt/ }).click();
+await page.waitForTimeout(600);
+const zaraTotal = await page.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.at(-1));
+results['a paste with no total asks for one instead of saving £0'] =
+  saveBlocked && unchanged && decimalComma === 'true' && zaraTotal.item === 'Scarf' && zaraTotal.amount === 4200;
+
+/*
  * A shop that changed its window since this build shipped.
  *
  * The feed exists to carry exactly that, and `newWindowDays` was read for one

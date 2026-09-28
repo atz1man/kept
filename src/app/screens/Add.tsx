@@ -3,7 +3,7 @@ import { color, font, radius, shadow } from '../../tokens';
 import { addDays, fmtDate, fmtDateLong, fmtDateNear, fromISODate, toISODate } from '../../lib/dates';
 import { money } from '../../lib/money';
 import { parseReceiptText, type ParsedReceipt } from '../../lib/parse';
-import { arrivalProblem, windowStartFor } from '../../lib/draft';
+import { arrivalProblem, readAmount, windowStartFor } from '../../lib/draft';
 import { makeReceiptId } from '../../lib/receipts';
 import { findStore, policyFor } from '../../lib/stores';
 import { windowInForceFor } from '../../lib/policy-feed';
@@ -66,6 +66,13 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
    * yet genuinely has no such date.
    */
   const [arrivedOn, setArrivedOn] = useState('');
+  /**
+   * The total, when the paste did not say it. A card reading "Total: Not
+   * found" above a live Save stored a £0.00 receipt — which then understated
+   * the returnable total, the alerts and the celebration, with nothing ever
+   * asking for the figure.
+   */
+  const [totalText, setTotalText] = useState('');
   // Read once, on arrival. A later keystroke must not re-trigger it.
   const [readShare, setReadShare] = useState(false);
 
@@ -81,6 +88,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
     setItem('');
     setDistance(true);
     setStoreName('');
+    setTotalText('');
     // The paste often says "Delivered 27 August" three lines above the total,
     // and this screen was asking the person to read it back out by hand.
     // Still a field they can clear or correct — it is pre-filled, not decided.
@@ -128,9 +136,30 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
    */
   const arrivalError = parsed && distance && arrivedOn ? arrivalProblem(arrivedOn, parsed.purchasedOn, today) : undefined;
 
+  const typedTotal = parsed && parsed.amount === null && totalText.trim() ? readAmount(totalText) : null;
+  const amount = parsed?.amount ?? (typedTotal?.ok ? typedTotal.pence : null);
+  const totalError = typedTotal && !typedTotal.ok ? typedTotal.error : undefined;
+  const needsTotal = !!parsed && amount === null;
+  const cannotSave = quotaFull || !!arrivalError || needsTotal;
+
+  /*
+   * Where the clock starts, once, for the save AND the deadline preview. The
+   * preview counted from the purchase date while the save stored the arrival
+   * (Apple, Amazon, ASOS) or dispatch (Zara) date: an Amazon paste delivered
+   * on the 10th previewed 1 October and saved 10 October — a date nine days
+   * early on the card, changing the moment it was saved.
+   */
+  const savedStore = effectiveStore || 'Unknown store';
+  const windowStart = parsed
+    ? windowStartFor(savedStore, {
+        dispatchedOn: parsed.dispatchedOn ?? undefined,
+        arrivedOn: distance ? arrivedOn : undefined,
+      })
+    : undefined;
+
   const save = () => {
-    if (!parsed || quotaFull || arrivalError) return;
-    const store = effectiveStore || 'Unknown store';
+    if (!parsed || quotaFull || arrivalError || amount === null) return;
+    const store = savedStore;
     onSave({
       id: makeReceiptId(today),
       store,
@@ -138,7 +167,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       // itself the moment this saves.
       item: item.trim() || `${store} purchase`,
       cat: policy?.cat ?? 'other',
-      amount: parsed.amount ?? 0,
+      amount,
       purchasedOn: parsed.purchasedOn,
       /*
        * A dispatch-clocked retailer starts counting when the parcel leaves,
@@ -155,13 +184,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
        * an Argos receipt carrying Zara's clock would be worse than one
        * carrying none.
        */
-      ...(() => {
-        const start = windowStartFor(store, {
-          dispatchedOn: parsed.dispatchedOn ?? undefined,
-          arrivedOn: distance ? arrivedOn : undefined,
-        });
-        return start ? { windowStartsOn: start } : {};
-      })(),
+      ...(windowStart ? { windowStartsOn: windowStart } : {}),
       windowDays: effectiveWindow,
       ...(distance && arrivedOn ? { arrivedOn } : {}),
       policy: policyFor(store, effectiveWindow, inForce?.changedOn),
@@ -171,7 +194,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
     });
   };
 
-  const deadline = parsed ? fmtDateNear(addDays(fromISODate(parsed.purchasedOn), effectiveWindow), today) : '';
+  const deadline = parsed ? fmtDateNear(addDays(fromISODate(windowStart ?? parsed.purchasedOn), effectiveWindow), today) : '';
 
   return (
     <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px' }}>
@@ -333,26 +356,55 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
             </div>
           )}
           <Row label="Store" value={effectiveStore || 'Not recognised'} mono={false} />
-          <Row label="Total" value={parsed.amount === null ? 'Not found' : money(parsed.amount)} mono />
+          {parsed.amount === null ? (
+            <div style={{ margin: '4px 0 10px' }}>
+              <label htmlFor="add-total" style={{ display: 'block', fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>
+                Total — the email didn’t say
+              </label>
+              <input
+                id="add-total"
+                inputMode="decimal"
+                value={totalText}
+                placeholder="e.g. 24.99"
+                aria-invalid={!!totalError}
+                aria-describedby={totalError ? 'add-total-note' : undefined}
+                onChange={(e) => setTotalText(e.target.value)}
+                style={{
+                  width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 14,
+                  border: `1.5px solid ${totalError ? color.danger : color.border}`, background: color.white,
+                  fontFamily: font.figures, fontSize: 14.5, color: color.ink,
+                }}
+              />
+              {totalError && (
+                <div id="add-total-note" role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: color.danger, marginTop: 5 }}>
+                  {totalError}
+                </div>
+              )}
+            </div>
+          ) : (
+            <Row label="Total" value={money(parsed.amount)} mono />
+          )}
           <Row label="Bought" value={`${fmtDate(fromISODate(parsed.purchasedOn))}${parsed.dateFound ? '' : ' (assumed today)'}`} mono />
           <Row label="Return window" value={`${effectiveWindow} days`} mono={false} />
           <Row label="Deadline" value={deadline} mono accent />
           {/* The cap is claimed on the pricing page, in Settings and on the
               card above; a Save that quietly ignored it would make all three
               of those decorative. */}
+          {/* Greyed for every reason it cannot save, not only the quota: a
+              disabled button drawn as a live one invites the tap it ignores. */}
           <Pressable
-            className={quotaFull ? undefined : 'k-ink'}
+            className={cannotSave ? undefined : 'k-ink'}
             onClick={save}
-            disabled={quotaFull || !!arrivalError}
+            disabled={cannotSave}
             style={{
               marginTop: 14, padding: 14, textAlign: 'center',
-              background: quotaFull ? color.creamAlt : color.ink,
-              color: quotaFull ? color.muted : color.cream,
+              background: cannotSave ? color.creamAlt : color.ink,
+              color: cannotSave ? color.muted : color.cream,
               borderRadius: 999, fontWeight: 700, fontSize: 14,
-              cursor: quotaFull ? 'not-allowed' : 'pointer',
+              cursor: cannotSave ? 'not-allowed' : 'pointer',
             }}
           >
-            {quotaFull ? 'Go unlimited to save this' : arrivalError ? 'Fix the arrival date' : 'Save receipt'}
+            {quotaFull ? 'Go unlimited to save this' : arrivalError ? 'Fix the arrival date' : needsTotal ? 'Add the total to save' : 'Save receipt'}
           </Pressable>
         </div>
       )}

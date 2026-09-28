@@ -154,9 +154,17 @@ export async function deliver(alerts: readonly DeadlineAlert[]): Promise<Deadlin
   // The service worker's notifications survive the tab closing and can be
   // clicked back into the app; the constructor is the fallback where no
   // worker is registered.
+  //
+  // `getRegistration`, not `ready`. `ready` waits for a worker to become
+  // ACTIVE and never settles if none ever does — registration refused, a
+  // Firefox private window, a page outside the worker's scope — so `deliver`
+  // hung for good, the constructor below was never reached, and the caller's
+  // in-flight guard stayed set: no deadline alert for the rest of the session.
+  // `getRegistration` answers at once, and only an active worker can show one.
   let registration: ServiceWorkerRegistration | undefined;
   try {
-    registration = await navigator.serviceWorker?.ready;
+    const found = await navigator.serviceWorker?.getRegistration();
+    registration = found?.active ? found : undefined;
   } catch {
     registration = undefined;
   }

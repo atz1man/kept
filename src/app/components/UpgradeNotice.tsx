@@ -24,14 +24,19 @@ export function UpgradeNotice({ period, onUnlock, onCancel }: { period: Period; 
 
   // Focus moves into the sheet, and Escape closes it. Without both, a keyboard
   // or screen-reader user is told nothing has appeared and cannot leave it.
+  // Once, when the sheet opens. With `onCancel` — a fresh arrow from App on
+  // every render — as a dependency, every App render moved keyboard focus back
+  // to the first button, out from under whoever was reading the sheet.
+  const cancel = useRef(onCancel);
+  cancel.current = onCancel;
   useEffect(() => {
     sheet.current?.querySelector('button')?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel();
+      if (e.key === 'Escape') cancel.current();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onCancel]);
+  }, []);
 
   return (
     <div

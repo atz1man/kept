@@ -165,3 +165,56 @@ describe('asking from inside the demo frame', () => {
     expect(asked).toBe(0);
   });
 });
+
+/*
+ * A service worker that never becomes active.
+ *
+ * `deliver` waited on `navigator.serviceWorker.ready`, which never settles
+ * when no worker activates — registration refused, a Firefox private window,
+ * a page outside the worker's scope. It hung for good, the constructor
+ * fallback was never reached, and the App's in-flight guard stayed set, so no
+ * deadline alert was shown for the rest of the session.
+ */
+describe('where the notification is shown from', () => {
+  const withWorker = (worker: unknown) =>
+    Object.defineProperty(globalThis.navigator, 'serviceWorker', { value: worker, configurable: true });
+  afterEach(() => {
+    delete (globalThis.navigator as unknown as Record<string, unknown>).serviceWorker;
+  });
+
+  const settles = <T>(p: Promise<T>) =>
+    Promise.race([p, new Promise<'hung'>((r) => setTimeout(() => r('hung'), 200))]);
+
+  it('falls back to the constructor when no worker ever activates', async () => {
+    browser();
+    withWorker({ ready: new Promise(() => {}), getRegistration: async () => undefined });
+    const { deliver } = await import('../src/app/notify');
+    const out = await settles(deliver([alert(1)]));
+    expect(out).not.toBe('hung');
+    expect(shown.map((s) => s.tag)).toEqual(['r1:today']);
+  });
+
+  it('does not hand it to a worker that is registered but not yet active', async () => {
+    browser();
+    const viaWorker: string[] = [];
+    withWorker({
+      ready: new Promise(() => {}),
+      getRegistration: async () => ({ active: null, showNotification: async (t: string) => void viaWorker.push(t) }),
+    });
+    const { deliver } = await import('../src/app/notify');
+    expect(await settles(deliver([alert(1)]))).not.toBe('hung');
+    expect(viaWorker).toEqual([]);
+    expect(shown).toHaveLength(1);
+  });
+
+  it('uses an active worker, whose notifications outlive the tab', async () => {
+    browser();
+    const viaWorker: string[] = [];
+    const reg = { active: {}, showNotification: async (t: string) => void viaWorker.push(t) };
+    withWorker({ ready: Promise.resolve(reg), getRegistration: async () => reg });
+    const { deliver } = await import('../src/app/notify');
+    expect((await deliver([alert(1)])).map((a) => a.key)).toEqual(['r1:today']);
+    expect(viaWorker).toEqual(['Today is the last day (1)']);
+    expect(shown).toEqual([]);
+  });
+});
