@@ -53,11 +53,21 @@ export function seedReceipts(today: Date): Receipt[] {
 }
 
 /**
- * The offline fallback for the policy feed, so a first launch with no signal
- * is not an empty Watch tab. Ids match public/policy-feed.json exactly: these
- * are the same changes, and a merge must replace them rather than show each
- * one twice. Dates are relative so a fresh install looks current until the
- * real feed lands and supplies the true ones.
+ * Sample policy changes, so a first launch is not an empty Watch tab.
+ *
+ * SAMPLES, and labelled as such (`demo`), exactly like the receipts above.
+ * They used to be described as "the offline fallback for the policy feed",
+ * carried the same ids as `public/policy-feed.json`, and that file called
+ * itself "Verified UK retailer policy changes" — while nobody had checked a
+ * single one against the retailer. Five claims about named companies, shown
+ * as dated news on every install.
+ *
+ * So they are illustrations of what a change looks like when it lands, and
+ * the code holds them to that: a sample only ever speaks to a sample receipt
+ * (`speaksTo`), never sets the window of a real purchase (`windowInForceFor`),
+ * and is dropped the moment a real change arrives (`mergeFeed`). Dates are
+ * relative so the tab looks alive on any day it is opened — which is fine for
+ * a sample and would be a lie for news.
  */
 export function seedUpdates(today: Date): PolicyUpdate[] {
   const ago = (n: number) => toISODate(addDays(today, -n));
@@ -65,27 +75,27 @@ export function seedUpdates(today: Date): PolicyUpdate[] {
     {
       id: 'u_zara_postal_returns_fee', store: 'Zara', changedOn: ago(2),
       text: 'Free postal returns ended — £1.95 unless you drop off in store. Window still 30 days from dispatch.',
-      affectsStores: ['Zara'], affectNote: 'drop off in store to keep it free', newWindowDays: 30,
+      affectsStores: ['Zara'], affectNote: 'drop off in store to keep it free', newWindowDays: 30, demo: true,
     },
     {
       id: 'u_asos_frequent_returners', store: 'ASOS', changedOn: ago(7),
       text: 'New 28-day window for “frequent returners” (was 45). ASOS decides who counts, so Kept assumes the shorter one.',
-      affectsStores: ['ASOS'], affectNote: 'your window is the shorter one', newWindowDays: 28,
+      affectsStores: ['ASOS'], affectNote: 'your window is the shorter one', newWindowDays: 28, demo: true,
     },
     {
       id: 'u_apple_iphone18_window', store: 'Apple', changedOn: ago(21),
       text: '14-day window confirmed for the iPhone 18 line. Put the warranty length on the receipt and Kept counts that down too.',
-      affectsStores: ['Apple'], affectNote: 'confirmed at 14 days', newWindowDays: 14,
+      affectsStores: ['Apple'], affectNote: 'confirmed at 14 days', newWindowDays: 14, demo: true,
     },
     {
       id: 'u_currys_price_match', store: 'Currys', changedOn: ago(30),
       text: 'Price-match refund window extended to 14 days — if it drops in price after you buy, claim the difference.',
-      affectsStores: ['Currys'], affectNote: 'you can claim the difference if the price drops', newWindowDays: 14,
+      affectsStores: ['Currys'], affectNote: 'you can claim the difference if the price drops', newWindowDays: 14, demo: true,
     },
     {
       id: 'u_uniqlo_online_refunds', store: 'Uniqlo', changedOn: ago(46),
       text: 'Online orders can no longer be refunded in store — postal returns only. In-store purchases are unaffected.',
-      affectsStores: ['Uniqlo'], affectNote: 'an online order has to go back by post', newWindowDays: 30,
+      affectsStores: ['Uniqlo'], affectNote: 'an online order has to go back by post', newWindowDays: 30, demo: true,
     },
   ];
 }

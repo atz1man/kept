@@ -1020,6 +1020,20 @@ deliberate departure, not an oversight:
   started passing on the advice that came with the change. The cards are
   derived now, newest three, with relative dates — the same argument as the
   store windows below, one file further along.
+- **…and what they were derived from was samples (APN-84).** The five policy
+  changes a fresh install carries had never been checked against a retailer,
+  and the served feed published the same five under the note "Verified UK
+  retailer policy changes". The receipts beside them said "sample"; these
+  said "2d ago". They are samples now in every sense the code can hold: marked
+  `demo` like the receipts, labelled on the Watch tab with no date, never
+  setting a new purchase's window (`windowInForceFor` had ranked them above
+  the table), speaking only to sample receipts (a real Zara coat was told Zara
+  had changed its policy), and dropped by `mergeFeed` the moment a real change
+  arrives. The served feed is empty until someone checks one. The landing
+  cards show the table's small print instead, and the ticker says only what
+  the table and the statute say. The list banner and row badges now come from
+  `assess` like the Watch tab (`policyAlertFor`), which also ended "1 shops
+  changed their returns policies". `test/sample-changes.test.ts`.
 - **A warranty is a clock, not a sentence.** The landing page promises
   "warranty clocks added to your receipts automatically", and a warranty was a
   free-text string that could not answer the question that promise implies —

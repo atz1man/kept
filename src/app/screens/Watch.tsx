@@ -19,6 +19,7 @@ interface Props {
  */
 export function Watch({ updates, receipts, today, watching }: Props) {
   const assessed = assess(updates, receipts, today);
+  const onlySamples = updates.length > 0 && updates.every((u) => u.demo);
 
   return (
     // tabIndex on a scroll container looks odd until you notice this screen
@@ -56,8 +57,11 @@ export function Watch({ updates, receipts, today, watching }: Props) {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontWeight: 700, fontSize: 15.5 }}>{u.store}</span>
+                {/* A sample carries no date. "2d ago" on an invented change is
+                    the freshness claim that made it read as news; the sample
+                    receipts say "sample" where it can be seen, and so do these. */}
                 <span style={{ fontSize: 10.5, fontWeight: 700, background: color.yellowLight, padding: '3px 9px', borderRadius: 999, whiteSpace: 'nowrap' }}>
-                  {relativeAgo(fromISODate(u.changedOn), today)}
+                  {u.demo ? 'sample' : relativeAgo(fromISODate(u.changedOn), today)}
                 </span>
               </div>
               <div style={{ fontSize: 13.5, color: color.body, lineHeight: 1.55, marginTop: 8 }}>{u.text}</div>
@@ -77,6 +81,13 @@ export function Watch({ updates, receipts, today, watching }: Props) {
           );
         })}
       </ul>
+
+      {onlySamples && (
+        <p style={{ fontSize: 12.5, color: color.body, textAlign: 'center', marginTop: 16, lineHeight: 1.55 }}>
+          These are samples, showing how a change lands on your receipts. No real change has been published yet —
+          the first one replaces them.
+        </p>
+      )}
 
       <p style={{ fontSize: 11, color: color.muted, textAlign: 'center', marginTop: 16, lineHeight: 1.6 }}>
         {/* It said "Policies verified daily by kept · last check today 06:00".

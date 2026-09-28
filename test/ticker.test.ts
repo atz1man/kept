@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { tickerLines } from '../src/landing/ticker';
 import { STORE_POLICIES, findStore } from '../src/lib/stores';
-import { seedUpdates } from '../src/lib/seed';
-import { fromISODate, relativeAgo } from '../src/lib/dates';
+import { REJECT_DAYS } from '../src/lib/legal';
 
 /**
  * The scrolling bar on the landing page restates the table and the feed, and
@@ -11,21 +10,36 @@ import { fromISODate, relativeAgo } from '../src/lib/dates';
  * grounds that they were real. Nothing held them to what they were quoting,
  * and the README's own pre-ship task is to change every window in the table.
  */
-const TODAY = new Date(2026, 7, 28);
-
 describe('the landing ticker', () => {
-  const lines = tickerLines(TODAY);
+  const lines = tickerLines();
 
   it('says as many things as the bar has room for', () => {
     expect(lines.length).toBe(5);
     expect(lines.every((l) => l.trim().length > 0)).toBe(true);
   });
 
-  it('quotes each window from the table, not from memory', () => {
-    for (const name of ['ASOS', 'Apple']) {
-      const line = lines.find((l) => l.startsWith(`${name.toUpperCase()}:`));
-      expect(line).toBeDefined();
-      expect(line).toContain(String(findStore(name)!.windowDays));
+  it('quotes a window, and where it starts, from the table', () => {
+    const asos = findStore('ASOS')!;
+    const line = lines.find((l) => l.startsWith('ASOS:'));
+    expect(line).toBeDefined();
+    expect(line).toContain(`${asos.windowDays} days`);
+    expect(line).toContain(asos.clockStart === 'purchase' ? 'the day you buy' : asos.clockStart);
+  });
+
+  it('quotes the statute from legal.ts', () => {
+    expect(lines.some((l) => l.includes(`${REJECT_DAYS} days to reject`))).toBe(true);
+  });
+
+  it('reports no policy change', () => {
+    /*
+     * Two lines were sample changes stated as news: "ZARA changed its returns
+     * policy 2 days ago — kept already updated", two days old on whatever day
+     * the page was opened, and "APPLE: 14-day window confirmed for iPhone 18".
+     * Nobody had checked either against the retailer (APN-84). The bar says
+     * what the table and the law say, and nothing that happened.
+     */
+    for (const line of lines) {
+      expect(line, line).not.toMatch(/\bchanged\b|\bconfirmed\b|\bago\b|already updated|iPhone/i);
     }
   });
 
@@ -40,46 +54,30 @@ describe('the landing ticker', () => {
     expect(named?.windowDays).toBe(max);
   });
 
-  it('dates the newest change off the feed’s own date', () => {
-    // The literal said "2 days ago" and would have gone on saying it. The
-    // phrase is computed from the entry, in the app's own compact form.
-    const newest = seedUpdates(TODAY)[0];
-    expect(lines[0]).toContain(newest.store.toUpperCase());
-    expect(lines[0]).toContain(relativeAgo(fromISODate(newest.changedOn), TODAY));
-    expect(lines[0]).not.toContain('2 days ago');
-  });
-
-  it('reports whichever entry the feed puts newest', () => {
-    // Not "Zara" because Zara was typed here once: the store named is
-    // whatever the feed's first entry is, and every other entry names a
-    // different shop, so aiming at the wrong one would show.
-    const feed = seedUpdates(TODAY);
-    expect(new Set(feed.map((u) => u.store)).size).toBe(feed.length);
-    expect(lines[0].startsWith(feed[0].store.toUpperCase())).toBe(true);
-  });
-
   it('names only shops that are actually in the table', () => {
     /*
      * The three the module quotes by literal, which is the coupling that rots:
      * whoever does the README's pre-ship pass over all twenty windows could
      * rename or drop one of these, and the bar would fall back to a silent
-     * default — "ASOS: 0-day window for frequent returners" on the page whose
+     * default — "ASOS: 0 days from delivery" on the page whose
      * entire claim is that kept knows the real numbers.
      */
-    for (const name of ['ASOS', 'Apple', 'Uniqlo']) {
+    for (const name of ['ASOS', 'Zara', 'Uniqlo']) {
       expect(findStore(name), name).toBeDefined();
     }
   });
 
   it('never prints a fallback where a window should be', () => {
-    expect(lines.some((l) => /\b0[- ]day\b/.test(l))).toBe(false);
+    expect(lines.some((l) => /\b0[- ]days?\b/.test(l))).toBe(false);
   });
 
   it('puts an actual gotcha after UNIQLO, not just the label', () => {
     // `gotchaOf` falls back to an empty string, and "every line is non-empty"
     // is satisfied by the word UNIQLO alone.
-    const line = lines.find((l) => l.startsWith('UNIQLO:'))!;
-    expect(line.replace('UNIQLO:', '').trim().length).toBeGreaterThan(10);
+    for (const shop of ['UNIQLO', 'ZARA']) {
+      const line = lines.find((l) => l.startsWith(`${shop}:`))!;
+      expect(line.replace(`${shop}:`, '').trim().length, shop).toBeGreaterThan(10);
+    }
   });
 
   it('does not name a shop twice in one line', () => {

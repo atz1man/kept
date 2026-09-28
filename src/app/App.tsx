@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { color, paperGrain } from '../tokens';
 import { dueAlerts, supersededKeys } from '../lib/alerts';
-import { FEED_SIG_URL, FEED_URL, mergeFeed, readFeed } from '../lib/policy-feed';
+import { FEED_SIG_URL, FEED_URL, mergeFeed, policyAlertFor, readFeed } from '../lib/policy-feed';
 import { FEED_PUBLIC_KEY, feedIsAcceptable, verifyFeed } from '../lib/feed-signature';
 import { deliver } from './notify';
 import { money, sumPence } from '../lib/money';
-import { midSentence, winSentence } from '../lib/words';
+import { winSentence } from '../lib/words';
 import { exportBackup, wipe } from '../lib/storage';
 import { backupFilename, saveJsonFile } from '../lib/save-file';
 import { FEATURED_TIER } from '../lib/pricing';
@@ -28,25 +28,15 @@ export function App() {
   const { screen, settings } = state;
 
   const selected = state.receipts.find((r) => r.id === state.selId) ?? null;
-  const activeStores = useMemo(
-    () => new Set(state.receipts.filter((r) => r.status === 'active').map((r) => r.store)),
-    [state.receipts],
-  );
-
   /**
-   * A policy change is only news if it lands on a receipt this person holds.
-   * The banner and the tab-bar dot both read this, so an update about a shop
-   * the user has never used never raises an alarm.
+   * A policy change is only news if it lands on a receipt this person holds —
+   * decided by the same `assess` the Watch tab reads, so the two screens
+   * cannot disagree about whether a change is yours.
    */
-  const affecting = state.updates.filter((u) => u.affectsStores.some((s) => activeStores.has(s)));
-  const changedStores = new Set(affecting.flatMap((u) => u.affectsStores).filter((s) => activeStores.has(s)));
-  const changedReceipts = state.receipts.filter((r) => r.status === 'active' && changedStores.has(r.store));
-  const policyAlert =
-    changedReceipts.length === 0
-      ? null
-      : changedReceipts.length === 1
-        ? `${changedReceipts[0].store} changed its returns policy — your ${midSentence(changedReceipts[0].item)} is affected`
-        : `${affecting.length} shops changed their returns policies — your receipts are affected`;
+  const { line: policyAlert, changed: changedIds } = useMemo(
+    () => policyAlertFor(state.updates, state.receipts, today),
+    [state.updates, state.receipts, today],
+  );
 
   const recovered = sumPence(state.receipts.filter((r) => r.status === 'returned').map((r) => r.amount));
 
@@ -304,7 +294,7 @@ export function App() {
           today={today}
           urgentDays={settings.urgentDays}
           policyAlert={policyAlert}
-          changedStores={changedStores}
+          changedIds={changedIds}
           onOpen={(id) => dispatch({ type: 'open', id })}
           onReturn={(id) => dispatch({ type: 'return', id })}
           onAdd={() => dispatch({ type: 'go', screen: 'add' })}
@@ -400,7 +390,7 @@ export function App() {
       {!onboarding && (
         <TabBar
           screen={screen}
-          alert={changedReceipts.length > 0}
+          alert={changedIds.size > 0}
           onGo={(s) => dispatch({ type: 'go', screen: s })}
         />
       )}

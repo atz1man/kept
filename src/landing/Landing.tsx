@@ -5,8 +5,6 @@ import { FREE_TIER_LIMIT } from '../lib/quota';
 import { STORE_COUNT, findStore } from '../lib/stores';
 import { COOLING_OFF_DAYS, REJECT_DAYS } from '../lib/legal';
 import { TAGLINE, TAGLINE_CAPS } from '../lib/brand';
-import { seedUpdates } from '../lib/seed';
-import { fromISODate, relativeAgo } from '../lib/dates';
 import { tickerLines } from './ticker';
 import { FinePrintArt, HaulArt, LostReceiptsArt } from './sections/ProblemArt';
 import { Card, Eyebrow, OpenAppButton, SectionTitle, WRAP } from './sections/primitives';
@@ -26,32 +24,27 @@ const PROBLEMS = [
 ];
 
 /**
- * The policy changes this page shows are the app's own, not a fourth copy.
+ * The small print this page shows is the table's, not news.
  *
- * They were three hand-typed strings, and they had already drifted from the
- * feed they were quoting: the shop window said Zara's "free ONLINE returns
- * ended" where the feed says POSTAL — different things, and the difference is
- * whether you can still walk it into a shop for nothing. The Zara card also
- * still promised "your deadlines: unchanged, already checked", which is a
- * sentence the app stopped saying when the unchanged case started passing on
- * the advice that came with the change.
+ * These cards used to be the three newest policy CHANGES, read from the seed
+ * so they could not drift from the feed — which held them to the wrong thing.
+ * The seed's changes are samples nobody had checked against the retailers, and
+ * the served feed that matched them called itself "verified". On this page
+ * they read as reporting: "ASOS — updated 1 week ago: new 28-day window for
+ * frequent returners", about a named company, with a freshness stamp computed
+ * from whatever day the page was opened.
  *
- * `seedUpdates` is the bundled fallback, already held to
- * `public/policy-feed.json` entry for entry by feed-agreement.test.ts, so
- * reading it here puts this page inside that guarantee — the same argument as
- * `days()` below, one file further along. Newest three, and the dates are
- * relative, so the shop window never shows a change dated last spring.
+ * What kept does know is its own table — the windows and gotchas the README's
+ * pre-ship pass checks against each retailer's terms. So the cards show that,
+ * read from `stores.ts`, and the section says what policy watch does without
+ * pretending anything has been published through it yet.
  */
-const TICKER = tickerLines(new Date());
+const TICKER = tickerLines();
 
-const UPDATES = seedUpdates(new Date())
-  .slice(0, 3)
-  .map((u, i) => ({
-    store: u.store,
-    when: `updated ${relativeAgo(fromISODate(u.changedOn), new Date())}`,
-    text: u.text,
-    emphasised: i === 0,
-  }));
+const SMALL_PRINT = ['Zara', 'Uniqlo', 'ASOS'].map((name, i) => {
+  const s = findStore(name);
+  return { store: name, days: s?.windowDays ?? 0, text: s?.gotcha ?? '', emphasised: i === 0 };
+});
 
 /**
  * The three windows this page names are the table's, not a second copy of it.
@@ -198,19 +191,19 @@ export function Landing() {
 
       {/* Policy watch */}
       <section style={{ ...WRAP }}>
-        <Eyebrow>LIVE POLICY WATCH</Eyebrow>
-        <SectionTitle>Shops rewrite the rules quietly. Your app hears about it first.</SectionTitle>
+        <Eyebrow>POLICY WATCH</Eyebrow>
+        <SectionTitle>Shops rewrite the rules quietly. kept checks your receipts when they do.</SectionTitle>
         <p style={{ fontSize: 16, color: color.muted, margin: '14px 0 0', maxWidth: 560, lineHeight: 1.6 }}>
-          Retailers change return windows all the time — and never send a memo. Kept ships policy updates the day
-          they change, and checks every receipt you hold against them. A purchase keeps the terms it was made
-          under; you just find out when the shop moves the goalposts for the next one.
+          Retailers change return windows and never send a memo. When one does, kept’s list changes and every
+          receipt you hold is checked against it. A purchase keeps the terms it was made under; you just find out
+          when the shop moves the goalposts for the next one. And the small print is already in there:
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: 18, margin: '38px 0 80px' }}>
-          {UPDATES.map((u) => (
+          {SMALL_PRINT.map((u) => (
             <Card key={u.store} emphasised={u.emphasised} style={{ padding: 24 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontWeight: 700, fontSize: 16 }}>{u.store}</span>
-                <span style={{ fontSize: 11, fontWeight: 700, background: color.yellowLight, padding: '4px 10px', borderRadius: 999, whiteSpace: 'nowrap' }}>{u.when}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, background: color.yellowLight, padding: '4px 10px', borderRadius: 999, whiteSpace: 'nowrap' }}>{u.days} days</span>
               </div>
               <div style={{ fontSize: 14, color: color.body, lineHeight: 1.6, marginTop: 12 }}>{u.text}</div>
             </Card>

@@ -129,9 +129,9 @@ await shoot('paste-an-order-email');
  * asks the notification plugin, the emulated bridge has none, and the row
  * correctly says "Not available here" — true of this harness, false of a
  * phone. The Watch tab is left out because its entries are the SEED feed:
- * sample policy changes about named retailers, dated weeks ago and not
- * labelled as samples the way the seed receipts are. Unverified claims about
- * real companies do not belong in marketing, whatever they say on screen.
+ * sample policy changes about named retailers. The app labels them as samples
+ * now (APN-84), but a screenshot is marketing, and an unchecked claim about a
+ * real company does not become fit for it by being labelled.
  */
 
 await page.getByRole('button', { name: 'Settings', exact: true }).click();

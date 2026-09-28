@@ -1,5 +1,4 @@
-import { fromISODate, relativeAgo } from '../lib/dates';
-import { seedUpdates } from '../lib/seed';
+import { REJECT_DAYS } from '../lib/legal';
 import { STORE_POLICIES, findStore } from '../lib/stores';
 
 /**
@@ -51,13 +50,36 @@ function gotchaOf(name: string): string {
   return g.replace(new RegExp(`^${name}\\s+`, 'i'), '');
 }
 
-export function tickerLines(today: Date): string[] {
-  const newest = seedUpdates(today)[0];
+/*
+ * Every line is the table or the law, and none of them is news.
+ *
+ * Two of them were. "ZARA changed its returns policy 2 days ago — kept
+ * already updated" was the newest SAMPLE policy change, dated relative to
+ * whenever the page was opened, so it was two days old forever. "APPLE:
+ * 14-day window confirmed for iPhone 18" was another sample, stated as a fact
+ * about a named company's product. Neither had been checked against anything,
+ * and the page making the claims is the one people decide to trust kept on.
+ * A third, "ASOS: 28-day window for frequent returners", misquoted the table
+ * it reads: 28 days is the refund window for everyone. What replaces them
+ * says only what kept's own list and the statute already say.
+ */
+const FROM: Record<'purchase' | 'dispatch' | 'delivery', string> = {
+  purchase: 'the day you buy',
+  dispatch: 'dispatch',
+  delivery: 'delivery',
+};
+
+function windowLine(name: string): string {
+  const s = findStore(name);
+  return `${name.toUpperCase()}: ${days(name)} days from ${s ? FROM[s.clockStart] : 'purchase'}`;
+}
+
+export function tickerLines(): string[] {
   return [
-    `${newest.store.toUpperCase()} changed its returns policy ${relativeAgo(fromISODate(newest.changedOn), today)} — kept already updated`,
-    `ASOS: ${days('ASOS')}-day window for frequent returners`,
+    `ZARA: ${gotchaOf('Zara')}`,
+    windowLine('ASOS'),
     `${longest.name.toUpperCase()}: ${longest.windowDays} days, and nothing in kept’s list beats it`,
-    `APPLE: ${days('Apple')}-day window confirmed for iPhone 18`,
+    `THE LAW: ${REJECT_DAYS} days to reject faulty goods, whatever the shop’s own window says`,
     `UNIQLO: ${gotchaOf('Uniqlo')}`,
   ];
 }

@@ -16,9 +16,11 @@ interface Props {
   today: Date;
   urgentDays: number;
   policyAlert: string | null;
-  /** Retailers with a live policy change, decided once in App and shared by
-      the banner, the tab dot and every row badge so they cannot disagree. */
-  changedStores: Set<string>;
+  /** Receipts a policy change lands on, by id, decided once in App and shared
+      by the banner, the tab dot and every row badge so they cannot disagree.
+      By id rather than by shop, because a sample change speaks only to a
+      sample receipt — see `policyAlertFor`. */
+  changedIds: ReadonlySet<string>;
   onOpen: (id: string) => void;
   onReturn: (id: string) => void;
   onAdd: () => void;
@@ -29,7 +31,7 @@ const sectionLabel = (c: string) => ({
   fontSize: 11, fontWeight: 700, letterSpacing: '1.4px', color: c, margin: '20px 4px 10px',
 });
 
-export function Home({ receipts, today, urgentDays, policyAlert, changedStores, onOpen, onReturn, onAdd, onWatch }: Props) {
+export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onOpen, onReturn, onAdd, onWatch }: Props) {
   const [query, setQuery] = useState('');
   const offerSearch = shouldOfferSearch(receipts);
   const searching = offerSearch && query.trim().length > 0;
@@ -204,7 +206,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedStores, 
                 receipt={r}
                 urgency={urgency(derive(r, today).daysLeft, urgentDays)}
                 emphasised
-                policyChanged={changedStores.has(r.store)}
+                policyChanged={changedIds.has(r.id)}
                 onOpen={() => onOpen(r.id)}
                 onReturn={() => onReturn(r.id)}
               />
@@ -223,7 +225,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedStores, 
                 receipt={r}
                 urgency={urgency(derive(r, today).daysLeft, urgentDays)}
                 emphasised
-                policyChanged={changedStores.has(r.store)}
+                policyChanged={changedIds.has(r.id)}
                 onOpen={() => onOpen(r.id)}
                 onReturn={() => onReturn(r.id)}
               />
@@ -242,7 +244,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedStores, 
                 receipt={r}
                 urgency={urgency(derive(r, today).daysLeft, urgentDays)}
                 emphasised={false}
-                policyChanged={changedStores.has(r.store)}
+                policyChanged={changedIds.has(r.id)}
                 onOpen={() => onOpen(r.id)}
                 onReturn={() => onReturn(r.id)}
               />

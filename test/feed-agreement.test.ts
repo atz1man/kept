@@ -5,44 +5,29 @@ import { readFeed } from '../src/lib/policy-feed';
 import { canonicalStoreName } from '../src/lib/stores';
 
 /**
- * The bundled fallback and the feed that is actually served have to say the
- * same thing.
+ * The samples and the served feed used to be held to each other.
  *
- * `seed.ts` exists so a first launch with no signal is not an empty Watch tab,
- * and it carries the SAME update ids as `public/policy-feed.json` on purpose,
- * so a merge replaces each one rather than showing it twice. The texts were
- * free to drift, and the consequence is small but silly: an update reads one
- * way before the feed lands and another way after, on the tab whose whole
- * point is telling you what changed.
- *
- * Everything but `changedOn` — the seed's dates are deliberately relative to
- * the day the app is opened, so a fresh install looks current.
+ * `seed.ts` carried the SAME ids as `public/policy-feed.json`, and this file
+ * asserted they said the same thing, entry for entry. That made the samples a
+ * copy of the published news, and the published news a copy of samples nobody
+ * had checked. They are separate things now: the seed's changes are marked
+ * samples, the served feed carries only changes someone has checked against
+ * the retailer (none yet), and `sample-changes.test.ts` holds the line between
+ * them. What survives from here is that the served feed parses.
  */
 const TODAY = new Date(2026, 7, 28);
 
 const served = readFeed(JSON.parse(readFileSync(new URL('../public/policy-feed.json', import.meta.url), 'utf8')));
 const bundled = seedUpdates(TODAY);
 
-describe('the bundled feed and the served one', () => {
-  it('both parse', () => {
+describe('the served feed', () => {
+  it('parses', () => {
     expect(served).not.toBeNull();
-    expect(served!.length).toBeGreaterThan(0);
-    expect(bundled.length).toBeGreaterThan(0);
-  });
-
-  it('cover the same updates', () => {
-    expect([...bundled.map((u) => u.id)].sort()).toEqual([...served!.map((u) => u.id)].sort());
-  });
-
-  it.each(bundled.map((u) => [u.id, u] as const))('say the same thing about %s', (id, mine) => {
-    const theirs = served!.find((u) => u.id === id)!;
-    const compare = ({ changedOn, ...rest }: typeof mine) => rest;
-    expect(compare(mine)).toEqual(compare(theirs));
   });
 });
 
 /**
- * And both name shops the way the app does.
+ * And both — the samples and whatever is served — name shops the way the app does.
  *
  * The table gives Currys the alias "pc world", M&S "marks and spencer", B&Q
  * "b and q" — and `readFeed` takes these names verbatim. `updateNames` now
