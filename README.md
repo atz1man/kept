@@ -2265,6 +2265,11 @@ spending minutes a mutation on it.
 
 The step-by-step route to the App Store — who does what, and which items are
 already done and held by a test — is in [`store/SUBMISSION.md`](store/SUBMISSION.md).
+`npm run preflight` is the machine half of it: every placeholder the owner has to
+fill (bundle identifier, privacy contact, the listing's domain, the date the
+retailer table was checked) read out of the file it lives in, red until each is
+done. Not in CI, because it is red by design; `test/preflight.test.ts` holds
+each check to firing on today's tree and passing a filled-in one.
 
 The landing page's social proof — figures and reviews from the handoff, marked
 illustrative — was cut rather than filled. Before launch there is nothing about
