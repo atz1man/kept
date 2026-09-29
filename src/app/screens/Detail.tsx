@@ -3,7 +3,7 @@ import { color, font, radius, shadow } from '../../tokens';
 import { fmtDateLong, fmtDatesTogether, fromISODate } from '../../lib/dates';
 import { legalRights } from '../../lib/legal';
 import { money } from '../../lib/money';
-import { derive } from '../../lib/receipts';
+import { asksForGuarantee, derive } from '../../lib/receipts';
 import type { Receipt } from '../../lib/types';
 import { clockFor, findStore } from '../../lib/stores';
 import { returnsPageFor } from '../../lib/returns-pages';
@@ -253,6 +253,23 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               </div>
             ))}
         </div>
+
+        {asksForGuarantee(receipt) && (
+          <div style={{ borderTop: `1.5px solid ${color.borderHair}`, padding: '15px 18px' }}>
+            <div style={cardLabel}>WARRANTY</div>
+            <div style={{ fontSize: 14, marginTop: 5, lineHeight: 1.5, color: color.bodyStrong }}>
+              None recorded. Most electricals and furniture come with one — add its length and Kept counts it down
+              beside the return window.
+            </div>
+            <Pressable
+              className="k-row-white"
+              onClick={onEdit}
+              style={{ display: 'inline-flex', width: 'auto', marginTop: 10, padding: '10px 16px', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 13.5 }}
+            >
+              Add its guarantee
+            </Pressable>
+          </div>
+        )}
 
         {receipt.warranty && (
           <div style={{ borderTop: `1.5px solid ${color.borderHair}`, padding: '15px 18px' }}>

@@ -630,6 +630,43 @@ for (const cancel of [false, true]) {
   await dCtx.close();
 }
 
+/*
+ * Asking for the guarantee. The reminder a month before cover ends can only
+ * be about a guarantee kept knows of, and nothing asked for one: Add has no
+ * field, and a receipt without one said nothing about it. A pasted coffee
+ * machine's screen now asks, the button goes to the field, and once a length
+ * is saved the screen counts it down instead of asking.
+ */
+{
+  const gCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const gp = await gCtx.newPage();
+  await gp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await gp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await gp.getByRole('button', { name: 'Add a receipt' }).click();
+  await gp.locator('#paste').fill('Your John Lewis order is confirmed\nOrder date: 21 September 2026\nOrder total: £499.00');
+  await gp.getByRole('button', { name: 'Read it' }).click();
+  await gp.getByLabel(/what is it/i).fill('Sage Barista Express').catch(() => {});
+  await gp.getByRole('button', { name: 'Save receipt' }).click();
+  await gp.waitForTimeout(500);
+  await gp.getByRole('button', { name: /John Lewis/ }).first().click();
+  await gp.waitForTimeout(400);
+  const asked = await gp.locator('main').innerText();
+  const button = gp.getByRole('button', { name: 'Add its guarantee' });
+  let after = '';
+  if ((await button.count()) === 1) {
+    await button.click();
+    await gp.waitForTimeout(300);
+    await gp.locator('#e-warranty').fill('24');
+    await gp.getByRole('button', { name: 'Save changes' }).click();
+    await gp.waitForTimeout(400);
+    after = await gp.locator('main').innerText();
+  }
+  results['a receipt with no guarantee asks for one, and counts it down once given'] =
+    /None recorded/.test(asked) && /Repairs should be free until/.test(after) && !/None recorded/.test(after);
+  if (!results['a receipt with no guarantee asks for one, and counts it down once given']) problems.push(`guarantee ask: ${JSON.stringify({ asked: /None recorded/.test(asked), after: after.slice(0, 120) })}`);
+  await gCtx.close();
+}
+
 // The tab bar floats over every screen; its buttons must stay clickable.
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(400);

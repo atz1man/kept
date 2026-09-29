@@ -36,7 +36,9 @@ const SEED_MORE = () => {
   const base = s.receipts[0];
   const extra = ['Sony WH-1000XM5', 'Dyson V15', 'Le Creuset casserole', 'Adidas Sambas'];
   s.receipts = s.receipts.concat(
-    extra.map((item, i) => ({ ...base, id: 'seedmore' + i, item, status: 'active' })),
+    // The casserole carries no guarantee, so its screen asks for one — the
+    // one state no sample reaches (each has a guarantee, or is clothing).
+    extra.map((item, i) => ({ ...base, id: 'seedmore' + i, item, status: 'active', ...(/Le Creuset/.test(item) ? { warranty: undefined, cat: 'kitchen' } : {}) })),
   );
   s.onboardingSeen = true;
   localStorage.setItem('kept.v1', JSON.stringify(s));
@@ -106,6 +108,16 @@ await audit(page, 'home', findings);
 await page.getByRole('button', { name: /Currys, JBL/ }).click();
 await page.waitForTimeout(400);
 await audit(page, 'receipt detail', findings);
+
+await page.getByRole('button', { name: 'Back', exact: true }).click();
+await page.waitForTimeout(300);
+await page.getByRole('button', { name: /Currys, Le Creuset/ }).click();
+await page.waitForTimeout(400);
+await audit(page, 'receipt detail · no guarantee', findings);
+await page.getByRole('button', { name: 'Back', exact: true }).click();
+await page.waitForTimeout(300);
+await page.getByRole('button', { name: /Currys, JBL/ }).click();
+await page.waitForTimeout(400);
 
 // Opened, with the field filled: the textarea's label and hint, the letter
 // box's name, and the Copy and Share buttons exist only in this state.
