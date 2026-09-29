@@ -1298,6 +1298,22 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
   const shadeCard = shadeFound ? await scanPage.locator('main').innerText() : '';
   results['a receipt half in shadow is read too'] =
     shadeFound && /Boots/.test(shadeCard) && /£42\.97/.test(shadeCard) && /21 Sep/.test(shadeCard);
+  /*
+   * Offline, a browser cannot scan: the worker and engine are fetched from
+   * this site per scan and do not go through the service worker. Measured,
+   * with the reader already used once. The failure used to blame the photo
+   * ("flat, straight and in good light"), sending someone to retake a
+   * picture that could never have worked.
+   */
+  await scanCtx.setOffline(true);
+  await scanPage.goto(`${ORIGIN}/app/`).catch(() => {});
+  await scanPage.getByRole('button', { name: 'Add a receipt' }).click().catch(() => {});
+  await scanPage.waitForTimeout(300);
+  await scanPage.setInputFiles('#add-photo', { name: 'offline.png', mimeType: 'image/png', buffer: photo }).catch(() => {});
+  const offlineSaid = await scanPage.getByText(/needs a connection/).waitFor({ timeout: 60_000 }).then(() => true).catch(() => false);
+  results['an offline scan blames the connection, not the photo'] =
+    offlineSaid && !(await scanPage.getByText(/flat, straight and in good light/).isVisible().catch(() => false));
+  await scanCtx.setOffline(false);
   if (!results['a receipt half in shadow is read too']) {
     problems.push(`shaded scan read: ${shadeFound ? shadeCard.slice(0, 300).replace(/\n/g, ' | ') : 'no card'}`);
   }

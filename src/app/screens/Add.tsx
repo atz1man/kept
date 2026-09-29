@@ -3,7 +3,7 @@ import { color, font, radius, shadow } from '../../tokens';
 import { addDays, fmtDate, fmtDateLong, fmtDateNear, fromISODate, toISODate } from '../../lib/dates';
 import { money } from '../../lib/money';
 import { parseReceiptText, type ParsedReceipt } from '../../lib/parse';
-import { fromScan } from '../../lib/receipt-scan';
+import { fromScan, scanFailure } from '../../lib/receipt-scan';
 import { arrivalProblem, readAmount, windowStartFor } from '../../lib/draft';
 import { makeReceiptId } from '../../lib/receipts';
 import { findStore, policyFor } from '../../lib/stores';
@@ -81,7 +81,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
    */
   const photoInput = useRef<HTMLInputElement>(null);
   const [scanning, setScanning] = useState<number | null>(null);
-  const [scanFailed, setScanFailed] = useState(false);
+  const [scanFailed, setScanFailed] = useState<'offline' | 'unreadable' | null>(null);
   // True during the second read, when the first missed the shop, total or date.
   const [lookingAgain, setLookingAgain] = useState(false);
   /*
@@ -131,7 +131,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
    * saved. A till receipt is a purchase made in person, so it starts as one.
    */
   const scanPhoto = async (file: Blob, base64?: string) => {
-    setScanFailed(false);
+    setScanFailed(null);
     setScanning(0);
     setLookingAgain(false);
     setScanShot(null);
@@ -151,7 +151,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
         setKeepPhoto(true);
       }
     } catch {
-      setScanFailed(true);
+      setScanFailed(scanFailure(navigator.onLine, isNative()));
     } finally {
       setScanning(null);
     }
@@ -538,7 +538,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
               const shot = await takeReceiptPhoto();
               if (shot) await scanPhoto(shot.blob, shot.base64);
             } catch {
-              setScanFailed(true);
+              setScanFailed(scanFailure(navigator.onLine, isNative()));
             }
           })();
         }}
@@ -555,7 +555,9 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
           : `${lookingAgain ? 'Having another look' : 'Reading your receipt'}… ${Math.round(scanning * 100)}%`}
       </Pressable>
       <div role="status" aria-live="polite" style={{ fontSize: 12.5, color: scanFailed ? color.danger : color.muted, textAlign: 'center', marginTop: 8, lineHeight: 1.5 }}>
-        {scanFailed
+        {scanFailed === 'offline'
+          ? 'Scanning in a browser needs a connection, to fetch the reader. Paste or type the details, or scan again when you are back online.'
+          : scanFailed
           ? 'kept couldn’t read that photo. Try again flat, straight and in good light — or paste or type the details.'
           : scanning !== null
             ? 'Reading it on this phone. Nothing is uploaded.'

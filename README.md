@@ -2181,8 +2181,13 @@ spending minutes a mutation on it.
 "Scan a paper receipt" on the Add screen reads a photographed till receipt on
 the phone: tesseract compiled to WebAssembly, in a worker, with the worker,
 the engine and the English model served from this app (`serveOcrFiles` in
-vite.config.ts) — never a CDN, never a server, so it works offline and in the
-iOS app and nothing about the purchase leaves the phone. It arrives only when
+vite.config.ts) — never a CDN, never a server, so it works in the iOS app
+with no connection at all and nothing about the purchase leaves the phone. In
+a browser it needs a connection each time: the worker and engine are fetched
+from this site when a scan starts, and those fetches do not pass through the
+service worker, so nothing is cached for later (measured; the English model
+alone is kept, in tesseract's own IndexedDB store). An offline scan says so
+rather than blaming the photo. It arrives only when
 someone first scans: about 7 MB for the engine the device can run and 3 MB
 for the model, cached after that.
 

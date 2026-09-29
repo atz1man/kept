@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fieldsFound, fromScan, readBestOf, type Thresholding } from '../src/lib/receipt-scan';
+import { fieldsFound, fromScan, readBestOf, scanFailure, type Thresholding } from '../src/lib/receipt-scan';
 import { parseReceiptText } from '../src/lib/parse';
 
 /**
@@ -134,5 +134,20 @@ describe('two looks at one photo', () => {
     // confidently wrong on faint thermal print.
     expect(await readBestOf(reader({ global: NO_DATE, local: OTHER_NO_DATE }).read, TODAY)).toBe(NO_DATE);
     expect(await readBestOf(reader({ global: NO_DATE, local: SHADOWED }).read, TODAY)).toBe(NO_DATE);
+  });
+});
+
+describe('why a scan failed', () => {
+  it('is the connection when a browser is offline, since the reader is fetched per scan', () => {
+    expect(scanFailure(false, false)).toBe('offline');
+  });
+
+  it('is never the connection in the iPhone app, which carries the reader inside it', () => {
+    expect(scanFailure(false, true)).toBe('unreadable');
+  });
+
+  it('is the photo when the connection was there', () => {
+    expect(scanFailure(true, false)).toBe('unreadable');
+    expect(scanFailure(true, true)).toBe('unreadable');
   });
 });
