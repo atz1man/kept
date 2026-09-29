@@ -45,6 +45,12 @@ export function Privacy() {
           switch.
         </Section>
 
+        <Section title="Links to shops">
+          Each receipt links to its shop's own returns page. kept opens it only when you tap it, in your browser, and
+          sends nothing with it: no receipt, no amount, not even that you came from kept. What happens on the shop's
+          site is between you and the shop.
+        </Section>
+
         <Section title="Reminders">
           Deadline reminders are notifications your phone schedules for itself. No push service is involved and
           nothing leaves the device to make them happen. You can turn them off in Settings with the Deadline alerts
