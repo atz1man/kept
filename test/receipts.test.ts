@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, toISODate } from '../src/lib/dates';
+import { addDays, addMonths, toISODate } from '../src/lib/dates';
 import { photoName } from '../src/lib/photos';
 import { toPence } from '../src/lib/money';
-import { bucket, countsAsMoney, derive, everyReturnInTime, makeReceiptId, recoveredPence, stillReturnablePence, timelineDots } from '../src/lib/receipts';
+import { bucket, countsAsMoney, derive, everyReturnInTime, makeReceiptId, recoveredPence, stillReturnablePence, timelineDots, coverLine } from '../src/lib/receipts';
 import type { Receipt } from '../src/lib/types';
 
 const TODAY = new Date(2026, 7, 28);
@@ -510,5 +510,26 @@ describe('the sample receipts in a total', () => {
     expect(recoveredPence(rs)).toBe(2500);
     expect(recoveredPence([rs[0]])).toBe(8900);
     expect(countsAsMoney(rs)(rs[0])).toBe(false);
+  });
+});
+
+describe('the guarantee, on a list row', () => {
+  // The KEEPING IT rows said nothing about cover, which is the one thing that
+  // makes a kept receipt worth holding.
+  const bought = (monthsAgo: number, extraDays = 0) => toISODate(addDays(addMonths(TODAY, -monthsAgo), -extraDays));
+
+  it('says when cover runs until, and that it has ended once it has', () => {
+    expect(coverLine(receipt({ purchasedOn: bought(3), warranty: { months: 12 } }), TODAY)).toMatch(/^covered until \d+ \w+ \d{4}$/);
+    expect(coverLine(receipt({ purchasedOn: bought(13), warranty: { months: 12 } }), TODAY)).toMatch(/^cover ended \d+ \w+$/);
+  });
+
+  it('is still covered on the last day, and ended the day after', () => {
+    expect(coverLine(receipt({ purchasedOn: bought(12), warranty: { months: 12 } }), TODAY)).toMatch(/^covered until/);
+    expect(coverLine(receipt({ purchasedOn: bought(12, 1), warranty: { months: 12 } }), TODAY)).toMatch(/^cover ended/);
+  });
+
+  it('says nothing where there is no clock', () => {
+    expect(coverLine(receipt({}), TODAY)).toBeNull();
+    expect(coverLine(receipt({ warranty: { months: 0, note: 'lifetime' } }), TODAY)).toBeNull();
   });
 });

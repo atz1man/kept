@@ -1,6 +1,6 @@
 import { addDays, startOfDay } from './dates';
 import { derive } from './receipts';
-import { alertKey, copyFor, type AlertRung } from './alerts';
+import { alertKey, copyFor, warrantyWatched, WARRANTY_NOTICE_DAYS, type AlertRung, type ReturnRung } from './alerts';
 import type { Receipt } from './types';
 
 /**
@@ -54,7 +54,7 @@ export interface PlannedAlert {
  * "three days left", "today", and "it has closed" are facts about the window
  * rather than preferences about warning.
  */
-function fireDayFor(rung: AlertRung, deadline: Date, urgentDays: number): Date | null {
+function fireDayFor(rung: ReturnRung, deadline: Date, urgentDays: number): Date | null {
   switch (rung) {
     case 'week':
       /*
@@ -102,6 +102,23 @@ export function planAlerts(
   const out: PlannedAlert[] = [];
 
   for (const r of receipts) {
+    /*
+     * The guarantee, a month before it ends, for a receipt still on this
+     * phone whether it is being returned or kept. Years out, usually, and
+     * so it is also the alert most likely to sit behind the 64-slot cap:
+     * that is the right way round, since it is re-planned on every launch
+     * long before its morning comes.
+     */
+    if (warrantyWatched(r)) {
+      const w = derive(r, today).warranty;
+      const key = alertKey(r.id, 'warranty');
+      if (w && !sent.has(key)) {
+        const when = at9am(addDays(w.ends, -WARRANTY_NOTICE_DAYS));
+        if (when.getTime() > now.getTime()) {
+          out.push({ key, receiptId: r.id, rung: 'warranty', at: when, ...copyFor('warranty', r, WARRANTY_NOTICE_DAYS, w.ends) });
+        }
+      }
+    }
     if (r.status !== 'active') continue;
     // The same rule `dueAlerts` states at length: a notification is not a
     // demonstration, and the demo set must never raise one about money nobody

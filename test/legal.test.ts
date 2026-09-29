@@ -2,9 +2,10 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { addDays, toISODate } from '../src/lib/dates';
+import { addDays, addMonths, toISODate } from '../src/lib/dates';
 import {
   COOLING_OFF_DAYS,
+  PRESUMED_FAULT_MONTHS,
   REJECT_DAYS,
   RETURN_AFTER_CANCEL_DAYS,
   legalRights,
@@ -399,5 +400,48 @@ describe('the periods are written from the constants, not typed twice', () => {
     expect(find(lapsed, 'Consumer Rights Act').live).toBe(false);
     expect(find(live, 'Consumer Contracts Regs').live).toBe(true);
     expect(find(lapsed, 'Consumer Contracts Regs').live).toBe(false);
+  });
+});
+
+describe('the months when a fault is the shop’s to disprove', () => {
+  /*
+   * Consumer Rights Act s.19(14): a fault within six months of delivery is
+   * presumed present at delivery. Once the thirty days to reject went, the
+   * screen said "repair or replacement for up to six years" as if the years
+   * were all alike — when in the first six months the shop has to disprove the
+   * fault and after them the buyer has to prove it.
+   */
+  const reject = (r: Receipt) => find(legalRights(r, TODAY, false), 'Consumer Rights Act');
+  /** Bought over a counter so the dates are exact; `n` days before the six months end. */
+  const counterWith = (n: number) => ({ ...inStore, purchasedOn: toISODate(addMonths(addDays(TODAY, n), -PRESUMED_FAULT_MONTHS)) });
+
+  it('is Parliament’s number', () => {
+    expect(PRESUMED_FAULT_MONTHS).toBe(6);
+  });
+
+  it('is said once the thirty days are gone, with the date and the days left', () => {
+    const body = reject(counterWith(40)).body;
+    expect(body).toMatch(/The 30-day window to reject faulty goods has passed/);
+    expect(body).toMatch(/Until \S.+ \(40 days left\), a fault is taken to have been there when you got it, so it is for the shop to show it was not\.$/);
+  });
+
+  it('is still said on its last day, and not the day after', () => {
+    expect(reject(counterWith(0)).body).toMatch(/\(0 days left\), a fault is taken/);
+    expect(reject(counterWith(-1)).body).not.toMatch(/a fault is taken/);
+    // The repair right outlasts it, and still says so.
+    expect(reject(counterWith(-1)).body).toContain('six years in England and Wales');
+  });
+
+  it('is not added to a right to reject that is still live', () => {
+    expect(reject({ ...inStore, purchasedOn: ago(3) }).body).not.toMatch(/a fault is taken/);
+  });
+
+  it('counts from arrival once that is known, and is a floor until then', () => {
+    const ordered = { ...online, purchasedOn: ago(60) };
+    expect(reject(ordered).body).toMatch(/Until at least .+, a fault is taken to have been there when it arrived/);
+    const arrived = { ...ordered, arrivedOn: ago(50) };
+    const ends = addMonths(addDays(TODAY, -50), PRESUMED_FAULT_MONTHS);
+    const left = Math.round((ends.getTime() - TODAY.getTime()) / 86_400_000);
+    expect(reject(arrived).body).toContain(`(${left} days left), a fault is taken`);
   });
 });

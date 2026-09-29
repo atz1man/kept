@@ -2,6 +2,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { COOLING_OFF_DAYS, REJECT_DAYS, RETURN_AFTER_CANCEL_DAYS } from '../src/lib/legal';
+import { WARRANTY_NOTICE_DAYS } from '../src/lib/alerts';
 import { STORE_COUNT, STORE_POLICIES, TABLE_CHECKED_ON } from '../src/lib/stores';
 
 /**
@@ -59,6 +60,15 @@ describe('what the listing claims', () => {
     const strays = figures(listing.description)
       .filter((f) => (f.unit === 'UK' ? f.n !== STORE_COUNT : !known.has(f.n)));
     expect(strays).toEqual([]);
+  });
+
+  it('says "a month" about the guarantee reminder only while it is one', () => {
+    // In words, so the figures above never see it. Pinned to the constant the
+    // reminder is lodged from, so shortening that to a week makes this fail
+    // rather than the listing quietly promising three more weeks of notice.
+    expect(listing.description).toMatch(/a month before a guarantee runs out/);
+    expect(WARRANTY_NOTICE_DAYS).toBeGreaterThanOrEqual(28);
+    expect(WARRANTY_NOTICE_DAYS).toBeLessThanOrEqual(31);
   });
 
   it('counts the shops the table actually has', () => {

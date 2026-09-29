@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { alertKey, dueAlerts, pruneSent, supersededKeys } from '../src/lib/alerts';
-import { addDays, toISODate } from '../src/lib/dates';
+import { alertKey, dueAlerts, pruneSent, supersededKeys, WARRANTY_NOTICE_DAYS } from '../src/lib/alerts';
+import { addDays, addMonths, toISODate } from '../src/lib/dates';
 import { toPence } from '../src/lib/money';
 import { seedReceipts } from '../src/lib/seed';
 import { derive } from '../src/lib/receipts';
@@ -187,5 +187,66 @@ describe('a kept receipt', () => {
   it('raises no return reminder, however close its deadline', () => {
     expect(dueAlerts([closingIn(0, { status: 'kept', keptOn: toISODate(TODAY) })], TODAY, URGENT, none)).toEqual([]);
     expect(dueAlerts([closingIn(0)], TODAY, URGENT, none).length).toBeGreaterThan(0);
+  });
+});
+
+describe('a guarantee about to end', () => {
+  /*
+   * The one reason to keep a receipt long after its window, and the app went
+   * quiet about it: the end date was on the receipt's screen and nothing ever
+   * said so before it passed. A month's notice, once, for anything still on
+   * this phone — kept or not yet returned.
+   */
+  /** Out of its return window, with a 12-month guarantee ending in `n` days. */
+  const coverEndingIn = (n: number, over: Partial<Receipt> = {}): Receipt => ({
+    ...closingIn(-200),
+    purchasedOn: toISODate(addMonths(addDays(TODAY, n), -12)),
+    warranty: { months: 12 },
+    ...over,
+  });
+  const warrantyAlerts = (rs: Receipt[], sent = none) => dueAlerts(rs, TODAY, URGENT, sent).filter((a) => a.rung === 'warranty');
+
+  it('says so inside the last month, and not before', () => {
+    expect(derive(coverEndingIn(WARRANTY_NOTICE_DAYS), TODAY).warranty!.daysLeft).toBe(WARRANTY_NOTICE_DAYS);
+    expect(warrantyAlerts([coverEndingIn(WARRANTY_NOTICE_DAYS)]).map((a) => a.key)).toEqual(['r1:warranty']);
+    expect(warrantyAlerts([coverEndingIn(0)])).toHaveLength(1);
+    expect(warrantyAlerts([coverEndingIn(WARRANTY_NOTICE_DAYS + 1)])).toEqual([]);
+  });
+
+  it('is said for a kept receipt, which is the point of keeping it', () => {
+    expect(warrantyAlerts([coverEndingIn(10, { status: 'kept', keptOn: toISODate(TODAY) })])).toHaveLength(1);
+  });
+
+  it('is not said once the guarantee has ended, nor for one that went back, nor for a sample', () => {
+    expect(warrantyAlerts([coverEndingIn(-1)])).toEqual([]);
+    expect(warrantyAlerts([coverEndingIn(10, { status: 'returned', returnedOn: toISODate(TODAY) })])).toEqual([]);
+    expect(warrantyAlerts([coverEndingIn(10, { demo: true })])).toEqual([]);
+  });
+
+  it('is not said about a guarantee with no clock', () => {
+    // An old backup's free-text warranty comes back as months: 0.
+    // Bought today, so a zero-month "clock" would read as ending today and
+    // pass every other test here; only the months check keeps it quiet.
+    expect(warrantyAlerts([coverEndingIn(10, { purchasedOn: toISODate(TODAY), warranty: { months: 0, note: 'lifetime' } })])).toEqual([]);
+  });
+
+  it('is said once', () => {
+    const [a] = warrantyAlerts([coverEndingIn(10)]);
+    expect(warrantyAlerts([coverEndingIn(10)], new Set([a.key]))).toEqual([]);
+    expect(supersededKeys(a)).toEqual([]);
+  });
+
+  it('comes after anything about a return window', () => {
+    const both = [coverEndingIn(10, { id: 'cover' }), closingIn(URGENT, { id: 'window' })];
+    // The guarantee's receipt is long out of its window too, hence 'closed'.
+    expect(dueAlerts(both, TODAY, URGENT, none).map((a) => a.rung)).toEqual(['closed', 'week', 'warranty']);
+  });
+
+  it('names the item and the last day of cover, and says what to do', () => {
+    const [a] = warrantyAlerts([coverEndingIn(10)]);
+    expect(a.title).toBe('Your guarantee is running out');
+    expect(a.body).toMatch(/^Zara · Wool coat — covered until .+, 10 days from now\. If anything is wrong with it, claim before then\.$/);
+    expect(warrantyAlerts([coverEndingIn(0)])[0].body).toMatch(/which is today\./);
+    expect(warrantyAlerts([coverEndingIn(1)])[0].body).toMatch(/1 day from now/);
   });
 });

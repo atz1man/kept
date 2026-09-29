@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { color, font, radius, shadow } from '../../tokens';
 import { addDays, fmtDate, fmtDateNear } from '../../lib/dates';
 import { money, sumPence } from '../../lib/money';
-import { bucket, derive, everyReturnInTime, countsAsMoney, stillReturnablePence, timelineDots } from '../../lib/receipts';
+import { bucket, coverLine, derive, everyReturnInTime, countsAsMoney, stillReturnablePence, timelineDots } from '../../lib/receipts';
 import { search, searchStatus, shouldOfferSearch } from '../../lib/search';
 import { midSentence } from '../../lib/words';
 import { heroCount, urgency } from '../../lib/urgency';
@@ -316,11 +316,13 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
               shop's window, which is why it is kept here rather than deleted. */}
           <h2 style={sectionLabel(color.muted)}>KEEPING IT</h2>
           <ul style={{ display: 'flex', flexDirection: 'column', gap: 9, margin: 0, padding: 0 }}>
-            {kept.map((r) => (
+            {kept.map((r) => {
+              const cover = coverLine(r, today);
+              return (
               <li key={r.id} style={{ listStyle: 'none' }}>
                 <Pressable
                   onClick={() => onOpen(r.id)}
-                  aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${money(r.amount)}, keeping it`}
+                  aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${money(r.amount)}, ${cover ? `${cover}, ` : ''}keeping it`}
                   style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 15, background: color.creamAlt, border: '1.5px solid rgba(23,20,16,0.06)', borderRadius: radius.card }}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -329,11 +331,13 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
                       {r.demo && <span>sample · </span>}
                       {r.item}
                     </div>
+                    {cover && <div style={{ fontSize: 12, color: color.muted, marginTop: 2 }}>{cover}</div>}
                   </div>
                   <div style={{ fontFamily: font.figures, fontSize: 15, fontWeight: 700, color: color.muted, flexShrink: 0 }}>{money(r.amount)}</div>
                 </Pressable>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </>
       )}

@@ -1,4 +1,4 @@
-import { addDays, daysBetween, fmtDate, fromISODate } from './dates';
+import { addDays, addMonths, daysBetween, fmtDate, fromISODate } from './dates';
 import type { Receipt } from './types';
 
 /**
@@ -107,11 +107,46 @@ export const UNTOLD_EXTENSION =
 export const LATER_FAULTS =
   'you can still ask for a free repair or replacement if a fault appears, for up to six years in England and Wales, five in Scotland.';
 
+/**
+ * Consumer Rights Act 2015, s.19(14)-(15): goods that turn out faulty within
+ * this many months of delivery are taken not to have been right on the day
+ * they were delivered, unless the shop proves otherwise. After it, proving
+ * the fault was there from the start falls to the buyer.
+ *
+ * The most useful date in the second half of a purchase's life, and the app
+ * never said it: once the thirty days went, the screen offered "a free repair
+ * or replacement for up to six years" as if those years were all alike, when
+ * in the first stretch of them the shop has to disprove the fault and after
+ * it the buyer has to prove it. Parliament's number, pinned as a literal.
+ */
+export const PRESUMED_FAULT_MONTHS = 6;
+
+/**
+ * The rule in general, for the rights page, which states it without a
+ * purchase to date it from. Exported for the same reason `LATER_FAULTS` is:
+ * one telling of a legal rule, not two.
+ */
+export const PRESUMED_FAULT_RULE =
+  `For the first ${PRESUMED_FAULT_MONTHS} months after you have it, a fault is taken to have been there from the start, so it is for the shop to show it was not. After that, it is for you to show it was.`;
+
+/**
+ * The sentence for the stretch between the two, or nothing once it has gone
+ * (from then on the plain repair right is the whole story).
+ */
+function presumedFault(bought: Date, today: Date, hedged: boolean): string {
+  const ends = addMonths(bought, PRESUMED_FAULT_MONTHS);
+  const left = daysBetween(today, ends);
+  if (left < 0) return '';
+  return hedged
+    ? ` Until at least ${fmtDate(ends)}, a fault is taken to have been there when it arrived, so it is for the shop to show it was not.`
+    : ` Until ${fmtDate(ends)} (${days(left)} left), a fault is taken to have been there when you got it, so it is for the shop to show it was not.`;
+}
+
 /** @param hedged True when the arrival date is unknown, so the end is a floor. */
 function shortTermRejectRight(bought: Date, today: Date, hedged: boolean): LegalRight {
   const ends = addDays(bought, REJECT_DAYS);
   const left = daysBetween(today, ends);
-  const repair = LATER_FAULTS;
+  const repair = `${LATER_FAULTS}${presumedFault(bought, today, hedged)}`;
   return {
     chip: 'Consumer Rights Act',
     live: left >= 0,

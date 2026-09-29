@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import {
   COOLING_OFF_DAYS,
   LATER_FAULTS,
+  PRESUMED_FAULT_RULE,
   LEGAL_DISCLAIMER,
   REJECT_DAYS,
   RETURN_AFTER_CANCEL_DAYS,
@@ -77,6 +78,10 @@ describe('the periods it states', () => {
 describe('the sentences it shares with the app', () => {
   it('says what remains after the right to reject in the detail screen’s words', () => {
     expect(text).toContain(LATER_FAULTS);
+  });
+
+  it('says who has to prove a fault, and for how long, in the app’s words', () => {
+    expect(text).toContain(PRESUMED_FAULT_RULE);
   });
 
   it('says the extension for an untold buyer in the detail screen’s words', () => {
