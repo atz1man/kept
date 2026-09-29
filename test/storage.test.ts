@@ -528,3 +528,13 @@ describe('what a bad launch sets aside', () => {
     expect(setAsideData()).toBeNull();
   });
 });
+
+describe('whether reminders have been explained', () => {
+  it('starts unexplained, including for a library saved before the setting existed, and keeps the answer', () => {
+    expect(DEFAULT_SETTINGS.remindersExplained).toBe(false);
+    const old = hydrate({ version: 1, receipts: [], updates: [], onboardingSeen: true, alertsSent: [], settings: { urgentDays: 7, plan: 'free', deadlineAlerts: true, policyWatch: true } }, new Date(2026, 7, 28));
+    expect(old.settings.remindersExplained).toBe(false);
+    const answered = hydrate({ ...old, settings: { ...old.settings, remindersExplained: true } }, new Date(2026, 7, 28));
+    expect(answered.settings.remindersExplained).toBe(true);
+  });
+});

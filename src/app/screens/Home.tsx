@@ -25,6 +25,8 @@ interface Props {
   onReturn: (id: string) => void;
   /** Settle every closed window on screen as kept, in one tap (undoable). */
   onKeepClosed: (ids: string[]) => void;
+  /** Present when the iPhone app should explain its reminders before iOS asks. */
+  reminders?: { onYes: () => void; onNo: () => void };
   onAdd: () => void;
   onWatch: () => void;
 }
@@ -33,7 +35,7 @@ const sectionLabel = (c: string) => ({
   fontSize: 11, fontWeight: 700, letterSpacing: '1.4px', color: c, margin: '20px 4px 10px',
 });
 
-export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onOpen, onReturn, onKeepClosed, onAdd, onWatch }: Props) {
+export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onOpen, onReturn, onKeepClosed, reminders, onAdd, onWatch }: Props) {
   const [query, setQuery] = useState('');
   const offerSearch = shouldOfferSearch(receipts);
   const searching = offerSearch && query.trim().length > 0;
@@ -97,6 +99,38 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
           ON-DEVICE
         </div>
       </header>
+
+      {/* Before iOS asks, which it does once and never again. Worded as
+          Settings words the iPhone's reminders — the mechanism and the
+          moment, not a promise. */}
+      {reminders && (
+        <section
+          aria-labelledby="reminders-title"
+          style={{ background: color.white, border: `1.5px solid ${color.ink}`, borderRadius: radius.card, padding: '16px 16px 14px', marginBottom: 14 }}
+        >
+          <h2 id="reminders-title" style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Reminders for your deadlines</h2>
+          <p style={{ margin: '6px 0 0', fontSize: 13.5, lineHeight: 1.5, color: color.bodyStrong }}>
+            Kept can lodge each deadline with iOS, so a reminder arrives at 9am on the day, even with Kept shut. iOS
+            asks for permission once, so this is what it is for.
+          </p>
+          <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
+            <Pressable
+              className="k-cta-yellow"
+              onClick={reminders.onYes}
+              style={{ flex: '1 1 150px', padding: 13, textAlign: 'center', background: color.yellow, border: `1.5px solid ${color.ink}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+            >
+              Turn on reminders
+            </Pressable>
+            <Pressable
+              className="k-row-white"
+              onClick={reminders.onNo}
+              style={{ flex: '1 1 100px', padding: 13, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+            >
+              Not now
+            </Pressable>
+          </div>
+        </section>
+      )}
 
       {next && (
         <HeroCard
