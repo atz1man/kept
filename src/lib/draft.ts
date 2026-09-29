@@ -1,6 +1,6 @@
 import { daysBetween, fromISODate, toISODate } from './dates';
 import { toPence, type Pence } from './money';
-import { canonicalStoreName, findStore, policyFor } from './stores';
+import { canonicalStoreName, clockFor, findStore, policyFor, type StorePolicy } from './stores';
 import type { Category, Receipt } from './types';
 
 /**
@@ -118,13 +118,9 @@ export function arrivalProblem(arrivedOn: string, purchasedOn: string, today: Da
 }
 
 /** True when this shop starts its own window at the warehouse, not the till. */
-export function countsFromDispatch(store: string): boolean {
-  return findStore(canonicalStoreName(store))?.clockStart === 'dispatch';
-}
-
-/** True when it starts on the doormat: Apple, Amazon and ASOS all say so. */
-function countsFromDelivery(store: string): boolean {
-  return findStore(canonicalStoreName(store))?.clockStart === 'delivery';
+export function countsFromDispatch(store: string, distance = true): boolean {
+  const p = findStore(canonicalStoreName(store));
+  return !!p && clockFor(p, distance) === 'dispatch';
 }
 
 /**
@@ -145,10 +141,25 @@ function countsFromDelivery(store: string): boolean {
  */
 export function windowStartFor(
   store: string,
-  dates: { dispatchedOn?: string; arrivedOn?: string },
+  dates: { dispatchedOn?: string; arrivedOn?: string; distance?: boolean },
 ): string | undefined {
-  if (countsFromDispatch(store)) return dates.dispatchedOn || undefined;
-  if (countsFromDelivery(store)) return dates.arrivedOn || undefined;
+  return windowStartFrom(findStore(canonicalStoreName(store)), dates);
+}
+
+/**
+ * The same, given the shop's entry rather than its name — pure, so the rule
+ * can be tested against a shop with an online clock before any real one has
+ * one. `distance` defaults to true: every caller before it existed passed an
+ * arrival only for an online order.
+ */
+export function windowStartFrom(
+  policy: Pick<StorePolicy, 'clockStart' | 'onlineClockStart'> | undefined,
+  { dispatchedOn, arrivedOn, distance = true }: { dispatchedOn?: string; arrivedOn?: string; distance?: boolean },
+): string | undefined {
+  if (!policy) return undefined;
+  const clock = clockFor(policy, distance);
+  if (clock === 'dispatch') return dispatchedOn || undefined;
+  if (clock === 'delivery') return arrivedOn || undefined;
   return undefined;
 }
 
@@ -324,6 +335,7 @@ function draftWindowStart(draft: ReceiptDraft): string | undefined {
     // Only when it was actually delivered: a counter purchase has no separate
     // arrival, and the arrival field is not even shown for one.
     arrivedOn: draft.distance ? draft.arrivedOnText.trim() : '',
+    distance: draft.distance,
   });
   if (!start) return undefined;
   // `>` would answer the same through `effectiveWindowStart`, whose `?? purchasedOn`
@@ -362,7 +374,7 @@ export function applyDraft(original: Receipt, valid: ValidDraft): Receipt {
     // comes from the DRAFT now, which the edit screen can set — same value
     // the preview above computed, from the same function, because those two
     // disagreeing is the failure this file keeps having.
-    windowStartsOn: windowStartFor(store, { dispatchedOn: valid.dispatchedOn, arrivedOn: valid.arrivedOn }),
+    windowStartsOn: windowStartFor(store, { dispatchedOn: valid.dispatchedOn, arrivedOn: valid.arrivedOn, distance: valid.distance }),
     windowDays: valid.windowDays,
     distance: valid.distance,
     // Clearing the field clears the date, and so does saying it was bought in

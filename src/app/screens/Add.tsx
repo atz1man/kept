@@ -85,7 +85,9 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
     }
     setParsed(outcome.value);
     setError(false);
-    setItem('');
+    // Pre-filled when the paste says what it was, and still the person's to
+    // change: it names the receipt on every screen after this one.
+    setItem(outcome.value.item ?? '');
     setDistance(true);
     setStoreName('');
     setTotalText('');
@@ -154,6 +156,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
     ? windowStartFor(savedStore, {
         dispatchedOn: parsed.dispatchedOn ?? undefined,
         arrivedOn: distance ? arrivedOn : undefined,
+        distance,
       })
     : undefined;
 

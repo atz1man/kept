@@ -22,7 +22,7 @@
 import { chromium } from 'playwright';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { clockIn, looksBlocked, readSources, readTable, verdict, windowSentences } from './retailer-check-lib.mjs';
+import { channelIn, clockIn, looksBlocked, readSources, readTable, verdict, windowSentences } from './retailer-check-lib.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const EXEC = process.env.CHROMIUM_PATH;
@@ -88,7 +88,10 @@ const md = [
     '',
     ...r.pages.flatMap((p) => [
       `- ${p.finalUrl ?? p.url}${p.title ? ` — “${p.title}”` : ''} — ${p.unreadable ? `**unreadable: ${p.unreadable}**` : `HTTP ${p.status}`}`,
-      ...p.sentences.slice(0, 12).map((s) => `  - > ${s}${clockIn(s) ? ` _(counts from: ${clockIn(s)})_` : ''}`),
+      ...p.sentences.slice(0, 12).map((s) => {
+        const tags = [channelIn(s), clockIn(s) && `counts from ${clockIn(s)}`].filter(Boolean);
+        return `  - > ${s}${tags.length ? ` _(${tags.join(', ')})_` : ''}`;
+      }),
       ...(p.sentences.length > 12 ? [`  - …and ${p.sentences.length - 12} more`] : []),
     ]),
     '',

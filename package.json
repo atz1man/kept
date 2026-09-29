@@ -26,7 +26,8 @@
     "bundle-id": "node scripts/set-bundle-id.mjs",
     "store:screenshots": "node scripts/store-screenshots.mjs",
     "preflight": "node scripts/preflight.mjs",
-    "check:retailers": "node scripts/check-retailers.mjs"
+    "check:retailers": "node scripts/check-retailers.mjs",
+    "feed:add": "node scripts/feed-add.mjs"
   },
   "dependencies": {
     "@capacitor/camera": "^6.1.3",

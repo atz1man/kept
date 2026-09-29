@@ -929,6 +929,22 @@ results['the Add card previews the deadline that is saved'] =
   /^10 Oct\b/.test(previewed);
 
 /*
+ * The item is read from the paste, not typed. The parser read the shop, the
+ * total and the dates and left the one thing that names the receipt blank.
+ * Read off the field, which stays editable.
+ */
+await page.getByRole('button', { name: 'Add a receipt' }).click();
+await page.waitForTimeout(300);
+await page.fill('#paste', 'Argos order confirmation\nOrder placed: 5 Sep 2026\nItem: Kenwood kMix stand mixer\nTotal to pay: £199.99');
+await page.getByRole('button', { name: 'Read it' }).click();
+await page.waitForTimeout(400);
+results['the item is read from the paste, and left editable'] =
+  (await page.inputValue('#add-item').catch(() => '')) === 'Kenwood kMix stand mixer' &&
+  (await page.locator('#add-item').isEditable().catch(() => false));
+await page.getByRole('button', { name: 'Receipts', exact: true }).click();
+await page.waitForTimeout(300);
+
+/*
  * A paste with a shop and no total asks for the total.
  *
  * The card read "Total: Not found" above a live Save, which stored a £0.00

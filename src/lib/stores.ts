@@ -36,6 +36,21 @@ export interface StorePolicy {
    * window would not be.
    */
   clockStart: 'purchase' | 'dispatch' | 'delivery';
+  /**
+   * Where the clock starts for an ONLINE order, when that is not `clockStart`.
+   *
+   * One clock per shop was a simplification the table could not hold: many
+   * shops count an in-store purchase from the till and an online order from
+   * the day it arrives. With one field, those online orders counted from the
+   * order — the safe direction, but a window closed on a day the shop would
+   * still take the thing back.
+   *
+   * Set ONLY from the retailer's own page (`npm run check:retailers`), never
+   * from a search result: setting it can only lengthen a window, which is the
+   * direction this app must never guess in. Until a page says so, it is unset
+   * and the shop runs one clock.
+   */
+  onlineClockStart?: 'purchase' | 'dispatch' | 'delivery';
   gotcha?: string;
   /**
    * True when this shop's name is also an ordinary word a receipt might use
@@ -247,6 +262,15 @@ export function policyFor(store: string, windowDays: number, changedOn?: string)
     return `${store} · ${windowDays}-day return window, from a policy change on ${fmtDateLong(fromISODate(changedOn))}.`;
   }
   return `${store} · ${windowDays}-day return window — as entered, not verified. Check the receipt.`;
+}
+
+/**
+ * The clock a purchase from this shop runs: the online one for an order
+ * placed online, when the shop has one; otherwise the shop's clock. One rule,
+ * read by the Add and Edit screens, the saved receipt and the Detail screen.
+ */
+export function clockFor(policy: Pick<StorePolicy, 'clockStart' | 'onlineClockStart'>, distance: boolean): StorePolicy['clockStart'] {
+  return distance ? (policy.onlineClockStart ?? policy.clockStart) : policy.clockStart;
 }
 
 /**

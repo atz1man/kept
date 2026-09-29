@@ -17,7 +17,7 @@ const today: Tree = readTree();
 function ready(): Tree {
   return {
     capacitorConfig: today.capacitorConfig.replace(/appId: '[^']+'/, "appId: 'uk.co.example.kept'"),
-    privacy: today.privacy.replace(/(export const CONTACT_EMAIL\b[^=]*=\s*)null;/, "$1'privacy@example.co.uk';"),
+    brand: today.brand.replace(/(export const CONTACT_EMAIL\b[^=]*=\s*)null;/, "$1'privacy@example.co.uk';"),
     listing: today.listing.replaceAll('https://REPLACE_ME', 'https://example.co.uk'),
     stores: today.stores.replace(/(export const TABLE_CHECKED_ON\b[^=]*=\s*)null;/, "$1'2026-10-01';"),
     feedSignature: today.feedSignature.replace(/(const CHECKED_IN_KEY\b[^=]*=\s*)null;/, "$1'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE';"),
@@ -51,7 +51,7 @@ describe('npm run preflight', () => {
     const r = ready();
     const put = (k: keyof Tree) => failing(preflight({ ...r, [k]: today[k] }));
     expect(put('capacitorConfig')).toEqual(['the bundle identifier is yours']);
-    expect(put('privacy')).toEqual(['the privacy policy has a contact address']);
+    expect(put('brand')).toEqual(['the privacy policy has a contact address']);
     expect(put('listing')).toEqual(['the listing’s URLs are real']);
     expect(put('stores')).toEqual(['the retailer table has been checked against the shops']);
     expect(put('feedSignature')).toEqual(['policy updates are signed']);

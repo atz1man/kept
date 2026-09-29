@@ -132,6 +132,14 @@ export interface PolicyUpdate {
    * a stored sample cannot lose the label on the next launch.
    */
   demo?: boolean;
+  /**
+   * Where the change was read, and when: the retailer's own page. Required of
+   * every downloaded entry (`readFeed` drops one without it), because a change
+   * that moves a new purchase's deadline must be one someone can check — the
+   * five samples this app shipped were five claims nobody could. `feed:add`
+   * refuses a source on any host the retailer's own pages do not use.
+   */
+  source?: { url: string; checkedOn: string };
 }
 
 export type Screen = 'onboard' | 'home' | 'watch' | 'detail' | 'edit' | 'add' | 'settings' | 'celebrate';

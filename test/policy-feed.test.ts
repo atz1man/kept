@@ -5,6 +5,16 @@ import { toPence } from '../src/lib/money';
 import { addDays, toISODate } from '../src/lib/dates';
 import type { PolicyUpdate, Receipt } from '../src/lib/types';
 
+/**
+ * Every downloaded entry now has to cite where it was read (`readFeed` drops
+ * one without a source). The tests below are about OTHER rules, so their feed
+ * wrappers add a valid citation to any entry that has none — each case still
+ * passes or fails for the reason it states, not for a missing source.
+ */
+const SOURCE = { url: 'https://www.example.co.uk/returns', checkedOn: '2026-08-26' };
+const cited = (updates: unknown[]) =>
+  updates.map((u) => (typeof u === 'object' && u !== null && !('source' in u) ? { ...u, source: SOURCE } : u));
+
 const TODAY = new Date(2026, 7, 28);
 const ago = (n: number) => toISODate(addDays(TODAY, -n));
 
@@ -164,7 +174,7 @@ describe('what a change means for a receipt already held', () => {
 });
 
 describe('reading a downloaded feed', () => {
-  const feed = (updates: unknown[]) => ({ feed: 'kept-policy', updates });
+  const feed = (updates: unknown[]) => ({ feed: 'kept-policy', updates: cited(updates) });
 
   it('refuses anything that is not a kept feed', () => {
     expect(readFeed(null)).toBeNull();
@@ -248,7 +258,7 @@ describe('the news cannot crowd out the receipts', () => {
   const many = (n: number, from = 0) =>
     Array.from({ length: n }, (_, i) => update({ id: `u${from + i}`, changedOn: ago(from + i + 1) }));
 
-  const asFeed = (updates: unknown[]) => ({ feed: 'kept-policy', updates });
+  const asFeed = (updates: unknown[]) => ({ feed: 'kept-policy', updates: cited(updates) });
 
   it('accepts an entry naming exactly as many shops as it is allowed', () => {
     /*
@@ -275,7 +285,7 @@ describe('the news cannot crowd out the receipts', () => {
   });
 
   it('bounds one oversized response at the door', () => {
-    expect(readFeed({ feed: 'kept-policy', updates: many(MAX_UPDATES * 5) })).toHaveLength(MAX_UPDATES);
+    expect(readFeed({ feed: 'kept-policy', updates: cited(many(MAX_UPDATES * 5)) })).toHaveLength(MAX_UPDATES);
   });
 
   it('keeps what it stores inside the size the cap was chosen for', () => {
@@ -290,14 +300,17 @@ describe('the news cannot crowd out the receipts', () => {
      * in a localStorage budget shared with every receipt the person owns fails
      * here, which is the thing that would actually hurt.
      */
-    const kept = readFeed({ feed: 'kept-policy', updates: many(MAX_UPDATES * 5) })!;
+    const kept = readFeed({ feed: 'kept-policy', updates: cited(many(MAX_UPDATES * 5)) })!;
+    // Measured on a full list: an empty one is always small, and this passed
+    // on nothing for a moment when every entry was being dropped upstream.
+    expect(kept).toHaveLength(MAX_UPDATES);
     const bytes = JSON.stringify(kept).length;
     expect(bytes).toBeLessThan(120_000);
   });
 
   it('keeps the newest of an oversized response, not the first it happened to read', () => {
     const oldestFirst = [...many(MAX_UPDATES * 2)].reverse();
-    const kept = readFeed({ feed: 'kept-policy', updates: oldestFirst })!;
+    const kept = readFeed({ feed: 'kept-policy', updates: cited(oldestFirst) })!;
     expect(kept[0].id).toBe('u0');
     expect(kept.every((u) => Number(u.id.slice(1)) < MAX_UPDATES)).toBe(true);
   });
@@ -502,7 +515,7 @@ describe('how much of anything one downloaded entry may be', () => {
     feed: 'kept-policy',
     updates: [{
       id: 'u1', store: 'Currys', changedOn: '2026-08-01',
-      text: 'Currys changed something.', affectsStores: ['Currys'], affectNote: '', ...over,
+      text: 'Currys changed something.', affectsStores: ['Currys'], affectNote: '', source: SOURCE, ...over,
     }],
   });
 
@@ -546,5 +559,30 @@ describe('how much of anything one downloaded entry may be', () => {
     const kept = readFeed(doc({ affectNote: 'x'.repeat(2001) }));
     expect(kept).toHaveLength(1);
     expect(kept?.[0].affectNote).toBe('');
+  });
+});
+
+describe('where a downloaded change came from', () => {
+  const entry = { id: 'u1', store: 'Currys', changedOn: '2026-08-01', text: 'x', affectsStores: ['Currys'], newWindowDays: 30 };
+  const one = (u: unknown) => readFeed({ feed: 'kept-policy', updates: [u] })!;
+
+  it('is required: a change nobody can check is not published', () => {
+    // A downloaded change can move a new purchase's deadline. The samples this
+    // app shipped as "verified" news were five claims nobody could check.
+    expect(one(entry)).toEqual([]);
+  });
+
+  it('must be an https page with the day it was read', () => {
+    expect(one({ ...entry, source: { url: 'http://www.currys.co.uk/returns', checkedOn: '2026-08-01' } })).toEqual([]);
+    expect(one({ ...entry, source: { url: 'not a url', checkedOn: '2026-08-01' } })).toEqual([]);
+    expect(one({ ...entry, source: { url: 'https://www.currys.co.uk/returns', checkedOn: 'yesterday' } })).toEqual([]);
+    expect(one({ ...entry, source: { url: 'https://www.currys.co.uk/returns', checkedOn: '2026-08-01' } })[0].source)
+      .toEqual({ url: 'https://www.currys.co.uk/returns', checkedOn: '2026-08-01' });
+  });
+
+  it('is kept through the device store, and not demanded of the samples there', () => {
+    const withSource = { ...entry, source: { url: 'https://www.currys.co.uk/returns', checkedOn: '2026-08-01' } };
+    expect(readFeed({ feed: 'kept-policy', updates: [withSource] }, 'device')![0].source?.url).toBe('https://www.currys.co.uk/returns');
+    expect(readFeed({ feed: 'kept-policy', updates: [{ ...entry, demo: true }] }, 'device')).toHaveLength(1);
   });
 });

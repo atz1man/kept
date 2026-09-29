@@ -1,5 +1,6 @@
 import { color } from '../tokens';
 import { Fine, ProsePage, Section } from '../pages/Prose';
+import { CONTACT_EMAIL } from '../lib/brand';
 
 /**
  * The privacy policy.
@@ -15,12 +16,6 @@ import { Fine, ProsePage, Section } from '../pages/Prose';
  * has been renamed is telling someone where to look for nothing.
  */
 
-/**
- * Where privacy questions go. Deliberately unset: it has to be an address
- * someone reads, and that is not a thing to guess. While it is null the page
- * says so in plain view rather than printing an address nobody answers.
- */
-export const CONTACT_EMAIL: string | null = null;
 
 /** Moves whenever what this page says moves. */
 export const UPDATED_ON = '24 September 2026';

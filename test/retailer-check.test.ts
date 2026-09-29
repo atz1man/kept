@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { STORE_POLICIES } from '../src/lib/stores';
 // @ts-expect-error - a small JS helper, run as `npm run check:retailers`
-import { clockIn, daysIn, looksBlocked, readSources, readTable, verdict, windowSentences } from '../scripts/retailer-check-lib.mjs';
+import { channelIn, clockIn, daysIn, looksBlocked, readSources, readTable, verdict, windowSentences } from '../scripts/retailer-check-lib.mjs';
 
 /**
  * `npm run check:retailers` reads each retailer's own returns page (APN-16).
@@ -83,5 +83,15 @@ describe('what the report calls a shop', () => {
     expect(looksBlocked(403, '')).toBe(true);
     expect(looksBlocked(200, 'Access Denied — you don’t have permission')).toBe(true);
     expect(looksBlocked(200, 'Returns policy. You have 30 days.')).toBe(false);
+  });
+});
+
+describe('which purchase a quoted sentence is about', () => {
+  it('tells an online order from a purchase in store', () => {
+    // The evidence a separate online clock is set from, and only from.
+    expect(channelIn('Online orders can be returned within 30 days of delivery.')).toBe('online');
+    expect(channelIn('Items bought in store can be returned within 14 days.')).toBe('in store');
+    expect(channelIn('Return anything within 30 days.')).toBeNull();
+    expect(channelIn('Return online or in store within 30 days.')).toBeNull();
   });
 });

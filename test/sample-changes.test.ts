@@ -63,7 +63,8 @@ describe('a downloaded entry', () => {
   it('cannot call itself a sample', () => {
     // "Only a sample" exempts an entry from being taken seriously: it would
     // escape `windowInForceFor` and be dropped by the next real feed.
-    const out = readFeed({ feed: 'kept-policy', updates: [{ ...real(), demo: true }] })!;
+    const source = { url: 'https://www.zara.com/uk/en/help', checkedOn: '2026-08-27' };
+    const out = readFeed({ feed: 'kept-policy', updates: [{ ...real(), demo: true, source }] })!;
     expect(out).toHaveLength(1);
     expect(out[0].demo).toBeUndefined();
   });

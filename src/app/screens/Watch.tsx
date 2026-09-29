@@ -1,5 +1,5 @@
 import { color, radius } from '../../tokens';
-import { fromISODate, relativeAgo } from '../../lib/dates';
+import { fmtDateLong, fromISODate, relativeAgo } from '../../lib/dates';
 import { assess } from '../../lib/policy-feed';
 import type { PolicyUpdate, Receipt } from '../../lib/types';
 
@@ -17,6 +17,15 @@ interface Props {
  * item is a headline for one person and an alarm for another, and only the
  * device knows which.
  */
+/** "currys.co.uk" from the full address — the part a person recognises. */
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\d?\./, '');
+  } catch {
+    return url;
+  }
+}
+
 export function Watch({ updates, receipts, today, watching }: Props) {
   const assessed = assess(updates, receipts, today);
   const onlySamples = updates.length > 0 && updates.every((u) => u.demo);
@@ -65,6 +74,19 @@ export function Watch({ updates, receipts, today, watching }: Props) {
                 </span>
               </div>
               <div style={{ fontSize: 13.5, color: color.body, lineHeight: 1.55, marginTop: 8 }}>{u.text}</div>
+              {/* Where it was read, so it can be checked: every downloaded
+                  change must carry this, and a claim about a named shop that
+                  cannot be traced to the shop's own page is not published. */}
+              {u.source && (
+                <a
+                  href={u.source.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, fontSize: 12, fontWeight: 600, color: color.ink }}
+                >
+                  Read on {hostOf(u.source.url)}, {fmtDateLong(fromISODate(u.source.checkedOn))}
+                </a>
+              )}
               {affectsYou && (
                 <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1.5px dashed ${color.border}` }}>
                   <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.8px', color: color.amber }}>AFFECTS YOUR RECEIPTS</div>

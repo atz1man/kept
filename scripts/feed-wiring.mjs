@@ -99,6 +99,9 @@ const FEED = `${JSON.stringify({
     id: PROBE, store: 'Zara', changedOn: '2026-08-29',
     text: 'Probe entry, reachable only through the network.',
     affectsStores: ['Zara'],
+    // A downloaded change must cite where it was read, or the app drops it —
+    // and a probe dropped for that reason would read as the gate refusing it.
+    source: { url: 'https://www.zara.com/uk/en/help-center/ReturnPolicy', checkedOn: '2026-08-29' },
   }],
 }, null, 2)}\n`;
 const SIGNATURE = b64(await wc.subtle.sign(
