@@ -1299,20 +1299,32 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
   results['a receipt half in shadow is read too'] =
     shadeFound && /Boots/.test(shadeCard) && /£42\.97/.test(shadeCard) && /21 Sep/.test(shadeCard);
   /*
-   * Offline, a browser cannot scan: the worker and engine are fetched from
-   * this site per scan and do not go through the service worker. Measured,
-   * with the reader already used once. The failure used to blame the photo
-   * ("flat, straight and in good light"), sending someone to retake a
-   * picture that could never have worked.
+   * Offline, a scan either works or says the connection is why it did not.
+   *
+   * Whether it works depends on the browser. The reader's worker fetches its
+   * engine itself; where the browser routes a dedicated worker's requests
+   * through the service worker they are cached after the first scan, and
+   * where it does not they are fetched every time. One Chromium build here
+   * bypassed the service worker and could not scan offline; CI's newer one did
+   * not show the connection message within a minute, so either it scanned or
+   * it hung, and the outcome is now reported to tell which. What must hold in
+   * any browser is the message. It used to blame the photo ("flat, straight and in good
+   * light"), sending someone offline to retake a picture that could never
+   * have worked.
    */
   await scanCtx.setOffline(true);
   await scanPage.goto(`${ORIGIN}/app/`).catch(() => {});
   await scanPage.getByRole('button', { name: 'Add a receipt' }).click().catch(() => {});
   await scanPage.waitForTimeout(300);
   await scanPage.setInputFiles('#add-photo', { name: 'offline.png', mimeType: 'image/png', buffer: photo }).catch(() => {});
-  const offlineSaid = await scanPage.getByText(/needs a connection/).waitFor({ timeout: 60_000 }).then(() => true).catch(() => false);
-  results['an offline scan blames the connection, not the photo'] =
-    offlineSaid && !(await scanPage.getByText(/flat, straight and in good light/).isVisible().catch(() => false));
+  const offlineOutcome = await Promise.race([
+    scanPage.getByText('READ FROM YOUR PHOTO').waitFor({ timeout: 90_000 }).then(() => 'read'),
+    scanPage.getByText(/needs a connection/).waitFor({ timeout: 90_000 }).then(() => 'connection'),
+    scanPage.getByText(/flat, straight and in good light/).waitFor({ timeout: 90_000 }).then(() => 'photo'),
+  ]).catch(() => 'nothing');
+  results['an offline scan works, or blames the connection, never the photo'] =
+    offlineOutcome === 'read' || offlineOutcome === 'connection';
+  if (!results['an offline scan works, or blames the connection, never the photo']) problems.push(`offline scan: ${offlineOutcome}`);
   await scanCtx.setOffline(false);
   if (!results['a receipt half in shadow is read too']) {
     problems.push(`shaded scan read: ${shadeFound ? shadeCard.slice(0, 300).replace(/\n/g, ' | ') : 'no card'}`);

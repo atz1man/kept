@@ -138,12 +138,13 @@ export async function readBestOf(read: (how: Thresholding) => Promise<string>, t
  * Why a scan that never produced any text failed, as far as the app can tell.
  *
  * The one message there was blamed the photo ("flat, straight and in good
- * light"). Measured in a browser: a scan made offline fails too, and not
- * because of the photo. The worker and the engine are fetched from this site
- * when a scan starts, and those fetches do not go through the service worker,
- * so nothing is kept for later. Someone offline was told to take the same
- * picture again, and it could never have worked. The iPhone app has the
- * reader inside it, so there, offline is never the reason.
+ * light"). Measured in a browser: a scan made offline can fail, and not
+ * because of the photo. The worker fetches its engine from this site when a
+ * scan starts, and in a browser that does not route a dedicated worker's
+ * requests through the service worker, nothing is kept for later. Someone
+ * offline was told to take the same picture again, and it could never have
+ * worked. The iPhone app has the reader inside it, so there, offline is never
+ * the reason.
  */
 export function scanFailure(online: boolean, native: boolean): 'offline' | 'unreadable' {
   return !native && !online ? 'offline' : 'unreadable';
