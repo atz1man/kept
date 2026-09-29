@@ -57,11 +57,15 @@ describe('sharing a win', () => {
   // "Copied — paste it anywhere ✓" and the person found out by pasting
   // nothing into a message to a friend.
   it('says it copied when it did', () => {
-    expect(reducer(base(), { type: 'shared', copied: true }, TODAY).shared).toBe('copied');
+    expect(reducer(base(), { type: 'shared', outcome: 'copied' }, TODAY).shared).toBe('copied');
   });
 
   it('says it did not when it did not', () => {
-    expect(reducer(base(), { type: 'shared', copied: false }, TODAY).shared).toBe('failed');
+    expect(reducer(base(), { type: 'shared', outcome: 'failed' }, TODAY).shared).toBe('failed');
+  });
+
+  it('says it shared when the share sheet finished', () => {
+    expect(reducer(base(), { type: 'shared', outcome: 'shared' }, TODAY).shared).toBe('shared');
   });
 
   it('starts having said nothing', () => {

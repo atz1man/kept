@@ -48,7 +48,7 @@ export interface AppState extends KeptState {
    * failed" and "it has not been tried" are different things to say — and the
    * button said "Copied ✓" for both.
    */
-  shared: 'no' | 'copied' | 'failed';
+  shared: 'no' | 'shared' | 'copied' | 'failed';
   /**
    * The tier someone tapped, waiting to be told what tapping it actually does.
    *
@@ -81,7 +81,7 @@ export type Action =
   | { type: 'alerted'; keys: string[] }
   | { type: 'feed'; updates: PolicyUpdate[] }
   | { type: 'settings'; patch: Partial<Settings> }
-  | { type: 'shared'; copied: boolean }
+  | { type: 'shared'; outcome: 'shared' | 'copied' | 'failed' }
   | { type: 'upgrade-ask'; period: Period }
   | { type: 'upgrade-cancel' };
 
@@ -300,7 +300,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       // than lost.
       return { ...state, alertsSent: [...new Set([...state.alertsSent, ...action.keys])] };
     case 'shared':
-      return { ...state, shared: action.copied ? 'copied' : 'failed' };
+      return { ...state, shared: action.outcome };
   }
 }
 

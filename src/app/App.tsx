@@ -231,6 +231,33 @@ export function App() {
 
   const shareWin = async () => {
     const line = winLine;
+    const win = state.celebrating;
+    /*
+     * The phone's own share sheet first, with the card as a picture: what
+     * people send each other is an image, and the card is designed to be one
+     * (win-card.ts). Where there is no share sheet, or it refuses, the
+     * sentence goes on the clipboard as before. A cancelled sheet is the
+     * person changing their mind, not a failure, so it says nothing.
+     */
+    if (typeof navigator.share === 'function' && win) {
+      try {
+        const { renderWinCard } = await import('./win-card');
+        const png = await renderWinCard({
+          amount: money(win.amount),
+          store: win.store,
+          inTime: win.inTime,
+          recovered: money(recovered),
+        }).catch(() => null);
+        const file = png ? new File([png], 'kept-money-back.png', { type: 'image/png' }) : null;
+        const withPicture = file && navigator.canShare?.({ files: [file] });
+        await navigator.share(withPicture ? { files: [file], text: line } : { text: line });
+        dispatch({ type: 'shared', outcome: 'shared' });
+        return;
+      } catch (e) {
+        if ((e as { name?: string })?.name === 'AbortError') return;
+        // Refused for another reason: the clipboard is still there.
+      }
+    }
     /*
      * Say which of the two things happened.
      *
@@ -251,7 +278,7 @@ export function App() {
     } catch {
       // Nowhere to report it but the screen, which is what the caller does.
     }
-    dispatch({ type: 'shared', copied });
+    dispatch({ type: 'shared', outcome: copied ? 'copied' : 'failed' });
   };
 
   return (
