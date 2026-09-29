@@ -32,6 +32,10 @@ Ask these in this order. The first two are the product.
    fix: see POLICY-WATCH.md.)
 3. **Which order email did the paste get wrong?** Forward it, with personal
    details removed — it goes into `test/fixtures/order-emails.ts`.
+   And **which paper receipt did the scan misread?** The shop, the total or
+   the date — a photo of the receipt helps, with the card number covered. The
+   scan has only been tested on rendered images; real thermal paper is the
+   open question.
 4. When did the keyboard cover what you were typing? (APN-23)
 5. What did you expect to find that was not there?
 6. Would you keep it on your phone after the first return? Why not?

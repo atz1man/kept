@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -68,12 +68,25 @@ describe('the iOS usage descriptions', () => {
      * source to Photos or Prompt and both sentences become false, in a file
      * nobody would think to reopen. So the claim is held to the code.
      */
-    const source = readFileSync(
-      join(__dirname, '..', 'src', 'app', 'components', 'ReceiptPhoto.tsx'), 'utf8',
-    );
-    expect(source).toContain('source: CameraSource.Camera');
-    expect(source).not.toMatch(/CameraSource\.(Photos|Prompt)/);
-    expect(source).not.toMatch(/saveToGallery:\s*true/);
+    // Every file that calls the camera — a kept photo and a scan both do —
+    // found by walking the source, so a third caller is covered the day it is
+    // written.
+    const callers = sourceFiles(join(__dirname, '..', 'src'))
+      .map((f) => readFileSync(f, 'utf8'))
+      .filter((src) => /\bgetPhoto\(/.test(src));
+    expect(callers.length).toBeGreaterThanOrEqual(2);
+    for (const source of callers) {
+      expect(source).toContain('source: CameraSource.Camera');
+      expect(source).not.toMatch(/CameraSource\.(Photos|Prompt)/);
+      expect(source).not.toMatch(/saveToGallery:\s*true/);
+    }
     expect(plistValue('NSPhotoLibraryUsageDescription')!.toLowerCase()).toContain('never');
   });
 });
+
+function sourceFiles(dir: string): string[] {
+  return readdirSync(dir).flatMap((name) => {
+    const p = join(dir, name);
+    return statSync(p).isDirectory() ? sourceFiles(p) : /\.tsx?$/.test(name) ? [p] : [];
+  });
+}

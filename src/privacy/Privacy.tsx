@@ -18,7 +18,7 @@ import { CONTACT_EMAIL } from '../lib/brand';
 
 
 /** Moves whenever what this page says moves. */
-export const UPDATED_ON = '24 September 2026';
+export const UPDATED_ON = '29 September 2026';
 
 export function Privacy() {
   return (
@@ -52,8 +52,9 @@ export function Privacy() {
         </Section>
 
         <Section title="Camera and photos">
-          kept uses the camera only when you choose to photograph a receipt. The picture is stored with that receipt,
-          inside the app, and nowhere else.
+          kept uses the camera only when you choose to photograph a receipt. A picture you keep with a receipt is
+          stored with it, inside the app, and nowhere else. A picture taken to scan a receipt is read on this phone —
+          the text is worked out here, not by a server — and then discarded. Neither is ever uploaded.
         </Section>
 
         <Section title="Backups">
