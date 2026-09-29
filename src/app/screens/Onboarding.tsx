@@ -6,10 +6,11 @@ import { Logo, Wordmark } from '../components/Icons';
  * The first thing anyone reads, so it had better be true — and two of these
  * three were not.
  *
- * "or snap the paper slip": scanning is not built. The add screen is honest
- * about it (a visibly disabled button with a SOON chip) and so is the landing
- * page ("scanning a paper receipt lands in a later release"); this was the one
- * surface promising it outright, on the first screen of a new install.
+ * "or snap the paper slip" was here before scanning was built, while the add
+ * screen showed a disabled button with a SOON chip. It came out, and went back
+ * in once the camera really did read a till receipt, on the phone. Now it is
+ * held to the code by `first-impressions.test.ts`: it names the camera only
+ * while the app can read a photo.
  *
  * "You get pinged before either runs out": alerts are computed when kept is
  * opened or brought back to the foreground. A web app cannot wake itself —
@@ -18,7 +19,7 @@ import { Logo, Wordmark } from '../components/Icons';
 const STEPS = [
   {
     title: 'Every receipt, remembered.',
-    body: 'Paste an order email and Kept reads the store, the total and the date — then starts the clock for you.',
+    body: 'Paste an order email or photograph a till receipt, and Kept reads the store, the total and the date — then starts the clock for you.',
   },
   {
     title: 'Two clocks. We watch both.',
