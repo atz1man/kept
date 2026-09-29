@@ -325,6 +325,7 @@ src/lib/          the decision logic — pure, tested, no React
   money.ts        integer pence
   receipt-scan.ts a till receipt, as the camera reads it, made readable by the parser
   receipts.ts     days left, deadlines, bucketing, the 30-day timeline
+  returns-pages.ts each shop's own returns page, read from store/retailer-sources.json
   urgency.ts      the red / yellow / neutral ladder
   alerts.ts       which deadlines are worth interrupting someone about
   schedule.ts     the same decisions, lodged with iOS days in advance
