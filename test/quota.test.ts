@@ -24,6 +24,13 @@ describe('what the free tier counts', () => {
     expect(countedAgainstQuota([...active(3), ...returned(20)])).toBe(3);
   });
 
+  it('does not count something you decided to keep', () => {
+    // The limit screen says keeping one frees a slot; this is what makes that
+    // true. A kept item has stopped being tracked for a return.
+    const kept = Array.from({ length: 20 }, (_, i) => receipt(`k${i}`, 'kept'));
+    expect(countedAgainstQuota([...active(3), ...kept])).toBe(3);
+  });
+
   it('does not count the demo set, which nobody added', () => {
     expect(countedAgainstQuota(demo(5))).toBe(0);
     expect(countedAgainstQuota([...demo(5), ...active(2)])).toBe(2);

@@ -407,6 +407,89 @@ for (const cancel of [false, true]) {
   await sheetCtx.close();
 }
 
+/*
+ * The backlog, settled in one tap.
+ *
+ * A library left alone fills with windows that shut months ago: red under
+ * WINDOW CLOSED, the oldest on the hero card in place of the next deadline
+ * that can still be met, and clearing them meant opening every one. One tap
+ * keeps them all, the hero moves on to a window that is still open, and the
+ * tap can be undone. A settled receipt's own screen stops counting down.
+ */
+{
+  const backCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const bp = await backCtx.newPage();
+  await bp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  const shutStores = await bp.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('kept.v1'));
+    s.onboardingSeen = true;
+    const shut = s.receipts.slice(0, 2);
+    for (const r of shut) { r.purchasedOn = '2025-01-06'; delete r.windowStartsOn; }
+    localStorage.setItem('kept.v1', JSON.stringify(s));
+    return shut.map((r) => r.store);
+  });
+  await bp.reload({ waitUntil: 'networkidle' });
+  await bp.waitForTimeout(500);
+  const heroBefore = await bp.locator('main').innerText();
+  const keepAll = bp.getByRole('button', { name: 'I’m keeping all 2' });
+  if ((await keepAll.count()) === 0) {
+    results['closed windows can be kept in one tap, and the hero moves on'] = false;
+    results['keeping the closed windows can be undone'] = false;
+    results['a settled receipt stops counting down'] = false;
+    problems.push(`backlog: no “I’m keeping all 2” under WINDOW CLOSED (${shutStores.join(', ')})`);
+  } else {
+    await keepAll.click();
+    await bp.waitForTimeout(400);
+    const after = await bp.evaluate(() => {
+      const heads = [...document.querySelectorAll('h2')];
+      const under = (label) => heads.find((x) => x.textContent.includes(label))?.nextElementSibling?.textContent ?? '';
+      return {
+        text: document.querySelector('main').innerText,
+        keeping: under('KEEPING IT'),
+        closedHead: heads.some((h) => h.textContent.includes('WINDOW CLOSED')),
+        bar: [...document.querySelectorAll('[role="status"]')].map((x) => x.textContent).join(' | '),
+      };
+    });
+    results['closed windows can be kept in one tap, and the hero moves on'] =
+      /WINDOW ALREADY CLOSED/.test(heroBefore) && !after.closedHead &&
+      !/WINDOW ALREADY CLOSED/.test(after.text) && /NEXT WINDOW TO CLOSE/.test(after.text) &&
+      shutStores.every((store) => after.keeping.includes(store)) && /Moved 2 to Keeping it/.test(after.bar);
+    if (!results['closed windows can be kept in one tap, and the hero moves on']) problems.push(`backlog kept: ${JSON.stringify({ closedHead: after.closedHead, keeping: after.keeping.slice(0, 80), bar: after.bar })}`);
+
+    // Its own screen, while kept: no countdown, no "RETURN BY".
+    await bp.getByRole('button', { name: new RegExp(`^${shutStores[0]}, .*keeping it$`) }).click();
+    await bp.waitForTimeout(400);
+    const detail = await bp.locator('main').innerText();
+    results['a settled receipt stops counting down'] =
+      /THE WINDOW RAN TO/.test(detail) && !/RETURN BY|WINDOW CLOSED|days left/.test(detail) && /Keeping it · since/.test(detail);
+    if (!results['a settled receipt stops counting down']) problems.push(`settled detail: ${detail.slice(0, 200)}`);
+    await bp.getByRole('button', { name: 'Back', exact: true }).click();
+    await bp.waitForTimeout(300);
+
+    // Navigating away dismissed that offer, so keep again and take it back.
+    const stored = () => bp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.slice(0, 2).map((r) => r.status));
+    const beforeUndo = await stored();
+    for (const store of shutStores) {
+      await bp.getByRole('button', { name: new RegExp(`^${store}, .*keeping it$`) }).click();
+      await bp.waitForTimeout(300);
+      await bp.getByRole('button', { name: 'Not keeping it after all' }).click();
+      await bp.waitForTimeout(300);
+      await bp.getByRole('button', { name: 'Back', exact: true }).click();
+      await bp.waitForTimeout(300);
+    }
+    await bp.getByRole('button', { name: 'I’m keeping all 2' }).click();
+    await bp.waitForTimeout(300);
+    await bp.getByRole('button', { name: 'Undo' }).click();
+    await bp.waitForTimeout(300);
+    const undone = await stored();
+    const closedBack = await bp.getByRole('heading', { name: /WINDOW CLOSED/ }).count();
+    results['keeping the closed windows can be undone'] =
+      beforeUndo.every((st) => st === 'kept') && undone.every((st) => st === 'active') && closedBack === 1;
+    if (!results['keeping the closed windows can be undone']) problems.push(`backlog undo: ${JSON.stringify({ beforeUndo, undone, closedBack })}`);
+  }
+  await backCtx.close();
+}
+
 // The tab bar floats over every screen; its buttons must stay clickable.
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(400);

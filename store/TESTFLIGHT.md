@@ -19,7 +19,8 @@ Not people who will be kind about it.
    native share extension, built on a Mac. The web app's share target works
    in Chrome on Android and desktop.)
 3. Turn on Deadline alerts in Settings and leave the app alone.
-4. Return one thing, or mark one returned, and say what the app said.
+4. Return one thing, or mark one returned, and mark one you are keeping.
+   Say what the app said each time.
 
 ## What to ask them afterwards
 

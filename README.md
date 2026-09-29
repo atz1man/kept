@@ -2177,6 +2177,31 @@ surviving; deleted, rebuilt and run against `smoke`, it fails and is named
 exactly. So the seam is thin rather than open — which is worth knowing before
 spending minutes a mutation on it.
 
+## How a receipt ends
+
+Three ways, and the third was missing for a long time. *Got my money back*
+files it under MONEY BACK and counts the refund. Delete removes it, with an
+undo. And *I'm keeping it*, the commonest end to any purchase, files it under
+KEEPING IT: no more return reminders, no "Start your return" link, out of the
+free-tier count, and one tap from its warranty, its photo and the
+faulty-goods rights that outlast the shop's window by years. Before it
+existed a kept coat went on raising reminders, then sat in red under WINDOW
+CLOSED for good, and the only way to quiet it was to delete the record the
+rights depend on.
+
+A library left alone still fills with windows that shut months ago, the
+oldest of them on the hero card in place of the next deadline that can be
+met. So WINDOW CLOSED carries *I'm keeping all N*: one tap settles every
+receipt in the section, the hero moves on to a window that is still open,
+and an undo bar offers it back for eight seconds. The reducer decides for
+itself which of the ids it was handed are still active and closed, so a tap
+cannot settle an open window or a refund made in another tab. A settled
+receipt's own screen stops counting down: the ring closes in a quiet ink and
+the deadline is stated as history, where it used to go on saying "RETURN BY"
+in red above a panel saying the reminders had stopped. Both settled lists
+show the most recent first (`latestFirst` in `src/lib/receipts.ts`). `smoke`
+drives all of it, and against the code before it names each missing piece.
+
 ## Receipt scanning
 
 "Scan a paper receipt" on the Add screen reads a photographed till receipt on

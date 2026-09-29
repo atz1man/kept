@@ -328,6 +328,7 @@ export function App() {
           changedIds={changedIds}
           onOpen={(id) => dispatch({ type: 'open', id })}
           onReturn={(id) => dispatch({ type: 'return', id })}
+          onKeepClosed={(ids) => dispatch({ type: 'keep-closed', ids })}
           onAdd={() => dispatch({ type: 'go', screen: 'add' })}
           onWatch={() => dispatch({ type: 'go', screen: 'watch' })}
         />
@@ -403,6 +404,15 @@ export function App() {
       )}
 
       </main>
+
+      {state.justKept && (
+        <UndoBar
+          key={state.justKept.join()}
+          label={state.justKept.length === 1 ? 'Moved to Keeping it' : `Moved ${state.justKept.length} to Keeping it`}
+          onUndo={() => dispatch({ type: 'undo-keep' })}
+          onDismiss={() => dispatch({ type: 'dismiss-undo' })}
+        />
+      )}
 
       {state.justDeleted && (
         <UndoBar

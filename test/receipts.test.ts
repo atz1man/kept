@@ -96,10 +96,22 @@ describe('bucketing', () => {
     const kept = receipt({ id: 'kept', purchasedOn: ago(40), windowDays: 14, status: 'kept', keptOn: ago(20) });
     const keptSoon = receipt({ id: 'kept-soon', purchasedOn: ago(12), windowDays: 14, status: 'kept', keptOn: ago(1) });
     const b = bucket([...set, kept, keptSoon], TODAY, 7);
-    expect(b.kept.map((r) => r.id)).toEqual(['kept', 'kept-soon']);
+    expect(b.kept.map((r) => r.id).sort()).toEqual(['kept', 'kept-soon']);
     expect([...b.closed, ...b.urgent, ...b.later, ...b.returned].map((r) => r.id)).not.toContain('kept');
     expect([...b.closed, ...b.urgent, ...b.later].map((r) => r.id)).not.toContain('kept-soon');
     expect(stillReturnablePence(b, [...set, kept, keptSoon])).toBe(stillReturnablePence(bucket(set, TODAY, 7), set));
+  });
+
+  it('lists what was settled most recently first', () => {
+    // Added in one order, settled in another: the list follows the settling.
+    const r1 = receipt({ id: 'r-old', status: 'returned', returnedOn: ago(30) });
+    const r2 = receipt({ id: 'r-new', status: 'returned', returnedOn: ago(2) });
+    const r3 = receipt({ id: 'r-undated', status: 'returned' });
+    const k1 = receipt({ id: 'k-old', status: 'kept', keptOn: ago(40) });
+    const k2 = receipt({ id: 'k-new', status: 'kept', keptOn: ago(1) });
+    const b = bucket([r3, r1, k1, r2, k2], TODAY, 7);
+    expect(b.returned.map((r) => r.id)).toEqual(['r-new', 'r-old', 'r-undated']);
+    expect(b.kept.map((r) => r.id)).toEqual(['k-new', 'k-old']);
   });
 
   it('keeps an expired receipt in view instead of hiding it', () => {
