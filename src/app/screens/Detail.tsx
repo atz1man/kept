@@ -5,7 +5,7 @@ import { legalRights } from '../../lib/legal';
 import { money } from '../../lib/money';
 import { derive } from '../../lib/receipts';
 import type { Receipt } from '../../lib/types';
-import { findStore } from '../../lib/stores';
+import { clockFor, findStore } from '../../lib/stores';
 import { urgency } from '../../lib/urgency';
 import { ChevronLeft, Warning } from '../components/Icons';
 import { Pressable } from '../components/Pressable';
@@ -53,7 +53,9 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
   // receipt records, and unlike the WINDOW it is not a term that changes under
   // a purchase — a shop counts from the till, the warehouse or the doormat,
   // and it does not switch.
-  const clockStart = findStore(receipt.store)?.clockStart ?? 'purchase';
+  // The online clock for an online order, where the shop has one (`clockFor`).
+  const shop = findStore(receipt.store);
+  const clockStart = shop ? clockFor(shop, receipt.distance) : 'purchase';
 
   // Rendered as a pair: a year on the deadline and none on the purchase is
   // what let "RETURN BY 15 Feb 2027" sit above "bought 15 Feb". See

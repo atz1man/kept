@@ -65,6 +65,20 @@ export function clockIn(sentence) {
   return null;
 }
 
+/**
+ * Which kind of purchase a sentence is about, if it says: an online order, a
+ * purchase in store, or neither. The table can hold a separate clock for
+ * online orders (`onlineClockStart`), and this is the evidence it is set from.
+ */
+export function channelIn(sentence) {
+  const s = sentence.toLowerCase();
+  const online = /\bonline\b|\bordered\b.*\b(?:website|app)\b|\bhome delivery\b|\bdelivered to you\b|\bby post\b/.test(s);
+  const store = /\bin[- ]store\b|\bin (?:one of )?our stores?\b|\bat (?:the|a) (?:till|store)\b|\bbought in\b/.test(s);
+  if (online && !store) return 'online';
+  if (store && !online) return 'in store';
+  return null;
+}
+
 /** A page that answered with a wall rather than the terms. */
 export function looksBlocked(status, text) {
   if (status === 403 || status === 429 || status === 503) return true;

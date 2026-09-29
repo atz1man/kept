@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_WINDOW_DAYS, applyDraft, arrivalProblem, draftFrom, effectiveWindowStart, validateDraft, type ReceiptDraft } from '../src/lib/draft';
+import { MAX_WINDOW_DAYS, applyDraft, arrivalProblem, draftFrom, effectiveWindowStart, validateDraft, windowStartFrom, type ReceiptDraft } from '../src/lib/draft';
+import { clockFor } from '../src/lib/stores';
 import { toISODate } from '../src/lib/dates';
 import { derive } from '../src/lib/receipts';
 import { money, toPence } from '../src/lib/money';
@@ -753,5 +754,34 @@ describe('a warranty that is only words', () => {
     const out = validateDraft({ ...draftFrom(timed), warrantyMonthsText: '' }, TODAY);
     if (!out.ok) throw new Error('expected valid');
     expect(applyDraft(timed, out.value).warranty).toBeUndefined();
+  });
+});
+
+/**
+ * A shop that counts an online order from delivery and a counter purchase
+ * from the till. No shop in the table has such a clock yet — it is set only
+ * from the retailer's own page — so the rule is held here on a shop made up
+ * for the purpose, before the first real one needs it.
+ */
+describe('a shop with a clock for online orders', () => {
+  const split = { clockStart: 'purchase' as const, onlineClockStart: 'delivery' as const };
+
+  it('counts an online order from the day it arrived', () => {
+    expect(windowStartFrom(split, { arrivedOn: '2026-08-20', distance: true })).toBe('2026-08-20');
+  });
+
+  it('counts a counter purchase from the till, whatever the online clock', () => {
+    expect(windowStartFrom(split, { arrivedOn: '2026-08-20', distance: false })).toBeUndefined();
+  });
+
+  it('runs the one clock for a shop that has only one', () => {
+    const zara = { clockStart: 'dispatch' as const };
+    expect(windowStartFrom(zara, { dispatchedOn: '2026-08-15', distance: true })).toBe('2026-08-15');
+    expect(windowStartFrom(zara, { dispatchedOn: '2026-08-15', distance: false })).toBe('2026-08-15');
+    expect(clockFor(zara, false)).toBe('dispatch');
+  });
+
+  it('knows nothing about a shop it does not know', () => {
+    expect(windowStartFrom(undefined, { arrivedOn: '2026-08-20' })).toBeUndefined();
   });
 });

@@ -198,7 +198,7 @@ export function Edit({ receipt, today, onSave, onCancel }: Props) {
             of the twenty does. The detail screen otherwise tells the person
             that "this receipt does not say when that was" and offers no way
             to say it, which is an instruction to do something impossible. */}
-        {countsFromDispatch(draft.store) && (
+        {countsFromDispatch(draft.store, draft.distance) && (
           <Field
             id="e-dispatched"
             label="Dispatched on"

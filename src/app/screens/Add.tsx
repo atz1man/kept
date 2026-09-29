@@ -156,6 +156,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
     ? windowStartFor(savedStore, {
         dispatchedOn: parsed.dispatchedOn ?? undefined,
         arrivedOn: distance ? arrivedOn : undefined,
+        distance,
       })
     : undefined;
 
