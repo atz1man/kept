@@ -1,5 +1,5 @@
 import { readReceipt } from './backup';
-import { chooseSource, isNative, readMirror, writeMirror } from './mirror';
+import { chooseSource, holdMirrorWrites, isNative, mirrorWritesHeld, readMirrorWithin, releaseMirrorWrites, writeMirror } from './mirror';
 import { erasePhotos } from './photos';
 import { readFeed } from './policy-feed';
 import { seedReceipts, seedUpdates } from './seed';
@@ -195,7 +195,7 @@ export function hydrate(raw: unknown, today: Date): KeptState {
  * they were — the rescue is invisible to the rest of the app, which is the
  * point. Returns whether it actually restored anything, so a caller can say so.
  */
-export async function restoreFromMirror(): Promise<boolean> {
+export async function restoreFromMirror(budgetMs?: number): Promise<boolean> {
   if (!isNative()) return false;
   const store = storage();
   if (!store) return false;
@@ -215,7 +215,50 @@ export async function restoreFromMirror(): Promise<boolean> {
    * while the bridge answers.
    */
   if (chooseSource(local, null) === 'local') return false;
-  const mirror = await readMirror();
+  const { raw: mirror, late } = await readMirrorWithin(budgetMs);
+  if (late) {
+    /*
+     * The read ran out of budget, so the app mounts now, on a fresh library,
+     * rather than on a blank screen. But the file may still hold every receipt
+     * this person owns, and the fresh library's first save would overwrite
+     * it: the mirror holds whatever was last committed. So mirror writes are
+     * held until the read answers.
+     *
+     * If it answers with a library, that library goes where it would have gone
+     * had it been in time, and the app starts again on it. Anything done in
+     * the seconds before was done to a library that was not theirs. If it
+     * answers with nothing, the fresh library is the only one there is, and
+     * the held save goes through.
+     */
+    holdMirrorWrites();
+    void late.then((raw) => {
+      if (raw && chooseSource(local, raw) === 'mirror') {
+        try {
+          store.setItem(KEY, raw);
+          window.location.reload();
+        } catch {
+          // A store that will not take it cannot boot from it. Keep holding:
+          // nothing this session saved has reached either copy, so the next
+          // launch finds the live store as empty as this one did and reads
+          // the mirror again.
+        }
+        return;
+      }
+      // Nothing to rescue: the fresh library is the only one there is.
+      const pending = heldLive;
+      heldLive = null;
+      releaseMirrorWrites();
+      if (pending !== null) {
+        try {
+          store.setItem(KEY, pending);
+          void writeMirror(pending);
+        } catch {
+          // As any failed save: the live store refused it.
+        }
+      }
+    });
+    return false;
+  }
   // The `!mirror` limb is belt and braces: `chooseSource` cannot answer 'mirror'
   // for a null one, so no test can tell this from `&&`. Equivalent, recorded.
   if (!mirror || chooseSource(local, mirror) !== 'mirror') return false;
@@ -304,6 +347,9 @@ export function discardSetAside(): void {
  * caller surfaces this; swallowing it means someone adds a receipt, watches it
  * appear, closes the app, and loses it with no indication anything went wrong.
  */
+/** The latest save held back during a late mirror read; see `save`. */
+let heldLive: string | null = null;
+
 export function save(state: KeptState): boolean {
   const store = storage();
   if (!store) return false;
@@ -313,6 +359,18 @@ export function save(state: KeptState): boolean {
     // which would otherwise write straight back what was just read — churning
     // the quota for nothing.
     if (store.getItem(KEY) === next) return true;
+    /*
+     * Held while a late mirror read may still bring the real library back
+     * (see `restoreFromMirror`), in the live store as well as the mirror. The
+     * library on screen is then a fresh one that is not theirs, and if it
+     * reached localStorage the next launch would find a readable store, never
+     * consult the mirror, and overwrite it with the first change. Kept in
+     * memory instead, and written the moment the read says there was nothing.
+     */
+    if (mirrorWritesHeld()) {
+      heldLive = next;
+      return true;
+    }
     store.setItem(KEY, next);
     /*
      * And again, outside the web view, on iOS only. Deliberately not awaited:

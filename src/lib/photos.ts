@@ -1,4 +1,4 @@
-import { filesystem, isNative } from './mirror';
+import { filesystem, isNative, mirrorWritesHeld } from './mirror';
 
 /**
  * The picture of the paper receipt.
@@ -161,7 +161,13 @@ export async function erasePhotos(): Promise<void> {
  * restore that replaced the library, or by a crash between the two writes.
  */
 export async function cleanupPhotos(receiptIds: readonly string[]): Promise<number> {
-  if (!isNative()) return 0;
+  /*
+   * Not while a late mirror read is outstanding (see `restoreFromMirror`). The
+   * receipts this launch booted with are then a fresh library's, and every
+   * photo belongs to receipts still on their way back, so every one would read
+   * as orphaned. Skipping costs nothing: the next launch clears up.
+   */
+  if (!isNative() || mirrorWritesHeld()) return 0;
   try {
     const { Filesystem, Directory } = await filesystem();
     const dir = await Filesystem.readdir({ path: PHOTO_DIR, directory: Directory.Documents });

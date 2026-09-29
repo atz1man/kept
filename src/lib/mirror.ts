@@ -166,7 +166,22 @@ export const MIRROR_READ_BUDGET_MS = 3000;
  *                 to measure a hung read.
  */
 export async function readMirror(budgetMs = MIRROR_READ_BUDGET_MS): Promise<string | null> {
-  if (!isNative()) return null;
+  return (await readMirrorWithin(budgetMs)).raw;
+}
+
+/**
+ * The mirror, or what is known about it once the budget runs out.
+ *
+ * `raw` is the answer if it came in time. `late` is set only when it did not:
+ * the read that is still going, so the caller can stop the fresh boot from
+ * overwriting a mirror nobody has managed to read yet (see
+ * `restoreFromMirror`). Giving up on the WAIT is right; forgetting that the
+ * file might still hold somebody's library is not.
+ */
+export async function readMirrorWithin(
+  budgetMs = MIRROR_READ_BUDGET_MS,
+): Promise<{ raw: string | null; late: Promise<string | null> | null }> {
+  if (!isNative()) return { raw: null, late: null };
 
   /*
    * The budget is on the READ, deliberately, and not on the restore that calls
@@ -175,7 +190,8 @@ export async function readMirror(budgetMs = MIRROR_READ_BUDGET_MS): Promise<stri
    * empty library, which the mirror faithfully copies, turning a recoverable
    * loss into a permanent one. That is the same ordering hazard `main.tsx`
    * documents, arriving by a different route. Giving up here means nothing
-   * lands late, because nothing is still coming.
+   * lands late in the store by accident; a late answer is handed back as
+   * `late`, for the caller to act on on purpose.
    */
   const read = (async () => {
     const { Filesystem, Directory, Encoding } = await filesystem();
@@ -194,12 +210,14 @@ export async function readMirror(budgetMs = MIRROR_READ_BUDGET_MS): Promise<stri
     return null;
   });
 
+  const TIMED_OUT = Symbol('timed out');
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const budget = new Promise<null>((resolve) => {
-    timer = setTimeout(() => resolve(null), budgetMs);
+  const budget = new Promise<typeof TIMED_OUT>((resolve) => {
+    timer = setTimeout(() => resolve(TIMED_OUT), budgetMs);
   });
   try {
-    return await Promise.race([read, budget]);
+    const first = await Promise.race([read, budget]);
+    return first === TIMED_OUT ? { raw: null, late: read } : { raw: first, late: null };
   } finally {
     // Or a launch that read its mirror in 4ms would still hold a timer open
     // for the rest of the three seconds.
@@ -249,9 +267,40 @@ let queue: Promise<unknown> = Promise.resolve();
 /** Returns whether the write landed, on the same principle as `save`. */
 export function writeMirror(raw: string): Promise<boolean> {
   if (!isNative()) return Promise.resolve(false);
+  if (holding) {
+    // Only the latest matters: the mirror holds whatever was last committed.
+    held = raw;
+    return Promise.resolve(false);
+  }
   const landed = queue.then(() => write(raw));
   queue = landed.catch(() => undefined);
   return landed;
+}
+
+/**
+ * Held while a mirror nobody has read yet might still hold a library.
+ *
+ * Set when the launch-time read ran out of budget; see `restoreFromMirror`.
+ * Writes arriving meanwhile are kept, the latest only, and written on release.
+ */
+let holding = false;
+let held: string | null = null;
+
+export function holdMirrorWrites(): void {
+  holding = true;
+}
+
+/** True while a late mirror read might still bring back a library. */
+export function mirrorWritesHeld(): boolean {
+  return holding;
+}
+
+/** Stop holding, and write the latest held commit, if there was one. */
+export function releaseMirrorWrites(): void {
+  holding = false;
+  const raw = held;
+  held = null;
+  if (raw !== null) void writeMirror(raw);
 }
 
 /**
