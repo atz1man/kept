@@ -1,4 +1,5 @@
 import { color, font, radius, shadow } from '../../tokens';
+import { winCardLine } from '../win-card';
 import { money, type Pence } from '../../lib/money';
 import { LogoChecked, LogoWatermark } from '../components/Icons';
 import { Pressable } from '../components/Pressable';
@@ -15,7 +16,7 @@ interface Props {
    */
   inTime: boolean;
   recovered: Pence;
-  shared: 'no' | 'copied' | 'failed';
+  shared: 'no' | 'shared' | 'copied' | 'failed';
   /** The sentence itself, so a failed copy can still be read and selected. */
   line: string;
   onShare: () => void;
@@ -39,9 +40,7 @@ export function Celebrate({ amount, store, inTime, recovered, shared, line, onSh
             {money(amount)}
           </div>
           <div style={{ fontSize: 15, color: color.onInkBody, marginTop: 8 }}>
-            {inTime
-              ? `Recovered from ${store} before the window closed.`
-              : `Recovered from ${store}, after the shop’s own window had closed.`}
+            {winCardLine(store, inTime)}
           </div>
           <div style={{ borderTop: `1.5px dashed ${color.onInkDash}`, marginTop: 20, paddingTop: 14, display: 'flex', justifyContent: 'space-between', fontFamily: font.figures, fontSize: 12.5 }}>
             <span style={{ color: color.faint }}>kept back so far</span>
@@ -59,7 +58,13 @@ export function Celebrate({ amount, store, inTime, recovered, shared, line, onSh
           onClick={onShare}
           style={{ padding: 16, textAlign: 'center', background: color.yellow, border: `1.5px solid ${color.ink}`, borderRadius: 999, fontWeight: 700, fontSize: 15, boxShadow: shadow.hard }}
         >
-          {shared === 'copied' ? 'Copied — paste it anywhere ✓' : shared === 'failed' ? 'Copy it from here' : 'Share the win'}
+          {shared === 'shared'
+            ? 'Shared ✓'
+            : shared === 'copied'
+              ? 'Copied — paste it anywhere ✓'
+              : shared === 'failed'
+                ? 'Copy it from here'
+                : 'Share the win'}
         </Pressable>
         {/* A refused clipboard used to render as "Copied ✓". It fails on any
             insecure origin and wherever the permission is denied, and the

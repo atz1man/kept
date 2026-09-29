@@ -352,6 +352,61 @@ for (const [label, refuse] of [['confirms a copy that happened', false], ['does 
   await keepCtx.close();
 }
 
+/*
+ * Sharing the win as a picture, through the phone's own share sheet.
+ *
+ * The clipboard sentence above is the fallback. Where a share sheet exists,
+ * the card goes to it as a 1080 × 1350 PNG drawn on the phone, beside the same
+ * sentence, and the button says "Shared" only once the sheet has finished.
+ * A cancelled sheet is the person changing their mind: nothing is claimed and
+ * nothing is copied behind their back. The sheet is stubbed to record what it
+ * was handed, because what it was handed is the whole question.
+ */
+for (const cancel of [false, true]) {
+  const sheetCtx = await browser.newContext({ viewport: { width: 402, height: 874 }, permissions: ['clipboard-write'] });
+  await sheetCtx.addInitScript((cancel) => {
+    window.__sheet = null;
+    window.__copied = null;
+    navigator.canShare = (data) => Array.isArray(data?.files) && data.files.every((f) => f.type === 'image/png');
+    navigator.share = async (data) => {
+      const files = await Promise.all((data.files ?? []).map(async (f) => {
+        const bmp = await createImageBitmap(f);
+        return { name: f.name, type: f.type, size: f.size, width: bmp.width, height: bmp.height };
+      }));
+      window.__sheet = { text: data.text, files };
+      if (cancel) throw new DOMException('Share canceled', 'AbortError');
+    };
+    const write = navigator.clipboard?.writeText?.bind(navigator.clipboard);
+    if (navigator.clipboard) navigator.clipboard.writeText = (t) => { window.__copied = t; return write ? write(t) : Promise.resolve(); };
+  }, cancel);
+  const sp = await sheetCtx.newPage();
+  await sp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await sp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await sp.waitForTimeout(300);
+  await sp.getByRole('button', { name: /Currys, JBL/ }).click();
+  await sp.waitForTimeout(300);
+  await sp.getByRole('button', { name: 'Got my money back' }).click();
+  await sp.waitForTimeout(700);
+  await sp.getByRole('button', { name: 'Share the win' }).click();
+  await sp.waitForTimeout(1500);
+  const sheet = await sp.evaluate(() => window.__sheet);
+  const copied = await sp.evaluate(() => window.__copied);
+  const said = await sp.locator('main').innerText();
+  const card = sheet?.files?.[0];
+  if (!cancel) {
+    results['the win is shared as a picture of the card, with its sentence'] =
+      !!card && card.type === 'image/png' && card.width === 1080 && card.height === 1350 && card.size > 20_000 &&
+      /kept-money-back\.png/.test(card.name) && /Just got £89\.00 back from Currys/.test(sheet.text ?? '') &&
+      /Shared ✓/.test(said) && copied === null;
+    if (!results['the win is shared as a picture of the card, with its sentence']) problems.push(`share sheet: ${JSON.stringify({ sheet, copied })}`);
+  } else {
+    results['a cancelled share claims nothing and copies nothing'] =
+      !!sheet && !/Shared ✓|Copied — paste it anywhere/.test(said) && /Share the win/.test(said) && copied === null;
+    if (!results['a cancelled share claims nothing and copies nothing']) problems.push(`cancelled share: ${JSON.stringify({ said: said.slice(0, 80), copied })}`);
+  }
+  await sheetCtx.close();
+}
+
 // The tab bar floats over every screen; its buttons must stay clickable.
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(400);
