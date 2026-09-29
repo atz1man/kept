@@ -2191,6 +2191,17 @@ it found all three fields, and otherwise reads again locally and keeps
 whichever found more. Result: 95 of 99 fields instead of 63, with a second
 read on 12 of the 33 photos. `smoke` scans a half-shaded receipt too.
 
+On iPhone the photo a scan took is kept with the receipt as proof of purchase,
+behind a checkbox that starts ticked. It used to be thrown away, so anyone who
+wanted it had to open the receipt they had just saved and photograph the same
+slip again. `scannedPhotoToKeep` in `src/lib/photos.ts` keeps it only while the
+paste box still holds exactly what the camera read: edit that text, or paste an
+email over it, and the receipt is no longer the one in the photo. The web build
+has nowhere to keep a photo and does not try. `ios-bundle.mjs` drives the whole
+flow: Capacitor's own core, a bridge that answers Camera and Filesystem, real
+OCR from the iOS bundle's own `ocr/`, save, then the photo on the receipt's
+screen, and an unticked second scan that leaves nothing on the disk.
+
 ## Not built yet
 
 - **Background notifications, on the web.** Still not possible, and still

@@ -52,9 +52,10 @@ export function Privacy() {
         </Section>
 
         <Section title="Camera and photos">
-          kept uses the camera only when you choose to photograph a receipt. A picture you keep with a receipt is
-          stored with it, inside the app, and nowhere else. A picture taken to scan a receipt is read on this phone —
-          the text is worked out here, not by a server — and then discarded. Neither is ever uploaded.
+          kept uses the camera only when you choose to photograph a receipt. A picture taken to scan a receipt is read
+          on this phone — the text is worked out here, not by a server. In the iPhone app it is then kept with the
+          receipt as proof of purchase, unless you untick that before saving; in a browser it is discarded. A picture
+          kept with a receipt is stored with it, inside the app, and nowhere else, and it is never uploaded.
         </Section>
 
         <Section title="Backups">

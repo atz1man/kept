@@ -62,6 +62,27 @@ export function orphanedPhotos(files: readonly string[], receiptIds: readonly st
   return files.filter((f) => !held.has(f));
 }
 
+/**
+ * The photo a scan took, when it should be kept with the receipt being saved.
+ *
+ * On a phone, "Scan a paper receipt" photographs the slip, reads it, and used
+ * to throw the picture away. Anyone wanting it as proof of purchase then had
+ * to open the receipt they had just saved and photograph the same slip again.
+ *
+ * Kept only while the paste box still holds exactly what the camera read. Edit
+ * that text, or paste an email over it, and the receipt being saved is no
+ * longer the one in the photo, so the photo does not go with it. And never
+ * when the person has said not to.
+ */
+export function scannedPhotoToKeep(
+  shot: { base64: string; text: string } | null,
+  pasteNow: string,
+  keep: boolean,
+): string | null {
+  if (!keep || shot === null || shot.text !== pasteNow) return null;
+  return shot.base64;
+}
+
 /** Base64 in, no data-URI prefix — what @capacitor/camera hands back. */
 export async function savePhoto(receiptId: string, base64: string): Promise<boolean> {
   const path = photoPath(receiptId);

@@ -244,6 +244,138 @@ if (!/Deadline alerts/.test(settingsText)) {
   });
 }
 
+
+/*
+ * A scanned receipt keeps its photo, as the iPhone app would.
+ *
+ * On a phone, "Scan a paper receipt" photographs the slip and reads it, and
+ * used to throw the picture away, so anyone wanting it as proof of purchase
+ * had to open the receipt they had just saved and photograph the slip again.
+ * The photo is now kept with the receipt unless the person unticks it.
+ *
+ * Everything above talks to a bridge that answers nothing. This context gets
+ * one that answers the two plugins the flow needs, Camera and Filesystem, the
+ * way Capacitor's own core calls native: a `PluginHeaders` entry per plugin
+ * and `nativePromise` to answer it. It is the core that routes the calls, not
+ * a stubbed module, so the app's real plugin imports are what get exercised.
+ * The camera hands back a rendered till receipt; the disk is a Map the check
+ * reads afterwards. It also proves the OCR files ship in THIS bundle: `ocr/`
+ * resolved from the iOS root, not the web build's /app/.
+ */
+{
+  const shotPage = await browser.newPage({ viewport: { width: 420, height: 640 } });
+  await shotPage.setContent(`<body style="margin:0;background:#fff">
+    <div id="r" style="width:360px;padding:28px 24px;font:22px/1.5 'DejaVu Sans Mono',monospace;color:#111;background:#fff">
+      <div style="text-align:center;font-weight:bold;font-size:30px">ARGOS</div>
+      <div>KENWOOD MIXER&nbsp;&nbsp;&nbsp;199.99</div>
+      <div>TOTAL&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;199.99</div>
+      <div>VISA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;199.99</div>
+      <div>26/09/2026 14:32</div>
+    </div></body>`);
+  const photo = (await shotPage.locator('#r').screenshot({ type: 'png' })).toString('base64');
+  await shotPage.close();
+
+  const nctx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  await nctx.addInitScript((shot) => {
+    const w = window;
+    w.webkit = { messageHandlers: { bridge: { postMessage: () => {} } } };
+    const files = new Map();
+    w.__keptDisk = files;
+    const missing = () => Promise.reject(new Error('File does not exist.'));
+    const plugins = {
+      Camera: { getPhoto: async () => ({ base64String: shot, format: 'png', saved: false }) },
+      Filesystem: {
+        mkdir: async () => {},
+        writeFile: async ({ path, data }) => (files.set(path, data), { uri: path }),
+        readFile: ({ path }) => (files.has(path) ? Promise.resolve({ data: files.get(path) }) : missing()),
+        readdir: async ({ path }) => ({
+          files: [...files.keys()].filter((k) => k.startsWith(`${path}/`)).map((k) => ({ name: k.slice(path.length + 1) })),
+        }),
+        deleteFile: async ({ path }) => void files.delete(path),
+        rmdir: async () => {},
+        stat: ({ path }) => (files.has(path) ? Promise.resolve({ type: 'file', size: files.get(path).length }) : missing()),
+      },
+    };
+    w.Capacitor = {
+      isNativePlatform: () => true,
+      getPlatform: () => 'ios',
+      PluginHeaders: Object.entries(plugins).map(([name, methods]) => ({
+        name,
+        methods: Object.keys(methods).map((m) => ({ name: m, rtype: 'promise' })),
+      })),
+      nativePromise: (plugin, method, options) => plugins[plugin][method](options ?? {}),
+    };
+  }, photo);
+  const np = await nctx.newPage();
+  const nerrors = [];
+  np.on('pageerror', (e) => nerrors.push(String(e)));
+  const elsewhere = [];
+  np.on('request', (r) => {
+    const u = new URL(r.url());
+    if (['http:', 'https:'].includes(u.protocol) && u.origin !== ORIGIN) elsewhere.push(u.origin);
+  });
+  await np.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
+  await np.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  const photos = () => np.evaluate(() => [...window.__keptDisk.entries()].filter(([k]) => k.startsWith('receipts/')));
+
+  const scan = async () => {
+    await np.getByRole('button', { name: 'Add a receipt' }).click();
+    await np.getByRole('button', { name: /Scan a paper receipt/ }).click();
+    return np.getByText('FOUND IN YOUR PASTE').waitFor({ timeout: 90_000 }).then(() => true).catch(() => false);
+  };
+
+  // 1. Scanned and saved as it comes: the photo goes with the receipt.
+  const read = await scan();
+  const keep = np.getByRole('checkbox', { name: 'Keep the photo as proof of purchase' });
+  const offered = read && (await keep.isChecked().catch(() => false));
+  if (!read) {
+    failures.push({ what: 'a scan in the iOS bundle never produced a card', saw: (await np.locator('main').innerText()).slice(0, 200) });
+  } else if (!offered) {
+    failures.push({ what: 'a scan in the iOS bundle did not offer to keep the photo, ticked', saw: '' });
+  }
+  if (read) {
+    // axe over the card with the checkbox on it, which no web sweep renders.
+    await np.addScriptTag({ path: `${ROOT}node_modules/axe-core/axe.min.js` });
+    const axe = await np.evaluate(async () =>
+      (await window.axe.run(document, { resultTypes: ['violations'] })).violations.map((v) => `${v.id} (${v.nodes.length})`),
+    );
+    if (axe.length > 0) failures.push({ what: 'axe violations on the scanned card in the native build', saw: axe.join(', ') });
+
+    await np.getByRole('button', { name: 'Save receipt' }).click();
+    await np.waitForTimeout(600);
+    const kept = await photos();
+    if (kept.length !== 1 || kept[0][1] !== photo) {
+      failures.push({ what: 'saving a scanned receipt did not keep the photo the camera took', saw: `${kept.length} photos on disk` });
+    }
+    await np.getByText(/KENWOOD MIXER/i).first().click().catch(() => {});
+    await np.waitForTimeout(600);
+    const shown = await np.getByRole('img', { name: 'The paper receipt for this purchase' }).isVisible().catch(() => false);
+    if (!shown) failures.push({ what: 'the kept photo is not on the receipt’s own screen', saw: '' });
+
+    // 2. Unticked: the next receipt saves without it. Counted against the
+    //    disk as it stood, so a first save that kept nothing is not reported
+    //    here a second time under the wrong name.
+    const before = (await photos()).length;
+    if (await scan()) {
+      const box = np.getByRole('checkbox', { name: 'Keep the photo as proof of purchase' });
+      if ((await box.count()) === 0) {
+        failures.push({ what: 'the second scan offered no way to leave the photo out', saw: '' });
+      } else {
+        await box.uncheck();
+        await np.getByRole('button', { name: 'Save receipt' }).click();
+        await np.waitForTimeout(600);
+        const after = (await photos()).length;
+        if (after !== before) failures.push({ what: 'an unticked photo was kept anyway', saw: `${after - before} more on disk` });
+      }
+    } else {
+      failures.push({ what: 'the second scan in the iOS bundle never produced a card', saw: '' });
+    }
+  }
+  if (elsewhere.length > 0) failures.push({ what: 'the iOS scan reached another origin', saw: [...new Set(elsewhere)].join(', ') });
+  if (nerrors.length > 0) failures.push({ what: 'the scan in the iOS bundle raised page errors', saw: nerrors.join(' | ') });
+  await nctx.close();
+}
+
 if (errors.length > 0) {
   failures.push({ what: 'the iOS bundle raised page errors', saw: errors.join(' | ') });
 }
