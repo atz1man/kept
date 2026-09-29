@@ -141,9 +141,23 @@ export function bucket(receipts: readonly Receipt[], today: Date, urgentDays: nu
     closed: active.filter((x) => x.derived.daysLeft < 0).map((x) => x.receipt),
     urgent: active.filter((x) => x.derived.daysLeft >= 0 && x.derived.daysLeft <= urgentDays).map((x) => x.receipt),
     later: active.filter((x) => x.derived.daysLeft > urgentDays).map((x) => x.receipt),
-    returned: receipts.filter((r) => r.status === 'returned'),
-    kept: receipts.filter((r) => r.status === 'kept'),
+    returned: latestFirst(receipts.filter((r) => r.status === 'returned'), (r) => r.returnedOn),
+    kept: latestFirst(receipts.filter((r) => r.status === 'kept'), (r) => r.keptOn),
   };
+}
+
+/**
+ * Settled lists, most recently settled first. They were in the order the
+ * receipts were added, which on a year of use put last week's refund below
+ * forty older ones — and kept receipts, which do not count against the free
+ * tier, are the list with no reason to stay short. ISO dates sort as text; a
+ * receipt with no date (an old backup) goes last, in its original order.
+ */
+function latestFirst(receipts: Receipt[], on: (r: Receipt) => string | undefined): Receipt[] {
+  return receipts
+    .map((r, i) => ({ r, i, d: on(r) ?? '' }))
+    .sort((a, b) => (a.d === b.d ? a.i - b.i : a.d < b.d ? 1 : -1))
+    .map((x) => x.r);
 }
 
 /**

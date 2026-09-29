@@ -322,7 +322,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
         <div style={{ background: color.ink, color: color.cream, borderRadius: radius.cardLg, padding: 18, marginTop: 14 }}>
           <div style={{ fontWeight: 700, fontSize: 15 }}>That’s your {FREE_TIER_LIMIT} free receipts</div>
           <div style={{ fontSize: 13, color: color.fainter, lineHeight: 1.55, marginTop: 6 }}>
-            Kept has tracked {trackedTotal} for free. Return something you are already tracking and a slot frees up —
+            Kept has tracked {trackedTotal} for free. Return something you are already tracking, or mark one you are keeping, and a slot frees up —
             or go unlimited, and one missed return pays for the year.
           </div>
           <Pressable

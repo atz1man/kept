@@ -25,6 +25,12 @@ export interface AppState extends KeptState {
    * delete stands, which is the safer reading of walking away.
    */
   justDeleted: Receipt | null;
+  /**
+   * The receipts just settled as kept in one tap from WINDOW CLOSED, held
+   * only long enough to offer them back — the same timed undo as a delete,
+   * and for the same reason: one tap moved several rows at once.
+   */
+  justKept: string[] | null;
   /** The receipt open on the detail screen. */
   selId: string | null;
   obStep: number;
@@ -83,6 +89,8 @@ export type Action =
   | { type: 'settings'; patch: Partial<Settings> }
   | { type: 'keep'; id: string }
   | { type: 'unkeep'; id: string }
+  | { type: 'keep-closed'; ids: string[] }
+  | { type: 'undo-keep' }
   | { type: 'shared'; outcome: 'shared' | 'copied' | 'failed' }
   | { type: 'upgrade-ask'; period: Period }
   | { type: 'upgrade-cancel' };
@@ -115,6 +123,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       return {
         ...state,
         justDeleted: null,
+        justKept: null,
         // The undo is gone, so what was said about the receipt it held goes too.
         alertsSent: state.justDeleted ? pruneSent(state.alertsSent, state.receipts) : state.alertsSent,
         screen: action.screen,
@@ -138,8 +147,8 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
        */
       const held = state.receipts.some((r) => r.id === action.id);
       return held
-        ? { ...state, justDeleted: null, screen: 'detail', selId: action.id }
-        : { ...state, justDeleted: null, screen: 'home', selId: null };
+        ? { ...state, justDeleted: null, justKept: null, screen: 'detail', selId: action.id }
+        : { ...state, justDeleted: null, justKept: null, screen: 'home', selId: null };
     }
     case 'ob-next':
       return state.obStep >= ONBOARDING_STEPS - 1
@@ -206,6 +215,46 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
           r.id === action.id && r.status === 'kept' ? { ...r, status: 'active' as const, keptOn: undefined } : r,
         ),
       };
+    case 'keep-closed': {
+      /*
+       * The backlog, cleared in one tap. A library left alone fills up with
+       * windows that shut months ago: each one red under WINDOW CLOSED, the
+       * oldest of them on the hero card in place of the next deadline that
+       * can still be met, and clearing them meant opening every one.
+       *
+       * Only receipts that are still active AND whose window has shut, decided
+       * here rather than trusted from the screen: an id that was returned in
+       * another tab, or a window that turned out to be open, is not the
+       * person's to have settled by this tap.
+       */
+      const ids = new Set(
+        state.receipts
+          .filter((r) => action.ids.includes(r.id) && r.status === 'active' && derive(r, today).daysLeft < 0)
+          .map((r) => r.id),
+      );
+      if (ids.size === 0) return state;
+      const on = toISODate(today);
+      return {
+        ...state,
+        receipts: state.receipts.map((r) => (ids.has(r.id) ? { ...r, status: 'kept' as const, keptOn: on } : r)),
+        justKept: [...ids],
+        // One undo on offer at a time; a delete's is forgotten as if dismissed.
+        justDeleted: null,
+        alertsSent: state.justDeleted ? pruneSent(state.alertsSent, state.receipts) : state.alertsSent,
+      };
+    }
+    case 'undo-keep': {
+      const ids = new Set(state.justKept ?? []);
+      if (ids.size === 0) return state;
+      return {
+        ...state,
+        // Only what is still kept: one reopened on its own since is left alone.
+        receipts: state.receipts.map((r) =>
+          ids.has(r.id) && r.status === 'kept' ? { ...r, status: 'active' as const, keptOn: undefined } : r,
+        ),
+        justKept: null,
+      };
+    }
     case 'delete': {
       const removed = state.receipts.find((x) => x.id === action.id) ?? null;
       const receipts = state.receipts.filter((x) => x.id !== action.id);
@@ -216,6 +265,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         // was the only action in the app with no way out — a backup is not an
         // undo.
         justDeleted: removed,
+        justKept: null,
         // Forget what we said about receipts that no longer exist, so the
         // sent-list cannot grow without bound over years of use — but NOT yet
         // about this one. It is on offer to undo, and an undo that brought
@@ -240,6 +290,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       return { ...state, receipts: [...state.receipts, restoring], justDeleted: null };
     }
     case 'dismiss-undo':
+      if (state.justKept) return { ...state, justKept: null };
       return state.justDeleted
         ? { ...state, justDeleted: null, alertsSent: pruneSent(state.alertsSent, state.receipts) }
         : state;
@@ -295,6 +346,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         receipts: [],
         alertsSent: [],
         justDeleted: null,
+        justKept: null,
         selId: null,
         screen: 'home',
       };
@@ -383,6 +435,7 @@ export function useApp() {
         sharedText: incoming,
         embedded,
         justDeleted: null,
+        justKept: null,
         selId: null,
         obStep: 0,
         celebrating: null,

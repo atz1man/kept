@@ -17,7 +17,7 @@ const base = (over: Partial<AppState> = {}): AppState => ({
   version: 1, receipts: [receipt('a'), receipt('b')], updates: [], onboardingSeen: true,
   settings: { ...DEFAULT_SETTINGS }, alertsSent: [],
   screen: 'home', selId: null, obStep: 0, celebrating: null, shared: 'no', upgrading: null,
-  sharedText: null, embedded: false, justDeleted: null,
+  sharedText: null, embedded: false, justDeleted: null, justKept: null,
   ...over,
 });
 
@@ -442,5 +442,71 @@ describe('keeping it', () => {
     const a = reducer(kept, { type: 'return', id: 'a' }, TODAY).receipts.find((r) => r.id === 'a')!;
     expect(a.status).toBe('returned');
     expect(a.keptOn).toBeUndefined();
+  });
+});
+
+describe('keeping the closed windows in one tap', () => {
+  /*
+   * A library left alone fills with windows that shut months ago, each red
+   * under WINDOW CLOSED and the oldest on the hero card in place of the next
+   * deadline that can still be met. Clearing them meant opening every one.
+   */
+  const shut = (id: string): Receipt => ({ ...receipt(id), purchasedOn: '2026-06-01', windowDays: 14 });
+  const backlog = () =>
+    base({ receipts: [shut('x'), shut('y'), receipt('open'), { ...shut('gone'), status: 'returned', returnedOn: '2026-06-05' }] });
+
+  it('keeps every closed window it is given, on today, and offers them back', () => {
+    const next = reducer(backlog(), { type: 'keep-closed', ids: ['x', 'y'] }, TODAY);
+    expect(next.receipts.filter((r) => r.status === 'kept').map((r) => r.id).sort()).toEqual(['x', 'y']);
+    expect(next.receipts.find((r) => r.id === 'x')!.keptOn).toBe(toISODate(TODAY));
+    expect([...next.justKept!].sort()).toEqual(['x', 'y']);
+  });
+
+  it('decides for itself what is closed and still active, whatever the screen sent', () => {
+    // An open window, a refund and an id that no longer exists are not the
+    // person's to have settled by a tap on the closed section.
+    const next = reducer(backlog(), { type: 'keep-closed', ids: ['x', 'open', 'gone', 'vanished'] }, TODAY);
+    expect(next.justKept).toEqual(['x']);
+    expect(next.receipts.find((r) => r.id === 'open')!.status).toBe('active');
+    expect(next.receipts.find((r) => r.id === 'gone')!.status).toBe('returned');
+  });
+
+  it('does nothing, and offers nothing, when nothing qualifies', () => {
+    const before = backlog();
+    expect(reducer(before, { type: 'keep-closed', ids: ['open'] }, TODAY)).toBe(before);
+  });
+
+  it('undo puts them all back to active, dates cleared', () => {
+    const kept = reducer(backlog(), { type: 'keep-closed', ids: ['x', 'y'] }, TODAY);
+    const undone = reducer(kept, { type: 'undo-keep' }, TODAY);
+    for (const id of ['x', 'y']) {
+      const r = undone.receipts.find((q) => q.id === id)!;
+      expect(r.status).toBe('active');
+      expect(r.keptOn).toBeUndefined();
+    }
+    expect(undone.justKept).toBeNull();
+  });
+
+  it('undo leaves alone one that was reopened and returned since', () => {
+    const kept = reducer(backlog(), { type: 'keep-closed', ids: ['x', 'y'] }, TODAY);
+    const returned = { ...kept, receipts: kept.receipts.map((r) => (r.id === 'y' ? { ...r, status: 'returned' as const, keptOn: undefined, returnedOn: toISODate(TODAY) } : r)) };
+    const undone = reducer(returned, { type: 'undo-keep' }, TODAY);
+    expect(undone.receipts.find((r) => r.id === 'y')!.status).toBe('returned');
+    expect(undone.receipts.find((r) => r.id === 'x')!.status).toBe('active');
+  });
+
+  it('the offer goes when it is dismissed or navigated past, and the keep stands', () => {
+    const kept = reducer(backlog(), { type: 'keep-closed', ids: ['x'] }, TODAY);
+    for (const next of [reducer(kept, { type: 'dismiss-undo' }, TODAY), reducer(kept, { type: 'go', screen: 'settings' }, TODAY)]) {
+      expect(next.justKept).toBeNull();
+      expect(next.receipts.find((r) => r.id === 'x')!.status).toBe('kept');
+    }
+  });
+
+  it('one undo on offer at a time', () => {
+    const deleted = reducer(backlog(), { type: 'delete', id: 'open' }, TODAY);
+    const kept = reducer(deleted, { type: 'keep-closed', ids: ['x'] }, TODAY);
+    expect(kept.justDeleted).toBeNull();
+    expect(reducer(kept, { type: 'delete', id: 'y' }, TODAY).justKept).toBeNull();
   });
 });

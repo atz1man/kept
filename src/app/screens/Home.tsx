@@ -23,6 +23,8 @@ interface Props {
   changedIds: ReadonlySet<string>;
   onOpen: (id: string) => void;
   onReturn: (id: string) => void;
+  /** Settle every closed window on screen as kept, in one tap (undoable). */
+  onKeepClosed: (ids: string[]) => void;
   onAdd: () => void;
   onWatch: () => void;
 }
@@ -31,7 +33,7 @@ const sectionLabel = (c: string) => ({
   fontSize: 11, fontWeight: 700, letterSpacing: '1.4px', color: c, margin: '20px 4px 10px',
 });
 
-export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onOpen, onReturn, onAdd, onWatch }: Props) {
+export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onOpen, onReturn, onKeepClosed, onAdd, onWatch }: Props) {
   const [query, setQuery] = useState('');
   const offerSearch = shouldOfferSearch(receipts);
   const searching = offerSearch && query.trim().length > 0;
@@ -218,6 +220,18 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
               />
             ))}
           </ul>
+          {/* The way out of the backlog. Not offered mid-search: a tap that
+              settles "these" should settle what the section holds, not
+              whatever a half-typed query happened to leave in it. */}
+          {!searching && (
+            <Pressable
+              className="k-row-white"
+              onClick={() => onKeepClosed(closed.map((r) => r.id))}
+              style={{ marginTop: 9, padding: 13, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+            >
+              {closed.length === 1 ? 'I’m keeping it' : `I’m keeping all ${closed.length}`}
+            </Pressable>
+          )}
         </>
       )}
 

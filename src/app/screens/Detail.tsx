@@ -48,8 +48,18 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
    * day left on the last day, and the ring now says so — thinly.
    */
   const remaining = Math.max(0, Math.min(1, (d.daysLeft + 1) / receipt.windowDays));
-  const ringOffset = (RING_CIRCUMFERENCE * (1 - remaining)).toFixed(1);
-  const ringColor = d.expired ? color.onInkDanger : u.level === 'critical' ? color.onInkDanger : u.level === 'soon' ? color.yellow : color.cream;
+  /*
+   * A settled receipt — returned or kept — has no clock. The ring went on
+   * counting down in urgency red ("closed", "RETURN BY", "3 days left")
+   * directly above a panel saying "No more return reminders", which is the
+   * app contradicting itself on one screen. Settled, it is a closed full
+   * circle in a quiet ink, and the date is stated as history.
+   */
+  const settled = receipt.status !== 'active';
+  const ringOffset = settled ? '0' : (RING_CIRCUMFERENCE * (1 - remaining)).toFixed(1);
+  const ringColor = settled
+    ? color.faint
+    : d.expired ? color.onInkDanger : u.level === 'critical' ? color.onInkDanger : u.level === 'soon' ? color.yellow : color.cream;
 
   const dispatchDiffers = receipt.windowStartsOn && receipt.windowStartsOn !== receipt.purchasedOn;
   // The table, not the receipt: which clock a shop runs is not something a
@@ -143,21 +153,21 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               {/* Coloured like the count on the home hero, which has always
                   done this. Here the ring's stroke was the only urgency
                   signal on the screen, and on the last day it was a hairline. */}
-              <div style={{ fontFamily: font.figures, fontSize: d.expired ? 15 : 22, fontWeight: 700, lineHeight: 1, color: ringColor }}>
-                {d.expired ? 'closed' : d.daysLeft}
+              <div style={{ fontFamily: font.figures, fontSize: settled || d.expired ? 15 : 22, fontWeight: 700, lineHeight: 1, color: ringColor }}>
+                {receipt.status === 'returned' ? 'back' : receipt.status === 'kept' ? 'kept' : d.expired ? 'closed' : d.daysLeft}
               </div>
-              {!d.expired && <div style={{ fontSize: 10, color: color.faint, marginTop: 2 }}>days left</div>}
+              {!settled && !d.expired && <div style={{ fontSize: 10, color: color.faint, marginTop: 2 }}>days left</div>}
             </div>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 11, letterSpacing: '1.6px', color: color.faint, fontWeight: 600 }}>
-              {d.expired ? 'WINDOW CLOSED' : 'RETURN BY'}
+              {settled ? 'THE WINDOW RAN TO' : d.expired ? 'WINDOW CLOSED' : 'RETURN BY'}
             </div>
             <div style={{ fontFamily: font.figures, fontSize: 24, fontWeight: 700, marginTop: 4 }}>
               {deadlineText}
             </div>
             <div style={{ fontSize: 12, color: color.faint, marginTop: 6 }}>
-              {d.daysUsed} of {receipt.windowDays} days used · bought {boughtText}
+              {settled ? `${receipt.windowDays}-day window · bought ${boughtText}` : `${d.daysUsed} of ${receipt.windowDays} days used · bought ${boughtText}`}
             </div>
           </div>
         </div>
