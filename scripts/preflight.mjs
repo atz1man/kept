@@ -29,7 +29,7 @@ export function readTree(root = ROOT) {
   const read = (p) => readFileSync(join(root, p), 'utf8');
   return {
     capacitorConfig: read('capacitor.config.ts'),
-    privacy: read('src/privacy/Privacy.tsx'),
+    brand: read('src/lib/brand.ts'),
     listing: read('store/listing.json'),
     stores: read('src/lib/stores.ts'),
     feedSignature: read('src/lib/feed-signature.ts'),
@@ -57,10 +57,10 @@ export function preflight(tree, env = {}) {
     'register the App ID, then npm run bundle-id -- uk.co.you.kept (APN-21)',
   );
 
-  const email = constant(tree.privacy, 'CONTACT_EMAIL');
+  const email = constant(tree.brand, 'CONTACT_EMAIL');
   add(
     'the privacy policy has a contact address',
-    email === undefined ? 'no CONTACT_EMAIL in src/privacy/Privacy.tsx' : email === 'null' ? 'CONTACT_EMAIL is null — the page shows a red notice' : null,
+    email === undefined ? 'no CONTACT_EMAIL in src/lib/brand.ts' : email === 'null' ? 'CONTACT_EMAIL is null — the page shows a red notice' : null,
     'set CONTACT_EMAIL to an address someone reads',
   );
 

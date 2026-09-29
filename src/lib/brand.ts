@@ -18,3 +18,12 @@ export const TAGLINE = 'shop hard · return harder';
 
 /** The hero and the landing footer set it in caps; Settings sets it in prose. */
 export const TAGLINE_CAPS = TAGLINE.toUpperCase();
+
+/**
+ * Where privacy questions go. Deliberately unset: it has to be an address
+ * someone reads, and that is not a thing to guess. While it is null the page
+ * says so in plain view rather than printing an address nobody answers.
+ */
+// Read from here by the privacy page and by Settings' "Send feedback", and by
+// `npm run preflight`, which stays red while it is null.
+export const CONTACT_EMAIL: string | null = null;

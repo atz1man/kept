@@ -6,7 +6,7 @@ import { mergeBackup, parseBackup } from '../../lib/backup';
 import { backupFilename, saveJsonFile, savedWhere, type SaveOutcome } from '../../lib/save-file';
 import { alertsRow, currentNotifyState, notifyState, requestNotifyPermission, type NotifyState } from '../notify';
 import type { Receipt } from '../../lib/types';
-import { TAGLINE } from '../../lib/brand';
+import { CONTACT_EMAIL, TAGLINE } from '../../lib/brand';
 import { LEGAL_DISCLAIMER } from '../../lib/legal';
 import { STORE_COUNT, tableCheck } from '../../lib/stores';
 import { discardSetAside, setAsideData, URGENT_DAYS_MAX, URGENT_DAYS_MIN, type Settings as SettingsShape } from '../../lib/storage';
@@ -163,6 +163,19 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
         >
           Privacy policy
         </a>
+        {/* The one channel back from people using it: kept measures nothing
+            about them, by design, so what testers write is the whole of the
+            feedback. Shown only once there is an address someone reads, and
+            the address is printed, because a mail link does not open
+            everywhere. */}
+        {CONTACT_EMAIL && (
+          <div style={{ fontSize: 13, color: color.muted, lineHeight: 1.5 }}>
+            <a href={`mailto:${CONTACT_EMAIL}?subject=kept%20feedback`} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, fontWeight: 600, color: color.ink }}>
+              Send feedback
+            </a>{' '}
+            — {CONTACT_EMAIL}
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
           <Pressable
             className="k-soft"

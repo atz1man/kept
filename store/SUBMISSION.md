@@ -54,7 +54,7 @@ is on it too. Green before you Archive — `test/preflight.test.ts` holds the ch
 
 | | Step | Who | Where |
 |---|---|---|---|
-| ☐ | TestFlight to 5–10 people; watch for a *second* receipt | **you** | APN-27 |
+| ☐ | TestFlight to 5–10 people; watch for a *second* receipt | **you** | APN-27 — who to ask, what to ask them, and what counts as a failure: `store/TESTFLIGHT.md` |
 | ☐ | Submit for review | **you** | APN-28 |
 
 ### Questions the review team may ask, answered in `store/listing.json` → `reviewNotes`
