@@ -119,6 +119,17 @@ export async function readPhoto(receiptId: string): Promise<string | null> {
   }
 }
 
+/**
+ * A stored photo as a file the share sheet can carry — so the letter to the
+ * shop goes with its proof of purchase attached, rather than the person
+ * finding the photo again in another app. Camera photos are JPEG.
+ */
+export function photoAsFile(base64: string, store: string): File {
+  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+  const slug = store.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return new File([bytes], `receipt-${slug || 'photo'}.jpg`, { type: 'image/jpeg' });
+}
+
 export async function deletePhoto(receiptId: string): Promise<void> {
   const path = photoPath(receiptId);
   if (!isNative() || path === null) return;

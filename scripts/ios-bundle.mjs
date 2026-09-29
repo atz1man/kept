@@ -326,6 +326,30 @@ if (!/Deadline alerts/.test(settingsText)) {
     const shown = await np.getByRole('img', { name: 'The paper receipt for this purchase' }).isVisible().catch(() => false);
     if (!shown) failures.push({ what: 'the kept photo is not on the receipt’s own screen', saw: '' });
 
+    // Something wrong with it: the letter goes to the share sheet with this
+    // receipt's photo attached, byte for byte. A sheet that takes files is
+    // installed here, recording what it is handed, as iOS's would be.
+    await np.evaluate(() => {
+      window.__shared = null;
+      navigator.canShare = (d) => Array.isArray(d?.files) && d.files.every((f) => f instanceof File);
+      navigator.share = async (d) => {
+        const files = await Promise.all((d.files ?? []).map(async (f) => ({ name: f.name, type: f.type, b64: btoa(String.fromCharCode(...new Uint8Array(await f.arrayBuffer()))) })));
+        window.__shared = { text: d.text, files };
+      };
+    });
+    await np.getByRole('button', { name: 'Something wrong with it?' }).click();
+    await np.waitForTimeout(600);
+    const note = await np.getByText('Share sends the photo of your receipt with it').isVisible().catch(() => false);
+    await np.getByRole('button', { name: 'Share', exact: true }).click().catch(() => {});
+    await np.waitForTimeout(600);
+    const sent = await np.evaluate(() => window.__shared);
+    if (!note || !sent || !/^Dear Argos,/.test(sent.text ?? '') || sent.files.length !== 1 || sent.files[0].b64 !== photo || sent.files[0].type !== 'image/jpeg') {
+      failures.push({
+        what: 'the letter did not go to the share sheet with the receipt’s photo attached',
+        saw: JSON.stringify({ note, text: sent?.text?.slice(0, 30), files: sent?.files?.map((f) => ({ name: f.name, type: f.type, same: f.b64 === photo })) }),
+      });
+    }
+
     // 2. Unticked: the next receipt saves without it. Counted against the
     //    disk as it stood, so a first save that kept nothing is not reported
     //    here a second time under the wrong name.

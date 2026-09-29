@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { color, radius } from '../../tokens';
 import { faultAdvice, faultLetter } from '../../lib/fault-letter';
 import { LEGAL_DISCLAIMER } from '../../lib/legal';
+import { photoAsFile, readPhoto } from '../../lib/photos';
 import type { Receipt } from '../../lib/types';
 import { Field, inputStyle } from './Field';
 import { Pressable } from './Pressable';
@@ -22,6 +23,25 @@ export function FaultPanel({ receipt, today }: { receipt: Receipt; today: Date }
   const advice = faultAdvice(receipt, today);
   const letter = faultLetter(receipt, today, whatsWrong);
   const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+  /*
+   * The receipt's own photo, where one was kept, read once the panel opens.
+   * Shops ask for proof of purchase; the letter should carry it rather than
+   * leave the person to find the photo again in another app. Only where the
+   * share sheet says it can take a file — otherwise the text goes alone.
+   */
+  const [photo, setPhoto] = useState<File | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    let live = true;
+    void readPhoto(receipt.id).then((data) => {
+      if (!live || !data) return;
+      const file = photoAsFile(data, receipt.store);
+      if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) setPhoto(file);
+    });
+    return () => {
+      live = false;
+    };
+  }, [open, receipt.id, receipt.store]);
 
   const copy = async () => {
     if (!letter) return;
@@ -35,7 +55,7 @@ export function FaultPanel({ receipt, today }: { receipt: Receipt; today: Date }
   const share = async () => {
     if (!letter) return;
     try {
-      await navigator.share({ title: `Faulty goods: ${receipt.item}`, text: letter });
+      await navigator.share({ title: `Faulty goods: ${receipt.item}`, text: letter, ...(photo ? { files: [photo] } : {}) });
       setSaid('shared');
     } catch (e) {
       // A closed sheet is the person changing their mind, not a failure.
@@ -114,6 +134,11 @@ export function FaultPanel({ receipt, today }: { receipt: Receipt; today: Date }
                   </Pressable>
                 )}
               </div>
+              {canShare && photo && (
+                <div style={{ fontSize: 12.5, marginTop: 8, color: color.muted }}>
+                  Share sends the photo of your receipt with it, as proof of purchase.
+                </div>
+              )}
               {said === 'failed' && (
                 <div role="status" style={{ fontSize: 12.5, marginTop: 8, color: color.danger, fontWeight: 600 }}>
                   That did not work here. Select the letter above and copy it instead.
