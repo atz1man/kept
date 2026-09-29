@@ -50,3 +50,24 @@ describe('the first screen of a new install', () => {
     expect(ONBOARDING).not.toMatch(/scanning is not built|lands in a later release/i);
   });
 });
+
+describe('what the first screens say about reminders', () => {
+  /*
+   * The iPhone app lodges reminders with iOS, so they arrive with Kept shut;
+   * the web cannot wake itself. Each build's onboarding says its own truth:
+   * the web copy must not promise a reminder while closed, and the iPhone
+   * copy must not undersell the one thing the native app is for.
+   */
+  const nativeBodies = [...ONBOARDING.matchAll(/native:\s*'((?:[^'\\]|\\.)*)'/g)].map((m) => m[1]);
+
+  it('has an iPhone line, and it names the moment, the mechanism and that iOS asks', () => {
+    expect(nativeBodies.length).toBe(1);
+    expect(nativeBodies[0]).toMatch(/lodges? .* with iOS/i);
+    expect(nativeBodies[0]).toMatch(/9am/);
+    expect(nativeBodies[0]).toMatch(/if you allow/i);
+  });
+
+  it('never promises the web a reminder while Kept is closed', () => {
+    for (const body of bodies) expect(body).not.toMatch(/remind|even with Kept (shut|closed)/i);
+  });
+});
