@@ -1312,6 +1312,59 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
   const shadeCard = shadeFound ? await scanPage.locator('main').innerText() : '';
   results['a receipt half in shadow is read too'] =
     shadeFound && /Boots/.test(shadeCard) && /£42\.97/.test(shadeCard) && /21 Sep/.test(shadeCard);
+  /*
+   * Offline, a scan either works or says the connection is why it did not.
+   *
+   * Whether it works depends on the browser. The reader's worker fetches its
+   * engine itself; where the browser routes a dedicated worker's requests
+   * through the service worker they are cached after the first scan, and
+   * where it does not they are fetched every time. One Chromium build here
+   * bypassed the service worker and could not scan offline; CI's newer one did
+   * not show the connection message within a minute, so either it scanned or
+   * it hung, and the outcome is now reported to tell which. What must hold in
+   * any browser is the message. It used to blame the photo ("flat, straight and in good
+   * light"), sending someone offline to retake a picture that could never
+   * have worked.
+   */
+  await scanCtx.setOffline(true);
+  await scanPage.goto(`${ORIGIN}/app/`).catch(() => {});
+  await scanPage.getByRole('button', { name: 'Add a receipt' }).click().catch(() => {});
+  await scanPage.waitForTimeout(300);
+  await scanPage.setInputFiles('#add-photo', { name: 'offline.png', mimeType: 'image/png', buffer: photo }).catch(() => {});
+  const offlineOutcome = await Promise.race([
+    scanPage.getByText('READ FROM YOUR PHOTO').waitFor({ timeout: 90_000 }).then(() => 'read'),
+    scanPage.getByText(/needs a connection/).waitFor({ timeout: 90_000 }).then(() => 'connection'),
+    scanPage.getByText(/flat, straight and in good light/).waitFor({ timeout: 90_000 }).then(() => 'photo'),
+  ]).catch(() => 'nothing');
+  results['an offline scan works, or blames the connection, never the photo'] =
+    offlineOutcome === 'read' || offlineOutcome === 'connection';
+  if (!results['an offline scan works, or blames the connection, never the photo']) problems.push(`offline scan: ${offlineOutcome}`);
+  await scanCtx.setOffline(false);
+
+  /*
+   * The same, with the browser still saying it is online. CI's Chromium kept
+   * `navigator.onLine` true while offline, the first fix read that flag, and
+   * the photo got the blame again. Wifi with no internet does the same on a
+   * real phone. So the reader is made unreachable here with the flag left
+   * alone, and the message still has to name the connection.
+   */
+  await scanCtx.route('**/ocr/**', (r) => r.abort());
+  await scanPage.goto(`${ORIGIN}/app/`).catch(() => {});
+  await scanPage.getByRole('button', { name: 'Add a receipt' }).click().catch(() => {});
+  await scanPage.waitForTimeout(300);
+  const stillOnline = await scanPage.evaluate(() => navigator.onLine);
+  await scanPage.setInputFiles('#add-photo', { name: 'unreachable.png', mimeType: 'image/png', buffer: photo }).catch(() => {});
+  const unreachableOutcome = await Promise.race([
+    scanPage.getByText('READ FROM YOUR PHOTO').waitFor({ timeout: 90_000 }).then(() => 'read'),
+    scanPage.getByText(/needs a connection/).waitFor({ timeout: 90_000 }).then(() => 'connection'),
+    scanPage.getByText(/flat, straight and in good light/).waitFor({ timeout: 90_000 }).then(() => 'photo'),
+  ]).catch(() => 'nothing');
+  results['an unreachable reader blames the connection, even when the browser says online'] =
+    stillOnline && (unreachableOutcome === 'read' || unreachableOutcome === 'connection');
+  if (!results['an unreachable reader blames the connection, even when the browser says online']) {
+    problems.push(`unreachable reader: online=${stillOnline} ${unreachableOutcome}`);
+  }
+  await scanCtx.unroute('**/ocr/**');
   if (!results['a receipt half in shadow is read too']) {
     problems.push(`shaded scan read: ${shadeFound ? shadeCard.slice(0, 300).replace(/\n/g, ' | ') : 'no card'}`);
   }
