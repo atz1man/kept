@@ -1,4 +1,4 @@
-import { addDays, addMonths, daysBetween, fromISODate, startOfDay } from './dates';
+import { addDays, addMonths, daysBetween, fmtDateNear, fromISODate, startOfDay } from './dates';
 import { sumPence } from './money';
 import type { Receipt } from './types';
 
@@ -73,6 +73,20 @@ function deriveWarranty(r: Receipt, today: Date): DerivedWarranty | undefined {
     expired: daysLeft < 0,
     label: humaniseRemaining(today, ends),
   };
+}
+
+/**
+ * The guarantee, in the few words a list row has room for — or null where
+ * there is no clock to state.
+ *
+ * The KEEPING IT list showed the shop, the item and the price, and nothing of
+ * the one thing that makes a kept receipt worth holding. "Is the dishwasher
+ * still covered?" was a tap into every row to answer.
+ */
+export function coverLine(r: Receipt, today: Date): string | null {
+  const w = deriveWarranty(r, today);
+  if (!w || w.months <= 0) return null;
+  return w.expired ? `cover ended ${fmtDateNear(w.ends, today)}` : `covered until ${fmtDateNear(w.ends, today)}`;
 }
 
 export function derive(r: Receipt, today: Date): DerivedReceipt {

@@ -436,6 +436,7 @@ for (const cancel of [false, true]) {
     results['closed windows can be kept in one tap, and the hero moves on'] = false;
     results['keeping the closed windows can be undone'] = false;
     results['a settled receipt stops counting down'] = false;
+    results['a kept row says how long its guarantee runs'] = false;
     problems.push(`backlog: no “I’m keeping all 2” under WINDOW CLOSED (${shutStores.join(', ')})`);
   } else {
     await keepAll.click();
@@ -455,6 +456,17 @@ for (const cancel of [false, true]) {
       !/WINDOW ALREADY CLOSED/.test(after.text) && /NEXT WINDOW TO CLOSE/.test(after.text) &&
       shutStores.every((store) => after.keeping.includes(store)) && /Moved 2 to Keeping it/.test(after.bar);
     if (!results['closed windows can be kept in one tap, and the hero moves on']) problems.push(`backlog kept: ${JSON.stringify({ closedHead: after.closedHead, keeping: after.keeping.slice(0, 80), bar: after.bar })}`);
+    // Both were bought in January 2025 here. The mixer's 12-month guarantee
+    // has ended and its row says so; the headphones' 24 months run into 2027.
+    const rows = await bp.evaluate(() => {
+      const h = [...document.querySelectorAll('h2')].find((x) => x.textContent.includes('KEEPING IT'));
+      return [...(h?.nextElementSibling?.querySelectorAll('li') ?? [])].map((li) => li.textContent);
+    });
+    const rowFor = (store) => rows.find((t) => t.startsWith(store)) ?? '';
+    results['a kept row says how long its guarantee runs'] =
+      /cover ended/.test(rowFor('Argos')) && !/covered until/.test(rowFor('Argos')) &&
+      /covered until \d+ \w+ 2027/.test(rowFor('Currys'));
+    if (!results['a kept row says how long its guarantee runs']) problems.push(`kept cover: ${JSON.stringify(rows)}`);
 
     // Its own screen, while kept: no countdown, no "RETURN BY".
     await bp.getByRole('button', { name: new RegExp(`^${shutStores[0]}, .*keeping it$`) }).click();
