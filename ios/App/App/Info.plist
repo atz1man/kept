@@ -36,7 +36,7 @@
 	     asks for a new photograph. test/ios-usage-strings.test.ts reads the
 	     plugin's own list rather than this comment. -->
 	<key>NSCameraUsageDescription</key>
-	<string>kept uses the camera only to photograph a paper receipt, so you have proof of purchase when you go back to the shop. The picture stays on this device and is never uploaded.</string>
+	<string>kept uses the camera only to photograph a paper receipt: to keep it as proof of purchase for when you go back to the shop, or to read the shop, total and date from it. The picture stays on this device and is never uploaded.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>kept never opens your photo library. It only takes a new photograph of a receipt, which stays on this device.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

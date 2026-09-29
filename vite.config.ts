@@ -51,8 +51,52 @@ function stampServiceWorker(): Plugin {
   };
 }
 
+/**
+ * The on-device text reader for scanned receipts, served from this app.
+ *
+ * tesseract.js loads its worker, its WebAssembly core and its language model
+ * from a public CDN unless told otherwise — which would hand a third party the
+ * IP address of everyone who scans a receipt, and break scanning offline and
+ * inside the iOS app. These are the same files, from node_modules, emitted at
+ * fixed paths under `ocr/` in every build (the web one and `dist-ios`) and
+ * served from the same paths in development. Fixed rather than hashed because
+ * tesseract finds the core and the model by directory, not by import.
+ *
+ * Three cores: tesseract picks the fastest the device supports (relaxed SIMD,
+ * SIMD, or neither). All three are the LSTM-only builds, which is the engine
+ * `scan.ts` asks for. Nothing here is in the main bundle — `scan.ts` imports
+ * tesseract.js lazily, when someone first chooses to scan.
+ */
+const OCR_FILES: Record<string, string> = {
+  'ocr/worker.min.js': 'node_modules/tesseract.js/dist/worker.min.js',
+  'ocr/tesseract-core-relaxedsimd-lstm.wasm.js': 'node_modules/tesseract.js-core/tesseract-core-relaxedsimd-lstm.wasm.js',
+  'ocr/tesseract-core-simd-lstm.wasm.js': 'node_modules/tesseract.js-core/tesseract-core-simd-lstm.wasm.js',
+  'ocr/tesseract-core-lstm.wasm.js': 'node_modules/tesseract.js-core/tesseract-core-lstm.wasm.js',
+  'ocr/eng.traineddata.gz': 'node_modules/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz',
+};
+
+function serveOcrFiles(): Plugin {
+  return {
+    name: 'kept-ocr-files',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const path = (req.url ?? '').split('?')[0].replace(/^\//, '');
+        const from = OCR_FILES[path];
+        if (!from) return next();
+        res.setHeader('Content-Type', path.endsWith('.gz') ? 'application/gzip' : 'text/javascript');
+        res.end(readFileSync(resolve(__dirname, from)));
+      });
+    },
+    generateBundle() {
+      for (const [fileName, from] of Object.entries(OCR_FILES)) {
+        this.emitFile({ type: 'asset', fileName, source: readFileSync(resolve(__dirname, from)) });
+      }
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), stampServiceWorker()],
+  plugins: [react(), stampServiceWorker(), serveOcrFiles()],
   server: { port: 5183 },
   build: {
     rollupOptions: {

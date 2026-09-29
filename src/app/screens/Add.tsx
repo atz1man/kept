@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { color, font, radius, shadow } from '../../tokens';
 import { addDays, fmtDate, fmtDateLong, fmtDateNear, fromISODate, toISODate } from '../../lib/dates';
 import { money } from '../../lib/money';
 import { parseReceiptText, type ParsedReceipt } from '../../lib/parse';
+import { fromScan } from '../../lib/receipt-scan';
 import { arrivalProblem, readAmount, windowStartFor } from '../../lib/draft';
 import { makeReceiptId } from '../../lib/receipts';
 import { findStore, policyFor } from '../../lib/stores';
@@ -73,6 +74,13 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
    * asking for the figure.
    */
   const [totalText, setTotalText] = useState('');
+  /*
+   * A photographed paper receipt, read on this device. `scanning` is the
+   * progress while it reads, null otherwise; `scanFailed` says it could not.
+   */
+  const photoInput = useRef<HTMLInputElement>(null);
+  const [scanning, setScanning] = useState<number | null>(null);
+  const [scanFailed, setScanFailed] = useState(false);
   // Read once, on arrival. A later keystroke must not re-trigger it.
   const [readShare, setReadShare] = useState(false);
 
@@ -98,6 +106,28 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
   };
 
   const read = () => readText(text);
+
+  /**
+   * Read a photo of a till receipt into the paste box, then read that as a
+   * paste. The text goes into the box on purpose: OCR is never perfect, and
+   * the person can see and correct what the camera read before anything is
+   * saved. A till receipt is a purchase made in person, so it starts as one.
+   */
+  const scanPhoto = async (file: Blob) => {
+    setScanFailed(false);
+    setScanning(0);
+    try {
+      const { readReceiptPhoto } = await import('../scan');
+      const readable = fromScan(await readReceiptPhoto(file, (p) => setScanning(p)));
+      setText(readable);
+      readText(readable);
+      setDistance(false);
+    } catch {
+      setScanFailed(true);
+    } finally {
+      setScanning(null);
+    }
+  };
 
   useEffect(() => {
     if (!sharedText || readShare) return;
@@ -418,22 +448,59 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
         <div style={{ flex: 1, height: 1.5, background: color.border }} />
       </div>
 
+      {/* Opens the camera on a phone, the file picker elsewhere. */}
+      <input
+        ref={photoInput}
+        id="add-photo"
+        type="file"
+        accept="image/*"
+        capture="environment"
+        hidden
+        aria-hidden="true"
+        tabIndex={-1}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          // Cleared so choosing the same photo again still fires.
+          e.target.value = '';
+          if (f) void scanPhoto(f);
+        }}
+      />
       <Pressable
         className="k-row-white"
-        // Camera capture is the next build; saying so beats a control that
-        // silently does nothing when tapped.
-        disabled
-        title="Receipt scanning is coming in a later release"
+        onClick={() => {
+          // The camera itself in the iOS app, never the library; a file
+          // picker (or the phone's camera) on the web.
+          if (!isNative()) {
+            photoInput.current?.click();
+            return;
+          }
+          void (async () => {
+            try {
+              const { takeReceiptPhoto } = await import('../scan');
+              const shot = await takeReceiptPhoto();
+              if (shot) await scanPhoto(shot);
+            } catch {
+              setScanFailed(true);
+            }
+          })();
+        }}
+        disabled={scanning !== null}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16,
           background: color.white, border: `1.5px solid ${color.ink}`, borderRadius: 999,
-          fontWeight: 700, fontSize: 15, opacity: 0.5, cursor: 'not-allowed',
+          fontWeight: 700, fontSize: 15, cursor: scanning !== null ? 'progress' : 'pointer',
         }}
       >
         <CameraGlyph />
-        Scan a paper receipt
-        <span style={{ fontSize: 10, fontWeight: 700, background: color.creamAlt, padding: '2px 8px', borderRadius: 999 }}>SOON</span>
+        {scanning === null ? 'Scan a paper receipt' : `Reading your receipt… ${Math.round(scanning * 100)}%`}
       </Pressable>
+      <div role="status" aria-live="polite" style={{ fontSize: 12.5, color: scanFailed ? color.danger : color.muted, textAlign: 'center', marginTop: 8, lineHeight: 1.5 }}>
+        {scanFailed
+          ? 'kept couldn’t read that photo. Try again flat, straight and in good light — or paste or type the details.'
+          : scanning !== null
+            ? 'Reading it on this phone. Nothing is uploaded.'
+            : 'Read on this phone — the photo is never uploaded. Check what it read before you save.'}
+      </div>
 
       {/* The three steps are a promise about the device holding them, and it
           was made everywhere: Web Share Target is Chromium's, so an iPhone

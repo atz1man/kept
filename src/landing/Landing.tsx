@@ -65,7 +65,10 @@ const WHY: { n: string; title: string; body: string; link?: { href: string; labe
   // prose, beside three shop windows that had already been made derived for
   // exactly this reason.
   { n: '02', title: 'Knows your legal rights', body: `The Consumer Rights Act gives you ${REJECT_DAYS} days to reject faulty goods for a full refund, and online orders carry a ${COOLING_OFF_DAYS}-day cooling-off by law. Kept shows the legal deadline beside the shop’s own.`, link: { href: '/rights/', label: 'What the law gives you →' } },
-  { n: '03', title: 'Paste or scan, done', body: 'Paste an order email and Kept reads the store, total and date, and sets the deadline for you. Scanning a paper receipt lands in a later release.' },
+  // Scanning is read on the phone and never uploaded, and it never saves by
+  // itself: what it read is shown to be checked first, because OCR on a
+  // creased thermal slip is not always right. The copy says so.
+  { n: '03', title: 'Paste or scan, done', body: 'Paste an order email, or photograph a till receipt, and Kept reads the store, total and date on your phone and sets the deadline. You check what it read before anything is saved.' },
   { n: '04', title: 'Warranties too', body: 'Put a warranty length on a receipt and Kept counts it down beside the return window, so you know whether the repair is still free before you pay for one.' },
   // "No server" was the loose word — the app is served from one and downloads
   // the policy feed from it on every launch. Naming the one call, and its

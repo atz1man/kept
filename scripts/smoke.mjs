@@ -1206,6 +1206,61 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
   await badCtx.close();
 }
 
+/*
+ * A paper receipt, scanned — end to end, with real pixels and real OCR.
+ *
+ * The receipt is rendered as an image in its own page and photographed with
+ * a screenshot, then handed to "Scan a paper receipt". Tesseract reads it on
+ * this machine, from this app's own files: the check also fails if a single
+ * request leaves the app's origin, because a CDN default in the OCR library
+ * would hand a third party every scan. A rendered receipt is not a creased
+ * thermal slip — that is what TestFlight is for — but it proves the wiring:
+ * photo in, text read, the till receipt translated, the card filled.
+ */
+{
+  const shotPage = await browser.newPage({ viewport: { width: 420, height: 640 } });
+  await shotPage.setContent(`<body style="margin:0;background:#fff">
+    <div id="r" style="width:360px;padding:28px 24px;font:22px/1.5 'DejaVu Sans Mono',monospace;color:#111;background:#fff">
+      <div style="text-align:center;font-weight:bold;font-size:30px">ARGOS</div>
+      <div>KENWOOD MIXER&nbsp;&nbsp;&nbsp;199.99</div>
+      <div>TOTAL&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;199.99</div>
+      <div>VISA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;199.99</div>
+      <div>26/09/2026 14:32</div>
+    </div></body>`);
+  const photo = await shotPage.locator('#r').screenshot({ type: 'png' });
+  await shotPage.close();
+
+  const scanCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const scanPage = await scanCtx.newPage();
+  // Requests from the page AND its workers — the OCR worker fetches the
+  // engine and the model itself, which is exactly where a CDN default hides.
+  const elsewhere = [];
+  let ownOcr = 0;
+  scanPage.on('request', (r) => {
+    const u = new URL(r.url());
+    if (!['http:', 'https:'].includes(u.protocol)) return;
+    if (u.origin !== ORIGIN) elsewhere.push(u.origin);
+    else if (u.pathname.startsWith('/ocr/')) ownOcr += 1;
+  });
+  await scanPage.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await scanPage.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await scanPage.getByRole('button', { name: 'Add a receipt' }).click();
+  await scanPage.waitForTimeout(300);
+  await scanPage.setInputFiles('#add-photo', { name: 'receipt.png', mimeType: 'image/png', buffer: photo });
+  const found = await scanPage.getByText('FOUND IN YOUR PASTE').waitFor({ timeout: 90_000 }).then(() => true).catch(() => false);
+  const card = found ? await scanPage.locator('main').innerText() : '';
+  const item = found ? await scanPage.inputValue('#add-item').catch(() => '') : '';
+  results['a photographed receipt is read on the device'] =
+    found && /Argos/.test(card) && /£199\.99/.test(card) && /26 Sep/.test(card) && /KENWOOD MIXER/i.test(item);
+  // Scored on its own, and not on nothing: the reader's files must have been
+  // fetched from this app for "nothing else was" to mean anything.
+  results['and nothing leaves the app while it is read'] = ownOcr > 0 && elsewhere.length === 0;
+  if (elsewhere.length) problems.push(`scan reached: ${[...new Set(elsewhere)].join(', ')}`);
+  if (!found) problems.push('scan: the card never appeared');
+  else if (!results['a photographed receipt is read on the device']) problems.push(`scan read: ${card.slice(0, 300).replace(/\n/g, ' | ')} · item=${item}`);
+  await scanCtx.close();
+}
+
 // The free tier is claimed on the pricing page, in Settings and on the Add
 // screen. Fill it and the Save must actually refuse.
 /*

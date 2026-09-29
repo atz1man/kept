@@ -305,6 +305,7 @@ src/lib/          the decision logic — pure, tested, no React
   types.ts        the Receipt, and the shapes every other module agrees on
   dates.ts        whole-day arithmetic in the user's timezone
   money.ts        integer pence
+  receipt-scan.ts a till receipt, as the camera reads it, made readable by the parser
   receipts.ts     days left, deadlines, bucketing, the 30-day timeline
   urgency.ts      the red / yellow / neutral ladder
   alerts.ts       which deadlines are worth interrupting someone about
@@ -2157,17 +2158,28 @@ surviving; deleted, rebuilt and run against `smoke`, it fails and is named
 exactly. So the seam is thin rather than open — which is worth knowing before
 spending minutes a mutation on it.
 
+## Receipt scanning
+
+"Scan a paper receipt" on the Add screen reads a photographed till receipt on
+the phone: tesseract compiled to WebAssembly, in a worker, with the worker,
+the engine and the English model served from this app (`serveOcrFiles` in
+vite.config.ts) — never a CDN, never a server, so it works offline and in the
+iOS app and nothing about the purchase leaves the phone. It arrives only when
+someone first scans: about 7 MB for the engine the device can run and 3 MB
+for the model, cached after that.
+
+It was deferred once, for a reason that still stands: how well it reads a
+creased thermal receipt cannot be judged from a synthetic image. So it never
+saves anything by itself. What it read goes into the paste box and through
+the same parser and confirm card as a pasted email, and the person checks it
+before saving. `src/lib/receipt-scan.ts` translates a till receipt into what
+the parser reads — a £ where the till left it off, a shop name printed as the
+heading, 29.09.26, an O where a 0 was — and is tested on OCR-shaped text with
+every rule held by a mutant. `smoke` scans a rendered receipt image end to
+end. Real-receipt accuracy is TestFlight question 3 in store/TESTFLIGHT.md.
+
 ## Not built yet
 
-- **Receipt scanning.** The button is present and visibly disabled with a
-  `SOON` chip rather than silently doing nothing. On-device OCR was evaluated
-  and deliberately deferred: doing it without a third party means self-hosting
-  Tesseract's wasm core and English model, roughly 6 MB of binary committed to
-  the repo and downloaded on first scan, and its accuracy on a creased thermal
-  receipt cannot be assessed from a synthetic test image. The flow it would
-  feed — parse, confirm, edit before saving — already exists and is where a
-  scan should land, so adding it later is a contained change rather than a
-  redesign.
 - **Background notifications, on the web.** Still not possible, and still
   stated rather than implied: Notification Triggers never shipped, and Periodic
   Background Sync is one engine's, for installed apps only, granted at the

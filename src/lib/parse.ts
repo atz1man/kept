@@ -460,7 +460,7 @@ export const UNKNOWN_STORE_WINDOW_DAYS = 28;
  * Words that mark a line as money ABOUT the order rather than a thing in it.
  * A line carrying a price is an item only if it carries none of these.
  */
-const NOT_AN_ITEM = /\b(?:sub[\s-]?total|total|delivery|shipping|postage|p&p|vat|tax|discount|saving|savings|saved|promo|voucher|gift\s?card|payment|paid|card|visa|mastercard|amex|paypal|klarna|refund|balance|order\s+(?:number|no|#|ref)|you\s+(?:paid|saved))\b/i;
+const NOT_AN_ITEM = /\b(?:sub[\s-]?total|total|delivery|shipping|postage|p&p|vat|tax|discount|saving|savings|saved|promo|voucher|gift\s?card|payment|paid|card|visa|mastercard|amex|paypal|klarna|refund|balance|cash|change|tender(?:ed)?|contactless|order\s+(?:number|no|#|ref)|you\s+(?:paid|saved))\b/i;
 
 /** Tidy a candidate: no bullets, no trailing price or separators, no runaway length. */
 function cleanItem(raw: string): string | null {
