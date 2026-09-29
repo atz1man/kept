@@ -571,3 +571,67 @@ describe('undoing a return', () => {
     expect(reducer(returned, { type: 'delete', id: 'a' }, TODAY).justReturned).toBeNull();
   });
 });
+
+describe('sent back, waiting for the refund', () => {
+  /*
+   * Posting a parcel on day 27 and seeing the money on day 35 had nowhere to
+   * be: marked returned, the refund was celebrated before it existed; left
+   * active, it went on saying "go now or lose it" about a parcel in the post.
+   */
+  const real = () => base({ receipts: [receipt('a'), receipt('b')] });
+
+  it('goes back from active, on today, and can be taken back', () => {
+    const sent = reducer(real(), { type: 'send', id: 'a' }, TODAY);
+    const a = sent.receipts.find((r) => r.id === 'a')!;
+    expect(a.status).toBe('sent');
+    expect(a.sentOn).toBe(toISODate(TODAY));
+    const back = reducer(sent, { type: 'unsend', id: 'a' }, TODAY).receipts.find((r) => r.id === 'a')!;
+    expect(back.status).toBe('active');
+    expect(back.sentOn).toBeUndefined();
+  });
+
+  it('is not how a refund or a kept item ends', () => {
+    const returned = { ...receipt('a'), status: 'returned' as const, returnedOn: '2026-08-20' };
+    const kept = { ...receipt('b'), status: 'kept' as const, keptOn: '2026-08-20' };
+    const next = reducer(base({ receipts: [returned, kept] }), { type: 'send', id: 'a' }, TODAY);
+    expect(reducer(next, { type: 'send', id: 'b' }, TODAY).receipts).toEqual([returned, kept]);
+  });
+
+  it('counts as in time when it went back in time, though the money came after the window', () => {
+    // Bought 7 Aug with a 30-day window: last day 6 Sept. Sent 5 Sept, refunded 20 Sept.
+    const sent = reducer(real(), { type: 'send', id: 'a' }, new Date(2026, 8, 5));
+    const refunded = reducer(sent, { type: 'return', id: 'a' }, new Date(2026, 8, 20));
+    expect(refunded.celebrating?.inTime).toBe(true);
+    expect(refunded.receipts.find((r) => r.id === 'a')!.sentOn).toBe('2026-09-05');
+    // And one that went back late is not.
+    const late = reducer(reducer(real(), { type: 'send', id: 'a' }, new Date(2026, 8, 10)), { type: 'return', id: 'a' }, new Date(2026, 8, 20));
+    expect(late.celebrating?.inTime).toBe(false);
+  });
+
+  it('undoing the refund puts it back in the post, with its date', () => {
+    const sent = reducer(real(), { type: 'send', id: 'a' }, new Date(2026, 8, 5));
+    const undone = reducer(reducer(sent, { type: 'return', id: 'a' }, TODAY), { type: 'undo-return' }, TODAY);
+    const a = undone.receipts.find((r) => r.id === 'a')!;
+    expect(a.status).toBe('sent');
+    expect(a.sentOn).toBe('2026-09-05');
+  });
+});
+
+describe('what the share line may claim', () => {
+  // "kept. reminded me before the window shut" — decided by any alert at all,
+  // which since the guarantee alert and the refund chase meant other clocks.
+  const real = (sent: string[]) => base({ receipts: [receipt('a'), receipt('b')], alertsSent: sent });
+  const warned = (sent: string[]) => reducer(real(sent), { type: 'return', id: 'a' }, TODAY).celebrating?.warned;
+
+  it('counts a reminder before the window shut', () => {
+    expect(warned(['a:week'])).toBe(true);
+    expect(warned(['a:today'])).toBe(true);
+  });
+
+  it('does not count another clock, "window closed", or another receipt', () => {
+    expect(warned(['a:warranty'])).toBe(false);
+    expect(warned(['a:refund'])).toBe(false);
+    expect(warned(['a:closed'])).toBe(false);
+    expect(warned(['b:soon'])).toBe(false);
+  });
+});

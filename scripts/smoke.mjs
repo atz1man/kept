@@ -667,6 +667,51 @@ for (const cancel of [false, true]) {
   await gCtx.close();
 }
 
+/*
+ * Sent back, waiting for the refund. Posting a parcel on day 27 and seeing
+ * the money on day 35 had nowhere to be: marked returned, the refund was
+ * celebrated before it existed; left active, it went on saying "go now or
+ * lose it" about a parcel in the post. Sent, it leaves the deadlines for its
+ * own section, its screen says when to chase, and the refund, when it comes,
+ * is recorded with the day it went back.
+ */
+{
+  const sCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const sp = await sCtx.newPage();
+  await sp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await sp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await sp.waitForTimeout(300);
+  await sp.getByRole('button', { name: /Currys, JBL/ }).first().click();
+  await sp.waitForTimeout(300);
+  const send = sp.getByRole('button', { name: 'I’ve sent it back' });
+  let seen = { offered: (await send.count()) === 1 };
+  if (seen.offered) {
+    await send.click();
+    await sp.waitForTimeout(300);
+    const detail = await sp.locator('main').innerText();
+    seen.detail = /Sent back · /.test(detail) && /Waiting for the refund\. If it has not arrived by .+, chase it/.test(detail) && !/RETURN BY|^days left$/m.test(detail);
+    // (The ring's own "days left" line; the legal panel may rightly count
+    // down the 30-day right to reject on the same screen.)
+    await sp.getByRole('button', { name: 'Back', exact: true }).click();
+    await sp.waitForTimeout(300);
+    seen.filed = await sp.evaluate(() => {
+      const heads = [...document.querySelectorAll('h2')];
+      const under = (label) => heads.find((x) => x.textContent.includes(label))?.nextElementSibling?.textContent ?? '';
+      return /Currys/.test(under('SENT BACK')) && !/JBL/.test(under('GO NOW') + under('CHILL') + under('WINDOW CLOSED'));
+    });
+    await sp.getByRole('button', { name: /Currys, JBL.*waiting for the refund/ }).click();
+    await sp.waitForTimeout(300);
+    await sp.getByRole('button', { name: 'Got my money back' }).click();
+    await sp.waitForTimeout(400);
+    const stored = await sp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => /JBL/.test(r.item)));
+    seen.refunded = stored?.status === 'returned' && typeof stored?.sentOn === 'string' && typeof stored?.returnedOn === 'string';
+  }
+  results['a parcel sent back waits for its refund apart from the deadlines, then counts from the day it went'] =
+    seen.offered && seen.detail && seen.filed && seen.refunded;
+  if (!results['a parcel sent back waits for its refund apart from the deadlines, then counts from the day it went']) problems.push(`sent back: ${JSON.stringify(seen)}`);
+  await sCtx.close();
+}
+
 // The tab bar floats over every screen; its buttons must stay clickable.
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(400);
