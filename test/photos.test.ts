@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isCameraCancellation, orphanedPhotos, photoName, photoPath, scannedPhotoToKeep } from '../src/lib/photos';
+import { isCameraCancellation, orphanedPhotos, photoAsFile, photoName, photoPath, scannedPhotoToKeep } from '../src/lib/photos';
 
 describe('a receipt id is not a filename', () => {
   it('keeps an ordinary one', () => {
@@ -115,5 +115,20 @@ describe('the photo a scan took', () => {
 
   it('there is none without a scan', () => {
     expect(scannedPhotoToKeep(null, 'anything', true)).toBeNull();
+  });
+});
+
+describe('the photo, as a file to send with a letter', () => {
+  it('carries the stored bytes exactly, as a JPEG named for the shop', async () => {
+    const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0x00, 0x7f, 0x80, 0x10]);
+    const base64 = btoa(String.fromCharCode(...bytes));
+    const file = photoAsFile(base64, 'Marks & Spencer');
+    expect(file.type).toBe('image/jpeg');
+    expect(file.name).toBe('receipt-marks-spencer.jpg');
+    expect(new Uint8Array(await file.arrayBuffer())).toEqual(bytes);
+  });
+
+  it('still has a name when the shop has no letters to make one from', () => {
+    expect(photoAsFile(btoa('x'), '—').name).toBe('receipt-photo.jpg');
   });
 });

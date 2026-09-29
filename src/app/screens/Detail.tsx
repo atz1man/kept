@@ -11,6 +11,7 @@ import { urgency } from '../../lib/urgency';
 import { ChevronLeft, Warning } from '../components/Icons';
 import { Pressable } from '../components/Pressable';
 import { ReceiptPhoto } from '../components/ReceiptPhoto';
+import { FaultPanel } from '../components/FaultPanel';
 
 /** 2π × 40, the circumference of the ring the countdown draws on. */
 const RING_CIRCUMFERENCE = 251.3;
@@ -285,6 +286,10 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
           </div>
         )}
       </div>
+
+      {/* The rights above, turned into the letter that asks for them. Not on a
+          refund: that purchase has already gone back. */}
+      {receipt.status !== 'returned' && <FaultPanel receipt={receipt} today={today} />}
 
       {receipt.gotcha && (
         <div style={{ display: 'flex', gap: 10, background: color.yellowLight, border: `1.5px solid ${color.ink}`, borderRadius: 16, padding: '14px 16px', marginTop: 12 }}>

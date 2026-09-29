@@ -107,6 +107,15 @@ await page.getByRole('button', { name: /Currys, JBL/ }).click();
 await page.waitForTimeout(400);
 await audit(page, 'receipt detail', findings);
 
+// Opened, with the field filled: the textarea's label and hint, the letter
+// box's name, and the Copy and Share buttons exist only in this state.
+await page.getByRole('button', { name: 'Something wrong with it?' }).click();
+await page.waitForTimeout(300);
+await page.getByLabel('What’s wrong with it?').fill('The left ear cup crackles');
+await audit(page, 'receipt detail · something wrong', findings);
+await page.getByRole('button', { name: 'Something wrong with it?' }).click();
+await page.waitForTimeout(200);
+
 // A distance purchase renders a second statutory right — a second chip in the
 // disclosure's header and a second body under it. The seeded Currys receipt
 // was bought in a shop and carries only one, so this state needs opening by

@@ -160,6 +160,20 @@ async function checkOverflow(page, label, width) {
   const bad = await page.evaluate((w) => {
     const out = [];
     const docOverflow = document.documentElement.scrollWidth - document.documentElement.clientWidth;
+    /*
+     * The SCREEN's own scroller too, not just the document. Every screen sits
+     * in a container that scrolls, so content wider than the phone did not
+     * widen the document: it scrolled sideways INSIDE the screen, which is
+     * the same thing to a thumb, and every element in it counted as
+     * "contained" below. Measured: a 640px letter box planted on a 320px
+     * receipt screen passed this sweep. A region that is meant to scroll
+     * sideways does it in its own inner scroller, which this does not ask.
+     */
+    // Only one a thumb can scroll: the landing page's ticker also matches the
+    // selector, and it clips its tape on purpose (`overflow: hidden`).
+    const screen = document.querySelector('main > div[style*="overflow"]');
+    const scrollsX = screen && ['auto', 'scroll'].includes(getComputedStyle(screen).overflowX);
+    const screenOverflow = scrollsX ? screen.scrollWidth - screen.clientWidth : 0;
     for (const el of document.querySelectorAll('body *')) {
       const r = el.getBoundingClientRect();
       if (r.width === 0 || r.height === 0) continue;
@@ -179,11 +193,14 @@ async function checkOverflow(page, label, width) {
         out.push({ tag: el.tagName.toLowerCase(), cls: cs.position, right: Math.round(r.right), left: Math.round(r.left), text: (el.textContent ?? '').trim().slice(0, 40) });
       }
     }
-    return { docOverflow, offenders: out.slice(0, 4) };
+    return { docOverflow, screenOverflow, offenders: out.slice(0, 4) };
   }, width);
 
   if (bad.docOverflow > 0) {
     failures.push({ label, width, kind: 'page scrolls sideways', detail: `${bad.docOverflow}px`, offenders: bad.offenders });
+  }
+  if (bad.screenOverflow > 1) {
+    failures.push({ label, width, kind: 'screen scrolls sideways inside itself', detail: `${bad.screenOverflow}px` });
   }
 }
 
@@ -389,6 +406,9 @@ const wipeTo = (status) => `() => {
 const screens = [
   ['home', async () => {}],
   ['detail', async (p) => { await p.locator('li button').first().click(); }],
+  // Opens closed, and its letter is the widest block of text in the app:
+  // prose with no breaks shorter than a shop name, in a box inside a card.
+  ['detail · something wrong', async (p) => { await p.getByRole('button', { name: 'Something wrong with it?' }).click(); }],
   ['edit', async (p) => { await p.getByRole('button', { name: 'Edit', exact: true }).click(); }],
   ['back to home', async (p) => { await p.getByRole('button', { name: 'Cancel' }).click(); await p.getByRole('button', { name: 'Back', exact: true }).click(); }],
   ['watch', async (p) => { await p.getByRole('button', { name: /^Watch/ }).click(); }],
