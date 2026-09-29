@@ -23,6 +23,7 @@ import { spawn } from 'node:child_process';
 import { chromium } from 'playwright';
 import { existsSync } from 'node:fs';
 import { reportOnCrash, sayCrash } from './crash-report.mjs';
+import { answeringBridge } from './answering-bridge.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const VITE_BIN = `${ROOT}node_modules/vite/bin/vite.js`;
@@ -32,104 +33,6 @@ const EXEC = process.env.CHROMIUM_PATH;
 
 const failures = [];
 
-/**
- * A native bridge that ANSWERS, for the flows that need a camera or a disk.
- *
- * Capacitor's own core calls native through `PluginHeaders` and
- * `nativePromise`, so declaring Camera and Filesystem there and answering them
- * exercises the app's real plugin imports. The disk lives in sessionStorage so
- * it survives a reload, as a phone's Documents directory does; `slowMirrorMs`
- * delays reading the library's mirror file, as a slow disk would.
- */
-async function answeringBridge(ctx, { shot = '', disk = {}, slowMirrorMs = 0, notifications = 'granted' } = {}) {
-  await ctx.addInitScript(({ shot, disk, slowMirrorMs, notifications }) => {
-    const w = window;
-    w.webkit = { messageHandlers: { bridge: { postMessage: () => {} } } };
-    const KEY = '__keptDisk';
-    if (sessionStorage.getItem(KEY) === null) sessionStorage.setItem(KEY, JSON.stringify(disk));
-    const files = () => JSON.parse(sessionStorage.getItem(KEY));
-    const put = (all) => sessionStorage.setItem(KEY, JSON.stringify(all));
-    w.__keptDisk = files;
-    const missing = () => Promise.reject(new Error('File does not exist.'));
-    // Local notifications: what is pending, kept like the disk so it survives
-    // a reload; the permission the person gave (`notifications`); and the
-    // listeners the app registered, so a test can tap a notification.
-    const NOTES = '__keptNotes';
-    if (sessionStorage.getItem(NOTES) === null) sessionStorage.setItem(NOTES, JSON.stringify({ pending: [], asked: 0 }));
-    const notes = () => JSON.parse(sessionStorage.getItem(NOTES));
-    const putNotes = (n) => sessionStorage.setItem(NOTES, JSON.stringify(n));
-    w.__keptNotes = notes;
-    const listeners = {};
-    w.__tapNotification = (notification) =>
-      (listeners.localNotificationActionPerformed ?? []).forEach((cb) => cb({ actionId: 'tap', notification }));
-    const display = () => (notifications === 'prompt' ? (notes().asked > 0 ? 'granted' : 'prompt') : notifications);
-    const plugins = {
-      LocalNotifications: {
-        getPending: async () => ({ notifications: notes().pending }),
-        cancel: async ({ notifications: gone }) => {
-          const n = notes();
-          const ids = new Set(gone.map((g) => g.id));
-          n.pending = n.pending.filter((p) => !ids.has(p.id));
-          putNotes(n);
-        },
-        checkPermissions: async () => ({ display: display() }),
-        requestPermissions: async () => {
-          const n = notes();
-          n.asked += 1;
-          putNotes(n);
-          return { display: display() };
-        },
-        schedule: async ({ notifications: add }) => {
-          const n = notes();
-          // As the bridge would carry it: JSON, so a Date arrives as a string.
-          n.pending = [...n.pending, ...JSON.parse(JSON.stringify(add))];
-          putNotes(n);
-          return { notifications: add.map((a) => ({ id: a.id })) };
-        },
-      },
-      Camera: { getPhoto: async () => ({ base64String: shot, format: 'png', saved: false }) },
-      Filesystem: {
-        mkdir: async () => {},
-        writeFile: async ({ path, data }) => (put({ ...files(), [path]: data }), { uri: path }),
-        readFile: async ({ path }) => {
-          if (path === 'kept-receipts.json' && slowMirrorMs > 0) await new Promise((r) => setTimeout(r, slowMirrorMs));
-          const all = files();
-          return path in all ? { data: all[path] } : missing();
-        },
-        readdir: async ({ path }) => ({
-          files: Object.keys(files()).filter((k) => k.startsWith(`${path}/`)).map((k) => ({ name: k.slice(path.length + 1) })),
-        }),
-        deleteFile: async ({ path }) => {
-          const all = files();
-          delete all[path];
-          put(all);
-        },
-        rmdir: async () => {},
-        stat: async ({ path }) => (path in files() ? { type: 'file', size: files()[path].length } : missing()),
-      },
-    };
-    w.Capacitor = {
-      isNativePlatform: () => true,
-      getPlatform: () => 'ios',
-      PluginHeaders: Object.entries(plugins).map(([name, methods]) => ({
-        name,
-        methods: Object.keys(methods).map((m) => ({ name: m, rtype: 'promise' })),
-      })),
-      nativePromise: (plugin, method, options) => plugins[plugin][method](options ?? {}),
-      // addListener is a callback method: the core hands it a function to call
-      // for every event, which is how a tapped notification reaches the app.
-      nativeCallback: (plugin, method, options, callback) => {
-        if (method === 'addListener') (listeners[options.eventName] ??= []).push(callback);
-        return String(Math.random());
-      },
-    };
-    w.Capacitor.PluginHeaders.find((h) => h.name === 'LocalNotifications').methods.push(
-      { name: 'addListener', rtype: 'callback' },
-      { name: 'removeListener', rtype: 'promise' },
-    );
-    plugins.LocalNotifications.removeListener = async () => {};
-  }, { shot, disk, slowMirrorMs, notifications });
-}
 
 reportOnCrash(report);
 
@@ -392,7 +295,7 @@ if (!/Deadline alerts/.test(settingsText)) {
   const scan = async () => {
     await np.getByRole('button', { name: 'Add a receipt' }).click();
     await np.getByRole('button', { name: /Scan a paper receipt/ }).click();
-    return np.getByText('FOUND IN YOUR PASTE').waitFor({ timeout: 90_000 }).then(() => true).catch(() => false);
+    return np.getByText('READ FROM YOUR PHOTO').waitFor({ timeout: 90_000 }).then(() => true).catch(() => false);
   };
 
   // 1. Scanned and saved as it comes: the photo goes with the receipt.
