@@ -374,6 +374,19 @@ const fits = (v: unknown, max: number): v is string => isStr(v) && v.length <= m
  * because "this is only a sample" is a label that exempts an entry from being
  * taken seriously, and nothing downloaded gets to award itself that.
  */
+/** A citation, or nothing: an https page on some host, and the day it was read. */
+function readSource(raw: unknown): { url: string; checkedOn: string } | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const r = raw as Record<string, unknown>;
+  if (!fits(r.url, MAX_TEXT) || !isStr(r.checkedOn) || !/^\d{4}-\d{2}-\d{2}$/.test(r.checkedOn)) return undefined;
+  try {
+    if (new URL(r.url).protocol !== 'https:') return undefined;
+  } catch {
+    return undefined;
+  }
+  return { url: r.url, checkedOn: r.checkedOn };
+}
+
 export function readFeed(doc: unknown, from: 'network' | 'device' = 'network'): PolicyUpdate[] | null {
   if (typeof doc !== 'object' || doc === null) return null;
   const d = doc as Record<string, unknown>;
@@ -395,6 +408,9 @@ export function readFeed(doc: unknown, from: 'network' | 'device' = 'network'): 
     ) {
       continue;
     }
+    const source = readSource(u.source);
+    // Downloaded, a change must say where it came from. See `PolicyUpdate.source`.
+    if (from === 'network' && !source) continue;
     out.push({
       id: u.id,
       store: u.store,
@@ -404,6 +420,7 @@ export function readFeed(doc: unknown, from: 'network' | 'device' = 'network'): 
       affectNote: fits(u.affectNote, MAX_TEXT) ? u.affectNote : '',
       ...(u.newWindowDays !== undefined ? { newWindowDays: u.newWindowDays as number } : {}),
       ...(from === 'device' && u.demo === true ? { demo: true } : {}),
+      ...(source ? { source } : {}),
     });
   }
   return newestFirst(out);
