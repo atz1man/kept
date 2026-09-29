@@ -667,6 +667,28 @@ for (const cancel of [false, true]) {
   await gCtx.close();
 }
 
+/*
+ * The web build's library lives only in this browser, and it never asked the
+ * browser to keep it. It asks now, once, on open.
+ */
+{
+  const pCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  await pCtx.addInitScript(() => {
+    window.__persistAsked = 0;
+    if (navigator.storage) {
+      navigator.storage.persisted = async () => false;
+      navigator.storage.persist = async () => (window.__persistAsked += 1, true);
+    }
+  });
+  const pp = await pCtx.newPage();
+  await pp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await pp.waitForTimeout(400);
+  const asked = await pp.evaluate(() => window.__persistAsked);
+  results['the web app asks the browser to keep its library'] = asked === 1;
+  if (!results['the web app asks the browser to keep its library']) problems.push(`persist asked ${asked} times`);
+  await pCtx.close();
+}
+
 // The tab bar floats over every screen; its buttons must stay clickable.
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(400);

@@ -544,6 +544,11 @@ if (!/Deadline alerts/.test(settingsText)) {
       await pp.getByRole('button', { name: 'Settings', exact: true }).click();
       await pp.waitForTimeout(500);
       const text = await pp.evaluate(() => document.body.innerText);
+      // The backup file carries receipts, not photos, and on the phone that
+      // has photos Settings says so beside the button.
+      if (!/Photos of receipts stay on this phone/.test(text)) {
+        failures.push({ what: 'Settings in the iOS app does not say backups leave photos behind', saw: '' });
+      }
       if (!/Blocked in iOS Settings/.test(text) || !/Settings › Notifications › kept/.test(text)) {
         failures.push({ what: 'Settings did not say iOS is blocking reminders, or where to turn them back on', saw: '' });
       }
