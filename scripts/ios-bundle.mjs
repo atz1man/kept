@@ -603,6 +603,42 @@ if (!/Deadline alerts/.test(settingsText)) {
   }
 }
 
+
+/*
+ * The first screens say what the iPhone app does that the web cannot.
+ *
+ * Step two on the web says the clocks are checked "every time you open it",
+ * which is the web's honest ceiling. The iPhone app lodges reminders with iOS,
+ * so its own step two says so; it is the reason the app is native.
+ */
+{
+  // The smallest iPhone the app supports, because the iPhone line is the
+  // longer one and onboarding clips what does not fit rather than scrolling.
+  const octx = await browser.newContext({ viewport: { width: 375, height: 667 } });
+  await answeringBridge(octx);
+  const op = await octx.newPage();
+  await op.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
+  await op.getByRole('button', { name: 'Next', exact: true }).click().catch(() => {});
+  await op.waitForTimeout(400);
+  const step2 = await op.evaluate(() => document.body.innerText);
+  if (!/Two clocks/.test(step2)) {
+    failures.push({ what: 'could not reach the second onboarding step on iOS', saw: step2.slice(0, 120) });
+  } else if (!/arrives at 9am/.test(step2) || /every time you open it/.test(step2)) {
+    failures.push({ what: 'the iPhone onboarding tells the web’s truth about reminders instead of its own', saw: step2.slice(0, 200) });
+  } else {
+    const fits = await op.evaluate(() => {
+      const para = [...document.querySelectorAll('p')].find((p) => /arrives at 9am/.test(p.textContent ?? ''));
+      const next = [...document.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Next');
+      if (!para || !next) return { ok: false, why: 'paragraph or button not found' };
+      const p = para.getBoundingClientRect();
+      const box = para.parentElement.getBoundingClientRect();
+      return { ok: p.bottom <= box.bottom && p.bottom <= next.getBoundingClientRect().top, why: `text ends ${Math.round(p.bottom)}, box ${Math.round(box.bottom)}` };
+    });
+    if (!fits.ok) failures.push({ what: 'the iPhone onboarding line is cut off on an iPhone SE', saw: fits.why });
+  }
+  await octx.close();
+}
+
 if (errors.length > 0) {
   failures.push({ what: 'the iOS bundle raised page errors', saw: errors.join(' | ') });
 }

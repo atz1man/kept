@@ -1,6 +1,7 @@
 import { color, font, shadow } from '../../tokens';
 import { Pressable } from '../components/Pressable';
 import { Logo, Wordmark } from '../components/Icons';
+import { isNative } from '../../lib/mirror';
 
 /*
  * The first thing anyone reads, so it had better be true — and two of these
@@ -24,12 +25,23 @@ const STEPS = [
   {
     title: 'Two clocks. We watch both.',
     body: 'The shop’s return window, and the statutory one running beside it. Kept counts both down and tells you which closes first, every time you open it.',
+    /*
+     * The iPhone app does more than the sentence above, and the first screens
+     * are where it should say so: reminders are lodged with iOS in advance and
+     * arrive at 9am with Kept closed (schedule-native.ts). "If you allow
+     * notifications" because iOS asks, and a person can say no. Worded as
+     * Settings words it on iOS ("lodged with iOS … arrive at 9am"), the
+     * register `alert-claims.test.ts` accepts: it names the mechanism and the
+     * moment instead of promising a ping. Leaving the web sentence up here
+     * would be the app understating itself, the same untruth notify.ts refuses.
+     */
+    native: 'The shop’s return window, and the statutory one running beside it. Kept counts both down, and if you allow notifications, lodges each deadline with iOS so it arrives at 9am on the day, even with Kept shut.',
   },
   {
     title: 'Your receipts stay yours.',
     body: 'No account. No cloud. Nothing uploaded. Policy updates download to your phone — your purchases never leave it.',
   },
-] as const;
+] as const satisfies readonly { title: string; body: string; native?: string }[];
 
 export const ONBOARDING_STEPS = STEPS.length;
 
@@ -40,7 +52,8 @@ interface Props {
 }
 
 export function Onboarding({ step, onNext, onSkip }: Props) {
-  const current = STEPS[step] ?? STEPS[0];
+  const current: { title: string; body: string; native?: string } = STEPS[step] ?? STEPS[0];
+  const body = isNative() && current.native ? current.native : current.body;
   return (
     <div className="k-fade" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '6px 24px 40px', overflow: 'hidden' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0 0' }}>
@@ -66,7 +79,7 @@ export function Onboarding({ step, onNext, onSkip }: Props) {
         <h1 tabIndex={-1} style={{ fontFamily: font.display, fontSize: 30, fontWeight: 700, lineHeight: 1.05, letterSpacing: '-1.2px', margin: 0 }}>
           {current.title}
         </h1>
-        <p style={{ fontSize: 15.5, lineHeight: 1.6, color: color.body, marginTop: 14, marginBottom: 0 }}>{current.body}</p>
+        <p style={{ fontSize: 15.5, lineHeight: 1.6, color: color.body, marginTop: 14, marginBottom: 0 }}>{body}</p>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
