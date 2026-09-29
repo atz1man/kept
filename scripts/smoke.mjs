@@ -667,6 +667,35 @@ for (const cancel of [false, true]) {
   await gCtx.close();
 }
 
+/*
+ * Which clock closes first. Four places said kept tells you, and no screen
+ * did. The headphones' 14 days go before the 30-day right to reject; the
+ * coat, ordered online with no arrival date, loses its right to reject first,
+ * and because that clock runs from the day it arrived, it is a likelihood.
+ */
+{
+  const fCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const fp = await fCtx.newPage();
+  await fp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await fp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await fp.waitForTimeout(300);
+  const lineFor = async (row) => {
+    await fp.getByRole('button', { name: row }).first().click();
+    await fp.waitForTimeout(300);
+    const t = (await fp.locator('main').innerText()).split('\n').find((l) => /close first:|Closes first:/.test(l)) ?? '';
+    await fp.getByRole('button', { name: 'Back', exact: true }).click();
+    await fp.waitForTimeout(300);
+    return t;
+  };
+  const headphones = await lineFor(/Currys, JBL/);
+  const coat = await lineFor(/Zara, Wool-blend/);
+  results['the receipt says which clock closes first, and hedges it when the arrival is unknown'] =
+    /^Closes first: the shop’s own window, /.test(headphones) &&
+    /^Likely to close first: your 30-day right to reject faulty goods for a full refund, no earlier than /.test(coat);
+  if (!results['the receipt says which clock closes first, and hedges it when the arrival is unknown']) problems.push(`first to close: ${JSON.stringify({ headphones, coat })}`);
+  await fCtx.close();
+}
+
 // The tab bar floats over every screen; its buttons must stay clickable.
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(400);

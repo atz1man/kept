@@ -2,10 +2,12 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { addDays, addMonths, toISODate } from '../src/lib/dates';
+import { addDays, addMonths, daysBetween, fmtDate, toISODate } from '../src/lib/dates';
 import {
   COOLING_OFF_DAYS,
   PRESUMED_FAULT_MONTHS,
+  firstToClose,
+  firstToCloseLine,
   REJECT_DAYS,
   RETURN_AFTER_CANCEL_DAYS,
   legalRights,
@@ -443,5 +445,42 @@ describe('the months when a fault is the shop’s to disprove', () => {
     const ends = addMonths(addDays(TODAY, -50), PRESUMED_FAULT_MONTHS);
     const left = Math.round((ends.getTime() - TODAY.getTime()) / 86_400_000);
     expect(reject(arrived).body).toContain(`(${left} days left), a fault is taken`);
+  });
+});
+
+describe('which clock closes first', () => {
+  /*
+   * Four places said kept "tells you which closes first", and no screen did.
+   * With IKEA's 365 days the first to go is the 30-day right to reject.
+   */
+  const shopEnds = (r: Receipt) => addDays(new Date(r.purchasedOn + 'T00:00'), r.windowDays);
+  const first = (r: Receipt) => firstToClose(r, TODAY, shopEnds(r));
+
+  it('is the shop when its window is the shorter', () => {
+    const r = { ...inStore, purchasedOn: ago(2), windowDays: 14 };
+    expect(first(r)).toMatchObject({ which: 'shop', hedged: false });
+    expect(firstToCloseLine(first(r)!)).toMatch(/^Closes first: the shop’s own window, /);
+  });
+
+  it('is the right to reject when the shop gives a year', () => {
+    const r = { ...inStore, store: 'IKEA', purchasedOn: ago(2), windowDays: 365 };
+    const c = first(r)!;
+    expect(c).toMatchObject({ which: 'reject', hedged: false });
+    expect(daysBetween(TODAY, c.on)).toBe(REJECT_DAYS - 2);
+    expect(firstToCloseLine(c)).toBe(`Closes first: your ${REJECT_DAYS}-day right to reject faulty goods for a full refund, ${fmtDate(c.on)}.`);
+  });
+
+  it('is the right to cancel for an online order, a likelihood until the day it arrived is known', () => {
+    const r = { ...online, purchasedOn: ago(2), windowDays: 28 };
+    const c = first(r)!;
+    expect(c).toMatchObject({ which: 'cancel', hedged: true });
+    expect(firstToCloseLine(c)).toMatch(/^Likely to close first: your 14-day right to cancel for any reason, no earlier than /);
+    expect(first({ ...r, arrivedOn: ago(1) })).toMatchObject({ which: 'cancel', hedged: false });
+  });
+
+  it('gives a tie to the shop, skips what has passed, and says nothing once all have', () => {
+    expect(first({ ...inStore, purchasedOn: ago(2), windowDays: REJECT_DAYS })!.which).toBe('shop');
+    expect(first({ ...inStore, purchasedOn: ago(40), windowDays: 365 })!.which).toBe('shop');
+    expect(first({ ...inStore, purchasedOn: ago(400), windowDays: 365 })).toBeNull();
   });
 });
