@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { COOLING_OFF_DAYS, REJECT_DAYS, RETURN_AFTER_CANCEL_DAYS } from '../src/lib/legal';
@@ -19,6 +19,7 @@ import { STORE_COUNT, STORE_POLICIES, TABLE_CHECKED_ON } from '../src/lib/stores
 const ROOT = join(__dirname, '..');
 const listing = JSON.parse(readFileSync(join(ROOT, 'store', 'listing.json'), 'utf8')) as {
   name: string; subtitle: string; promotionalText: string; description: string; keywords: string;
+  reviewNotes: string;
   privacy: { tracking: boolean; dataCollected: boolean; statement: string };
   urls: Record<string, string>;
 };
@@ -132,3 +133,44 @@ describe('the addresses', () => {
     expect(new URL(listing.urls.support).hash).toBe('#contact');
   });
 });
+
+describe('the review notes', () => {
+  /*
+   * The reviewer opens the app and, the first time they photograph a receipt,
+   * is asked for the camera. The notes said nothing about it: they described
+   * a device-only app with no server, and then the app asked for a camera the
+   * notes never mentioned — the one permission a reviewer is sure to ask
+   * about, with scanning now reading text off whatever it photographs. So the
+   * notes are held to the code: every file that opens the camera is found by
+   * walking the source, and while one exists the notes must say what it is
+   * for and that the photo stays on the phone.
+   */
+  const sources = sourceFiles(join(ROOT, 'src')).map((f) => readFileSync(f, 'utf8'));
+  const opensCamera = sources.some((s) => /\bgetPhoto\(|capture=["']environment["']/.test(s));
+  const readsText = sources.some((s) => /from ['"]tesseract\.js['"]|import\(['"]tesseract\.js['"]\)/.test(s));
+
+  it('finds the camera it is meant to be checking for', () => {
+    // Both are true today; a matcher that stopped matching would make every
+    // assertion below conditional on nothing and pass.
+    expect(opensCamera).toBe(true);
+    expect(readsText).toBe(true);
+  });
+
+  it('explain the camera the app will ask for', () => {
+    if (!opensCamera) return;
+    expect(listing.reviewNotes).toMatch(/\bcamera\b/i);
+    expect(listing.reviewNotes).toMatch(/never uploaded|stays? on the (?:device|phone)/i);
+  });
+
+  it('say the receipt is read on the device when the app reads one', () => {
+    if (!readsText) return;
+    expect(listing.reviewNotes).toMatch(/read on the (?:device|phone)/i);
+  });
+});
+
+function sourceFiles(dir: string): string[] {
+  return readdirSync(dir).flatMap((name) => {
+    const p = join(dir, name);
+    return statSync(p).isDirectory() ? sourceFiles(p) : /\.tsx?$/.test(name) ? [p] : [];
+  });
+}

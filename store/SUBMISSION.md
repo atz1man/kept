@@ -10,7 +10,7 @@ account, a decision, or an address only you can give.
 |---|---|---|---|
 | ☐ | Apple Developer Program membership | **you** | developer.apple.com |
 | ☐ | Register the App ID, then `npm run bundle-id uk.co.yourname.kept` | **you** | APN-21 |
-| ☐ | A contact address for privacy questions → `CONTACT_EMAIL` in `src/privacy/Privacy.tsx` | **you** | the page shows a red notice until it is set |
+| ☐ | A contact address for privacy questions → `CONTACT_EMAIL` in `src/lib/brand.ts` | **you** | the page shows a red notice until it is set |
 | ☐ | Your domain → replace `REPLACE_ME` in `store/listing.json` | **you** | |
 
 Then `npm run preflight`. It reads every placeholder above out of the files they
