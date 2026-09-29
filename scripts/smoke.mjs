@@ -398,6 +398,20 @@ const detailDeadline = await page.evaluate(() => {
 });
 
 /*
+ * The step the deadline is for: the shop's own returns page, one tap away,
+ * leaving nothing behind. The same page `check:retailers` reads, opened in a
+ * new tab with no referrer, and named by where it goes.
+ */
+{
+  const link = page.getByRole('link', { name: /Start your return/ });
+  const attrs = await link.evaluate((a) => ({ href: a.href, target: a.target, rel: a.rel, name: a.textContent.trim() })).catch(() => null);
+  results['a receipt links to its shop’s own returns page, and sends nothing with it'] =
+    !!attrs && attrs.href === 'https://www.zara.com/uk/en/help-center/ReturnPolicy' &&
+    attrs.target === '_blank' && /\bnoreferrer\b/.test(attrs.rel) && /zara\.com/.test(attrs.name);
+  if (!results['a receipt links to its shop’s own returns page, and sends nothing with it']) problems.push(`returns link: ${JSON.stringify(attrs)}`);
+}
+
+/*
  * Zara is the seed's one distance purchase, fifteen days old: the fourteen-day
  * cooling-off has just run out and the shop's own thirty days have not. That
  * is the one state where the rights block has to say which door is still open

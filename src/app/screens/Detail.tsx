@@ -6,6 +6,7 @@ import { money } from '../../lib/money';
 import { derive } from '../../lib/receipts';
 import type { Receipt } from '../../lib/types';
 import { clockFor, findStore } from '../../lib/stores';
+import { returnsPageFor } from '../../lib/returns-pages';
 import { urgency } from '../../lib/urgency';
 import { ChevronLeft, Warning } from '../components/Icons';
 import { Pressable } from '../components/Pressable';
@@ -56,6 +57,12 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
   // The online clock for an online order, where the shop has one (`clockFor`).
   const shop = findStore(receipt.store);
   const clockStart = shop ? clockFor(shop, receipt.distance) : 'purchase';
+  /*
+   * The step the deadline is for. Only while it can still be taken: after the
+   * shop's window a returns page invites a change-of-mind return the shop will
+   * refuse, and the rights that outlast it (faulty goods) are set out below.
+   */
+  const returnsPage = receipt.status === 'active' && !d.expired ? returnsPageFor(receipt.store) : null;
 
   // Rendered as a pair: a year on the deadline and none on the purchase is
   // what let "RETURN BY 15 Feb 2027" sit above "bought 15 Feb". See
@@ -160,6 +167,25 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
 
           <div style={cardLabel}>STORE POLICY</div>
           <div style={{ fontSize: 14, marginTop: 5, lineHeight: 1.5, color: color.bodyStrong }}>{receipt.policy}</div>
+          {returnsPage && (
+            /* A link, not a button: it leaves the app, and says where to. The
+               shop's own page, the one `check:retailers` reads; nothing about
+               the purchase goes with it. */
+            <a
+              href={returnsPage.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="k-ink"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 12,
+                minHeight: 44, padding: '10px 16px', borderRadius: 999, background: color.ink, color: color.cream,
+                textDecoration: 'none', fontSize: 14, fontWeight: 700,
+              }}
+            >
+              <span>Start your return</span>
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: color.faint }}>{returnsPage.host}<span aria-hidden="true"> ↗</span></span>
+            </a>
+          )}
           {dispatchDiffers && (
             <div style={{ fontSize: 12.5, marginTop: 8, color: color.muted }}>
               Clock started {fmtDateLong(fromISODate(receipt.windowStartsOn!))} ({clockStart === 'dispatch' ? 'dispatch' : 'delivery'}), not the day you ordered.
