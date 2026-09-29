@@ -17,7 +17,7 @@ const base = (over: Partial<AppState> = {}): AppState => ({
   version: 1, receipts: [receipt('a'), receipt('b')], updates: [], onboardingSeen: true,
   settings: { ...DEFAULT_SETTINGS }, alertsSent: [],
   screen: 'home', selId: null, obStep: 0, celebrating: null, shared: 'no', upgrading: null,
-  sharedText: null, embedded: false, justDeleted: null, justKept: null,
+  sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null,
   ...over,
 });
 
@@ -508,5 +508,66 @@ describe('keeping the closed windows in one tap', () => {
     const kept = reducer(deleted, { type: 'keep-closed', ids: ['x'] }, TODAY);
     expect(kept.justDeleted).toBeNull();
     expect(reducer(kept, { type: 'delete', id: 'y' }, TODAY).justKept).toBeNull();
+  });
+});
+
+describe('undoing a return', () => {
+  /*
+   * The swipe that marks a return fires on a row you might have meant to
+   * open. Delete had a way back; this, the easier one to trigger, did not —
+   * undoing it meant finding the receipt under MONEY BACK and opening it.
+   */
+  // Two real receipts, so a return is celebrated rather than tidied away.
+  const real = () => base({ receipts: [receipt('a'), receipt('b')] });
+
+  it('is offered after a return, and puts the receipt back as it was', () => {
+    const returned = reducer(real(), { type: 'return', id: 'a' }, TODAY);
+    expect(returned.screen).toBe('celebrate');
+    expect(returned.justReturned).toEqual({ id: 'a', was: { status: 'active', keptOn: undefined } });
+    const undone = reducer(returned, { type: 'undo-return' }, TODAY);
+    const a = undone.receipts.find((r) => r.id === 'a')!;
+    expect(a.status).toBe('active');
+    expect(a.returnedOn).toBeUndefined();
+    expect(undone.justReturned).toBeNull();
+  });
+
+  it('leaves the celebration, which has nothing left to celebrate', () => {
+    const undone = reducer(reducer(real(), { type: 'return', id: 'a' }, TODAY), { type: 'undo-return' }, TODAY);
+    expect(undone.screen).toBe('home');
+    expect(undone.celebrating).toBeNull();
+  });
+
+  it('puts a kept item that was returned after all back under keeping it, with its date', () => {
+    const kept = reducer(real(), { type: 'keep', id: 'a' }, addDays(TODAY, -3));
+    const undone = reducer(reducer(kept, { type: 'return', id: 'a' }, TODAY), { type: 'undo-return' }, TODAY);
+    const a = undone.receipts.find((r) => r.id === 'a')!;
+    expect(a.status).toBe('kept');
+    expect(a.keptOn).toBe(toISODate(addDays(TODAY, -3)));
+  });
+
+  it('is offered for a sample tidied away too, with no celebration', () => {
+    const samples = base({ receipts: [{ ...receipt('s'), demo: true }, receipt('mine')] });
+    const returned = reducer(samples, { type: 'return', id: 's' }, TODAY);
+    expect(returned.screen).toBe('home');
+    expect(returned.justReturned?.id).toBe('s');
+    expect(reducer(returned, { type: 'undo-return' }, TODAY).receipts.find((r) => r.id === 's')!.status).toBe('active');
+  });
+
+  it('leaves alone a receipt changed since, and goes when dismissed or navigated past', () => {
+    const returned = reducer(real(), { type: 'return', id: 'a' }, TODAY);
+    // Reopened in another tab and kept there: nothing an undo would produce.
+    const reopened = { ...returned, receipts: returned.receipts.map((r) => (r.id === 'a' ? { ...r, status: 'kept' as const, returnedOn: undefined, keptOn: '2026-08-27' } : r)) };
+    expect(reducer(reopened, { type: 'undo-return' }, TODAY).receipts).toEqual(reopened.receipts);
+    expect(reducer(returned, { type: 'dismiss-undo' }, TODAY).justReturned).toBeNull();
+    const gone = reducer(returned, { type: 'go', screen: 'home' }, TODAY);
+    expect(gone.justReturned).toBeNull();
+    expect(gone.receipts.find((r) => r.id === 'a')!.status).toBe('returned');
+  });
+
+  it('one undo on offer at a time', () => {
+    const deleted = reducer(real(), { type: 'delete', id: 'b' }, TODAY);
+    const returned = reducer(deleted, { type: 'return', id: 'a' }, TODAY);
+    expect(returned.justDeleted).toBeNull();
+    expect(reducer(returned, { type: 'delete', id: 'a' }, TODAY).justReturned).toBeNull();
   });
 });

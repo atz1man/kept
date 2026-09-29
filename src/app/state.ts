@@ -31,6 +31,15 @@ export interface AppState extends KeptState {
    * and for the same reason: one tap moved several rows at once.
    */
   justKept: string[] | null;
+  /**
+   * The receipt just marked returned, and what it was before, held only long
+   * enough to offer it back. The swipe that marks a return is a one-finger
+   * gesture on a row you might have meant to open, so it fires by accident;
+   * delete had an undo and this, the easier one to trigger, did not. `was`
+   * because a kept item can be returned after all, and undoing that must put
+   * it back under KEEPING IT with its date, not into the deadlines.
+   */
+  justReturned: { id: string; was: Pick<Receipt, 'status' | 'keptOn'> } | null;
   /** The receipt open on the detail screen. */
   selId: string | null;
   obStep: number;
@@ -91,6 +100,7 @@ export type Action =
   | { type: 'unkeep'; id: string }
   | { type: 'keep-closed'; ids: string[] }
   | { type: 'undo-keep' }
+  | { type: 'undo-return' }
   | { type: 'shared'; outcome: 'shared' | 'copied' | 'failed' }
   | { type: 'upgrade-ask'; period: Period }
   | { type: 'upgrade-cancel' };
@@ -123,7 +133,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       return {
         ...state,
         justDeleted: null,
-        justKept: null,
+        justKept: null, justReturned: null,
         // The undo is gone, so what was said about the receipt it held goes too.
         alertsSent: state.justDeleted ? pruneSent(state.alertsSent, state.receipts) : state.alertsSent,
         screen: action.screen,
@@ -147,8 +157,8 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
        */
       const held = state.receipts.some((r) => r.id === action.id);
       return held
-        ? { ...state, justDeleted: null, justKept: null, screen: 'detail', selId: action.id }
-        : { ...state, justDeleted: null, justKept: null, screen: 'home', selId: null };
+        ? { ...state, justDeleted: null, justKept: null, justReturned: null, screen: 'detail', selId: action.id }
+        : { ...state, justDeleted: null, justKept: null, justReturned: null, screen: 'home', selId: null };
     }
     case 'ob-next':
       return state.obStep >= ONBOARDING_STEPS - 1
@@ -170,12 +180,22 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
        * (`countsAsMoney`): while the samples are all there is, returning one
        * IS the demonstration, and it is celebrated.
        */
+      // Offered back either way: celebrated or tidied away, it may have been
+      // the wrong row. The only undo on offer; a delete's is forgotten as if
+      // dismissed.
+      const undo = {
+        justReturned: { id: r.id, was: { status: r.status, keptOn: r.keptOn } },
+        justDeleted: null,
+        justKept: null,
+        alertsSent: state.justDeleted ? pruneSent(state.alertsSent, state.receipts) : state.alertsSent,
+      };
       if (!countsAsMoney(state.receipts)(r)) {
-        return { ...state, receipts, screen: 'home', selId: null, justDeleted: null };
+        return { ...state, receipts, screen: 'home', selId: null, ...undo };
       }
       return {
         ...state,
         receipts,
+        ...undo,
         screen: 'celebrate',
         celebrating: {
           amount: r.amount,
@@ -240,7 +260,25 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         justKept: [...ids],
         // One undo on offer at a time; a delete's is forgotten as if dismissed.
         justDeleted: null,
+        justReturned: null,
         alertsSent: state.justDeleted ? pruneSent(state.alertsSent, state.receipts) : state.alertsSent,
+      };
+    }
+    case 'undo-return': {
+      const held = state.justReturned;
+      if (!held) return state;
+      return {
+        ...state,
+        // Only if it is still the refund this tap made: one reopened and
+        // changed since, here or in another tab, is left as it now is.
+        receipts: state.receipts.map((r) =>
+          r.id === held.id && r.status === 'returned'
+            ? { ...r, status: held.was.status, returnedOn: undefined, keptOn: held.was.keptOn }
+            : r,
+        ),
+        justReturned: null,
+        // Off the celebration: there is nothing to celebrate.
+        ...(state.screen === 'celebrate' ? { screen: 'home' as const, celebrating: null } : {}),
       };
     }
     case 'undo-keep': {
@@ -252,7 +290,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         receipts: state.receipts.map((r) =>
           ids.has(r.id) && r.status === 'kept' ? { ...r, status: 'active' as const, keptOn: undefined } : r,
         ),
-        justKept: null,
+        justKept: null, justReturned: null,
       };
     }
     case 'delete': {
@@ -265,7 +303,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         // was the only action in the app with no way out — a backup is not an
         // undo.
         justDeleted: removed,
-        justKept: null,
+        justKept: null, justReturned: null,
         // Forget what we said about receipts that no longer exist, so the
         // sent-list cannot grow without bound over years of use — but NOT yet
         // about this one. It is on offer to undo, and an undo that brought
@@ -291,6 +329,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
     }
     case 'dismiss-undo':
       if (state.justKept) return { ...state, justKept: null };
+      if (state.justReturned) return { ...state, justReturned: null };
       return state.justDeleted
         ? { ...state, justDeleted: null, alertsSent: pruneSent(state.alertsSent, state.receipts) }
         : state;
@@ -346,7 +385,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         receipts: [],
         alertsSent: [],
         justDeleted: null,
-        justKept: null,
+        justKept: null, justReturned: null,
         selId: null,
         screen: 'home',
       };
@@ -435,7 +474,7 @@ export function useApp() {
         sharedText: incoming,
         embedded,
         justDeleted: null,
-        justKept: null,
+        justKept: null, justReturned: null,
         selId: null,
         obStep: 0,
         celebrating: null,
