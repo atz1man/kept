@@ -2178,6 +2178,19 @@ heading, 29.09.26, an O where a 0 was — and is tested on OCR-shaped text with
 every rule held by a mutant. `smoke` scans a rendered receipt image end to
 end. Real-receipt accuracy is TestFlight question 3 in store/TESTFLIGHT.md.
 
+A phone held over a receipt casts a shadow across it, and the first version
+read nothing useful through one. It turned the photo black-and-white with a
+single threshold for the whole image, so the shaded half fell below it.
+Measured on three till receipts under six kinds of damage (33 photos, 99
+fields: shop, total, date), it got 0 of the 36 fields on shadowed photos,
+and in smoke it filled in one item's £29.99 as the total when the TOTAL line
+was in shadow. Thresholding each neighbourhood instead (Sauvola) reads the
+shadows, but alone it got four fields confidently wrong on faint thermal
+print. So `readBestOf` reads with the single threshold first, keeps that when
+it found all three fields, and otherwise reads again locally and keeps
+whichever found more. Result: 95 of 99 fields instead of 63, with a second
+read on 12 of the 33 photos. `smoke` scans a half-shaded receipt too.
+
 ## Not built yet
 
 - **Background notifications, on the web.** Still not possible, and still

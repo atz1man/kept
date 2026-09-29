@@ -1,3 +1,4 @@
+import { parseReceiptText } from './parse';
 import { ALIASES_BY_LENGTH } from './stores';
 
 /**
@@ -89,4 +90,46 @@ export function fromScan(ocr: string): string {
     .filter((l) => l.length > 0)
     .map((l) => poundSigns(slashDates(fixMoneyTokens(l))).replace(DUE, 'Total $1'));
   return [...(shop ? [`Receipt from ${shop}`] : []), ...body].join('\n');
+}
+
+/**
+ * How the photo is turned into black text on white before it is read.
+ *
+ * `global` picks one brightness for the whole photo (tesseract's default,
+ * Otsu). `local` picks one per neighbourhood (Sauvola). Measured on three till
+ * receipts under six kinds of damage — 33 photos, 99 fields: `global` read
+ * NOTHING from any photo with a shadow across it (0 of 36 fields), because a
+ * single threshold puts the whole shaded half below it, and a phone held over
+ * a receipt casts exactly that shadow. `local` read the shadows, but alone it
+ * got four fields confidently wrong where `global` got none, on faint thermal
+ * print. Neither is the answer on its own, so both are used, in that order.
+ */
+export type Thresholding = 'global' | 'local';
+
+/** How many of the three things a receipt is read for this text yields: shop, total, date. */
+export function fieldsFound(ocr: string, today: Date): number {
+  const out = parseReceiptText(fromScan(ocr), today);
+  if (!out.ok) return 0;
+  return [out.value.store !== null, out.value.amount !== null, out.value.dateFound].filter(Boolean).length;
+}
+
+/**
+ * The better of up to two reads of one photo.
+ *
+ * `global` first, and it is kept when it found the shop, the total and the
+ * date, so a well-lit receipt is read once, exactly as before. Otherwise the
+ * photo is read again with `local`, which is kept only when it found MORE: on
+ * a tie the first read stands, because `local` is the one that was measured
+ * being confidently wrong. Over the same 33 photos this reads 95 of 99 fields
+ * against 63, with a second read on 12 of them. One field of those 95 was
+ * wrong, £349.04 for £349.00, on the photo with shadow, tilt and blur at
+ * once, where the single read had found nothing, which is why nothing is saved
+ * before the person has checked what was read.
+ */
+export async function readBestOf(read: (how: Thresholding) => Promise<string>, today: Date): Promise<string> {
+  const first = await read('global');
+  const firstFound = fieldsFound(first, today);
+  if (firstFound === 3) return first;
+  const second = await read('local');
+  return fieldsFound(second, today) > firstFound ? second : first;
 }

@@ -13,6 +13,7 @@
  * time someone chooses to scan; the service worker and tesseract's own cache
  * keep them after that.
  */
+import { readBestOf } from '../lib/receipt-scan';
 
 /** Where the reader's files live: `ocr/` beside the app, whatever the app's path. */
 function ocrBase(): string {
@@ -57,12 +58,14 @@ async function prepare(file: Blob): Promise<HTMLCanvasElement> {
   return canvas;
 }
 
-export type ScanProgress = (fraction: number) => void;
+/** How far through a read, and whether it is the second look (see `readBestOf`). */
+export type ScanProgress = (fraction: number, again: boolean) => void;
 
 /** The text on the receipt in the photo, read on this device. */
-export async function readReceiptPhoto(file: Blob, onProgress?: ScanProgress): Promise<string> {
+export async function readReceiptPhoto(file: Blob, today: Date, onProgress?: ScanProgress): Promise<string> {
   const [{ createWorker, OEM }, canvas] = await Promise.all([import('tesseract.js'), prepare(file)]);
   const base = ocrBase();
+  let again = false;
   const worker = await createWorker('eng', OEM.LSTM_ONLY, {
     workerPath: `${base}worker.min.js`,
     corePath: base,
@@ -71,12 +74,17 @@ export async function readReceiptPhoto(file: Blob, onProgress?: ScanProgress): P
     // blob route exists for loading the worker from a CDN, which this never does.
     workerBlobURL: false,
     logger: (m: { status: string; progress: number }) => {
-      if (m.status === 'recognizing text') onProgress?.(m.progress);
+      if (m.status === 'recognizing text') onProgress?.(m.progress, again);
     },
   });
   try {
-    const { data } = await worker.recognize(canvas);
-    return data.text;
+    return await readBestOf(async (how) => {
+      again = how === 'local';
+      // tesseract's own names: 0 is Otsu, one threshold for the page; 2 is Sauvola, one per neighbourhood.
+      await worker.setParameters({ thresholding_method: how === 'global' ? '0' : '2' });
+      const { data } = await worker.recognize(canvas);
+      return data.text;
+    }, today);
   } finally {
     await worker.terminate();
   }
