@@ -9,7 +9,7 @@ export interface Warranty {
 
 export type Category = 'audio' | 'kitchen' | 'clothing' | 'beauty' | 'furniture' | 'other';
 
-export type ReceiptStatus = 'active' | 'returned' | 'kept';
+export type ReceiptStatus = 'active' | 'sent' | 'returned' | 'kept';
 
 /**
  * What the app persists per receipt.
@@ -87,6 +87,17 @@ export interface Receipt {
    * shop's window by years.
    */
   keptOn?: string;
+  /**
+   * The day it went back to the shop — posted, dropped off, handed over —
+   * with the refund still to come. Posting a parcel on day 27 and seeing the
+   * money on day 35 is how most online returns go, and there was nowhere to
+   * be in between: mark it returned and the refund was celebrated before it
+   * existed and never chased; leave it active and it went on saying "go now
+   * or lose it" about a parcel already in the post. Kept on the receipt once
+   * the refund lands, because it is the day that decides whether the return
+   * was in time, not the day the money arrived.
+   */
+  sentOn?: string;
   /**
    * True for the five receipts a fresh install arrives with.
    *

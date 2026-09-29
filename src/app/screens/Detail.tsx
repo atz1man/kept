@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { color, font, radius, shadow } from '../../tokens';
-import { fmtDateLong, fmtDatesTogether, fromISODate } from '../../lib/dates';
+import { addDays, fmtDateLong, fmtDatesTogether, fromISODate } from '../../lib/dates';
 import { firstToClose, firstToCloseLine, legalRights } from '../../lib/legal';
+import { REFUND_CHASE_DAYS } from '../../lib/alerts';
 import { money } from '../../lib/money';
 import { asksForGuarantee, derive } from '../../lib/receipts';
 import type { Receipt } from '../../lib/types';
@@ -26,12 +27,14 @@ interface Props {
   onUnreturn: () => void;
   onKeep: () => void;
   onUnkeep: () => void;
+  onSend: () => void;
+  onUnsend: () => void;
   onDelete: () => void;
 }
 
 const cardLabel = { fontSize: 11, fontWeight: 700, letterSpacing: '1.4px', color: color.muted } as const;
 
-export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, onUnreturn, onKeep, onUnkeep, onDelete }: Props) {
+export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onDelete }: Props) {
   const [legalOpen, setLegalOpen] = useState(true);
   const d = derive(receipt, today);
   const u = urgency(d.daysLeft, urgentDays);
@@ -156,7 +159,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
                   done this. Here the ring's stroke was the only urgency
                   signal on the screen, and on the last day it was a hairline. */}
               <div style={{ fontFamily: font.figures, fontSize: settled || d.expired ? 15 : 22, fontWeight: 700, lineHeight: 1, color: ringColor }}>
-                {receipt.status === 'returned' ? 'back' : receipt.status === 'kept' ? 'kept' : d.expired ? 'closed' : d.daysLeft}
+                {receipt.status === 'returned' ? 'back' : receipt.status === 'kept' ? 'kept' : receipt.status === 'sent' ? 'sent' : d.expired ? 'closed' : d.daysLeft}
               </div>
               {!settled && !d.expired && <div style={{ fontSize: 10, color: color.faint, marginTop: 2 }}>days left</div>}
             </div>
@@ -315,7 +318,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
 
       {/* The rights above, turned into the letter that asks for them. Not on a
           refund: that purchase has already gone back. */}
-      {receipt.status !== 'returned' && <FaultPanel receipt={receipt} today={today} />}
+      {(receipt.status === 'active' || receipt.status === 'kept') && <FaultPanel receipt={receipt} today={today} />}
 
       {receipt.gotcha && (
         <div style={{ display: 'flex', gap: 10, background: color.yellowLight, border: `1.5px solid ${color.ink}`, borderRadius: 16, padding: '14px 16px', marginTop: 12 }}>
@@ -351,6 +354,44 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               Delete
             </Pressable>
           </div>
+        </>
+      ) : receipt.status === 'sent' ? (
+        <>
+          {/* Gone back, money still to come. The day it went is the one that
+              decides whether it was in time, so it is said; and the day worth
+              chasing from, so that is said too. */}
+          <div style={{ marginTop: 16, padding: 15, background: color.white, border: `1.5px solid ${color.border}`, borderRadius: 16 }}>
+            <div style={{ fontWeight: 700 }}>
+              Sent back{receipt.sentOn ? ` · ${fmtDateLong(fromISODate(receipt.sentOn))}` : ''}
+            </div>
+            <div style={{ fontSize: 13, color: color.muted, lineHeight: 1.5, marginTop: 4 }}>
+              Waiting for the refund.
+              {receipt.sentOn && ` If it has not arrived by ${fmtDateLong(addDays(fromISODate(receipt.sentOn), REFUND_CHASE_DAYS))}, chase it`}
+              {receipt.sentOn && (receipt.distance ? ` — for an online order, the shop has ${REFUND_CHASE_DAYS} days from getting it back.` : '.')}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+            <Pressable
+              className="k-cta-yellow"
+              onClick={onReturn}
+              style={{ flex: 1, padding: 16, textAlign: 'center', background: color.yellow, border: `1.5px solid ${color.ink}`, borderRadius: 999, fontWeight: 700, fontSize: 15, boxShadow: shadow.hard }}
+            >
+              Got my money back
+            </Pressable>
+            <Pressable
+              onClick={onDelete}
+              style={{ width: 'auto', padding: '16px 18px', textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, color: color.danger, borderRadius: 999, fontWeight: 700, fontSize: 15 }}
+            >
+              Delete
+            </Pressable>
+          </div>
+          <Pressable
+            className="k-row-white"
+            onClick={onUnsend}
+            style={{ marginTop: 10, padding: 15, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+          >
+            Not sent after all
+          </Pressable>
         </>
       ) : receipt.status === 'kept' ? (
         <>
@@ -397,14 +438,24 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
             Delete
           </Pressable>
         </div>
-        {/* The commonest ending, which had no way to be said. */}
-        <Pressable
-          className="k-row-white"
-          onClick={onKeep}
-          style={{ marginTop: 10, padding: 15, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
-        >
-          I’m keeping it
-        </Pressable>
+        {/* The two other ends: in the post with the refund to come, and the
+            commonest of all, which had no way to be said. */}
+        <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+          <Pressable
+            className="k-row-white"
+            onClick={onSend}
+            style={{ flex: '1 1 140px', padding: 15, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+          >
+            I’ve sent it back
+          </Pressable>
+          <Pressable
+            className="k-row-white"
+            onClick={onKeep}
+            style={{ flex: '1 1 140px', padding: 15, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+          >
+            I’m keeping it
+          </Pressable>
+        </div>
         </>
       )}
     </div>

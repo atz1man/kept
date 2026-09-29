@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { alertKey, dueAlerts, pruneSent, supersededKeys, WARRANTY_NOTICE_DAYS } from '../src/lib/alerts';
+import { alertKey, dueAlerts, pruneSent, REFUND_CHASE_DAYS, supersededKeys, WARRANTY_NOTICE_DAYS } from '../src/lib/alerts';
 import { addDays, addMonths, toISODate } from '../src/lib/dates';
 import { toPence } from '../src/lib/money';
 import { seedReceipts } from '../src/lib/seed';
@@ -248,5 +248,35 @@ describe('a guarantee about to end', () => {
     expect(a.body).toMatch(/^Zara · Wool coat — covered until .+, 10 days from now\. If anything is wrong with it, claim before then\.$/);
     expect(warrantyAlerts([coverEndingIn(0)])[0].body).toMatch(/which is today\./);
     expect(warrantyAlerts([coverEndingIn(1)])[0].body).toMatch(/1 day from now/);
+  });
+});
+
+describe('a refund still to come', () => {
+  // Sent back, money not yet seen: asked about once, a fortnight on.
+  const sentAgo = (n: number, over: Partial<Receipt> = {}) =>
+    closingIn(5, { status: 'sent', sentOn: toISODate(addDays(TODAY, -n)), ...over });
+  const refunds = (rs: Receipt[], sent = none) => dueAlerts(rs, TODAY, URGENT, sent).filter((a) => a.rung === 'refund');
+
+  it('raises no return reminder while it is in the post, however close the window', () => {
+    expect(dueAlerts([closingIn(0, { status: 'sent', sentOn: toISODate(TODAY) })], TODAY, URGENT, none)).toEqual([]);
+  });
+
+  it('asks a fortnight on, not before, and once', () => {
+    expect(REFUND_CHASE_DAYS).toBe(14);
+    expect(refunds([sentAgo(13)])).toEqual([]);
+    const [a] = refunds([sentAgo(14)]);
+    expect(a.key).toBe('r1:refund');
+    expect(refunds([sentAgo(40)], new Set([a.key]))).toEqual([]);
+    expect(supersededKeys(a)).toEqual([]);
+  });
+
+  it('states the legal fortnight only for an online order', () => {
+    expect(refunds([sentAgo(14)])[0].body).toMatch(/For an online order, the shop has 14 days from getting it back/);
+    expect(refunds([sentAgo(14, { distance: false })])[0].body).not.toMatch(/online order/);
+    expect(refunds([sentAgo(14)])[0].body).toMatch(/^Zara · Wool coat — it went back on .+\. .*If the money has not arrived, chase it\.$/);
+  });
+
+  it('is never about a sample', () => {
+    expect(refunds([sentAgo(20, { demo: true })])).toEqual([]);
   });
 });

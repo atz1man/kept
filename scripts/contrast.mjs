@@ -173,8 +173,15 @@ await page.waitForTimeout(300);
 await page.getByRole('button', { name: /Currys, Le Creuset/ }).click();
 await page.waitForTimeout(400);
 await sweep('receipt detail · no guarantee');
+
+// Sent back, waiting for the refund: its own panel on the receipt, and its own
+// section on the list — states nothing reaches without sending something.
+await page.getByRole('button', { name: 'I’ve sent it back' }).click();
+await page.waitForTimeout(300);
+await sweep('receipt detail · sent back');
 await page.getByRole('button', { name: 'Back', exact: true }).click();
 await page.waitForTimeout(300);
+await sweep('home · sent back');
 await page.getByRole('button', { name: /Currys, JBL/ }).click();
 await page.waitForTimeout(400);
 

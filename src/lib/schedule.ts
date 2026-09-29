@@ -1,6 +1,6 @@
-import { addDays, startOfDay } from './dates';
+import { addDays, fromISODate, startOfDay } from './dates';
 import { derive } from './receipts';
-import { alertKey, copyFor, warrantyWatched, WARRANTY_NOTICE_DAYS, type AlertRung, type ReturnRung } from './alerts';
+import { alertKey, copyFor, REFUND_CHASE_DAYS, warrantyWatched, WARRANTY_NOTICE_DAYS, type AlertRung, type ReturnRung } from './alerts';
 import type { Receipt } from './types';
 
 /**
@@ -109,6 +109,15 @@ export function planAlerts(
      * that is the right way round, since it is re-planned on every launch
      * long before its morning comes.
      */
+    // Gone back: the refund asked about once, at 9am a fortnight on.
+    if (r.status === 'sent' && !r.demo && r.sentOn) {
+      const key = alertKey(r.id, 'refund');
+      const went = fromISODate(r.sentOn);
+      const when = at9am(addDays(went, REFUND_CHASE_DAYS));
+      if (!sent.has(key) && when.getTime() > now.getTime()) {
+        out.push({ key, receiptId: r.id, rung: 'refund', at: when, ...copyFor('refund', r, 0, went) });
+      }
+    }
     if (warrantyWatched(r)) {
       const w = derive(r, today).warranty;
       const key = alertKey(r.id, 'warranty');

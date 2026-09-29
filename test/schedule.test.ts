@@ -219,3 +219,17 @@ describe('a guarantee, lodged a month ahead', () => {
     expect(keys(plan([late]))).not.toContain('r1:warranty');
   });
 });
+
+describe('the refund, chased from the lock screen', () => {
+  it('is lodged for 9am a fortnight after it went back, and nothing about the window', () => {
+    const out = plan([receipt({ status: 'sent', sentOn: iso(TODAY) })]);
+    expect(keys(out)).toEqual(['r1:refund']);
+    expect(iso(out[0].at)).toBe(iso(addDays(TODAY, 14)));
+    expect(out[0].at.getHours()).toBe(FIRE_HOUR);
+  });
+
+  it('is not lodged once asked, nor for a sample', () => {
+    expect(plan([receipt({ status: 'sent', sentOn: iso(TODAY) })], 7, ['r1:refund'])).toEqual([]);
+    expect(plan([receipt({ status: 'sent', sentOn: iso(TODAY), demo: true })])).toEqual([]);
+  });
+});

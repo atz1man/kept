@@ -439,3 +439,23 @@ describe('a kept receipt in a backup', () => {
     expect(receipts[0].keptOn).toBeUndefined();
   });
 });
+
+describe('a receipt sent back, in a backup', () => {
+  it('is read, with the day it went back', () => {
+    const r = readReceipt({ ...good, status: 'sent', sentOn: '2026-08-30' });
+    expect(r?.status).toBe('sent');
+    expect(r?.sentOn).toBe('2026-08-30');
+  });
+
+  it('is refused with a date that is not one', () => {
+    expect(readReceipt({ ...good, status: 'sent', sentOn: 'Tuesday' })).toBeNull();
+  });
+
+  it('keeps the day it went back once the refund lands, and a restore does not undo the send', () => {
+    expect(readReceipt({ ...good, status: 'returned', returnedOn: '2026-09-05', sentOn: '2026-08-30' })?.sentOn).toBe('2026-08-30');
+    const sent: Receipt = { ...good, status: 'sent', sentOn: '2026-08-30' };
+    const { receipts } = mergeBackup([sent], [good]);
+    expect(receipts[0].status).toBe('sent');
+    expect(receipts[0].sentOn).toBe('2026-08-30');
+  });
+});

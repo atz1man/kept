@@ -1,10 +1,10 @@
 import { useEffect, useReducer, useState } from 'react';
-import { pruneSent } from '../lib/alerts';
+import { pruneSent, remindedBeforeWindow } from '../lib/alerts';
 import { planAlerts } from '../lib/schedule';
 import { isNative } from '../lib/mirror';
 import { cleanupPhotos } from '../lib/photos';
 import { onNotificationTap, syncScheduled } from './schedule-native';
-import { currentDay, startOfDay, toISODate } from '../lib/dates';
+import { currentDay, daysBetween, fromISODate, startOfDay, toISODate } from '../lib/dates';
 import { sharedTextFrom, strippedShareUrl } from '../lib/share';
 import { countsAsMoney, derive, makeReceiptId } from '../lib/receipts';
 import { freshState, load, onExternalChange, save, type KeptState, type Settings } from '../lib/storage';
@@ -97,6 +97,8 @@ export type Action =
   | { type: 'feed'; updates: PolicyUpdate[] }
   | { type: 'settings'; patch: Partial<Settings> }
   | { type: 'keep'; id: string }
+  | { type: 'send'; id: string }
+  | { type: 'unsend'; id: string }
   | { type: 'unkeep'; id: string }
   | { type: 'keep-closed'; ids: string[] }
   | { type: 'undo-keep' }
@@ -170,6 +172,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       const r = state.receipts.find((x) => x.id === action.id);
       if (!r || r.status === 'returned') return state;
       const receipts = state.receipts.map((x) =>
+        // `sentOn` stays: it is the day that decides whether this was in time.
         x.id === action.id ? { ...x, status: 'returned' as const, returnedOn: toISODate(today), keptOn: undefined } : x,
       );
       /*
@@ -184,6 +187,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       // the wrong row. The only undo on offer; a delete's is forgotten as if
       // dismissed.
       const undo = {
+        // No `sentOn` to hold: a return never clears it, so undo finds it on the receipt.
         justReturned: { id: r.id, was: { status: r.status, keptOn: r.keptOn } },
         justDeleted: null,
         justKept: null,
@@ -200,10 +204,14 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         celebrating: {
           amount: r.amount,
           store: r.store,
-          inTime: !derive(r, today).expired,
-          // Any rung counts: what the line claims is that kept said something
-          // before this happened, not which rung it was.
-          warned: state.alertsSent.some((k) => k.startsWith(`${r.id}:`)),
+          // Judged on the day it went back, where that was recorded: posted on
+          // day 27 and refunded on day 35 is a return made in time.
+          inTime: r.sentOn
+            ? daysBetween(fromISODate(r.sentOn), derive(r, today).deadline) >= 0
+            : !derive(r, today).expired,
+          // What the share line claims is a reminder before the window shut —
+          // not the guarantee alert, not the refund chase, not "window closed".
+          warned: remindedBeforeWindow(state.alertsSent, r.id),
         },
         shared: 'no',
         selId: null,
@@ -216,7 +224,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       return {
         ...state,
         receipts: state.receipts.map((r) =>
-          r.id === action.id ? { ...r, status: 'active' as const, returnedOn: undefined } : r,
+          r.id === action.id ? { ...r, status: 'active' as const, returnedOn: undefined, sentOn: undefined } : r,
         ),
       };
     case 'keep':
@@ -233,6 +241,25 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         ...state,
         receipts: state.receipts.map((r) =>
           r.id === action.id && r.status === 'kept' ? { ...r, status: 'active' as const, keptOn: undefined } : r,
+        ),
+      };
+    case 'send':
+      /*
+       * Gone back, money still to come. From active only: a kept item that
+       * turns out faulty goes back through "Not keeping it after all" first,
+       * which is one tap and says what happened; a refund has already ended.
+       */
+      return {
+        ...state,
+        receipts: state.receipts.map((r) =>
+          r.id === action.id && r.status === 'active' ? { ...r, status: 'sent' as const, sentOn: toISODate(today) } : r,
+        ),
+      };
+    case 'unsend':
+      return {
+        ...state,
+        receipts: state.receipts.map((r) =>
+          r.id === action.id && r.status === 'sent' ? { ...r, status: 'active' as const, sentOn: undefined } : r,
         ),
       };
     case 'keep-closed': {
