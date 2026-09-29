@@ -31,6 +31,60 @@ const ORIGIN = `http://localhost:${PORT}`;
 const EXEC = process.env.CHROMIUM_PATH;
 
 const failures = [];
+
+/**
+ * A native bridge that ANSWERS, for the flows that need a camera or a disk.
+ *
+ * Capacitor's own core calls native through `PluginHeaders` and
+ * `nativePromise`, so declaring Camera and Filesystem there and answering them
+ * exercises the app's real plugin imports. The disk lives in sessionStorage so
+ * it survives a reload, as a phone's Documents directory does; `slowMirrorMs`
+ * delays reading the library's mirror file, as a slow disk would.
+ */
+async function answeringBridge(ctx, { shot = '', disk = {}, slowMirrorMs = 0 } = {}) {
+  await ctx.addInitScript(({ shot, disk, slowMirrorMs }) => {
+    const w = window;
+    w.webkit = { messageHandlers: { bridge: { postMessage: () => {} } } };
+    const KEY = '__keptDisk';
+    if (sessionStorage.getItem(KEY) === null) sessionStorage.setItem(KEY, JSON.stringify(disk));
+    const files = () => JSON.parse(sessionStorage.getItem(KEY));
+    const put = (all) => sessionStorage.setItem(KEY, JSON.stringify(all));
+    w.__keptDisk = files;
+    const missing = () => Promise.reject(new Error('File does not exist.'));
+    const plugins = {
+      Camera: { getPhoto: async () => ({ base64String: shot, format: 'png', saved: false }) },
+      Filesystem: {
+        mkdir: async () => {},
+        writeFile: async ({ path, data }) => (put({ ...files(), [path]: data }), { uri: path }),
+        readFile: async ({ path }) => {
+          if (path === 'kept-receipts.json' && slowMirrorMs > 0) await new Promise((r) => setTimeout(r, slowMirrorMs));
+          const all = files();
+          return path in all ? { data: all[path] } : missing();
+        },
+        readdir: async ({ path }) => ({
+          files: Object.keys(files()).filter((k) => k.startsWith(`${path}/`)).map((k) => ({ name: k.slice(path.length + 1) })),
+        }),
+        deleteFile: async ({ path }) => {
+          const all = files();
+          delete all[path];
+          put(all);
+        },
+        rmdir: async () => {},
+        stat: async ({ path }) => (path in files() ? { type: 'file', size: files()[path].length } : missing()),
+      },
+    };
+    w.Capacitor = {
+      isNativePlatform: () => true,
+      getPlatform: () => 'ios',
+      PluginHeaders: Object.entries(plugins).map(([name, methods]) => ({
+        name,
+        methods: Object.keys(methods).map((m) => ({ name: m, rtype: 'promise' })),
+      })),
+      nativePromise: (plugin, method, options) => plugins[plugin][method](options ?? {}),
+    };
+  }, { shot, disk, slowMirrorMs });
+}
+
 reportOnCrash(report);
 
 if (!existsSync(`${ROOT}dist-ios/index.html`)) {
@@ -276,36 +330,7 @@ if (!/Deadline alerts/.test(settingsText)) {
   await shotPage.close();
 
   const nctx = await browser.newContext({ viewport: { width: 402, height: 874 } });
-  await nctx.addInitScript((shot) => {
-    const w = window;
-    w.webkit = { messageHandlers: { bridge: { postMessage: () => {} } } };
-    const files = new Map();
-    w.__keptDisk = files;
-    const missing = () => Promise.reject(new Error('File does not exist.'));
-    const plugins = {
-      Camera: { getPhoto: async () => ({ base64String: shot, format: 'png', saved: false }) },
-      Filesystem: {
-        mkdir: async () => {},
-        writeFile: async ({ path, data }) => (files.set(path, data), { uri: path }),
-        readFile: ({ path }) => (files.has(path) ? Promise.resolve({ data: files.get(path) }) : missing()),
-        readdir: async ({ path }) => ({
-          files: [...files.keys()].filter((k) => k.startsWith(`${path}/`)).map((k) => ({ name: k.slice(path.length + 1) })),
-        }),
-        deleteFile: async ({ path }) => void files.delete(path),
-        rmdir: async () => {},
-        stat: ({ path }) => (files.has(path) ? Promise.resolve({ type: 'file', size: files.get(path).length }) : missing()),
-      },
-    };
-    w.Capacitor = {
-      isNativePlatform: () => true,
-      getPlatform: () => 'ios',
-      PluginHeaders: Object.entries(plugins).map(([name, methods]) => ({
-        name,
-        methods: Object.keys(methods).map((m) => ({ name: m, rtype: 'promise' })),
-      })),
-      nativePromise: (plugin, method, options) => plugins[plugin][method](options ?? {}),
-    };
-  }, photo);
+  await answeringBridge(nctx, { shot: photo });
   const np = await nctx.newPage();
   const nerrors = [];
   np.on('pageerror', (e) => nerrors.push(String(e)));
@@ -316,7 +341,7 @@ if (!/Deadline alerts/.test(settingsText)) {
   });
   await np.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
   await np.getByRole('button', { name: 'Skip' }).click().catch(() => {});
-  const photos = () => np.evaluate(() => [...window.__keptDisk.entries()].filter(([k]) => k.startsWith('receipts/')));
+  const photos = () => np.evaluate(() => Object.entries(window.__keptDisk()).filter(([k]) => k.startsWith('receipts/')));
 
   const scan = async () => {
     await np.getByRole('button', { name: 'Add a receipt' }).click();
@@ -374,6 +399,58 @@ if (!/Deadline alerts/.test(settingsText)) {
   if (elsewhere.length > 0) failures.push({ what: 'the iOS scan reached another origin', saw: [...new Set(elsewhere)].join(', ') });
   if (nerrors.length > 0) failures.push({ what: 'the scan in the iOS bundle raised page errors', saw: nerrors.join(' | ') });
   await nctx.close();
+}
+
+
+/*
+ * A library rescued from a slow mirror, with its photos.
+ *
+ * The web view has handed back an empty store, which is what the mirror is
+ * for, and reading the mirror takes longer than MIRROR_READ_BUDGET_MS. The app
+ * must mount rather than hang, and until this was fixed it then saved the
+ * fresh library over the mirror and cleared every photo as orphaned: the
+ * receipts that were four seconds from arriving were gone for good. Now the
+ * mirror is held until the read answers, and the library comes back.
+ */
+{
+  // A real library to rescue: the app's own first save, with one receipt
+  // renamed so it cannot be mistaken for the fresh one.
+  const seedCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  await answeringBridge(seedCtx);
+  const sp = await seedCtx.newPage();
+  await sp.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
+  await sp.waitForTimeout(800);
+  const saved = JSON.parse((await sp.evaluate(() => localStorage.getItem('kept.v1'))) ?? 'null');
+  await seedCtx.close();
+  if (!saved?.receipts?.length) {
+    failures.push({ what: 'could not make a library to rescue', saw: '' });
+  } else {
+    saved.onboardingSeen = true;
+    saved.receipts[0].item = 'Rescued from the mirror';
+    // An id of its own: a sample's id would also be in the fresh library, so
+    // its photo could never look orphaned and the check below would be empty.
+    saved.receipts[0].id = 'r_rescued_1';
+    const id = saved.receipts[0].id;
+    const library = JSON.stringify(saved);
+    const photoPath = `receipts/${id.replace(/[^a-zA-Z0-9_-]/g, '')}.jpg`;
+
+    const rctx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+    await answeringBridge(rctx, { disk: { 'kept-receipts.json': library, [photoPath]: 'UEhPVE8=' }, slowMirrorMs: 4500 });
+    const rp = await rctx.newPage();
+    const rerrors = [];
+    rp.on('pageerror', (e) => rerrors.push(String(e)));
+    await rp.goto(`${ORIGIN}/`);
+    const back = await rp.getByText('Rescued from the mirror').first().waitFor({ timeout: 15_000 }).then(() => true).catch(() => false);
+    await rp.waitForTimeout(800);
+    const disk = await rp.evaluate(() => window.__keptDisk());
+    if (!back) failures.push({ what: 'a library behind a slow mirror never came back', saw: (await rp.locator('body').innerText()).slice(0, 160) });
+    if (!String(disk['kept-receipts.json']).includes('Rescued from the mirror')) {
+      failures.push({ what: 'the fresh boot overwrote a mirror nobody had read yet', saw: String(disk['kept-receipts.json']).slice(0, 120) });
+    }
+    if (!(photoPath in disk)) failures.push({ what: 'a slow mirror cost the library its photos', saw: Object.keys(disk).join(', ') });
+    if (rerrors.length > 0) failures.push({ what: 'the slow-mirror launch raised page errors', saw: rerrors.join(' | ') });
+    await rctx.close();
+  }
 }
 
 if (errors.length > 0) {

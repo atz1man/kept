@@ -23,6 +23,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 let resolveRead: ((value: unknown) => void) | null = null;
 let readCalls = 0;
+/** What reached the mirror file, in order. */
+const writes: string[] = [];
 
 vi.mock('@capacitor/filesystem', () => ({
   Directory: { Documents: 'DOCUMENTS' },
@@ -35,7 +37,7 @@ vi.mock('@capacitor/filesystem', () => ({
         resolveRead = res;
       });
     },
-    writeFile: async () => {},
+    writeFile: async ({ data }: { data: string }) => void writes.push(data),
   },
 }));
 
@@ -44,6 +46,7 @@ const BUDGET = 25;
 beforeEach(() => {
   readCalls = 0;
   resolveRead = null;
+  writes.length = 0;
   (globalThis as Record<string, unknown>).window = {
     localStorage: {
       getItem: () => null,
@@ -112,5 +115,115 @@ describe('a rescue that never answers', () => {
     const { restoreFromMirror } = await import('../src/lib/storage');
     await expect(restoreFromMirror()).resolves.toBe(false);
     expect(readCalls).toBe(0);
+  });
+});
+
+describe('a rescue that answers late', () => {
+  /*
+   * The budget kept the app from hanging, and it was also the way to lose
+   * everything. The web view hands back an empty store, which is the case the
+   * mirror exists for. The mirror read takes longer than the budget, so the
+   * app gives up and mounts on a fresh library. Its first save then committed
+   * that fresh library to the mirror, whose one rule is to hold whatever was
+   * committed, and the receipts that were a moment from arriving were
+   * overwritten. That is the exact loss main.tsx says the ordering prevents,
+   * arriving by the timeout instead.
+   */
+  const library = JSON.stringify({ receipts: [{ id: 'mine' }], updates: [], onboardingSeen: true });
+
+  function nativeWindow() {
+    const store = new Map<string, string>();
+    const reload = vi.fn();
+    (globalThis as Record<string, unknown>).window = {
+      localStorage: {
+        getItem: (k: string) => store.get(k) ?? null,
+        setItem: (k: string, v: string) => void store.set(k, v),
+        removeItem: (k: string) => void store.delete(k),
+      },
+      location: { reload },
+      Capacitor: { isNativePlatform: () => true },
+    };
+    return { store, reload };
+  }
+
+  it('does not let the fresh boot overwrite the mirror, and brings the library back when it arrives', async () => {
+    const { store, reload } = nativeWindow();
+    const { restoreFromMirror, save, load } = await import('../src/lib/storage');
+    const { mirrorSettled } = await import('../src/lib/mirror');
+
+    // Gives up in time, so the app can mount.
+    await expect(restoreFromMirror(BUDGET)).resolves.toBe(false);
+    expect(readCalls).toBe(1);
+
+    // The app mounts on a fresh library and saves it. Neither copy takes it.
+    expect(save(load(new Date(2026, 8, 29)))).toBe(true);
+    await new Promise((r) => setTimeout(r, 10));
+    expect(writes).toEqual([]);
+    expect(store.get('kept.v1')).toBeUndefined();
+
+    // The read answers after all, with the library.
+    resolveRead!({ data: library });
+    await new Promise((r) => setTimeout(r, 10));
+    await mirrorSettled();
+
+    expect(writes).toEqual([]);
+    expect(store.get('kept.v1')).toBe(library);
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets the held save through when the late answer is that there was nothing', async () => {
+    const { store, reload } = nativeWindow();
+    const { restoreFromMirror, save, load } = await import('../src/lib/storage');
+    const { mirrorSettled } = await import('../src/lib/mirror');
+
+    await restoreFromMirror(BUDGET);
+    save(load(new Date(2026, 8, 29)));
+    resolveRead!({ data: 'not a library' });
+    await new Promise((r) => setTimeout(r, 10));
+    await mirrorSettled();
+
+    // The fresh library is now the only one there is, so both copies get it.
+    expect(writes.length).toBe(1);
+    expect(JSON.parse(writes[0]).receipts.length).toBeGreaterThan(0);
+    expect(store.get('kept.v1')).toBe(writes[0]);
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it('an erase in those seconds erases what was on screen, not the library still on its way', async () => {
+    /*
+     * The person can only have seen the fresh library, so that is what they
+     * asked to erase. The mirror holds a library nobody has shown them, and
+     * erasing it on their behalf is the one loss here nobody chose. It comes
+     * back, and they can erase it knowingly.
+     */
+    const { store, reload } = nativeWindow();
+    const { restoreFromMirror, wipe } = await import('../src/lib/storage');
+    const { mirrorSettled } = await import('../src/lib/mirror');
+    await restoreFromMirror(BUDGET);
+    wipe();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(writes).toEqual([]);
+
+    resolveRead!({ data: library });
+    await new Promise((r) => setTimeout(r, 10));
+    await mirrorSettled();
+    expect(writes).toEqual([]);
+    expect(store.get('kept.v1')).toBe(library);
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('a read that never answers leaves the next launch able to try again', async () => {
+    /*
+     * The read hangs for the whole session. Had the fresh library's save
+     * reached localStorage, the next launch would find a readable store,
+     * never consult the mirror, and its first save would overwrite it.
+     */
+    const { store } = nativeWindow();
+    const { restoreFromMirror, save, load } = await import('../src/lib/storage');
+    await restoreFromMirror(BUDGET);
+    save(load(new Date(2026, 8, 29)));
+    await new Promise((r) => setTimeout(r, 10));
+    expect(store.has('kept.v1')).toBe(false);
+    expect(writes).toEqual([]);
   });
 });

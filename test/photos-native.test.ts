@@ -110,6 +110,25 @@ describe('clearing up after deleted receipts', () => {
     expect(await cleanupPhotos(['a', 'b'])).toBe(0);
     expect(removed).toEqual([]);
   });
+
+  it('deletes nothing while a late rescue may still bring the library back', async () => {
+    /*
+     * The cleanup runs once, against the receipts the app booted with. When
+     * the mirror read ran out of budget those are a fresh library's, and every
+     * photo belongs to receipts still on their way from the mirror, so every
+     * one of them would read as orphaned and be deleted before they arrived.
+     */
+    listing = [{ name: 'mine1.jpg' }, { name: 'mine2.jpg' }];
+    const { cleanupPhotos } = await import('../src/lib/photos');
+    const { holdMirrorWrites, releaseMirrorWrites } = await import('../src/lib/mirror');
+    holdMirrorWrites();
+    try {
+      expect(await cleanupPhotos(['r_sample_1'])).toBe(0);
+      expect(removed).toEqual([]);
+    } finally {
+      releaseMirrorWrites();
+    }
+  });
 });
 
 describe('on the web', () => {

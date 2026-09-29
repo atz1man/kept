@@ -91,6 +91,24 @@ app's Documents directory. One rule: it holds whatever `save` last committed.
 That is what makes erasing safe, and it is why an empty library has to count as
 a library rather than as an absence.
 
+That rule had one gap, and it was the rescue itself. The launch-time read of
+the mirror has a three-second budget, so a hung disk cannot leave a blank
+screen. When it ran out, the app mounted on a fresh library, and that
+library's first save was committed to the mirror, which holds whatever was
+last committed. The receipts, seconds from arriving, were overwritten, and
+the photo cleanup deleted every picture as orphaned. So once the budget runs
+out, saves (to both copies) and photo cleanup are held until the read
+answers. A library that arrives goes where it would have gone in time, and
+the app starts again on it. An answer of nothing lets the held save through.
+Holding the live store too matters for a read that never answers: a fresh
+library saved there would make the next launch skip the mirror entirely. An
+"Erase everything" in those seconds erases what was on screen, not the
+library still on its way. Nobody chose to erase that one, and once it is back
+they can.
+`ios-bundle.mjs` drives it with a mirror read that answers after 4.5 seconds.
+Against the old code it names all three losses: the library, the mirror file
+and the photo.
+
 **Alerts can be lodged in advance.** This is the reason to have a native app at
 all: `lib/schedule.ts` works out what will be worth saying and when, and iOS
 raises it with kept closed. The web cannot, which is why `notify.ts` says so and
