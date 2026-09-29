@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fromScan } from '../src/lib/receipt-scan';
+import { fieldsFound, fromScan, readBestOf, type Thresholding } from '../src/lib/receipt-scan';
 import { parseReceiptText } from '../src/lib/parse';
 
 /**
@@ -87,5 +87,52 @@ TOTAL 24.99
 
   it('takes a shop from the heading only, not from the middle of the receipt', () => {
     expect(fromScan('THE CORNER SHOP\nline\nline\nline\nNext to the station 1.00')).not.toContain('Receipt from');
+  });
+});
+
+describe('two looks at one photo', () => {
+  /*
+   * What each thresholding "read" of the same photo returned, shaped like the
+   * measured cases: a clean read, a shadow that hid the total and date from a
+   * single threshold, and a local read of faint print that invented a date.
+   */
+  const COMPLETE = 'ARGOS\nKENWOOD MIXER 199.99\nTOTAL 199.99\n26/09/2026 14:32';
+  const SHADOWED = 'ARGOS\nKENWOOD M';
+  const NO_DATE = 'ARGOS\nTOTAL 199.99';
+  const OTHER_NO_DATE = 'ARGOS\nTOTAL 199.90';
+
+  const reader = (answers: Partial<Record<Thresholding, string>>) => {
+    const asked: Thresholding[] = [];
+    const read = async (how: Thresholding) => {
+      asked.push(how);
+      return answers[how] ?? '';
+    };
+    return { asked, read };
+  };
+
+  it('counts the shop, the total and the date', () => {
+    expect(fieldsFound(COMPLETE, TODAY)).toBe(3);
+    expect(fieldsFound(NO_DATE, TODAY)).toBe(2);
+    expect(fieldsFound(SHADOWED, TODAY)).toBe(1);
+    expect(fieldsFound('', TODAY)).toBe(0);
+  });
+
+  it('reads a good photo once, the way it always has', async () => {
+    const r = reader({ global: COMPLETE, local: NO_DATE });
+    expect(await readBestOf(r.read, TODAY)).toBe(COMPLETE);
+    expect(r.asked).toEqual(['global']);
+  });
+
+  it('looks again, locally, when the first read missed something, and keeps the better', async () => {
+    const r = reader({ global: SHADOWED, local: COMPLETE });
+    expect(await readBestOf(r.read, TODAY)).toBe(COMPLETE);
+    expect(r.asked).toEqual(['global', 'local']);
+  });
+
+  it('keeps the first read when the second finds no more', async () => {
+    // A tie goes to the global read: the local one is the one measured being
+    // confidently wrong on faint thermal print.
+    expect(await readBestOf(reader({ global: NO_DATE, local: OTHER_NO_DATE }).read, TODAY)).toBe(NO_DATE);
+    expect(await readBestOf(reader({ global: NO_DATE, local: SHADOWED }).read, TODAY)).toBe(NO_DATE);
   });
 });

@@ -81,6 +81,8 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
   const photoInput = useRef<HTMLInputElement>(null);
   const [scanning, setScanning] = useState<number | null>(null);
   const [scanFailed, setScanFailed] = useState(false);
+  // True during the second read, when the first missed the shop, total or date.
+  const [lookingAgain, setLookingAgain] = useState(false);
   // Read once, on arrival. A later keystroke must not re-trigger it.
   const [readShare, setReadShare] = useState(false);
 
@@ -116,9 +118,13 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
   const scanPhoto = async (file: Blob) => {
     setScanFailed(false);
     setScanning(0);
+    setLookingAgain(false);
     try {
       const { readReceiptPhoto } = await import('../scan');
-      const readable = fromScan(await readReceiptPhoto(file, (p) => setScanning(p)));
+      const readable = fromScan(await readReceiptPhoto(file, today, (p, again) => {
+        setScanning(p);
+        setLookingAgain(again);
+      }));
       setText(readable);
       readText(readable);
       setDistance(false);
@@ -492,7 +498,9 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
         }}
       >
         <CameraGlyph />
-        {scanning === null ? 'Scan a paper receipt' : `Reading your receipt… ${Math.round(scanning * 100)}%`}
+        {scanning === null
+          ? 'Scan a paper receipt'
+          : `${lookingAgain ? 'Having another look' : 'Reading your receipt'}… ${Math.round(scanning * 100)}%`}
       </Pressable>
       <div role="status" aria-live="polite" style={{ fontSize: 12.5, color: scanFailed ? color.danger : color.muted, textAlign: 'center', marginTop: 8, lineHeight: 1.5 }}>
         {scanFailed

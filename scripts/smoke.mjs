@@ -1258,6 +1258,40 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
   if (elsewhere.length) problems.push(`scan reached: ${[...new Set(elsewhere)].join(', ')}`);
   if (!found) problems.push('scan: the card never appeared');
   else if (!results['a photographed receipt is read on the device']) problems.push(`scan read: ${card.slice(0, 300).replace(/\n/g, ' | ')} · item=${item}`);
+
+  /*
+   * The same, with the phone's shadow across half of it — the way a receipt on
+   * a kitchen table is actually photographed. One threshold for the whole
+   * photo put the shaded half below it and read nothing at all: measured, 0
+   * of 36 fields across every shadowed case (`readBestOf` has the numbers).
+   */
+  const shadePage = await browser.newPage({ viewport: { width: 460, height: 900 }, deviceScaleFactor: 2 });
+  await shadePage.setContent(`<body style="margin:0;background:#6b5a48;padding:60px">
+    <div id="r" style="position:relative;width:380px;padding:28px 24px;font:20px/1.5 'DejaVu Sans Mono',monospace;color:#111;background:#fff">
+      <div style="text-align:center;font-weight:bold;font-size:30px">BOOTS</div>
+      <div style="text-align:center">Oxford Street</div>
+      <div>NO7 SERUM 30ML&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;29.99</div>
+      <div>TOOTHBRUSH HEADS&nbsp;&nbsp;&nbsp;&nbsp;12.98</div>
+      <div>SUBTOTAL&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;42.97</div>
+      <div>TOTAL TO PAY&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;42.97</div>
+      <div>CONTACTLESS&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;42.97</div>
+      <div>21/09/26 09:14</div>
+      <div style="position:absolute;inset:-60px;background:linear-gradient(160deg,rgba(0,0,0,0) 45%,rgba(0,0,0,.55) 55%,rgba(0,0,0,.62))"></div>
+    </div></body>`);
+  const shaded = await shadePage.screenshot({ type: 'png', fullPage: true });
+  await shadePage.close();
+  await scanPage.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await scanPage.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await scanPage.getByRole('button', { name: 'Add a receipt' }).click();
+  await scanPage.waitForTimeout(300);
+  await scanPage.setInputFiles('#add-photo', { name: 'shaded.png', mimeType: 'image/png', buffer: shaded });
+  const shadeFound = await scanPage.getByText('FOUND IN YOUR PASTE').waitFor({ timeout: 120_000 }).then(() => true).catch(() => false);
+  const shadeCard = shadeFound ? await scanPage.locator('main').innerText() : '';
+  results['a receipt half in shadow is read too'] =
+    shadeFound && /Boots/.test(shadeCard) && /£42\.97/.test(shadeCard) && /21 Sep/.test(shadeCard);
+  if (!results['a receipt half in shadow is read too']) {
+    problems.push(`shaded scan read: ${shadeFound ? shadeCard.slice(0, 300).replace(/\n/g, ' | ') : 'no card'}`);
+  }
   await scanCtx.close();
 }
 
