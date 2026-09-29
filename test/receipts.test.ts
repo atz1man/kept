@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { addDays, addMonths, toISODate } from '../src/lib/dates';
 import { photoName } from '../src/lib/photos';
 import { toPence } from '../src/lib/money';
-import { bucket, countsAsMoney, derive, everyReturnInTime, makeReceiptId, recoveredPence, stillReturnablePence, timelineDots, coverLine } from '../src/lib/receipts';
+import { bucket, countsAsMoney, derive, everyReturnInTime, makeReceiptId, recoveredPence, stillReturnablePence, timelineDots, coverLine, asksForGuarantee } from '../src/lib/receipts';
 import type { Receipt } from '../src/lib/types';
 
 const TODAY = new Date(2026, 7, 28);
@@ -531,5 +531,24 @@ describe('the guarantee, on a list row', () => {
   it('says nothing where there is no clock', () => {
     expect(coverLine(receipt({}), TODAY)).toBeNull();
     expect(coverLine(receipt({ warranty: { months: 0, note: 'lifetime' } }), TODAY)).toBeNull();
+  });
+});
+
+describe('asking for a guarantee', () => {
+  // The guarantee reminder can only warn about a guarantee kept knows of, and
+  // nothing asked for one. The receipt's screen does, for durable things.
+  it('asks on an active or kept durable thing with none', () => {
+    expect(asksForGuarantee(receipt({ cat: 'kitchen' }))).toBe(true);
+    expect(asksForGuarantee(receipt({ cat: 'audio', status: 'kept' }))).toBe(true);
+    expect(asksForGuarantee(receipt({ cat: 'other' }))).toBe(true);
+  });
+
+  it('does not ask about clothes or cosmetics, a refund, or a guarantee already noted', () => {
+    expect(asksForGuarantee(receipt({ cat: 'clothing' }))).toBe(false);
+    expect(asksForGuarantee(receipt({ cat: 'beauty' }))).toBe(false);
+    expect(asksForGuarantee(receipt({ cat: 'kitchen', status: 'returned' }))).toBe(false);
+    expect(asksForGuarantee(receipt({ cat: 'kitchen', warranty: { months: 24 } }))).toBe(false);
+    // Free text from an old backup is still a guarantee noted.
+    expect(asksForGuarantee(receipt({ cat: 'kitchen', warranty: { months: 0, note: 'lifetime' } }))).toBe(false);
   });
 });
