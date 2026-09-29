@@ -25,6 +25,13 @@ export interface ParsedReceipt {
    */
   dispatchedOn: string | null;
   windowDays: number;
+  /**
+   * What was bought, when the paste says it clearly enough — or null. A
+   * suggestion for the Add screen's field, which stays editable: the parser
+   * read the shop, the total and the dates and still made the person type
+   * the one thing that names the receipt on every screen after.
+   */
+  item: string | null;
 }
 
 export type ParseOutcome =
@@ -310,6 +317,20 @@ function promised(text: string, labelStart: number, dateIndex: number): boolean 
  * the job of an import. They differ only in which label they look for and, at
  * the end, in which of the answers they want.
  */
+/*
+ * A date belongs to the label nearest before it. "Your order has been
+ * dispatched" as a heading, then "Order date 10 September" on the next line:
+ * the 10th sat within reach of "dispatched" and was read as the dispatch date
+ * — the order date, so a Zara coat's clock started two days early. Another
+ * date's label in between means the date is that label's, not this one's.
+ */
+const ANOTHER_DATE_LABEL =
+  /\b(?:order(?:ed)?|placed|purchased?|bought|deliver(?:ed|y)|arrived|received|dispatch(?:ed)?|despatch(?:ed)?|shipped)\b/i;
+
+function claimedByAnother(between: string): boolean {
+  return ANOTHER_DATE_LABEL.test(between);
+}
+
 function labelledEvents(
   text: string,
   today: Date,
@@ -323,7 +344,11 @@ function labelledEvents(
     .filter((hit) => daysBetween(today, hit.date) <= 0)
     .filter((hit) =>
       labels.some(
-        (l) => hit.index >= l.end && hit.index - l.end <= LABEL_REACH && !promised(text, l.start, hit.index),
+        (l) =>
+          hit.index >= l.end &&
+          hit.index - l.end <= LABEL_REACH &&
+          !promised(text, l.start, hit.index) &&
+          !claimedByAnother(text.slice(l.end, hit.index)),
       ),
     )
     // A parcel cannot land, or leave, before it is ordered. Such a pair means
@@ -431,6 +456,55 @@ function pickStore(text: string): StorePolicy | null {
 /** The window used when the shop is not one Kept has verified. */
 export const UNKNOWN_STORE_WINDOW_DAYS = 28;
 
+/*
+ * Words that mark a line as money ABOUT the order rather than a thing in it.
+ * A line carrying a price is an item only if it carries none of these.
+ */
+const NOT_AN_ITEM = /\b(?:sub[\s-]?total|total|delivery|shipping|postage|p&p|vat|tax|discount|saving|savings|saved|promo|voucher|gift\s?card|payment|paid|card|visa|mastercard|amex|paypal|klarna|refund|balance|order\s+(?:number|no|#|ref)|you\s+(?:paid|saved))\b/i;
+
+/** Tidy a candidate: no bullets, no trailing price or separators, no runaway length. */
+function cleanItem(raw: string): string | null {
+  const s = raw
+    .replace(/£\s?[\d,.]+/g, '')
+    .replace(/^[\s•*·\-–—:|]+|[\s•*·\-–—:|,]+$/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  if (s.length < 3 || s.length > 80) return null;
+  if (!/[a-z]{3}/i.test(s)) return null;
+  return s;
+}
+
+/**
+ * What was bought, read conservatively. Three rules, most explicit first, and
+ * nothing when none of them holds: a wrong guess in an editable field costs a
+ * correction, but a guess that reads like the answer is how "Delivery" ends up
+ * as the name of a receipt.
+ */
+function pickItem(text: string, store: StorePolicy | null): string | null {
+  // "Item: Wool coat", "Product - Kettle", "Description: …"
+  const labelled = /(?:^|\n|·)\s*(?:item|product|description)(?:\s+name)?\s*[:\-–]\s*([^\n·]+)/i.exec(text);
+  if (labelled) {
+    const s = cleanItem(labelled[1]);
+    if (s && !NOT_AN_ITEM.test(s)) return s;
+  }
+  // "1 x Wool coat", "Qty: 2 × Socks"
+  const qty = /(?:^|\n|·)\s*(?:qty\s*:?\s*)?\d{1,2}\s*[x×]\s+([^\n·]+)/i.exec(text);
+  if (qty) {
+    const s = cleanItem(qty[1]);
+    if (s && !NOT_AN_ITEM.test(s)) return s;
+  }
+  // A line with a price on it that is not money about the order.
+  const storeWords = store ? [store.name, ...store.aliases].map((w) => w.toLowerCase()) : [];
+  for (const segment of text.split(/\n|·/)) {
+    if (!/£\s?\d/.test(segment) || NOT_AN_ITEM.test(segment)) continue;
+    const s = cleanItem(segment);
+    if (!s) continue;
+    if (storeWords.includes(s.toLowerCase())) continue;
+    return s;
+  }
+  return null;
+}
+
 export function parseReceiptText(text: string, today: Date = new Date()): ParseOutcome {
   if (!text.trim()) return { ok: false, reason: 'empty' };
 
@@ -454,6 +528,7 @@ export function parseReceiptText(text: string, today: Date = new Date()): ParseO
       arrivedOn: arrived ? toISODate(arrived) : null,
       dispatchedOn: dispatched ? toISODate(dispatched) : null,
       windowDays: policy?.windowDays ?? UNKNOWN_STORE_WINDOW_DAYS,
+      item: pickItem(text, policy),
     },
   };
 }

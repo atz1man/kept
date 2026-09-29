@@ -673,3 +673,22 @@ describe('what an order email actually looks like', () => {
     expect(parse('Currys order\nPlaced Aug 1 09:45\nTotal £29.00').purchasedOn).toBe('2026-08-01');
   });
 });
+
+describe('what was bought', () => {
+  it('never names a receipt after money about the order', () => {
+    // A line with a price on it is an item only if it is not a total, a
+    // delivery charge, VAT, a discount or a payment line.
+    expect(parse('Currys order\nDelivery £4.99\nVAT £5.00\nTotal £29.99').item).toBeNull();
+    expect(parse('Argos\nPaid by Visa £29.99\nOrder total £29.99').item).toBeNull();
+  });
+
+  it('prefers a labelled item to a priced line', () => {
+    expect(parse('Argos\nItem: Toaster\nGift wrap £2.00\nTotal £31.99').item).toBe('Toaster');
+  });
+
+  it('does not take the shop’s own name for the item', () => {
+    // An unambiguous name: "Boots £12.00" alone could be walking boots, and
+    // the parser rightly does not take it for the shop.
+    expect(parse('Argos £12.00\nTotal £12.00').item).toBeNull();
+  });
+});
