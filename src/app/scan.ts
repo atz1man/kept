@@ -59,6 +59,27 @@ async function prepare(file: Blob): Promise<HTMLCanvasElement> {
 }
 
 /** How far through a read, and whether it is the second look (see `readBestOf`). */
+/**
+ * Can the reader's files be fetched right now?
+ *
+ * Asked after a scan fails, to tell a missing connection from a bad photo.
+ * `navigator.onLine` was the first answer and it was wrong: measured on CI's
+ * Chromium, it went on saying online while the network was cut, and the
+ * photo got the blame again. It says only that some network exists, and wifi
+ * with no internet, or a site that cannot be reached, are both "online". So
+ * this asks the question that matters, for the file the next scan would need
+ * first. A HEAD, because the service worker answers only GETs, so a cached
+ * copy cannot make an unreachable site look reachable.
+ */
+export async function readerReachable(): Promise<boolean> {
+  try {
+    const res = await fetch(`${ocrBase()}worker.min.js`, { method: 'HEAD', cache: 'no-store' });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export type ScanProgress = (fraction: number, again: boolean) => void;
 
 /** The text on the receipt in the photo, read on this device. */
