@@ -99,7 +99,7 @@ export async function readReceiptPhoto(file: Blob, today: Date, onProgress?: Sca
  * way the app uses the camera, and `ios-usage-strings.test.ts` holds both to it.
  * Null when the person cancels.
  */
-export async function takeReceiptPhoto(): Promise<Blob | null> {
+export async function takeReceiptPhoto(): Promise<{ blob: Blob; base64: string } | null> {
   const [{ Camera, CameraResultType, CameraSource }, { isCameraCancellation }] = await Promise.all([
     import('@capacitor/camera'),
     import('../lib/photos'),
@@ -113,7 +113,9 @@ export async function takeReceiptPhoto(): Promise<Blob | null> {
     });
     if (!shot.base64String) return null;
     const bytes = Uint8Array.from(atob(shot.base64String), (c) => c.charCodeAt(0));
-    return new Blob([bytes], { type: `image/${shot.format || 'jpeg'}` });
+    // The base64 as well as the image: it is what `savePhoto` writes, so the
+    // same picture can be kept with the receipt as proof of purchase.
+    return { blob: new Blob([bytes], { type: `image/${shot.format || 'jpeg'}` }), base64: shot.base64String };
   } catch (e) {
     if (isCameraCancellation(e)) return null;
     throw e;

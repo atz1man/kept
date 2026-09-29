@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isCameraCancellation, orphanedPhotos, photoName, photoPath } from '../src/lib/photos';
+import { isCameraCancellation, orphanedPhotos, photoName, photoPath, scannedPhotoToKeep } from '../src/lib/photos';
 
 describe('a receipt id is not a filename', () => {
   it('keeps an ordinary one', () => {
@@ -92,5 +92,28 @@ describe('telling a cancelled camera from a broken one', () => {
     for (const nothing of [undefined, null, {}, 0, new Error()]) {
       expect(isCameraCancellation(nothing)).toBe(false);
     }
+  });
+});
+
+describe('the photo a scan took', () => {
+  const shot = { base64: 'QUJD', text: 'Receipt from Argos\nTotal £199.99' };
+
+  it('goes with the receipt it was read from', () => {
+    expect(scannedPhotoToKeep(shot, shot.text, true)).toBe('QUJD');
+  });
+
+  it('does not when the person unticked it', () => {
+    expect(scannedPhotoToKeep(shot, shot.text, false)).toBeNull();
+  });
+
+  it('does not once the text is no longer what the camera read', () => {
+    // An edited total, or an email pasted over it: the receipt being saved is
+    // not the one in the photo any more.
+    expect(scannedPhotoToKeep(shot, `${shot.text}9`, true)).toBeNull();
+    expect(scannedPhotoToKeep(shot, 'Your Currys order', true)).toBeNull();
+  });
+
+  it('there is none without a scan', () => {
+    expect(scannedPhotoToKeep(null, 'anything', true)).toBeNull();
   });
 });

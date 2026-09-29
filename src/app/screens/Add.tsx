@@ -11,6 +11,7 @@ import { windowInForceFor } from '../../lib/policy-feed';
 import { FEATURED_TIER } from '../../lib/pricing';
 import { FREE_TIER_LIMIT } from '../../lib/quota';
 import { isNative } from '../../lib/mirror';
+import { savePhoto, scannedPhotoToKeep } from '../../lib/photos';
 import { shareRoute } from '../../lib/share';
 import type { PolicyUpdate, Receipt } from '../../lib/types';
 import { ArrowRight, CameraGlyph, LogoMark, MailGlyph, ShareGlyph, Warning } from '../components/Icons';
@@ -83,6 +84,14 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
   const [scanFailed, setScanFailed] = useState(false);
   // True during the second read, when the first missed the shop, total or date.
   const [lookingAgain, setLookingAgain] = useState(false);
+  /*
+   * On a phone, the photo the scan took and the text it read from it, so the
+   * picture can be kept with the receipt as proof of purchase — see
+   * `scannedPhotoToKeep`. Null on the web, where there is nowhere to keep it.
+   */
+  const [scanShot, setScanShot] = useState<{ base64: string; text: string } | null>(null);
+  const [keepPhoto, setKeepPhoto] = useState(true);
+  const [saving, setSaving] = useState(false);
   // Read once, on arrival. A later keystroke must not re-trigger it.
   const [readShare, setReadShare] = useState(false);
 
@@ -115,10 +124,11 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
    * the person can see and correct what the camera read before anything is
    * saved. A till receipt is a purchase made in person, so it starts as one.
    */
-  const scanPhoto = async (file: Blob) => {
+  const scanPhoto = async (file: Blob, base64?: string) => {
     setScanFailed(false);
     setScanning(0);
     setLookingAgain(false);
+    setScanShot(null);
     try {
       const { readReceiptPhoto } = await import('../scan');
       const readable = fromScan(await readReceiptPhoto(file, today, (p, again) => {
@@ -128,6 +138,10 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       setText(readable);
       readText(readable);
       setDistance(false);
+      if (base64) {
+        setScanShot({ base64, text: readable });
+        setKeepPhoto(true);
+      }
     } catch {
       setScanFailed(true);
     } finally {
@@ -196,11 +210,26 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       })
     : undefined;
 
-  const save = () => {
-    if (!parsed || quotaFull || arrivalError || amount === null) return;
+  const photoToKeep = scannedPhotoToKeep(scanShot, text, keepPhoto);
+
+  const save = async () => {
+    if (!parsed || quotaFull || arrivalError || amount === null || saving) return;
     const store = savedStore;
+    const id = makeReceiptId(today);
+    /*
+     * The photo is written BEFORE the receipt is added, so the receipt's own
+     * screen finds it on the disk the first time it looks (it asks the disk,
+     * never a flag; see photos.ts). A photo that could not be written leaves
+     * the receipt saved without one, and that screen then offers to take it,
+     * which is the truth. A receipt that then fails to save leaves an orphan
+     * photo, which `cleanupPhotos` removes.
+     */
+    if (photoToKeep) {
+      setSaving(true);
+      await savePhoto(id, photoToKeep);
+    }
     onSave({
-      id: makeReceiptId(today),
+      id,
       store,
       // A generic fallback, not a dead end: it is editable from the receipt
       // itself the moment this saves.
@@ -231,6 +260,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       gotcha: policy?.gotcha,
       status: 'active',
     });
+    setSaving(false);
   };
 
   const deadline = parsed ? fmtDateNear(addDays(fromISODate(windowStart ?? parsed.purchasedOn), effectiveWindow), today) : '';
@@ -426,6 +456,20 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
           <Row label="Bought" value={`${fmtDate(fromISODate(parsed.purchasedOn))}${parsed.dateFound ? '' : ' (assumed today)'}`} mono />
           <Row label="Return window" value={`${effectiveWindow} days`} mono={false} />
           <Row label="Deadline" value={deadline} mono accent />
+          {scanShot && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, minHeight: 44, fontSize: 14, color: photoToKeep || !keepPhoto ? color.ink : color.muted }}>
+              <input
+                type="checkbox"
+                checked={keepPhoto && scanShot.text === text}
+                disabled={scanShot.text !== text}
+                onChange={(e) => setKeepPhoto(e.target.checked)}
+                style={{ width: 22, height: 22, accentColor: color.ink, margin: 0 }}
+              />
+              {scanShot.text === text
+                ? 'Keep the photo as proof of purchase'
+                : 'The photo is not kept: this is no longer what it read'}
+            </label>
+          )}
           {/* The cap is claimed on the pricing page, in Settings and on the
               card above; a Save that quietly ignored it would make all three
               of those decorative. */}
@@ -433,8 +477,8 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
               disabled button drawn as a live one invites the tap it ignores. */}
           <Pressable
             className={cannotSave ? undefined : 'k-ink'}
-            onClick={save}
-            disabled={cannotSave}
+            onClick={() => void save()}
+            disabled={cannotSave || saving}
             style={{
               marginTop: 14, padding: 14, textAlign: 'center',
               background: cannotSave ? color.creamAlt : color.ink,
@@ -484,7 +528,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
             try {
               const { takeReceiptPhoto } = await import('../scan');
               const shot = await takeReceiptPhoto();
-              if (shot) await scanPhoto(shot);
+              if (shot) await scanPhoto(shot.blob, shot.base64);
             } catch {
               setScanFailed(true);
             }
