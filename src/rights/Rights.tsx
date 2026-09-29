@@ -73,8 +73,8 @@ export function Rights() {
 
       <Section title="Every clock, on one screen">
         Every receipt in kept shows the shop’s window beside the legal ones that apply to it — one for something bought
-        in a shop, two for something bought online — says which closes first, and warns you before it does. Nothing
-        leaves your phone.{' '}
+        in a shop, two for something bought online — and says which of them closes first. Nothing leaves your
+        phone.{' '}
         <a href="/app/" style={{ color: color.ink, fontWeight: 700 }}>Open kept →</a>
       </Section>
 

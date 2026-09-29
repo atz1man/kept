@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { color, font, radius, shadow } from '../../tokens';
-import { addDays, fmtDate, fmtDateNear } from '../../lib/dates';
+import { addDays, fmtDate, fmtDateNear, fromISODate } from '../../lib/dates';
 import { money, sumPence } from '../../lib/money';
 import { bucket, coverLine, derive, everyReturnInTime, countsAsMoney, stillReturnablePence, timelineDots } from '../../lib/receipts';
 import { search, searchStatus, shouldOfferSearch } from '../../lib/search';
@@ -44,19 +44,19 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
   // and it is still the question while you are looking for something.
   const visible = searching ? search(receipts, query) : receipts;
 
-  const { closed, urgent, later, returned, kept } = bucket(visible, today, urgentDays);
+  const { closed, urgent, later, returned, kept, sent } = bucket(visible, today, urgentDays);
   const active = [...closed, ...urgent, ...later];
   const next = searching ? undefined : active[0];
   // Whether a sample still counts is decided over EVERY receipt, not the ones
   // a search left visible: the samples stop being money the moment a real
   // receipt exists, whatever is on screen.
   const counts = countsAsMoney(receipts);
-  const stillReturnable = stillReturnablePence({ closed, urgent, later, returned, kept }, receipts);
+  const stillReturnable = stillReturnablePence({ closed, urgent, later, returned, kept, sent }, receipts);
   const keptBack = sumPence(returned.filter(counts).map((r) => r.amount));
   const dots = timelineDots(receipts, today);
   const empty = receipts.length === 0;
   // Kept counts as settled: nothing is waiting to go back.
-  const allDone = !searching && active.length === 0 && (returned.length > 0 || kept.length > 0);
+  const allDone = !searching && active.length === 0 && (returned.length > 0 || kept.length > 0 || sent.length > 0);
   const allInTime = everyReturnInTime(returned, today);
   const nothingMatched = searching && visible.length === 0;
 
@@ -303,6 +303,38 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
                 onReturn={() => onReturn(r.id)}
               />
             ))}
+          </ul>
+        </>
+      )}
+
+      {sent.length > 0 && (
+        <>
+          {/* In between: gone back, the money not yet seen. Out of the
+              deadlines (the parcel is in the post), not yet in the total. */}
+          <h2 style={sectionLabel(color.muted)}>SENT BACK · WAITING FOR THE REFUND</h2>
+          <ul style={{ display: 'flex', flexDirection: 'column', gap: 9, margin: 0, padding: 0 }}>
+            {sent.map((r) => {
+              const went = r.sentOn ? `sent back ${fmtDateNear(fromISODate(r.sentOn), today)}` : 'sent back';
+              return (
+                <li key={r.id} style={{ listStyle: 'none' }}>
+                  <Pressable
+                    onClick={() => onOpen(r.id)}
+                    aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${money(r.amount)}, ${went}, waiting for the refund`}
+                    style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 15, background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: radius.card }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, color: color.body, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.store}</div>
+                      <div style={{ fontSize: 12, color: color.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {r.demo && <span>sample · </span>}
+                        {r.item}
+                      </div>
+                      <div style={{ fontSize: 12, color: color.muted, marginTop: 2 }}>{went}</div>
+                    </div>
+                    <div style={{ fontFamily: font.figures, fontSize: 15, fontWeight: 700, color: color.body, flexShrink: 0 }}>{money(r.amount)}</div>
+                  </Pressable>
+                </li>
+              );
+            })}
           </ul>
         </>
       )}

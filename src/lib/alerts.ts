@@ -1,4 +1,4 @@
-import { fmtDate } from './dates';
+import { daysBetween, fmtDate, fromISODate } from './dates';
 import { money } from './money';
 import { derive } from './receipts';
 import type { Receipt } from './types';
@@ -25,7 +25,28 @@ export type ReturnRung = 'week' | 'soon' | 'today' | 'closed';
  * a different clock, usually a year or more later, and it is the one reason
  * to keep a receipt long after the window has shut.
  */
-export type AlertRung = ReturnRung | 'warranty';
+export type AlertRung = ReturnRung | 'warranty' | 'refund';
+
+/**
+ * How long after something went back it is worth asking whether the money
+ * came. Fourteen days is the Consumer Contracts Regulations' limit for
+ * refunding a cancelled online order once the goods are back (reg. 34), and a
+ * common shop promise besides; after it, a missing refund is worth chasing.
+ */
+export const REFUND_CHASE_DAYS = 14;
+
+/**
+ * Whether an alert already sent was a reminder BEFORE the shop's window shut.
+ *
+ * The share line says "kept. reminded me before the window shut", and it was
+ * decided by "any alert at all for this receipt". Since the guarantee alert
+ * and the refund chase exist, that counted reminders about other clocks, and
+ * "window closed" never was one. Only the rungs that come before the window
+ * shuts make the sentence true.
+ */
+export function remindedBeforeWindow(sent: readonly string[], receiptId: string): boolean {
+  return (['week', 'soon', 'today'] as const).some((rung) => sent.includes(alertKey(receiptId, rung)));
+}
 
 /**
  * How long before a guarantee ends it is worth saying so. A month: long
@@ -100,6 +121,16 @@ export function copyFor(rung: AlertRung, r: Receipt, daysLeft: number, deadline:
         title: 'That window has closed',
         body: `${what} — the shop’s window has passed. If it turns out to be faulty, you still have rights.`,
       };
+    case 'refund':
+      // `deadline` is the day it went back; `daysLeft` is unused. The legal
+      // limit is stated only where it applies — a cancelled distance order —
+      // and never as a promise about any other shop's terms.
+      return {
+        title: 'Has the refund come through?',
+        body: `${what} — it went back on ${fmtDate(deadline)}.${
+          r.distance ? ` For an online order, the shop has ${REFUND_CHASE_DAYS} days from getting it back to refund you.` : ''
+        } If the money has not arrived, chase it.`,
+      };
     case 'warranty':
       // `daysLeft` and `deadline` are the GUARANTEE's here. Cover runs to the
       // end of `deadline`, the day `derive` still calls it live.
@@ -123,6 +154,14 @@ export function dueAlerts(
 ): DeadlineAlert[] {
   const out: DeadlineAlert[] = [];
   for (const r of receipts) {
+    // Gone back, money not yet seen: asked once, a fortnight on.
+    if (r.status === 'sent' && !r.demo && r.sentOn) {
+      const went = fromISODate(r.sentOn);
+      const key = alertKey(r.id, 'refund');
+      if (daysBetween(went, today) >= REFUND_CHASE_DAYS && !sent.has(key)) {
+        out.push({ receiptId: r.id, rung: 'refund', key, ...copyFor('refund', r, 0, went) });
+      }
+    }
     // The guarantee first, and apart: it is on its own clock, and a kept
     // receipt — which has left the return ladder for good — still has one.
     if (warrantyWatched(r)) {
@@ -161,7 +200,7 @@ export function dueAlerts(
   // one that gets read.
   // Only the ORDER of these numbers means anything — 'week' could be any value
   // above 'closed' and no test could tell, which is why none tries.
-  const order: Record<AlertRung, number> = { today: 0, soon: 1, closed: 2, week: 3, warranty: 4 };
+  const order: Record<AlertRung, number> = { today: 0, soon: 1, closed: 2, week: 3, refund: 4, warranty: 5 };
   return out.sort((a, b) => order[a.rung] - order[b.rung]);
 }
 
@@ -175,7 +214,7 @@ export function dueAlerts(
  */
 export function supersededKeys(alert: DeadlineAlert): string[] {
   // Its own clock, a single rung: nothing below it to have skipped.
-  if (alert.rung === 'warranty') return [];
+  if (alert.rung === 'warranty' || alert.rung === 'refund') return [];
   return LADDER.slice(0, LADDER.indexOf(alert.rung)).map((rung) => alertKey(alert.receiptId, rung));
 }
 
