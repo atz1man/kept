@@ -2236,6 +2236,15 @@ screen, and an unticked second scan that leaves nothing on the disk.
   same `copyFor`, so the words cannot drift apart. Settings now tells whichever
   truth applies, because leaving the web sentence up on iOS would be the app
   understating itself, which is the same species of untruth as overstating.
+
+  `ios-bundle.mjs` now drives this through Capacitor's own core on the bundle
+  that ships, not a mocked module. After a real purchase is added, it checks
+  what iOS is handed: one reminder per rung, each at 9am, under a unique id
+  that fits in 32 bits, tied to that receipt and never to a sample. It also
+  checks that a tapped reminder opens its receipt, that switching alerts off
+  cancels what is waiting, that a first purchase asks for permission exactly
+  once, and that a refusal lodges nothing while Settings says where to
+  change it. Each of those has a broken version it names.
 - **Payments.** The pricing tiers unlock the local plan flag and say plainly
   that nothing was charged. No card, no billing, nothing to cancel.
 - **Signing the policy feed.** The feed is fetched from the app's own origin,

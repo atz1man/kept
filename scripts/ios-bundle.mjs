@@ -41,8 +41,8 @@ const failures = [];
  * it survives a reload, as a phone's Documents directory does; `slowMirrorMs`
  * delays reading the library's mirror file, as a slow disk would.
  */
-async function answeringBridge(ctx, { shot = '', disk = {}, slowMirrorMs = 0 } = {}) {
-  await ctx.addInitScript(({ shot, disk, slowMirrorMs }) => {
+async function answeringBridge(ctx, { shot = '', disk = {}, slowMirrorMs = 0, notifications = 'granted' } = {}) {
+  await ctx.addInitScript(({ shot, disk, slowMirrorMs, notifications }) => {
     const w = window;
     w.webkit = { messageHandlers: { bridge: { postMessage: () => {} } } };
     const KEY = '__keptDisk';
@@ -51,7 +51,42 @@ async function answeringBridge(ctx, { shot = '', disk = {}, slowMirrorMs = 0 } =
     const put = (all) => sessionStorage.setItem(KEY, JSON.stringify(all));
     w.__keptDisk = files;
     const missing = () => Promise.reject(new Error('File does not exist.'));
+    // Local notifications: what is pending, kept like the disk so it survives
+    // a reload; the permission the person gave (`notifications`); and the
+    // listeners the app registered, so a test can tap a notification.
+    const NOTES = '__keptNotes';
+    if (sessionStorage.getItem(NOTES) === null) sessionStorage.setItem(NOTES, JSON.stringify({ pending: [], asked: 0 }));
+    const notes = () => JSON.parse(sessionStorage.getItem(NOTES));
+    const putNotes = (n) => sessionStorage.setItem(NOTES, JSON.stringify(n));
+    w.__keptNotes = notes;
+    const listeners = {};
+    w.__tapNotification = (notification) =>
+      (listeners.localNotificationActionPerformed ?? []).forEach((cb) => cb({ actionId: 'tap', notification }));
+    const display = () => (notifications === 'prompt' ? (notes().asked > 0 ? 'granted' : 'prompt') : notifications);
     const plugins = {
+      LocalNotifications: {
+        getPending: async () => ({ notifications: notes().pending }),
+        cancel: async ({ notifications: gone }) => {
+          const n = notes();
+          const ids = new Set(gone.map((g) => g.id));
+          n.pending = n.pending.filter((p) => !ids.has(p.id));
+          putNotes(n);
+        },
+        checkPermissions: async () => ({ display: display() }),
+        requestPermissions: async () => {
+          const n = notes();
+          n.asked += 1;
+          putNotes(n);
+          return { display: display() };
+        },
+        schedule: async ({ notifications: add }) => {
+          const n = notes();
+          // As the bridge would carry it: JSON, so a Date arrives as a string.
+          n.pending = [...n.pending, ...JSON.parse(JSON.stringify(add))];
+          putNotes(n);
+          return { notifications: add.map((a) => ({ id: a.id })) };
+        },
+      },
       Camera: { getPhoto: async () => ({ base64String: shot, format: 'png', saved: false }) },
       Filesystem: {
         mkdir: async () => {},
@@ -81,8 +116,19 @@ async function answeringBridge(ctx, { shot = '', disk = {}, slowMirrorMs = 0 } =
         methods: Object.keys(methods).map((m) => ({ name: m, rtype: 'promise' })),
       })),
       nativePromise: (plugin, method, options) => plugins[plugin][method](options ?? {}),
+      // addListener is a callback method: the core hands it a function to call
+      // for every event, which is how a tapped notification reaches the app.
+      nativeCallback: (plugin, method, options, callback) => {
+        if (method === 'addListener') (listeners[options.eventName] ??= []).push(callback);
+        return String(Math.random());
+      },
     };
-  }, { shot, disk, slowMirrorMs });
+    w.Capacitor.PluginHeaders.find((h) => h.name === 'LocalNotifications').methods.push(
+      { name: 'addListener', rtype: 'callback' },
+      { name: 'removeListener', rtype: 'promise' },
+    );
+    plugins.LocalNotifications.removeListener = async () => {};
+  }, { shot, disk, slowMirrorMs, notifications });
 }
 
 reportOnCrash(report);
@@ -450,6 +496,110 @@ if (!/Deadline alerts/.test(settingsText)) {
     if (!(photoPath in disk)) failures.push({ what: 'a slow mirror cost the library its photos', saw: Object.keys(disk).join(', ') });
     if (rerrors.length > 0) failures.push({ what: 'the slow-mirror launch raised page errors', saw: rerrors.join(' | ') });
     await rctx.close();
+  }
+}
+
+
+/*
+ * Deadline reminders, through the bridge, as the iPhone app lodges them.
+ *
+ * The reason the native app exists: a deadline arrives at 9am with kept
+ * closed. `schedule-native.test.ts` holds the logic against a mocked plugin
+ * module; this holds the wiring, through Capacitor's own core, on the bundle
+ * that ships. What iOS is handed, whether a tapped reminder opens its receipt,
+ * and whether switching alerts off really cancels the ones already waiting.
+ */
+{
+  const actx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  await answeringBridge(actx, { notifications: 'granted' });
+  const ap = await actx.newPage();
+  const aerrors = [];
+  ap.on('pageerror', (e) => aerrors.push(String(e)));
+  await ap.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
+  await ap.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  // The samples never raise a reminder (a notification is not a demonstration),
+  // so add a real purchase: an Argos order from two days ago.
+  const bought = new Date(Date.now() - 2 * 86_400_000);
+  const when = bought.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  await ap.getByRole('button', { name: 'Add a receipt' }).click();
+  await ap.locator('#paste').fill(`Thanks for your Argos order\nOrder date: ${when}\nKenwood Chef mixer\nTotal £249.99`);
+  await ap.getByRole('button', { name: 'Read it' }).click();
+  await ap.getByRole('button', { name: 'Save receipt' }).click();
+  await ap.waitForTimeout(1200);
+  const lodged = await ap.evaluate(() => window.__keptNotes().pending);
+  const receipts = await ap.evaluate(() => JSON.parse(localStorage.getItem('kept.v1') ?? '{}').receipts ?? []);
+  const mine = receipts.filter((r) => !r.demo);
+  if (process.env.SHOW_NOTES) console.log(JSON.stringify({ lodged, ids: receipts.map((r) => r.id) }, null, 1));
+
+  if (mine.length !== 1) {
+    failures.push({ what: 'could not add a purchase to lodge reminders for', saw: `${mine.length} real receipts` });
+  } else if (lodged.length === 0) {
+    failures.push({ what: 'the iOS app lodged no deadline reminders for a purchase with a deadline', saw: '' });
+  } else if (lodged.some((n) => n.extra?.receiptId !== mine[0].id)) {
+    failures.push({ what: 'a reminder was lodged about a sample receipt', saw: lodged.map((n) => n.extra?.receiptId).join(',') });
+  } else {
+    const known = new Set(receipts.map((r) => r.id));
+    const ids = lodged.map((n) => n.id);
+    const bad = lodged.filter((n) => {
+      const at = new Date(n.schedule?.at);
+      return (
+        !Number.isInteger(n.id) || n.id <= 0 || n.id > 2 ** 31 - 1 ||
+        Number.isNaN(at.getTime()) || at.getTime() <= Date.now() || at.getHours() !== 9 || at.getMinutes() !== 0 ||
+        !n.title || !n.body || !known.has(n.extra?.receiptId)
+      );
+    });
+    if (new Set(ids).size !== ids.length) failures.push({ what: 'two reminders were lodged under one id, so iOS keeps only one', saw: ids.join(',') });
+    if (bad.length > 0) failures.push({ what: 'a reminder iOS was handed is malformed (id, time, text or receipt)', saw: JSON.stringify(bad[0]).slice(0, 200) });
+
+    // A tapped reminder opens the receipt it is about.
+    const first = lodged[0];
+    const item = receipts.find((r) => r.id === first.extra.receiptId)?.item ?? '';
+    await ap.evaluate((n) => window.__tapNotification(n), first);
+    await ap.waitForTimeout(600);
+    const opened = await ap.evaluate(() => document.body.innerText);
+    if (!/STORE POLICY/.test(opened) || !opened.includes(item)) {
+      failures.push({ what: 'tapping a reminder did not open the receipt it was about', saw: `${item} · ${opened.slice(0, 120)}` });
+    }
+
+    // Off in Settings cancels what is waiting.
+    await ap.getByRole('button', { name: 'Settings', exact: true }).click();
+    await ap.waitForTimeout(500);
+    await ap.getByRole('switch', { name: /Deadline alerts/ }).click();
+    await ap.waitForTimeout(800);
+    const left = await ap.evaluate(() => window.__keptNotes().pending.length);
+    if (left !== 0) failures.push({ what: 'turning deadline alerts off left reminders waiting with iOS', saw: `${left} still pending` });
+  }
+  if (aerrors.length > 0) failures.push({ what: 'the reminders run raised page errors', saw: aerrors.join(' | ') });
+  await actx.close();
+
+  // Never asked: iOS asks once, when there is first something worth saying,
+  // and then lodges it. Refused: nothing is lodged, and Settings says where to
+  // change it rather than showing a switch that does nothing.
+  for (const permission of ['prompt', 'denied']) {
+    const pctx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+    await answeringBridge(pctx, { notifications: permission });
+    const pp = await pctx.newPage();
+    await pp.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
+    await pp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+    await pp.getByRole('button', { name: 'Add a receipt' }).click();
+    await pp.locator('#paste').fill(`Thanks for your Argos order\nOrder date: ${when}\nTotal £249.99`);
+    await pp.getByRole('button', { name: 'Read it' }).click();
+    await pp.getByRole('button', { name: 'Save receipt' }).click();
+    await pp.waitForTimeout(1200);
+    const n = await pp.evaluate(() => window.__keptNotes());
+    if (permission === 'prompt' && (n.asked !== 1 || n.pending.length === 0)) {
+      failures.push({ what: 'a first purchase did not ask for notifications once and then lodge its reminders', saw: `asked ${n.asked}, ${n.pending.length} pending` });
+    }
+    if (permission === 'denied') {
+      if (n.pending.length > 0) failures.push({ what: 'reminders were lodged with notifications refused', saw: `${n.pending.length} pending` });
+      await pp.getByRole('button', { name: 'Settings', exact: true }).click();
+      await pp.waitForTimeout(500);
+      const text = await pp.evaluate(() => document.body.innerText);
+      if (!/Blocked in iOS Settings/.test(text) || !/Settings › Notifications › kept/.test(text)) {
+        failures.push({ what: 'Settings did not say iOS is blocking reminders, or where to turn them back on', saw: '' });
+      }
+    }
+    await pctx.close();
   }
 }
 
