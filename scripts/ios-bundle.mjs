@@ -571,6 +571,12 @@ if (!/Deadline alerts/.test(settingsText)) {
       if (n.asked !== 0 || !shown) {
         failures.push({ what: 'a first purchase asked iOS before explaining, or never explained', saw: `asked ${n.asked}, card ${shown}` });
       } else {
+        // axe over the card, which only the native build renders.
+        await pp.addScriptTag({ path: `${ROOT}node_modules/axe-core/axe.min.js` });
+        const axe = await pp.evaluate(async () =>
+          (await window.axe.run(document, { resultTypes: ['violations'] })).violations.map((v) => `${v.id} (${v.nodes.length})`),
+        );
+        if (axe.length > 0) failures.push({ what: 'axe violations on the reminders card', saw: axe.join(', ') });
         await card.click();
         await pp.waitForTimeout(1200);
         const after = await pp.evaluate(() => window.__keptNotes());
