@@ -166,6 +166,15 @@ await page.getByRole('button', { name: /Currys, JBL/ }).click();
 await page.waitForTimeout(400);
 await sweep('receipt detail');
 
+// The fault panel opens closed; its headline, the letter box and its two
+// buttons exist only once it is asked for.
+await page.getByRole('button', { name: 'Something wrong with it?' }).click();
+await page.waitForTimeout(300);
+await page.getByLabel('What’s wrong with it?').fill('The left ear cup crackles');
+await sweep('receipt detail · something wrong');
+await page.getByRole('button', { name: 'Something wrong with it?' }).click();
+await page.waitForTimeout(200);
+
 // A DISTANCE purchase carries two statutory rights rather than one, so its
 // legal card renders a second chip and a second body — the seeded Currys
 // receipt above was bought in a shop and shows neither. Zara's is the only

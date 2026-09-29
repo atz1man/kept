@@ -502,6 +502,60 @@ for (const cancel of [false, true]) {
   await backCtx.close();
 }
 
+/*
+ * Something wrong with it: the rights, turned into the letter.
+ *
+ * The receipt's screen always said which remedy the law gives today; the
+ * person was left to write to the shop themselves. Now it names today's
+ * remedy and drafts the letter, with their words in it, and Copy puts exactly
+ * that letter on the clipboard. The remedy follows the date: the headphones
+ * (twelve days old) are rejected for a refund, the chest of drawers (over six months)
+ * gets a repair without the presumption. A refund already made has no panel.
+ */
+{
+  const faultCtx = await browser.newContext({ viewport: { width: 402, height: 874 }, permissions: ['clipboard-write'] });
+  await faultCtx.addInitScript(() => {
+    const write = navigator.clipboard?.writeText?.bind(navigator.clipboard);
+    if (navigator.clipboard) navigator.clipboard.writeText = (t) => { window.__copied = t; return write ? write(t) : Promise.resolve(); };
+  });
+  const fp = await faultCtx.newPage();
+  await fp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await fp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await fp.waitForTimeout(300);
+
+  const letterFor = async (row, words) => {
+    await fp.getByRole('button', { name: row }).first().click();
+    await fp.waitForTimeout(300);
+    const opener = fp.getByRole('button', { name: 'Something wrong with it?' });
+    if ((await opener.count()) === 0) return null;
+    await opener.click();
+    await fp.waitForTimeout(200);
+    if (words) await fp.getByLabel('What’s wrong with it?').fill(words);
+    const panel = await fp.locator('[data-fault-panel]').innerText();
+    const letter = await fp.getByLabel('The letter').innerText().catch(() => '');
+    await fp.getByRole('button', { name: 'Copy the letter' }).click().catch(() => {});
+    await fp.waitForTimeout(200);
+    const copied = await fp.evaluate(() => window.__copied ?? null);
+    const said = await fp.locator('[data-fault-panel]').innerText();
+    await fp.getByRole('button', { name: 'Back', exact: true }).click();
+    await fp.waitForTimeout(300);
+    return { panel, letter, copied, said };
+  };
+
+  const fresh = await letterFor(/Currys, JBL/, 'The left ear cup crackles');
+  const old = await letterFor(/IKEA, MALM/, '');
+  results['something wrong: a new purchase is rejected for a refund, in a letter carrying their words'] =
+    !!fresh && /reject it for a full refund/.test(fresh.panel) && /section 22/.test(fresh.letter) &&
+    /The problem: The left ear cup crackles\./.test(fresh.letter) && !/section 23/.test(fresh.letter) &&
+    fresh.copied === fresh.letter && /Copied ✓/.test(fresh.said);
+  if (!results['something wrong: a new purchase is rejected for a refund, in a letter carrying their words']) problems.push(`fault fresh: ${JSON.stringify(fresh)?.slice(0, 300)}`);
+  results['something wrong: an older one asks for a repair, and claims no presumption it has lost'] =
+    !!old && /free repair or replacement/.test(old.panel) && /section 23/.test(old.letter) &&
+    !/19\(14\)/.test(old.letter) && !/section 22/.test(old.letter);
+  if (!results['something wrong: an older one asks for a repair, and claims no presumption it has lost']) problems.push(`fault old: ${JSON.stringify(old)?.slice(0, 300)}`);
+  await faultCtx.close();
+}
+
 // The tab bar floats over every screen; its buttons must stay clickable.
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(400);

@@ -389,6 +389,9 @@ const wipeTo = (status) => `() => {
 const screens = [
   ['home', async () => {}],
   ['detail', async (p) => { await p.locator('li button').first().click(); }],
+  // Opens closed, and its letter is the widest block of text in the app:
+  // prose with no breaks shorter than a shop name, in a box inside a card.
+  ['detail · something wrong', async (p) => { await p.getByRole('button', { name: 'Something wrong with it?' }).click(); }],
   ['edit', async (p) => { await p.getByRole('button', { name: 'Edit', exact: true }).click(); }],
   ['back to home', async (p) => { await p.getByRole('button', { name: 'Cancel' }).click(); await p.getByRole('button', { name: 'Back', exact: true }).click(); }],
   ['watch', async (p) => { await p.getByRole('button', { name: /^Watch/ }).click(); }],
