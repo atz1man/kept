@@ -464,6 +464,28 @@ if (!/Deadline alerts/.test(settingsText)) {
       failures.push({ what: 'tapping a reminder did not open the receipt it was about', saw: `${item} · ${opened.slice(0, 120)}` });
     }
 
+    /*
+     * Kept, with a guarantee: the return reminders go, and one reminder is
+     * lodged a month before cover ends — through the real plugin, at 9am on
+     * that morning, which a unit test of `planAlerts` cannot show.
+     */
+    await ap.getByRole('button', { name: 'Edit', exact: true }).click();
+    await ap.locator('#e-warranty').fill('12');
+    await ap.getByRole('button', { name: 'Save changes' }).click();
+    await ap.waitForTimeout(500);
+    await ap.getByRole('button', { name: 'I’m keeping it' }).click();
+    await ap.waitForTimeout(1200);
+    const keptNotes = await ap.evaluate(() => window.__keptNotes().pending);
+    const coverEnds = new Date(bought.getFullYear() + 1, bought.getMonth(), bought.getDate());
+    const noticeDay = new Date(coverEnds.getFullYear(), coverEnds.getMonth(), coverEnds.getDate() - 30, 9, 0, 0, 0);
+    const onlyWarranty = keptNotes.length === 1 && String(keptNotes[0].extra?.key).endsWith(':warranty');
+    if (!onlyWarranty || new Date(keptNotes[0].schedule?.at).getTime() !== noticeDay.getTime()) {
+      failures.push({
+        what: 'a kept purchase with a guarantee did not leave exactly one reminder, a month before cover ends',
+        saw: JSON.stringify(keptNotes.map((n) => ({ key: n.extra?.key, at: n.schedule?.at }))).slice(0, 300),
+      });
+    }
+
     // Off in Settings cancels what is waiting.
     await ap.getByRole('button', { name: 'Settings', exact: true }).click();
     await ap.waitForTimeout(500);

@@ -2202,6 +2202,28 @@ in red above a panel saying the reminders had stopped. Both settled lists
 show the most recent first (`latestFirst` in `src/lib/receipts.ts`). `smoke`
 drives all of it, and against the code before it names each missing piece.
 
+### After the window: the guarantee, and who has to prove a fault
+
+A kept receipt's reason to exist is the clock after the shop's: the
+guarantee, and the statutory rights. The end date of a guarantee was on the
+receipt's screen and nothing ever mentioned it before it passed. Now one
+alert, `WARRANTY_NOTICE_DAYS` before cover ends, goes out for any receipt
+still on the phone, active or kept (`warrantyWatched` in `src/lib/alerts.ts`).
+Not for a refund, a sample, or a free-text guarantee from an old backup with
+no clock. It is the same alert on both paths to a lock screen: `dueAlerts`
+when the app is open, `planAlerts` lodged with iOS at 9am on the morning.
+Being years out, it is the alert most likely to sit behind iOS's 64-slot cap,
+which is the right way round since every launch re-plans it.
+
+And the detail screen now says who has to prove a fault. Once the 30 days to
+reject have gone it used to offer "a free repair or replacement for up to
+six years" as if those years were all alike. Under the Consumer Rights Act,
+s.19(14), a fault in the first `PRESUMED_FAULT_MONTHS` after delivery is
+taken to have been there from the start, so it is the shop's to disprove.
+After that, the buyer has to prove it. The date and the days left are stated
+while that is true, as a floor when the arrival date is unknown, and the
+rights page states the rule in the same words (`PRESUMED_FAULT_RULE`).
+
 ## Receipt scanning
 
 "Scan a paper receipt" on the Add screen reads a photographed till receipt on

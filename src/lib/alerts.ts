@@ -18,7 +18,32 @@ import type { Receipt } from './types';
  * several rungs still yields one alert: the most urgent.
  */
 
-export type AlertRung = 'week' | 'soon' | 'today' | 'closed';
+/** The shop's return window, closing. */
+export type ReturnRung = 'week' | 'soon' | 'today' | 'closed';
+/**
+ * The guarantee, about to end. Not a rung of the return ladder: it belongs to
+ * a different clock, usually a year or more later, and it is the one reason
+ * to keep a receipt long after the window has shut.
+ */
+export type AlertRung = ReturnRung | 'warranty';
+
+/**
+ * How long before a guarantee ends it is worth saying so. A month: long
+ * enough to notice a fault you have been living with, book a repair and get
+ * the thing looked at while it is still covered.
+ */
+export const WARRANTY_NOTICE_DAYS = 30;
+
+/**
+ * Whether a receipt's guarantee is worth a word from this app at all.
+ *
+ * Active or kept: a returned item has gone back, and its guarantee went with
+ * it. Never a sample. And only a guarantee with a clock — one restored from an
+ * old backup as free text (`months: 0`) has no end date to warn about.
+ */
+export function warrantyWatched(r: Receipt): boolean {
+  return (r.status === 'active' || r.status === 'kept') && !r.demo && !!r.warranty && r.warranty.months > 0;
+}
 
 export interface DeadlineAlert {
   receiptId: string;
@@ -31,10 +56,10 @@ export interface DeadlineAlert {
 
 export const alertKey = (receiptId: string, rung: AlertRung) => `${receiptId}:${rung}`;
 
-const LADDER: AlertRung[] = ['week', 'soon', 'today', 'closed'];
+const LADDER: ReturnRung[] = ['week', 'soon', 'today', 'closed'];
 
 /** The most urgent rung this receipt has reached, or null if it is not close yet. */
-function rungFor(daysLeft: number, urgentDays: number): AlertRung | null {
+function rungFor(daysLeft: number, urgentDays: number): ReturnRung | null {
   if (daysLeft < 0) return 'closed';
   if (daysLeft === 0) return 'today';
   if (daysLeft <= 3) return 'soon';
@@ -75,6 +100,15 @@ export function copyFor(rung: AlertRung, r: Receipt, daysLeft: number, deadline:
         title: 'That window has closed',
         body: `${what} — the shop’s window has passed. If it turns out to be faulty, you still have rights.`,
       };
+    case 'warranty':
+      // `daysLeft` and `deadline` are the GUARANTEE's here. Cover runs to the
+      // end of `deadline`, the day `derive` still calls it live.
+      return {
+        title: 'Your guarantee is running out',
+        body: `${what} — covered until ${fmtDate(deadline)}${
+          daysLeft > 0 ? `, ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} from now` : ', which is today'
+        }. If anything is wrong with it, claim before then.`,
+      };
   }
 }
 
@@ -89,6 +123,17 @@ export function dueAlerts(
 ): DeadlineAlert[] {
   const out: DeadlineAlert[] = [];
   for (const r of receipts) {
+    // The guarantee first, and apart: it is on its own clock, and a kept
+    // receipt — which has left the return ladder for good — still has one.
+    if (warrantyWatched(r)) {
+      const w = derive(r, today).warranty;
+      const key = alertKey(r.id, 'warranty');
+      // Inside the notice period and not yet over. An ended guarantee is not
+      // announced after the fact: there is nothing left to do about it.
+      if (w && w.daysLeft >= 0 && w.daysLeft <= WARRANTY_NOTICE_DAYS && !sent.has(key)) {
+        out.push({ receiptId: r.id, rung: 'warranty', key, ...copyFor('warranty', r, w.daysLeft, w.ends) });
+      }
+    }
     if (r.status !== 'active') continue;
     /*
      * Never about the demo set.
@@ -116,7 +161,7 @@ export function dueAlerts(
   // one that gets read.
   // Only the ORDER of these numbers means anything — 'week' could be any value
   // above 'closed' and no test could tell, which is why none tries.
-  const order: Record<AlertRung, number> = { today: 0, soon: 1, closed: 2, week: 3 };
+  const order: Record<AlertRung, number> = { today: 0, soon: 1, closed: 2, week: 3, warranty: 4 };
   return out.sort((a, b) => order[a.rung] - order[b.rung]);
 }
 
@@ -129,6 +174,8 @@ export function dueAlerts(
  * and history is not worth an interruption.
  */
 export function supersededKeys(alert: DeadlineAlert): string[] {
+  // Its own clock, a single rung: nothing below it to have skipped.
+  if (alert.rung === 'warranty') return [];
   return LADDER.slice(0, LADDER.indexOf(alert.rung)).map((rung) => alertKey(alert.receiptId, rung));
 }
 

@@ -3,6 +3,7 @@ import {
   COOLING_OFF_DAYS,
   LATER_FAULTS,
   LEGAL_DISCLAIMER,
+  PRESUMED_FAULT_RULE,
   REJECT_DAYS,
   RETURN_AFTER_CANCEL_DAYS,
   UNTOLD_EXTENSION,
@@ -43,6 +44,7 @@ export function Rights() {
           paid.
         </p>
         <p style={{ marginBottom: 0 }}>After that, {LATER_FAULTS}</p>
+        <p style={{ marginBottom: 0 }}>{PRESUMED_FAULT_RULE}</p>
       </Section>
 
       <Section title={`Bought online or by phone: ${COOLING_OFF_DAYS} days to change your mind`}>

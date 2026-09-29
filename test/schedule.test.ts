@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, toISODate } from '../src/lib/dates';
+import { addDays, addMonths, toISODate } from '../src/lib/dates';
 import { toPence } from '../src/lib/money';
 import { FIRE_HOUR, MAX_PENDING, planAlerts } from '../src/lib/schedule';
 import type { Receipt } from '../src/lib/types';
@@ -187,5 +187,35 @@ describe('a kept receipt, on iOS', () => {
     const r = receipt();
     expect(planAlerts([r], TODAY, 7, new Set()).length).toBeGreaterThan(0);
     expect(planAlerts([{ ...r, status: 'kept', keptOn: iso(TODAY) }], TODAY, 7, new Set())).toEqual([]);
+  });
+});
+
+describe('a guarantee, lodged a month ahead', () => {
+  // Bought today, 30-day window, 12-month guarantee.
+  const covered = (over: Partial<Receipt> = {}) => receipt({ warranty: { months: 12 }, ...over });
+  const ends = addMonths(TODAY, 12);
+
+  it('is lodged for 9am a month before the cover ends, after the return ladder', () => {
+    const out = plan([covered()]);
+    expect(keys(out)).toEqual(['r1:week', 'r1:soon', 'r1:today', 'r1:closed', 'r1:warranty']);
+    const w = out.find((p) => p.rung === 'warranty')!;
+    expect(iso(w.at)).toBe(iso(addDays(ends, -30)));
+    expect(w.at.getHours()).toBe(FIRE_HOUR);
+    expect(w.body).toMatch(/30 days from now/);
+  });
+
+  it('is lodged for a kept receipt, and not for a returned one or a sample', () => {
+    expect(keys(plan([covered({ status: 'kept', keptOn: iso(TODAY) })]))).toEqual(['r1:warranty']);
+    expect(plan([covered({ status: 'returned', returnedOn: iso(TODAY) })])).toEqual([]);
+    expect(plan([covered({ demo: true })])).toEqual([]);
+  });
+
+  it('is not lodged again once shown, nor for a morning already past', () => {
+    expect(keys(plan([covered()], 7, ['r1:warranty']))).not.toContain('r1:warranty');
+    // Cover ending a fortnight from the REAL today — `planAlerts` measures
+    // "past" against the clock, not the fixture's TODAY — so the notice
+    // morning went a fortnight ago.
+    const late = covered({ purchasedOn: iso(addDays(addMonths(new Date(), -12), 14)) });
+    expect(keys(plan([late]))).not.toContain('r1:warranty');
   });
 });
