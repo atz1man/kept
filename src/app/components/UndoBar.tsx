@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { color, shadow } from '../../tokens';
 import { Pressable } from './Pressable';
 
@@ -17,12 +17,20 @@ const DISMISS_AFTER_MS = 8000;
  * posture is getting out of the way.
  */
 export function UndoBar({ label, onUndo, onDismiss }: { label: string; onUndo: () => void; onDismiss: () => void }) {
+  /*
+   * The latest callback, read when the timer fires — NOT a dependency of it.
+   * App passes a fresh arrow on every render, so with `onDismiss` in the
+   * dependency list every App render restarted the eight seconds: a feed
+   * landing, an alert recorded, another tab syncing, and the bar outstayed its
+   * window indefinitely. A second delete still gets its own full window: App
+   * keys this component by the receipt it offers back.
+   */
+  const dismiss = useRef(onDismiss);
+  dismiss.current = onDismiss;
   useEffect(() => {
-    const t = setTimeout(onDismiss, DISMISS_AFTER_MS);
+    const t = setTimeout(() => dismiss.current(), DISMISS_AFTER_MS);
     return () => clearTimeout(t);
-    // Re-armed whenever the offer changes, so a second delete gets its own
-    // full window rather than inheriting the remains of the first.
-  }, [label, onDismiss]);
+  }, [label]);
 
   return (
     <div

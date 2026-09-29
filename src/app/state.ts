@@ -6,7 +6,7 @@ import { cleanupPhotos } from '../lib/photos';
 import { onNotificationTap, syncScheduled } from './schedule-native';
 import { currentDay, startOfDay, toISODate } from '../lib/dates';
 import { sharedTextFrom, strippedShareUrl } from '../lib/share';
-import { derive, makeReceiptId } from '../lib/receipts';
+import { countsAsMoney, derive, makeReceiptId } from '../lib/receipts';
 import { freshState, load, onExternalChange, save, type KeptState, type Settings } from '../lib/storage';
 import { quotaFull as quotaFullFor } from '../lib/quota';
 import { ONBOARDING_STEPS } from './screens/Onboarding';
@@ -113,6 +113,8 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       return {
         ...state,
         justDeleted: null,
+        // The undo is gone, so what was said about the receipt it held goes too.
+        alertsSent: state.justDeleted ? pruneSent(state.alertsSent, state.receipts) : state.alertsSent,
         screen: action.screen,
         selId: action.screen === 'detail' || action.screen === 'edit' ? state.selId : null,
       };
@@ -146,11 +148,23 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
     case 'return': {
       const r = state.receipts.find((x) => x.id === action.id);
       if (!r || r.status === 'returned') return state;
+      const receipts = state.receipts.map((x) =>
+        x.id === action.id ? { ...x, status: 'returned' as const, returnedOn: toISODate(today) } : x,
+      );
+      /*
+       * A sample, once there is real money beside it, is tidied away — not
+       * celebrated. The screen said "MONEY BACK £89.00" and offered to share
+       * "Just got £89.00 back from Currys" about a purchase nobody made, beside
+       * a "kept back so far" that rightly left it out. Same rule as the totals
+       * (`countsAsMoney`): while the samples are all there is, returning one
+       * IS the demonstration, and it is celebrated.
+       */
+      if (!countsAsMoney(state.receipts)(r)) {
+        return { ...state, receipts, screen: 'home', selId: null, justDeleted: null };
+      }
       return {
         ...state,
-        receipts: state.receipts.map((x) =>
-          x.id === action.id ? { ...x, status: 'returned', returnedOn: toISODate(today) } : x,
-        ),
+        receipts,
         screen: 'celebrate',
         celebrating: {
           amount: r.amount,
@@ -184,9 +198,14 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         // was the only action in the app with no way out — a backup is not an
         // undo.
         justDeleted: removed,
-        // Forget what we said about a receipt that no longer exists, so the
-        // sent-list cannot grow without bound over years of use.
-        alertsSent: pruneSent(state.alertsSent, receipts),
+        // Forget what we said about receipts that no longer exist, so the
+        // sent-list cannot grow without bound over years of use — but NOT yet
+        // about this one. It is on offer to undo, and an undo that brought
+        // the receipt back without the record of its alerts showed them all
+        // again and lost the "kept reminded me" when it was returned. It is
+        // forgotten when the undo is: dismissed, navigated past, or replaced
+        // by the next delete.
+        alertsSent: pruneSent(state.alertsSent, removed ? [...receipts, removed] : receipts),
         screen: 'home',
         selId: null,
       };
@@ -203,16 +222,33 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       return { ...state, receipts: [...state.receipts, restoring], justDeleted: null };
     }
     case 'dismiss-undo':
-      return state.justDeleted ? { ...state, justDeleted: null } : state;
+      return state.justDeleted
+        ? { ...state, justDeleted: null, alertsSent: pruneSent(state.alertsSent, state.receipts) }
+        : state;
     case 'add':
-      return { ...state, receipts: [...state.receipts, action.receipt], screen: 'home' };
-    case 'update':
+      // A shared email is spent once it is saved. It was never cleared, so
+      // every later visit to Add re-read it and offered it again — two rows,
+      // the money counted twice. Leaving Add WITHOUT saving keeps it.
+      return { ...state, receipts: [...state.receipts, action.receipt], screen: 'home', sharedText: null };
+    case 'update': {
+      /*
+       * An edit that moves the deadline makes what was already said about the
+       * old one meaningless. The rungs stayed recorded, so a window corrected
+       * from 14 days to 30 on its last day never warned at the real
+       * three-days-left or last day — the moment a warning was for.
+       */
+      const before = state.receipts.find((r) => r.id === action.receipt.id);
+      const moved =
+        !before ||
+        toISODate(derive(before, today).deadline) !== toISODate(derive(action.receipt, today).deadline);
       return {
         ...state,
+        alertsSent: moved ? state.alertsSent.filter((k) => !k.startsWith(`${action.receipt.id}:`)) : state.alertsSent,
         receipts: state.receipts.map((r) => (r.id === action.receipt.id ? action.receipt : r)),
         screen: 'detail',
         selId: action.receipt.id,
       };
+    }
     case 'restore':
       // Deliberately stays on Settings: the screen reports what the restore
       // actually did ("12 restored · 2 updated"), and bouncing to the list

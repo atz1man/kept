@@ -321,3 +321,87 @@ describe('which screen a launch opens on', () => {
     expect(openingScreen(input)).toBe(expected);
   });
 });
+
+/**
+ * Three ways the reducer lost track of what it had already done — each found
+ * by a review of src/app and confirmed by running the reducer.
+ */
+describe('a shared order email, once saved', () => {
+  it('is not offered again the next time Add opens', () => {
+    // `sharedText` was never cleared, so every later visit to Add re-read the
+    // shared email and offered it for saving again: two rows, the money
+    // counted twice.
+    const shared = base({ sharedText: 'Your Currys order · Total £29.00', screen: 'add' });
+    const saved = reducer(shared, { type: 'add', receipt: receipt('new') }, TODAY);
+    expect(saved.sharedText).toBeNull();
+    const back = reducer(saved, { type: 'go', screen: 'add' }, TODAY);
+    expect(back.sharedText).toBeNull();
+  });
+
+  it('is still there if Add is left without saving', () => {
+    const shared = base({ sharedText: 'Your Currys order · Total £29.00', screen: 'add' });
+    const away = reducer(shared, { type: 'go', screen: 'home' }, TODAY);
+    expect(away.sharedText).toBe('Your Currys order · Total £29.00');
+  });
+});
+
+describe('what kept has already said, across a delete and its undo', () => {
+  it('comes back with the receipt', () => {
+    // 'delete' pruned the receipt's alert keys; 'undo-delete' restored the
+    // receipt without them, so an alert already shown was shown again, and
+    // returning it lost its "kept reminded me".
+    const said = base({ alertsSent: ['a:soon', 'b:today'] });
+    const gone = reducer(said, { type: 'delete', id: 'a' }, TODAY);
+    const back = reducer(gone, { type: 'undo-delete' }, TODAY);
+    expect(back.receipts.map((r) => r.id).sort()).toEqual(['a', 'b']);
+    expect([...back.alertsSent].sort()).toEqual(['a:soon', 'b:today']);
+  });
+
+  it('is forgotten once the undo is no longer on offer', () => {
+    const gone = reducer(base({ alertsSent: ['a:soon', 'b:today'] }), { type: 'delete', id: 'a' }, TODAY);
+    expect(reducer(gone, { type: 'dismiss-undo' }, TODAY).alertsSent).toEqual(['b:today']);
+    expect(reducer(gone, { type: 'go', screen: 'settings' }, TODAY).alertsSent).toEqual(['b:today']);
+  });
+
+  it('and a second delete forgets the first, which can no longer be undone', () => {
+    const one = reducer(base({ alertsSent: ['a:soon', 'b:today'] }), { type: 'delete', id: 'a' }, TODAY);
+    const two = reducer(one, { type: 'delete', id: 'b' }, TODAY);
+    expect(two.alertsSent).toEqual(['b:today']);
+  });
+});
+
+describe('an edit that moves the deadline', () => {
+  it('lets the alerts fire again against the new one', () => {
+    // The rungs already used against the old deadline stayed recorded, so a
+    // window corrected from 14 to 30 days on its last day never warned at the
+    // real three-days-left or last day.
+    const said = base({ alertsSent: ['a:soon', 'a:today', 'b:soon'] });
+    const moved = reducer(said, { type: 'update', receipt: { ...receipt('a'), windowDays: 45 } }, TODAY);
+    expect(moved.alertsSent).toEqual(['b:soon']);
+  });
+
+  it('but an edit that leaves the deadline where it was forgets nothing', () => {
+    const said = base({ alertsSent: ['a:soon', 'b:soon'] });
+    const renamed = reducer(said, { type: 'update', receipt: { ...receipt('a'), item: 'Stand mixer' } }, TODAY);
+    expect(renamed.alertsSent).toEqual(['a:soon', 'b:soon']);
+  });
+});
+
+describe('returning a sample', () => {
+  const sample = (id: string): Receipt => ({ ...receipt(id), demo: true, store: 'Currys', amount: toPence(89) });
+
+  it('is not celebrated once there is real money beside it', () => {
+    // "MONEY BACK £89.00", and a shareable "Just got £89.00 back from Currys",
+    // about a purchase nobody made — beside a "kept back so far" that left it out.
+    const next = reducer(base({ receipts: [sample('s'), receipt('mine')] }), { type: 'return', id: 's' }, TODAY);
+    expect(next.screen).toBe('home');
+    expect(next.celebrating).toBeNull();
+    expect(next.receipts.find((r) => r.id === 's')!.status).toBe('returned');
+  });
+
+  it('is celebrated while the samples are all there is', () => {
+    const next = reducer(base({ receipts: [sample('s'), sample('t')] }), { type: 'return', id: 's' }, TODAY);
+    expect(next.screen).toBe('celebrate');
+    expect(next.celebrating?.amount).toBe(toPence(89));
+  });
+});

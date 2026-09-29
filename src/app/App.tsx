@@ -124,7 +124,6 @@ export function App() {
   const delivering = useRef(false);
   useEffect(() => {
     if (!settings.deadlineAlerts) return;
-    let cancelled = false;
 
     const run = async () => {
       // React 18 mounts effects twice in development; without this guard the
@@ -135,7 +134,12 @@ export function App() {
       delivering.current = true;
       try {
         const shown = await deliver(alerts);
-        if (cancelled || shown.length === 0) return;
+        // Recorded even if the effect has since re-run. What was shown WAS
+        // shown; dropping the record because a newer run exists — while the
+        // guard above had made that newer run return without delivering —
+        // left it unrecorded, and it was shown again at the next foreground.
+        // Recording twice is harmless: 'alerted' is a union.
+        if (shown.length === 0) return;
         dispatch({ type: 'alerted', keys: shown.flatMap((a) => [a.key, ...supersededKeys(a)]) });
       } finally {
         delivering.current = false;
@@ -148,7 +152,6 @@ export function App() {
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => {
-      cancelled = true;
       document.removeEventListener('visibilitychange', onVisible);
     };
   }, [state.receipts, state.alertsSent, settings.deadlineAlerts, settings.urgentDays, today, dispatch]);
@@ -374,6 +377,7 @@ export function App() {
 
       {state.justDeleted && (
         <UndoBar
+          key={state.justDeleted.id}
           label={`Deleted ${state.justDeleted.item}`}
           onUndo={() => dispatch({ type: 'undo-delete' })}
           onDismiss={() => dispatch({ type: 'dismiss-undo' })}

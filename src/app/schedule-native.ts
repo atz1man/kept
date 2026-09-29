@@ -27,7 +27,29 @@ import type { PlannedAlert } from '../lib/schedule';
  * not identities that have to survive between runs, so nothing has to hash a
  * key into a number and hope.
  */
-export async function syncScheduled(plan: readonly PlannedAlert[]): Promise<boolean> {
+/*
+ * One sync at a time, in the order they were asked for.
+ *
+ * This is fired, not awaited, on every state change, and each call reads what
+ * is pending, cancels it and schedules across several bridge calls. Two in
+ * flight interleaved — both read, both cancelled, and whichever finished LAST
+ * won, which could be the older one. Measured: a plan of three followed by the
+ * switch going off left three alerts lodged. Chained, the last one asked for
+ * is the last one to run, so what is lodged is always the newest plan; a
+ * failure in one does not stop the next.
+ */
+let queue: Promise<unknown> = Promise.resolve();
+
+export function syncScheduled(plan: readonly PlannedAlert[]): Promise<boolean> {
+  const run = queue.then(
+    () => syncNow(plan),
+    () => syncNow(plan),
+  );
+  queue = run.catch(() => undefined);
+  return run;
+}
+
+async function syncNow(plan: readonly PlannedAlert[]): Promise<boolean> {
   if (!isNative()) return false;
   try {
     const { LocalNotifications } = await import('@capacitor/local-notifications');
