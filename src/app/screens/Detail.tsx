@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { color, font, radius, shadow } from '../../tokens';
 import { addDays, fmtDateLong, fmtDatesTogether, fromISODate } from '../../lib/dates';
-import { legalRights } from '../../lib/legal';
+import { firstToClose, firstToCloseLine, legalRights } from '../../lib/legal';
 import { REFUND_CHASE_DAYS } from '../../lib/alerts';
 import { money } from '../../lib/money';
 import { asksForGuarantee, derive } from '../../lib/receipts';
@@ -39,6 +39,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
   const d = derive(receipt, today);
   const u = urgency(d.daysLeft, urgentDays);
   const rights = legalRights(receipt, today, !d.expired);
+  const firstClock = receipt.status === 'active' ? firstToClose(receipt, today, d.deadline) : null;
 
   /*
    * The ring shows time REMAINING, so it empties as the window closes — the
@@ -175,6 +176,14 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
             </div>
           </div>
         </div>
+        {/* The comparison the ring and the legal panel left to the reader:
+            with IKEA's year, the first thing to go is the 30-day right to
+            reject, and nothing said so. */}
+        {firstClock && (
+          <div style={{ fontSize: 13, lineHeight: 1.45, color: color.onInkBody, marginTop: 14, paddingTop: 12, borderTop: `1px dashed ${color.onInkDash}` }}>
+            {firstToCloseLine(firstClock)}
+          </div>
+        )}
       </div>
 
       <div style={{ background: color.white, border: `1.5px solid ${color.border}`, borderRadius: radius.cardLg, marginTop: 12 }}>
