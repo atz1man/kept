@@ -589,6 +589,47 @@ for (const cancel of [false, true]) {
   await undoCtx.close();
 }
 
+/*
+ * A paste with no order date. It used to become today, shown read-only as
+ * "(assumed today)": a delivery email that says only "Arriving Tuesday"
+ * started the clock days late, and correcting it meant saving first and
+ * finding Edit. The date is a field now, starting at today and saying so; a
+ * future date is refused before save; and the date chosen is the one saved.
+ */
+{
+  const dCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const dp = await dCtx.newPage();
+  await dp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await dp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await dp.getByRole('button', { name: 'Add a receipt' }).click();
+  await dp.locator('#paste').fill('Your Argos order is on its way\nArriving Tuesday\nTotal £49.99');
+  await dp.getByRole('button', { name: 'Read it' }).click();
+  await dp.waitForTimeout(300);
+  const field = dp.locator('#add-bought');
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const now = new Date();
+  const earlier = iso(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 10));
+  const tomorrow = iso(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
+  let seen = { shown: false };
+  if ((await field.count()) === 1) {
+    seen.startsToday = (await field.inputValue()) === iso(now);
+    await field.fill(tomorrow);
+    await dp.waitForTimeout(150);
+    seen.futureRefused = /in the future/.test(await dp.locator('#add-bought-note').innerText()) &&
+      (await dp.getByRole('button', { name: 'Save receipt' }).isDisabled());
+    await field.fill(earlier);
+    await dp.waitForTimeout(150);
+    await dp.getByRole('button', { name: 'Save receipt' }).click();
+    await dp.waitForTimeout(400);
+    const stored = await dp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => !r.demo));
+    seen = { ...seen, shown: true, saved: stored?.purchasedOn === earlier };
+  }
+  results['a paste with no date asks for it, refuses the future, and saves the day chosen'] =
+    seen.shown && seen.startsToday && seen.futureRefused && seen.saved;
+  if (!results['a paste with no date asks for it, refuses the future, and saves the day chosen']) problems.push(`bought on: ${JSON.stringify(seen)}`);
+  await dCtx.close();
+}
+
 // The tab bar floats over every screen; its buttons must stay clickable.
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(400);

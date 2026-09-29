@@ -4,7 +4,7 @@ import { addDays, fmtDate, fmtDateLong, fmtDateNear, fromISODate, toISODate } fr
 import { money } from '../../lib/money';
 import { parseReceiptText, type ParsedReceipt } from '../../lib/parse';
 import { fromScan, scanFailure } from '../../lib/receipt-scan';
-import { arrivalProblem, readAmount, windowStartFor } from '../../lib/draft';
+import { arrivalProblem, purchaseProblem, readAmount, windowStartFor } from '../../lib/draft';
 import { makeReceiptId } from '../../lib/receipts';
 import { findStore, policyFor } from '../../lib/stores';
 import { windowInForceFor } from '../../lib/policy-feed';
@@ -76,6 +76,16 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
    */
   const [totalText, setTotalText] = useState('');
   /*
+   * The purchase date, when the paste did not carry one. It used to be set to
+   * today and shown read-only as "(assumed today)": a delivery email says
+   * "Arriving Tuesday" and nothing about the order, so the clock started days
+   * late — the deadline later than the shop will honour, the direction the
+   * parser's own comments call dangerous — and the only way to correct it was
+   * to save and then find Edit. Now it is a field, still starting at today,
+   * saying it is a guess.
+   */
+  const [boughtOn, setBoughtOn] = useState('');
+  /*
    * A photographed paper receipt, read on this device. `scanning` is the
    * progress while it reads, null otherwise; `scanFailed` says it could not.
    */
@@ -116,6 +126,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
     setDistance(true);
     setStoreName('');
     setTotalText('');
+    setBoughtOn(outcome.value.purchasedOn);
     // The paste often says "Delivered 27 August" three lines above the total,
     // and this screen was asking the person to read it back out by hand.
     // Still a field they can clear or correct — it is pre-filled, not decided.
@@ -187,7 +198,11 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
    * a preview that disagreed with what lands is a bug this codebase has had
    * once already.
    */
-  const inForce = policy && parsed ? windowInForceFor(policy.name, parsed.purchasedOn, updates) : undefined;
+  // The date the person has confirmed where the paste gave none; the parsed
+  // one otherwise, and while the typed one is not yet a date.
+  const boughtError = parsed && !parsed.dateFound ? purchaseProblem(boughtOn, today) : undefined;
+  const purchasedOn = parsed ? (parsed.dateFound || boughtError ? parsed.purchasedOn : boughtOn) : '';
+  const inForce = policy && parsed ? windowInForceFor(policy.name, purchasedOn, updates) : undefined;
   const effectiveWindow = inForce?.days ?? policy?.windowDays ?? parsed?.windowDays ?? 0;
 
   /**
@@ -196,13 +211,13 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
    * and the app saved it anyway, which starts both statutory clocks early and
    * reports a live right as expired.
    */
-  const arrivalError = parsed && distance && arrivedOn ? arrivalProblem(arrivedOn, parsed.purchasedOn, today) : undefined;
+  const arrivalError = parsed && distance && arrivedOn ? arrivalProblem(arrivedOn, purchasedOn, today) : undefined;
 
   const typedTotal = parsed && parsed.amount === null && totalText.trim() ? readAmount(totalText) : null;
   const amount = parsed?.amount ?? (typedTotal?.ok ? typedTotal.pence : null);
   const totalError = typedTotal && !typedTotal.ok ? typedTotal.error : undefined;
   const needsTotal = !!parsed && amount === null;
-  const cannotSave = quotaFull || !!arrivalError || needsTotal;
+  const cannotSave = quotaFull || !!arrivalError || needsTotal || !!boughtError;
 
   /*
    * Where the clock starts, once, for the save AND the deadline preview. The
@@ -223,7 +238,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
   const photoToKeep = scannedPhotoToKeep(scanShot, text, keepPhoto);
 
   const save = async () => {
-    if (!parsed || quotaFull || arrivalError || amount === null || saving) return;
+    if (!parsed || quotaFull || arrivalError || boughtError || amount === null || saving) return;
     const store = savedStore;
     const id = makeReceiptId(today);
     /*
@@ -246,7 +261,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       item: item.trim() || `${store} purchase`,
       cat: policy?.cat ?? 'other',
       amount,
-      purchasedOn: parsed.purchasedOn,
+      purchasedOn,
       /*
        * A dispatch-clocked retailer starts counting when the parcel leaves,
        * and until now nothing here could know that date — so every Zara
@@ -273,7 +288,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
     setSaving(false);
   };
 
-  const deadline = parsed ? fmtDateNear(addDays(fromISODate(windowStart ?? parsed.purchasedOn), effectiveWindow), today) : '';
+  const deadline = parsed ? fmtDateNear(addDays(fromISODate(windowStart ?? purchasedOn), effectiveWindow), today) : '';
 
   return (
     <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px' }}>
@@ -463,7 +478,38 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
           ) : (
             <Row label="Total" value={money(parsed.amount)} mono />
           )}
-          <Row label="Bought" value={`${fmtDate(fromISODate(parsed.purchasedOn))}${parsed.dateFound ? '' : ' (assumed today)'}`} mono />
+          {parsed.dateFound ? (
+            <Row label="Bought" value={fmtDate(fromISODate(parsed.purchasedOn))} mono />
+          ) : (
+            <div style={{ margin: '4px 0 10px' }}>
+              <label htmlFor="add-bought" style={{ display: 'block', fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>
+                Bought on — {scannedText !== null && text === scannedText ? 'not on the photo' : 'the email didn’t say'}
+              </label>
+              <input
+                id="add-bought"
+                type="date"
+                value={boughtOn}
+                max={toISODate(today)}
+                aria-invalid={!!boughtError}
+                aria-describedby="add-bought-note"
+                onChange={(e) => setBoughtOn(e.target.value)}
+                style={{
+                  width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 14,
+                  border: `1.5px solid ${boughtError ? color.danger : color.border}`, background: color.white,
+                  fontFamily: font.figures, fontSize: 14.5, color: color.ink,
+                }}
+              />
+              {boughtError ? (
+                <div id="add-bought-note" role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: color.danger, marginTop: 5 }}>
+                  {boughtError}
+                </div>
+              ) : (
+                <div id="add-bought-note" style={{ fontSize: 12.5, color: color.muted, marginTop: 5 }}>
+                  Set to today as a guess. Every deadline counts from this day, so change it if you bought it earlier.
+                </div>
+              )}
+            </div>
+          )}
           <Row label="Return window" value={`${effectiveWindow} days`} mono={false} />
           <Row label="Deadline" value={deadline} mono accent />
           {scanShot && (
