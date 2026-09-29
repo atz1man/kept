@@ -121,6 +121,8 @@ export function faultLetter(r: Receipt, today: Date, whatsWrong: string): string
     `Dear ${r.store},`,
     '',
     `Faulty goods: ${r.item}`,
+    // Quoted where it is known: the first thing the shop will look it up by.
+    ...(r.orderRef ? [`Order number: ${r.orderRef}`] : []),
     '',
     `On ${bought} I bought “${r.item}” from you for ${money(r.amount)}${arrived}. ${problem ? `The problem: ${problem}${/[.!?]$/.test(problem) ? '' : '.'}` : 'It has developed a fault.'}`,
     '',
