@@ -405,6 +405,15 @@ export function App() {
 
       </main>
 
+      {state.justReturned && (
+        <UndoBar
+          key={`returned:${state.justReturned.id}`}
+          label={`Marked ${state.receipts.find((r) => r.id === state.justReturned?.id)?.item ?? 'it'} returned`}
+          onUndo={() => dispatch({ type: 'undo-return' })}
+          onDismiss={() => dispatch({ type: 'dismiss-undo' })}
+        />
+      )}
+
       {state.justKept && (
         <UndoBar
           key={state.justKept.join()}

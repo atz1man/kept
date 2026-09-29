@@ -556,6 +556,39 @@ for (const cancel of [false, true]) {
   await faultCtx.close();
 }
 
+/*
+ * A return can be taken back where it was made. The swipe that marks one
+ * fires on a row you might have meant to open; delete had an undo and this
+ * did not. Returned from its screen, celebrated, then undone from the bar:
+ * the receipt is back in the deadlines and on disk as active.
+ */
+{
+  const undoCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const up = await undoCtx.newPage();
+  await up.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await up.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await up.waitForTimeout(300);
+  await up.getByRole('button', { name: /Currys, JBL/ }).first().click();
+  await up.waitForTimeout(300);
+  await up.getByRole('button', { name: 'Got my money back' }).click();
+  await up.waitForTimeout(400);
+  const celebrated = /MONEY BACK/.test(await up.locator('main').innerText());
+  const undo = up.getByRole('button', { name: 'Undo' });
+  const offered = (await undo.count()) === 1 && /Marked JBL Tune 770NC headphones returned/.test(await up.locator('[role="status"]').allInnerTexts().then((t) => t.join(' ')));
+  if (offered) await undo.click();
+  await up.waitForTimeout(400);
+  const home = await up.evaluate(() => {
+    const h = [...document.querySelectorAll('h2')].find((x) => x.textContent.includes('GO NOW'));
+    return { goNow: h?.nextElementSibling?.textContent ?? '', text: document.querySelector('main').innerText };
+  });
+  const stored = await up.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => /JBL/.test(r.item)));
+  results['a return can be undone from the bar, straight off the celebration'] =
+    celebrated && offered && /Currys/.test(home.goNow) && !/MONEY BACK/.test(home.text) &&
+    stored?.status === 'active' && stored?.returnedOn === undefined;
+  if (!results['a return can be undone from the bar, straight off the celebration']) problems.push(`undo return: ${JSON.stringify({ celebrated, offered, goNow: home.goNow.slice(0, 60), status: stored?.status })}`);
+  await undoCtx.close();
+}
+
 // The tab bar floats over every screen; its buttons must stay clickable.
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(400);
