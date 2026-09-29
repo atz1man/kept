@@ -94,6 +94,20 @@ export interface ValidDraft {
 export type DraftOutcome = { ok: true; value: ValidDraft } | { ok: false; errors: DraftErrors };
 
 /**
+ * The purchase date's own rule, shared by Edit and by Add, which has to ask
+ * for the date when a paste did not carry one.
+ */
+export function purchaseProblem(purchasedOn: string, today: Date): string | undefined {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(purchasedOn) || toISODate(fromISODate(purchasedOn)) !== purchasedOn) {
+    return 'Pick the date you bought it';
+  }
+  // A return clock cannot start in the future, and letting it would report a
+  // window far longer than the shop will honour.
+  if (daysBetween(today, fromISODate(purchasedOn)) > 0) return 'That date is in the future';
+  return undefined;
+}
+
+/**
  * What is wrong with a stated arrival date, or nothing.
  *
  * Exported because the ADD screen asks for the same date and had no rule at
@@ -229,13 +243,8 @@ export function validateDraft(draft: ReceiptDraft, today: Date): DraftOutcome {
   else errors.amountText = read.error;
 
   const purchasedOn = draft.purchasedOn;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(purchasedOn) || toISODate(fromISODate(purchasedOn)) !== purchasedOn) {
-    errors.purchasedOn = 'Pick the date you bought it';
-  } else if (daysBetween(today, fromISODate(purchasedOn)) > 0) {
-    // A return clock cannot start in the future, and letting it would report a
-    // window far longer than the shop will honour.
-    errors.purchasedOn = 'That date is in the future';
-  }
+  const purchaseError = purchaseProblem(purchasedOn, today);
+  if (purchaseError) errors.purchasedOn = purchaseError;
 
   const windowDays = Number(draft.windowDaysText.trim());
   if (!draft.windowDaysText.trim() || !Number.isInteger(windowDays) || windowDays < 1) {

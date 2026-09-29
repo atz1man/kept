@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_WINDOW_DAYS, applyDraft, arrivalProblem, draftFrom, effectiveWindowStart, validateDraft, windowStartFrom, type ReceiptDraft } from '../src/lib/draft';
+import { MAX_WINDOW_DAYS, applyDraft, arrivalProblem, draftFrom, effectiveWindowStart, validateDraft, windowStartFrom, type ReceiptDraft, purchaseProblem } from '../src/lib/draft';
 import { clockFor } from '../src/lib/stores';
 import { toISODate } from '../src/lib/dates';
 import { derive } from '../src/lib/receipts';
@@ -783,5 +783,19 @@ describe('a shop with a clock for online orders', () => {
 
   it('knows nothing about a shop it does not know', () => {
     expect(windowStartFrom(undefined, { arrivedOn: '2026-08-20' })).toBeUndefined();
+  });
+});
+
+describe('the purchase date, as Add asks for it', () => {
+  // Shared with Edit's own check, so the two screens cannot disagree.
+  const today = new Date(2026, 7, 28);
+  it('takes a real date up to today', () => {
+    expect(purchaseProblem('2026-08-28', today)).toBeUndefined();
+    expect(purchaseProblem('2025-01-06', today)).toBeUndefined();
+  });
+  it('refuses the future and a date that is not one', () => {
+    expect(purchaseProblem('2026-08-29', today)).toBe('That date is in the future');
+    expect(purchaseProblem('', today)).toBe('Pick the date you bought it');
+    expect(purchaseProblem('2026-02-30', today)).toBe('Pick the date you bought it');
   });
 });
