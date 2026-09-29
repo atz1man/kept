@@ -1247,7 +1247,7 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
   await scanPage.getByRole('button', { name: 'Add a receipt' }).click();
   await scanPage.waitForTimeout(300);
   await scanPage.setInputFiles('#add-photo', { name: 'receipt.png', mimeType: 'image/png', buffer: photo });
-  const found = await scanPage.getByText('FOUND IN YOUR PASTE').waitFor({ timeout: 90_000 }).then(() => true).catch(() => false);
+  const found = await scanPage.getByText('READ FROM YOUR PHOTO').waitFor({ timeout: 90_000 }).then(() => true).catch(() => false);
   const card = found ? await scanPage.locator('main').innerText() : '';
   const item = found ? await scanPage.inputValue('#add-item').catch(() => '') : '';
   results['a photographed receipt is read on the device'] =
@@ -1258,6 +1258,15 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
   if (elsewhere.length) problems.push(`scan reached: ${[...new Set(elsewhere)].join(', ')}`);
   if (!found) problems.push('scan: the card never appeared');
   else if (!results['a photographed receipt is read on the device']) problems.push(`scan read: ${card.slice(0, 300).replace(/\n/g, ' | ')} · item=${item}`);
+  // The card says where its findings came from, and stops saying "photo" the
+  // moment the text is no longer what the camera read.
+  if (found) {
+    await scanPage.locator('#paste').fill(`${await scanPage.inputValue('#paste')}\nThanks`);
+    await scanPage.getByRole('button', { name: 'Read it' }).click();
+    results['an edited scan is a paste again'] =
+      (await scanPage.getByText('FOUND IN YOUR PASTE').isVisible().catch(() => false)) &&
+      !(await scanPage.getByText('READ FROM YOUR PHOTO').isVisible().catch(() => false));
+  }
 
   /*
    * The same, with the phone's shadow across half of it — the way a receipt on
@@ -1285,7 +1294,7 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
   await scanPage.getByRole('button', { name: 'Add a receipt' }).click();
   await scanPage.waitForTimeout(300);
   await scanPage.setInputFiles('#add-photo', { name: 'shaded.png', mimeType: 'image/png', buffer: shaded });
-  const shadeFound = await scanPage.getByText('FOUND IN YOUR PASTE').waitFor({ timeout: 120_000 }).then(() => true).catch(() => false);
+  const shadeFound = await scanPage.getByText('READ FROM YOUR PHOTO').waitFor({ timeout: 120_000 }).then(() => true).catch(() => false);
   const shadeCard = shadeFound ? await scanPage.locator('main').innerText() : '';
   results['a receipt half in shadow is read too'] =
     shadeFound && /Boots/.test(shadeCard) && /£42\.97/.test(shadeCard) && /21 Sep/.test(shadeCard);

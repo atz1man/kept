@@ -46,7 +46,7 @@ is on it too. Green before you Archive — `test/preflight.test.ts` holds the ch
 |---|---|---|---|
 | ✅ | Name, subtitle, promotional text, description, keywords, review notes | done | `store/listing.json`, held by `test/store-listing.test.ts` |
 | ✅ | Privacy answers: **Data Not Collected**, no tracking | done | matches `PrivacyInfo.xcprivacy` |
-| ✅ | Screenshot storyboard at 1290 × 2796 — three shots, from the iOS bundle booted as native, UK locale | done | `npm run build:ios && npm run store:screenshots`. They show the seed's retailer data, so they wait on APN-16 like the listing does |
+| ✅ | Screenshot storyboard at 1290 × 2796 — four shots (deadlines, the two clocks, a pasted order, a scanned till receipt), from the iOS bundle booted as native, UK locale | done | `npm run build:ios && npm run store:screenshots`. They show the seed's retailer data, so they wait on APN-16 like the listing does |
 | ☐ | Retake the screenshots in the Simulator, for the real status bar | **you** (Mac) | `xcrun simctl io booted screenshot` |
 | ☐ | Age rating questionnaire → 4+ | **you** | App Store Connect |
 

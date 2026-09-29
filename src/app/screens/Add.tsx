@@ -91,6 +91,12 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
    */
   const [scanShot, setScanShot] = useState<{ base64: string; text: string } | null>(null);
   const [keepPhoto, setKeepPhoto] = useState(true);
+  /*
+   * What the camera read, on either platform, so the card can say where its
+   * findings came from. It said "Found in your paste" after a scan, of text
+   * the person never pasted. Edit the text and it is a paste again.
+   */
+  const [scannedText, setScannedText] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   // Read once, on arrival. A later keystroke must not re-trigger it.
   const [readShare, setReadShare] = useState(false);
@@ -129,6 +135,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
     setScanning(0);
     setLookingAgain(false);
     setScanShot(null);
+    setScannedText(null);
     try {
       const { readReceiptPhoto } = await import('../scan');
       const readable = fromScan(await readReceiptPhoto(file, today, (p, again) => {
@@ -136,6 +143,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
         setLookingAgain(again);
       }));
       setText(readable);
+      setScannedText(readable);
       readText(readable);
       setDistance(false);
       if (base64) {
@@ -328,7 +336,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       {parsed && (
         <div className="k-fade" style={{ background: color.white, border: `1.5px solid ${color.ink}`, borderRadius: radius.cardLg, padding: 18, marginTop: 16, boxShadow: shadow.hard }}>
           <div style={{ fontFamily: font.figures, fontSize: 11, letterSpacing: '1.6px', color: color.amber, fontWeight: 700 }}>
-            FOUND IN YOUR PASTE
+            {scannedText !== null && text === scannedText ? 'READ FROM YOUR PHOTO' : 'FOUND IN YOUR PASTE'}
           </div>
           <div style={{ marginTop: 12 }}>
             <label htmlFor="add-item" style={{ display: 'block', fontSize: 12, fontWeight: 700, letterSpacing: '0.6px', color: color.muted, marginBottom: 6 }}>

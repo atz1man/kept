@@ -27,6 +27,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
 import { chromium } from 'playwright';
+import { answeringBridge } from './answering-bridge.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const VITE_BIN = `${ROOT}node_modules/vite/bin/vite.js`;
@@ -125,7 +126,56 @@ await settle(300);
 await shoot('paste-an-order-email');
 
 /*
- * Three, deliberately. Settings is left out because its Deadline alerts row
+ * A till receipt, photographed and read on the phone.
+ *
+ * Its own context, because the camera has to answer: the bridge above answers
+ * nothing, which is right for the other shots and would leave this one
+ * waiting on a camera that never opens. The receipt is rendered, as the
+ * pasted email above is typed; what kept does with it is the app's own work,
+ * read by the same on-device OCR a phone runs.
+ */
+{
+  const slip = await browser.newPage({ viewport: { width: 420, height: 640 } });
+  await slip.setContent(`<body style="margin:0;background:#fff">
+    <div id="r" style="width:360px;padding:28px 24px;font:22px/1.5 'DejaVu Sans Mono',monospace;color:#111;background:#fff">
+      <div style="text-align:center;font-weight:bold;font-size:30px">ARGOS</div>
+      <div>KENWOOD MIXER&nbsp;&nbsp;&nbsp;199.99</div>
+      <div>TOTAL&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;199.99</div>
+      <div>VISA&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;199.99</div>
+      <div>26/09/2026 14:32</div>
+    </div></body>`);
+  const photo = (await slip.locator('#r').screenshot({ type: 'png' })).toString('base64');
+  await slip.close();
+
+  const sctx = await browser.newContext({
+    viewport: VIEWPORT, deviceScaleFactor: SCALE, isMobile: true, hasTouch: true,
+    locale: 'en-GB', timezoneId: 'Europe/London',
+  });
+  await answeringBridge(sctx, { shot: photo });
+  const sp = await sctx.newPage();
+  await sp.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
+  await sp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await sp.getByRole('button', { name: 'Add a receipt' }).click();
+  await sp.getByRole('button', { name: /Scan a paper receipt/ }).click();
+  const read = await sp.getByText('READ FROM YOUR PHOTO').waitFor({ timeout: 90_000 }).then(() => true).catch(() => false);
+  if (!read) {
+    console.error('✗ the scan never produced a card, so there is no scan screenshot to take');
+    await browser.close();
+    stop();
+    process.exit(1);
+  }
+  // The card, not the paste box above it: that is the moment before Save.
+  await sp.getByText('READ FROM YOUR PHOTO').scrollIntoViewIfNeeded();
+  await sp.evaluate(() => window.scrollBy(0, -24));
+  await sp.waitForTimeout(400);
+  const path = `${OUT}/${String(shots.length + 1).padStart(2, '0')}-scan-a-till-receipt.png`;
+  await sp.screenshot({ path });
+  shots.push(path);
+  await sctx.close();
+}
+
+/*
+ * Four, deliberately. Settings is left out because its Deadline alerts row
  * asks the notification plugin, the emulated bridge has none, and the row
  * correctly says "Not available here" — true of this harness, false of a
  * phone. The Watch tab is left out because its entries are the SEED feed:
