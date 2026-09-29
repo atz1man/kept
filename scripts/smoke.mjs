@@ -298,6 +298,61 @@ for (const [label, refuse] of [['confirms a copy that happened', false], ['does 
 }
 
 /*
+ * Keeping it: the commonest end to a purchase, and it had no action.
+ *
+ * The exits were "returned" and Delete, so a kept item went on raising return
+ * reminders, then sat at the top under WINDOW CLOSED in red for good, and
+ * deleting it lost its warranty, its photo and its faulty-goods rights. Kept,
+ * it leaves the urgency sections, loses its returns link, says so on its own
+ * screen, and can be taken back.
+ */
+{
+  const keepCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const kp = await keepCtx.newPage();
+  await kp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await kp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await kp.waitForTimeout(300);
+  await kp.getByRole('button', { name: /Currys, JBL/ }).click();
+  await kp.waitForTimeout(300);
+  // Asked before it is pressed, so a build without it says so by name rather
+  // than stopping the run on a click that times out.
+  const keepButton = kp.getByRole('button', { name: /I’m keeping it/ });
+  if ((await keepButton.count()) === 0) {
+    results['a kept receipt leaves the deadlines, loses its returns link, and says so'] = false;
+    results['keeping it can be taken back'] = false;
+    problems.push('keeping: an active receipt offers no “I’m keeping it”');
+  } else {
+    await keepButton.click();
+    await kp.waitForTimeout(300);
+    const detailSays = await kp.locator('main').innerText();
+    const linkGone = (await kp.getByRole('link', { name: /Start your return/ }).count()) === 0;
+    await kp.getByRole('button', { name: 'Back', exact: true }).click();
+    await kp.waitForTimeout(300);
+    const filed = await kp.evaluate(() => {
+      const heads = [...document.querySelectorAll('h2')];
+      const under = (label) => {
+        const h = heads.find((x) => x.textContent.includes(label));
+        return h ? h.nextElementSibling?.textContent ?? '' : '';
+      };
+      return { keeping: under('KEEPING IT'), closed: under('WINDOW CLOSED'), urgent: under('GO NOW'), later: under('CHILL') };
+    });
+    results['a kept receipt leaves the deadlines, loses its returns link, and says so'] =
+      /Keeping it · since/.test(detailSays) && linkGone && /Currys/.test(filed.keeping) &&
+      !/JBL/.test(filed.closed + filed.urgent + filed.later);
+    if (!results['a kept receipt leaves the deadlines, loses its returns link, and says so']) problems.push(`keeping: ${JSON.stringify({ linkGone, filed })}`);
+
+    await kp.getByRole('button', { name: /Currys, JBL.*keeping it/ }).click();
+    await kp.waitForTimeout(300);
+    await kp.getByRole('button', { name: 'Not keeping it after all' }).click();
+    await kp.waitForTimeout(300);
+    const backToActive = (await kp.getByRole('button', { name: 'Got my money back' }).count()) === 1;
+    const stored = await kp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => /JBL/.test(r.item)));
+    results['keeping it can be taken back'] = backToActive && stored?.status === 'active' && stored?.keptOn === undefined;
+  }
+  await keepCtx.close();
+}
+
+/*
  * Sharing the win as a picture, through the phone's own share sheet.
  *
  * The clipboard sentence above is the fallback. Where a share sheet exists,

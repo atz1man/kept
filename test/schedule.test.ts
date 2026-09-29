@@ -181,3 +181,11 @@ describe('the two boundaries iOS and the settings slider impose', () => {
     expect(keys(out).some((k) => k.startsWith('r29:'))).toBe(true);
   });
 });
+
+describe('a kept receipt, on iOS', () => {
+  it('has nothing lodged with the system', () => {
+    const r = receipt();
+    expect(planAlerts([r], TODAY, 7, new Set()).length).toBeGreaterThan(0);
+    expect(planAlerts([{ ...r, status: 'kept', keptOn: iso(TODAY) }], TODAY, 7, new Set())).toEqual([]);
+  });
+});

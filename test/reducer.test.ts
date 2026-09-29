@@ -409,3 +409,38 @@ describe('returning a sample', () => {
     expect(next.celebrating?.amount).toBe(toPence(89));
   });
 });
+
+describe('keeping it', () => {
+  /*
+   * The commonest end to a purchase had no action: the only exits were
+   * "returned" and Delete, so a kept item nagged, then sat under WINDOW CLOSED
+   * for good, and deleting it threw away its warranty and its rights.
+   */
+  it('settles an active receipt as kept, on today', () => {
+    const next = reducer(base(), { type: 'keep', id: 'a' }, TODAY);
+    const a = next.receipts.find((r) => r.id === 'a')!;
+    expect(a.status).toBe('kept');
+    expect(a.keptOn).toBe(toISODate(TODAY));
+    expect(next.receipts.find((r) => r.id === 'b')!.status).toBe('active');
+  });
+
+  it('does not turn a refund into a kept item', () => {
+    const returned = { ...receipt('a'), status: 'returned' as const, returnedOn: '2026-08-20' };
+    const next = reducer(base({ receipts: [returned] }), { type: 'keep', id: 'a' }, TODAY);
+    expect(next.receipts[0]).toEqual(returned);
+  });
+
+  it('can be taken back, and forgets the date it was decided', () => {
+    const kept = reducer(base(), { type: 'keep', id: 'a' }, TODAY);
+    const back = reducer(kept, { type: 'unkeep', id: 'a' }, TODAY).receipts.find((r) => r.id === 'a')!;
+    expect(back.status).toBe('active');
+    expect(back.keptOn).toBeUndefined();
+  });
+
+  it('a kept item that goes back after all is a return, with no kept date left on it', () => {
+    const kept = reducer(base(), { type: 'keep', id: 'a' }, TODAY);
+    const a = reducer(kept, { type: 'return', id: 'a' }, TODAY).receipts.find((r) => r.id === 'a')!;
+    expect(a.status).toBe('returned');
+    expect(a.keptOn).toBeUndefined();
+  });
+});

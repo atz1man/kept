@@ -344,6 +344,8 @@ export function App() {
           onEdit={() => dispatch({ type: 'go', screen: 'edit' })}
           onReturn={() => dispatch({ type: 'return', id: selected.id })}
           onUnreturn={() => dispatch({ type: 'unreturn', id: selected.id })}
+          onKeep={() => dispatch({ type: 'keep', id: selected.id })}
+          onUnkeep={() => dispatch({ type: 'unkeep', id: selected.id })}
           onDelete={() => dispatch({ type: 'delete', id: selected.id })}
         />
       )}

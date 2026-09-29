@@ -182,3 +182,10 @@ describe('the demo set never interrupts', () => {
     expect(alerts.map((a) => a.receiptId)).toEqual(['mine']);
   });
 });
+
+describe('a kept receipt', () => {
+  it('raises no return reminder, however close its deadline', () => {
+    expect(dueAlerts([closingIn(0, { status: 'kept', keptOn: toISODate(TODAY) })], TODAY, URGENT, none)).toEqual([]);
+    expect(dueAlerts([closingIn(0)], TODAY, URGENT, none).length).toBeGreaterThan(0);
+  });
+});

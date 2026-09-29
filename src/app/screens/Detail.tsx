@@ -23,12 +23,14 @@ interface Props {
   onEdit: () => void;
   onReturn: () => void;
   onUnreturn: () => void;
+  onKeep: () => void;
+  onUnkeep: () => void;
   onDelete: () => void;
 }
 
 const cardLabel = { fontSize: 11, fontWeight: 700, letterSpacing: '1.4px', color: color.muted } as const;
 
-export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, onUnreturn, onDelete }: Props) {
+export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, onUnreturn, onKeep, onUnkeep, onDelete }: Props) {
   const [legalOpen, setLegalOpen] = useState(true);
   const d = derive(receipt, today);
   const u = urgency(d.daysLeft, urgentDays);
@@ -309,7 +311,36 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
             </Pressable>
           </div>
         </>
+      ) : receipt.status === 'kept' ? (
+        <>
+          {/* Settled without a refund. The reminders stop; the rights set out
+              above do not, which is the reason to keep the receipt at all. */}
+          <div style={{ marginTop: 16, padding: 15, background: color.creamAlt, border: `1.5px solid ${color.border}`, borderRadius: 16 }}>
+            <div style={{ fontWeight: 700 }}>
+              Keeping it{receipt.keptOn ? ` · since ${fmtDateLong(fromISODate(receipt.keptOn))}` : ''}
+            </div>
+            <div style={{ fontSize: 13, color: color.muted, lineHeight: 1.5, marginTop: 4 }}>
+              No more return reminders. If it turns out to be faulty, your rights above still apply.
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+            <Pressable
+              className="k-row-white"
+              onClick={onUnkeep}
+              style={{ flex: 1, padding: 15, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+            >
+              Not keeping it after all
+            </Pressable>
+            <Pressable
+              onClick={onDelete}
+              style={{ width: 'auto', padding: '15px 18px', textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, color: color.danger, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+            >
+              Delete
+            </Pressable>
+          </div>
+        </>
       ) : (
+        <>
         <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
           <Pressable
             className="k-cta-yellow"
@@ -325,6 +356,15 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
             Delete
           </Pressable>
         </div>
+        {/* The commonest ending, which had no way to be said. */}
+        <Pressable
+          className="k-row-white"
+          onClick={onKeep}
+          style={{ marginTop: 10, padding: 15, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+        >
+          I’m keeping it
+        </Pressable>
+        </>
       )}
     </div>
   );

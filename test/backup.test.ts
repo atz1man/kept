@@ -414,3 +414,28 @@ describe('the edges of what a backup file may carry', () => {
     expect(readReceipt({ ...good, store: 'x'.repeat(121) }, true)!.store).toHaveLength(120);
   });
 });
+
+describe('a kept receipt in a backup', () => {
+  it('is read, with the day it was decided', () => {
+    const r = readReceipt({ ...good, status: 'kept', keptOn: '2026-08-30' });
+    expect(r?.status).toBe('kept');
+    expect(r?.keptOn).toBe('2026-08-30');
+  });
+
+  it('is refused with a date that is not one', () => {
+    expect(readReceipt({ ...good, status: 'kept', keptOn: 'last week' })).toBeNull();
+  });
+
+  it('is not undone by restoring a file written before the decision', () => {
+    const kept: Receipt = { ...good, status: 'kept', keptOn: '2026-08-30' };
+    const { receipts } = mergeBackup([kept], [good]);
+    expect(receipts[0].status).toBe('kept');
+    expect(receipts[0].keptOn).toBe('2026-08-30');
+  });
+
+  it('does not carry a decision the device never made', () => {
+    const { receipts } = mergeBackup([good], [{ ...good, status: 'kept', keptOn: '2026-08-30' }]);
+    expect(receipts[0].status).toBe('active');
+    expect(receipts[0].keptOn).toBeUndefined();
+  });
+});

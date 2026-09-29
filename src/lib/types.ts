@@ -9,7 +9,7 @@ export interface Warranty {
 
 export type Category = 'audio' | 'kitchen' | 'clothing' | 'beauty' | 'furniture' | 'other';
 
-export type ReceiptStatus = 'active' | 'returned';
+export type ReceiptStatus = 'active' | 'returned' | 'kept';
 
 /**
  * What the app persists per receipt.
@@ -78,6 +78,15 @@ export interface Receipt {
   status: ReceiptStatus;
   /** ISO date the refund landed — set when the receipt is marked returned. */
   returnedOn?: string;
+  /**
+   * The day the person decided to keep it. Keeping is the commonest end to a
+   * purchase and had no way to be said: the only exits were "returned" and
+   * Delete, so a kept coat went on raising return reminders, then sat at the
+   * top of the list under WINDOW CLOSED for good, and deleting it threw away
+   * its warranty, its photo and the faulty-goods rights that outlast the
+   * shop's window by years.
+   */
+  keptOn?: string;
   /**
    * True for the five receipts a fresh install arrives with.
    *

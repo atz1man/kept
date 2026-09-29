@@ -81,6 +81,8 @@ export type Action =
   | { type: 'alerted'; keys: string[] }
   | { type: 'feed'; updates: PolicyUpdate[] }
   | { type: 'settings'; patch: Partial<Settings> }
+  | { type: 'keep'; id: string }
+  | { type: 'unkeep'; id: string }
   | { type: 'shared'; outcome: 'shared' | 'copied' | 'failed' }
   | { type: 'upgrade-ask'; period: Period }
   | { type: 'upgrade-cancel' };
@@ -149,7 +151,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       const r = state.receipts.find((x) => x.id === action.id);
       if (!r || r.status === 'returned') return state;
       const receipts = state.receipts.map((x) =>
-        x.id === action.id ? { ...x, status: 'returned' as const, returnedOn: toISODate(today) } : x,
+        x.id === action.id ? { ...x, status: 'returned' as const, returnedOn: toISODate(today), keptOn: undefined } : x,
       );
       /*
        * A sample, once there is real money beside it, is tidied away — not
@@ -186,6 +188,22 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         ...state,
         receipts: state.receipts.map((r) =>
           r.id === action.id ? { ...r, status: 'active' as const, returnedOn: undefined } : r,
+        ),
+      };
+    case 'keep':
+      // Only an active receipt: a returned one has already ended, and keeping
+      // it would bury the refund the money-back total counts.
+      return {
+        ...state,
+        receipts: state.receipts.map((r) =>
+          r.id === action.id && r.status === 'active' ? { ...r, status: 'kept' as const, keptOn: toISODate(today) } : r,
+        ),
+      };
+    case 'unkeep':
+      return {
+        ...state,
+        receipts: state.receipts.map((r) =>
+          r.id === action.id && r.status === 'kept' ? { ...r, status: 'active' as const, keptOn: undefined } : r,
         ),
       };
     case 'delete': {
