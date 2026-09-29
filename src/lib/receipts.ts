@@ -118,6 +118,8 @@ export interface Buckets {
   urgent: Receipt[];
   later: Receipt[];
   returned: Receipt[];
+  /** Decided on and kept: no more return reminders, still has its rights. */
+  kept: Receipt[];
 }
 
 /**
@@ -140,6 +142,7 @@ export function bucket(receipts: readonly Receipt[], today: Date, urgentDays: nu
     urgent: active.filter((x) => x.derived.daysLeft >= 0 && x.derived.daysLeft <= urgentDays).map((x) => x.receipt),
     later: active.filter((x) => x.derived.daysLeft > urgentDays).map((x) => x.receipt),
     returned: receipts.filter((r) => r.status === 'returned'),
+    kept: receipts.filter((r) => r.status === 'kept'),
   };
 }
 

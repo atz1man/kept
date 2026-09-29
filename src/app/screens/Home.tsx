@@ -40,18 +40,19 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
   // and it is still the question while you are looking for something.
   const visible = searching ? search(receipts, query) : receipts;
 
-  const { closed, urgent, later, returned } = bucket(visible, today, urgentDays);
+  const { closed, urgent, later, returned, kept } = bucket(visible, today, urgentDays);
   const active = [...closed, ...urgent, ...later];
   const next = searching ? undefined : active[0];
   // Whether a sample still counts is decided over EVERY receipt, not the ones
   // a search left visible: the samples stop being money the moment a real
   // receipt exists, whatever is on screen.
   const counts = countsAsMoney(receipts);
-  const stillReturnable = stillReturnablePence({ closed, urgent, later, returned }, receipts);
+  const stillReturnable = stillReturnablePence({ closed, urgent, later, returned, kept }, receipts);
   const keptBack = sumPence(returned.filter(counts).map((r) => r.amount));
   const dots = timelineDots(receipts, today);
   const empty = receipts.length === 0;
-  const allDone = !searching && active.length === 0 && returned.length > 0;
+  // Kept counts as settled: nothing is waiting to go back.
+  const allDone = !searching && active.length === 0 && (returned.length > 0 || kept.length > 0);
   const allInTime = everyReturnInTime(returned, today);
   const nothingMatched = searching && visible.length === 0;
 
@@ -190,8 +191,9 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
               checked. Said only when it is true; the money is true either
               way. */}
           <div style={{ fontSize: 14, color: color.muted, lineHeight: 1.6, marginTop: 8 }}>
-            {allInTime ? 'Every return made it back in time. ' : ''}
-            {money(keptBack)} recovered — not bad.
+            {returned.length > 0
+              ? `${allInTime ? 'Every return made it back in time. ' : ''}${money(keptBack)} recovered — not bad.`
+              : 'Nothing is waiting to go back.'}
           </div>
         </div>
       )}
@@ -286,6 +288,35 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
                     </div>
                   </div>
                   <div style={{ fontFamily: font.figures, fontSize: 15, fontWeight: 700, color: color.amber, flexShrink: 0 }}>{money(r.amount)}</div>
+                </Pressable>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {kept.length > 0 && (
+        <>
+          {/* Settled, not lost: no reminders, and not in red. Still one tap
+              from its warranty, its photo and the rights that outlast the
+              shop's window, which is why it is kept here rather than deleted. */}
+          <h2 style={sectionLabel(color.muted)}>KEEPING IT</h2>
+          <ul style={{ display: 'flex', flexDirection: 'column', gap: 9, margin: 0, padding: 0 }}>
+            {kept.map((r) => (
+              <li key={r.id} style={{ listStyle: 'none' }}>
+                <Pressable
+                  onClick={() => onOpen(r.id)}
+                  aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${money(r.amount)}, keeping it`}
+                  style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 15, background: color.creamAlt, border: '1.5px solid rgba(23,20,16,0.06)', borderRadius: radius.card }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: color.body, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.store}</div>
+                    <div style={{ fontSize: 12, color: color.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {r.demo && <span>sample · </span>}
+                      {r.item}
+                    </div>
+                  </div>
+                  <div style={{ fontFamily: font.figures, fontSize: 15, fontWeight: 700, color: color.muted, flexShrink: 0 }}>{money(r.amount)}</div>
                 </Pressable>
               </li>
             ))}

@@ -90,6 +90,18 @@ describe('bucketing', () => {
     expect(b.returned.map((r) => r.id)).toEqual(['done']);
   });
 
+  it('files a kept receipt apart, even one whose window has shut', () => {
+    // The whole reason to say "I'm keeping it": it stops sitting in red at the
+    // top under WINDOW CLOSED, and stops counting as money still to recover.
+    const kept = receipt({ id: 'kept', purchasedOn: ago(40), windowDays: 14, status: 'kept', keptOn: ago(20) });
+    const keptSoon = receipt({ id: 'kept-soon', purchasedOn: ago(12), windowDays: 14, status: 'kept', keptOn: ago(1) });
+    const b = bucket([...set, kept, keptSoon], TODAY, 7);
+    expect(b.kept.map((r) => r.id)).toEqual(['kept', 'kept-soon']);
+    expect([...b.closed, ...b.urgent, ...b.later, ...b.returned].map((r) => r.id)).not.toContain('kept');
+    expect([...b.closed, ...b.urgent, ...b.later].map((r) => r.id)).not.toContain('kept-soon');
+    expect(stillReturnablePence(b, [...set, kept, keptSoon])).toBe(stillReturnablePence(bucket(set, TODAY, 7), set));
+  });
+
   it('keeps an expired receipt in view instead of hiding it', () => {
     // The money may still be recoverable under the statutory rights; silently
     // demoting the row would hide the one the user most needs to act on.

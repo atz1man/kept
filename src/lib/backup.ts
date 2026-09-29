@@ -19,7 +19,7 @@ import type { Category, Receipt, ReceiptStatus, Warranty } from './types';
  */
 
 const CATEGORIES: readonly Category[] = ['audio', 'kitchen', 'clothing', 'beauty', 'furniture', 'other'];
-const STATUSES: readonly ReceiptStatus[] = ['active', 'returned'];
+const STATUSES: readonly ReceiptStatus[] = ['active', 'returned', 'kept'];
 
 export interface ImportSummary {
   /** Rows that validated. */
@@ -137,6 +137,7 @@ export function readReceipt(raw: unknown, fromOutside = false): Receipt | null {
   if (distance === null) return null;
   if (!STATUSES.includes(r.status as ReceiptStatus)) return null;
   if (r.returnedOn !== undefined && !isISODate(r.returnedOn)) return null;
+  if (r.keptOn !== undefined && !isISODate(r.keptOn)) return null;
 
   return {
     id: r.id,
@@ -166,6 +167,7 @@ export function readReceipt(raw: unknown, fromOutside = false): Receipt | null {
     ...(isStr(r.gotcha) ? { gotcha: fromOutside ? trim(r.gotcha, MAX_NOTE) : r.gotcha } : {}),
     status: r.status as ReceiptStatus,
     ...(r.returnedOn !== undefined ? { returnedOn: r.returnedOn as string } : {}),
+    ...(r.keptOn !== undefined ? { keptOn: r.keptOn as string } : {}),
     // Carried through the round trip, because it decides whether the receipt
     // costs a free-tier slot: a restore that dropped it would silently charge
     // the person for the demo set their own backup was holding. Strictly
@@ -251,6 +253,9 @@ export function mergeBackup(current: readonly Receipt[], incoming: readonly Rece
       // Deleted rather than carried over when the device says active, so an
       // active receipt never keeps a refund date from the file.
       ...(here.returnedOn !== undefined ? { returnedOn: here.returnedOn } : { returnedOn: undefined }),
+      // Keeping is a decision made on this device, and a file written before it
+      // is no evidence against it — the same rule as a return.
+      ...(here.keptOn !== undefined ? { keptOn: here.keptOn } : { keptOn: undefined }),
     });
   }
   return { receipts: [...byId.values()], added, replaced };
