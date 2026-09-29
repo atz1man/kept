@@ -138,7 +138,7 @@ describe('two looks at one photo', () => {
 });
 
 describe('why a scan failed', () => {
-  it('is the connection when a browser is offline, since the reader is fetched per scan', () => {
+  it('is the connection when a browser cannot reach the reader', () => {
     expect(scanFailure(false, false)).toBe('offline');
   });
 
@@ -146,7 +146,7 @@ describe('why a scan failed', () => {
     expect(scanFailure(false, true)).toBe('unreadable');
   });
 
-  it('is the photo when the connection was there', () => {
+  it('is the photo when the reader could be reached', () => {
     expect(scanFailure(true, false)).toBe('unreadable');
     expect(scanFailure(true, true)).toBe('unreadable');
   });

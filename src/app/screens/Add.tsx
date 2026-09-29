@@ -151,7 +151,9 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
         setKeepPhoto(true);
       }
     } catch {
-      setScanFailed(scanFailure(navigator.onLine, isNative()));
+      // A reader module that will not even load is a connection problem too.
+      const reachable = isNative() || (await import('../scan').then((m) => m.readerReachable()).catch(() => false));
+      setScanFailed(scanFailure(reachable, isNative()));
     } finally {
       setScanning(null);
     }
@@ -538,7 +540,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
               const shot = await takeReceiptPhoto();
               if (shot) await scanPhoto(shot.blob, shot.base64);
             } catch {
-              setScanFailed(scanFailure(navigator.onLine, isNative()));
+              setScanFailed('unreadable');
             }
           })();
         }}

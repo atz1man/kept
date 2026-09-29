@@ -146,6 +146,6 @@ export async function readBestOf(read: (how: Thresholding) => Promise<string>, t
  * worked. The iPhone app has the reader inside it, so there, offline is never
  * the reason.
  */
-export function scanFailure(online: boolean, native: boolean): 'offline' | 'unreadable' {
-  return !native && !online ? 'offline' : 'unreadable';
+export function scanFailure(readerReachable: boolean, native: boolean): 'offline' | 'unreadable' {
+  return !native && !readerReachable ? 'offline' : 'unreadable';
 }
