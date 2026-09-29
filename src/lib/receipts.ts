@@ -89,6 +89,21 @@ export function coverLine(r: Receipt, today: Date): string | null {
   return w.expired ? `cover ended ${fmtDateNear(w.ends, today)}` : `covered until ${fmtDateNear(w.ends, today)}`;
 }
 
+/**
+ * Whether the receipt's screen should ask for a guarantee it does not have.
+ *
+ * The guarantee is the clock that outlives the shop's, and kept only warns
+ * before one ends if it knows the length — which nothing asked for. Add has no
+ * field (a longer form costs every receipt, most of which never need it), so
+ * the receipt's own screen asks instead, where the question is about one
+ * thing. Only for what usually carries one: electricals, kitchen things,
+ * furniture and the rest, not clothes or cosmetics. Never once it has gone
+ * back, and never over a guarantee already noted, clock or not.
+ */
+export function asksForGuarantee(r: Receipt): boolean {
+  return r.status !== 'returned' && !r.warranty && r.cat !== 'clothing' && r.cat !== 'beauty';
+}
+
 export function derive(r: Receipt, today: Date): DerivedReceipt {
   const windowStart = fromISODate(r.windowStartsOn ?? r.purchasedOn);
   const deadline = addDays(windowStart, r.windowDays);
