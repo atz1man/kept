@@ -49,6 +49,8 @@ export interface AppState extends KeptState {
    * it back under KEEPING IT with its date, not into the deadlines.
    */
   justReturned: { id: string; was: Pick<Receipt, 'status' | 'keptOn'> } | null;
+  /** Marked as posted back, offered back from the bar — the swipe on an online order lands here. */
+  justSent: string | null;
   /** The receipt open on the detail screen. */
   selId: string | null;
   obStep: number;
@@ -110,7 +112,8 @@ export type Action =
   | { type: 'feed'; updates: PolicyUpdate[] }
   | { type: 'settings'; patch: Partial<Settings> }
   | { type: 'keep'; id: string }
-  | { type: 'send'; id: string }
+  /** `undoable`: from the swipe, which fires on rows people meant to open; the receipt's own screen has "Not sent after all" beside it. */
+  | { type: 'send'; id: string; undoable?: boolean }
   | { type: 'set-refund'; id: string; pence: number | null }
   | { type: 'set-credit'; id: string; credit: { expires?: string } | null }
   | { type: 'unsend'; id: string }
@@ -122,6 +125,7 @@ export type Action =
   | { type: 'keep-closed'; ids: string[] }
   | { type: 'undo-keep' }
   | { type: 'undo-return' }
+  | { type: 'undo-send' }
   | { type: 'undo-add' }
   | { type: 'shared'; outcome: 'shared' | 'copied' | 'failed' }
   | { type: 'upgrade-ask'; period: Period }
@@ -155,7 +159,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       return {
         ...state,
         justDeleted: null,
-        justKept: null, justReturned: null, justAdded: null,
+        justKept: null, justReturned: null, justSent: null, justAdded: null,
         // The undo is gone, so what was said about the receipt it held goes too.
         alertsSent: state.justDeleted ? pruneSent(state.alertsSent, state.receipts) : state.alertsSent,
         screen: action.screen,
@@ -179,8 +183,8 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
        */
       const held = state.receipts.some((r) => r.id === action.id);
       return held
-        ? { ...state, justDeleted: null, justKept: null, justReturned: null, justAdded: null, screen: 'detail', selId: action.id }
-        : { ...state, justDeleted: null, justKept: null, justReturned: null, justAdded: null, screen: 'home', selId: null };
+        ? { ...state, justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null, screen: 'detail', selId: action.id }
+        : { ...state, justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null, screen: 'home', selId: null };
     }
     case 'ob-next':
       return state.obStep >= ONBOARDING_STEPS - 1
@@ -209,6 +213,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       const undo = {
         // No `sentOn` to hold: a return never clears it, so undo finds it on the receipt.
         justReturned: { id: r.id, was: { status: r.status, keptOn: r.keptOn } },
+        justSent: null,
         justDeleted: null,
         justKept: null,
         justAdded: null,
@@ -241,15 +246,26 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       };
     }
     case 'unreturn':
-      // The swipe is a one-finger gesture on a row you might have meant to
-      // open, so it is going to fire by accident. Putting the receipt back is
-      // the whole point of being able to reach it again.
+      /*
+       * The swipe is a one-finger gesture on a row you might have meant to
+       * open, so it is going to fire by accident. Putting the receipt back is
+       * the whole point of being able to reach it again.
+       *
+       * One step back, not two. A receipt that was POSTED and then marked
+       * refunded goes back to waiting for the refund: the parcel went, and
+       * what is being taken back is the money. Sending it to active wiped the
+       * day it was posted and its tracking number, and started "go now or
+       * lose it" alerts about a parcel already at the warehouse. Undoing the
+       * posting as well is the next tap, "Not sent after all", which says so.
+       */
       return {
         ...state,
         receipts: state.receipts.map((r) =>
-          r.id === action.id
-            ? { ...r, status: 'active' as const, returnedOn: undefined, sentOn: undefined, refunded: undefined, returnRef: undefined, credit: undefined }
-            : r,
+          r.id !== action.id || r.status !== 'returned'
+            ? r
+            : r.sentOn
+              ? { ...r, status: 'sent' as const, returnedOn: undefined, refunded: undefined, credit: undefined }
+              : { ...r, status: 'active' as const, returnedOn: undefined, refunded: undefined, returnRef: undefined, credit: undefined },
         ),
       };
     case 'keep':
@@ -347,12 +363,29 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
        * turns out faulty goes back through "Not keeping it after all" first,
        * which is one tap and says what happened; a refund has already ended.
        */
+    {
+      const r = state.receipts.find((x) => x.id === action.id);
+      if (!r || r.status !== 'active') return state;
       return {
         ...state,
-        receipts: state.receipts.map((r) =>
-          r.id === action.id && r.status === 'active' ? { ...r, status: 'sent' as const, sentOn: toISODate(today) } : r,
+        receipts: state.receipts.map((x) =>
+          x.id === action.id ? { ...x, status: 'sent' as const, sentOn: toISODate(today) } : x,
         ),
+        // Offered back like a return when it came from the swipe: on a phone
+        // that is how an online order is sent, and a swipe fires on rows
+        // people meant to open. One undo on offer at a time.
+        ...(action.undoable
+          ? {
+              justSent: r.id,
+              justReturned: null,
+              justKept: null,
+              justAdded: null,
+              justDeleted: null,
+              alertsSent: state.justDeleted ? pruneSent(state.alertsSent, state.receipts) : state.alertsSent,
+            }
+          : {}),
       };
+    }
     case 'unsend':
       return {
         ...state,
@@ -401,7 +434,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         justAdded: null,
         // One undo on offer at a time; a delete's is forgotten as if dismissed.
         justDeleted: null,
-        justReturned: null,
+        justReturned: null, justSent: null,
         alertsSent: state.justDeleted ? pruneSent(state.alertsSent, state.receipts) : state.alertsSent,
       };
     }
@@ -417,9 +450,22 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
             ? { ...r, status: held.was.status, returnedOn: undefined, keptOn: held.was.keptOn, refunded: undefined, credit: undefined }
             : r,
         ),
-        justReturned: null,
+        justReturned: null, justSent: null,
         // Off the celebration: there is nothing to celebrate.
         ...(state.screen === 'celebrate' ? { screen: 'home' as const, celebrating: null } : {}),
+      };
+    }
+    case 'undo-send': {
+      const id = state.justSent;
+      if (!id) return state;
+      return {
+        ...state,
+        // Only while it is still the posting this tap made: one refunded or
+        // put back since is left as it now is.
+        receipts: state.receipts.map((r) =>
+          r.id === id && r.status === 'sent' ? { ...r, status: 'active' as const, sentOn: undefined, returnRef: undefined } : r,
+        ),
+        justSent: null,
       };
     }
     case 'undo-keep': {
@@ -431,7 +477,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         receipts: state.receipts.map((r) =>
           ids.has(r.id) && r.status === 'kept' ? { ...r, status: 'active' as const, keptOn: undefined } : r,
         ),
-        justKept: null, justReturned: null, justAdded: null,
+        justKept: null, justReturned: null, justSent: null, justAdded: null,
       };
     }
     case 'delete': {
@@ -444,7 +490,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         // was the only action in the app with no way out — a backup is not an
         // undo.
         justDeleted: removed,
-        justKept: null, justReturned: null, justAdded: null,
+        justKept: null, justReturned: null, justSent: null, justAdded: null,
         // Forget what we said about receipts that no longer exist, so the
         // sent-list cannot grow without bound over years of use — but NOT yet
         // about this one. It is on offer to undo, and an undo that brought
@@ -471,7 +517,8 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
     case 'dismiss-undo':
       if (state.justAdded) return { ...state, justAdded: null };
       if (state.justKept) return { ...state, justKept: null };
-      if (state.justReturned) return { ...state, justReturned: null };
+      if (state.justReturned) return { ...state, justReturned: null, justSent: null };
+      if (state.justSent) return { ...state, justSent: null };
       return state.justDeleted
         ? { ...state, justDeleted: null, alertsSent: pruneSent(state.alertsSent, state.receipts) }
         : state;
@@ -488,7 +535,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         justAdded: action.receipt.id,
         justDeleted: null,
         justKept: null,
-        justReturned: null,
+        justReturned: null, justSent: null,
         alertsSent: state.justDeleted ? pruneSent(state.alertsSent, state.receipts) : state.alertsSent,
       };
     case 'undo-add': {
@@ -578,7 +625,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         receipts: [],
         alertsSent: [],
         justDeleted: null,
-        justKept: null, justReturned: null, justAdded: null,
+        justKept: null, justReturned: null, justSent: null, justAdded: null,
         selId: null,
         screen: 'home',
       };
@@ -667,7 +714,7 @@ export function useApp() {
         sharedText: incoming,
         embedded,
         justDeleted: null,
-        justKept: null, justReturned: null, justAdded: null,
+        justKept: null, justReturned: null, justSent: null, justAdded: null,
         selId: null,
         obStep: 0,
         celebrating: null,

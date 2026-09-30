@@ -23,7 +23,10 @@ interface Props {
       sample receipt — see `policyAlertFor`. */
   changedIds: ReadonlySet<string>;
   onOpen: (id: string) => void;
-  onReturn: (id: string) => void;
+  /** The row swiped left: returned, or for an online order, sent back. */
+  onSwipe: (id: string) => void;
+  /** An undo bar is up over the tab bar: the list needs the room to scroll its last row clear of it. */
+  undoShowing?: boolean;
   /** Settle every closed window on screen as kept, in one tap (undoable). */
   onKeepClosed: (ids: string[]) => void;
   /** Present when the iPhone app should explain its reminders before iOS asks. */
@@ -36,7 +39,7 @@ const sectionLabel = (c: string) => ({
   fontSize: 11, fontWeight: 700, letterSpacing: '1.4px', color: c, margin: '20px 4px 10px',
 });
 
-export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onOpen, onReturn, onKeepClosed, reminders, onAdd, onWatch }: Props) {
+export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onOpen, onSwipe, onKeepClosed, reminders, onAdd, onWatch, undoShowing = false }: Props) {
   const [query, setQuery] = useState('');
   const [openReturned, setOpenReturned] = useState(false);
   const [openKept, setOpenKept] = useState(false);
@@ -49,11 +52,19 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
 
   const { closed, urgent, later, returned, kept, sent } = bucket(visible, today, urgentDays);
   const active = [...closed, ...urgent, ...later];
-  const next = searching ? undefined : active[0];
   // Whether a sample still counts is decided over EVERY receipt, not the ones
   // a search left visible: the samples stop being money the moment a real
   // receipt exists, whatever is on screen.
   const counts = countsAsMoney(receipts);
+  /*
+   * The headline is a real receipt once there is one. It took `active[0]`,
+   * and the samples sit in the same buckets: somebody who had just saved
+   * their first purchase read "£89.00 back if it goes back by…" about
+   * Currys headphones nobody bought, and three days later "WINDOW ALREADY
+   * CLOSED" over them, above the receipt they actually cared about. A sample
+   * still leads while nothing real is live — it says it is one.
+   */
+  const next = searching ? undefined : (active.find(counts) ?? active[0]);
   const stillReturnable = stillReturnablePence({ closed, urgent, later, returned, kept, sent }, receipts);
   const keptBack = sumPence(returned.filter(counts).map(refundOf));
   const dots = timelineDots(receipts, today);
@@ -84,7 +95,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
   }, [searching, query, matchCount]);
 
   return (
-    <div style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px' }}>
+    <div style={{ flex: 1, overflow: 'auto', padding: `6px 16px ${undoShowing ? 212 : 120}px` }}>
       <header className="k-fade" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 2px 16px' }}>
         <h1 tabIndex={-1} style={{ display: 'flex', alignItems: 'center', gap: 9, margin: 0, fontWeight: 400, minWidth: 0 }}>
           <Logo size={28} />
@@ -254,7 +265,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
                 emphasised
                 policyChanged={changedIds.has(r.id)}
                 onOpen={() => onOpen(r.id)}
-                onReturn={() => onReturn(r.id)}
+                onSwipe={() => onSwipe(r.id)}
               />
             ))}
           </ul>
@@ -286,7 +297,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
                 emphasised
                 policyChanged={changedIds.has(r.id)}
                 onOpen={() => onOpen(r.id)}
-                onReturn={() => onReturn(r.id)}
+                onSwipe={() => onSwipe(r.id)}
               />
             ))}
           </ul>
@@ -306,7 +317,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
                 emphasised={false}
                 policyChanged={changedIds.has(r.id)}
                 onOpen={() => onOpen(r.id)}
-                onReturn={() => onReturn(r.id)}
+                onSwipe={() => onSwipe(r.id)}
               />
             ))}
           </ul>
@@ -494,6 +505,8 @@ function HeroCard({ receipt, today, stillReturnable, keptBack, onOpen }: {
         </span>
       </div>
       <div style={{ fontSize: 13.5, color: color.faint, marginTop: 8 }}>
+        {/* As every row says it: a figure about a purchase nobody made is labelled. */}
+        {receipt.demo && 'Sample · '}
         {closed
           ? `${receipt.store} · the shop’s window shut on ${fmtDateNear(d.deadline, today)} — your legal rights may not have`
           : `${receipt.store} · ${money(receipt.amount)} back if it goes back by ${fmtDateNear(d.deadline, today)}`}
