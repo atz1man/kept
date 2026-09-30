@@ -389,7 +389,9 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               onClick={onUnreturn}
               style={{ flex: 1, padding: 15, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
             >
-              Not actually returned
+              {/* Posted first, so what is being taken back is the money:
+                  the parcel went, and it goes back to waiting for a refund. */}
+              {receipt.sentOn ? 'The refund hasn’t come' : 'Not actually returned'}
             </Pressable>
           </div>
         </>

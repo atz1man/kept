@@ -354,7 +354,13 @@ export function App() {
           policyAlert={policyAlert}
           changedIds={changedIds}
           onOpen={(id) => dispatch({ type: 'open', id })}
-          onReturn={(id) => dispatch({ type: 'return', id })}
+          undoShowing={!!(state.justReturned || state.justSent || state.justAdded || state.justKept || state.justDeleted)}
+          onSwipe={(id) => {
+            // The same next step the receipt's own screen leads with: an
+            // online order goes back in the post, and the money follows later.
+            const r = state.receipts.find((x) => x.id === id);
+            dispatch(r?.distance ? { type: 'send', id, undoable: true } : { type: 'return', id });
+          }}
           onKeepClosed={(ids) => dispatch({ type: 'keep-closed', ids })}
           reminders={
             offerReminders({
@@ -465,6 +471,15 @@ export function App() {
           key={`returned:${state.justReturned.id}`}
           label={`Marked ${state.receipts.find((r) => r.id === state.justReturned?.id)?.item ?? 'it'} returned`}
           onUndo={() => dispatch({ type: 'undo-return' })}
+          onDismiss={() => dispatch({ type: 'dismiss-undo' })}
+        />
+      )}
+
+      {state.justSent && (
+        <UndoBar
+          key={`sent:${state.justSent}`}
+          label={`Marked ${state.receipts.find((r) => r.id === state.justSent)?.item ?? 'it'} sent back`}
+          onUndo={() => dispatch({ type: 'undo-send' })}
           onDismiss={() => dispatch({ type: 'dismiss-undo' })}
         />
       )}

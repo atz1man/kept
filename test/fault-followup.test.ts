@@ -24,7 +24,7 @@ const state = (r: Receipt, alertsSent: string[] = []): AppState => ({
   version: 1, receipts: [r], updates: [], onboardingSeen: true,
   settings: { ...DEFAULT_SETTINGS }, alertsSent,
   screen: 'detail', selId: r.id, obStep: 0, celebrating: null, shared: 'no', upgrading: null,
-  sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null, justAdded: null,
+  sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null,
 });
 
 describe('asking whether the shop replied to the fault letter', () => {
