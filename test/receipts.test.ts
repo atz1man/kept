@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { addDays, addMonths, toISODate } from '../src/lib/dates';
 import { photoName } from '../src/lib/photos';
 import { toPence } from '../src/lib/money';
-import { bucket, countsAsMoney, derive, everyReturnInTime, makeReceiptId, recoveredPence, stillReturnablePence, timelineDots, coverLine, asksForGuarantee } from '../src/lib/receipts';
+import { bucket, countsAsMoney, derive, everyReturnInTime, makeReceiptId, recoveredPence, stillReturnablePence, timelineDots, coverLine, asksForGuarantee, refundOf } from '../src/lib/receipts';
 import type { Receipt } from '../src/lib/types';
 
 const TODAY = new Date(2026, 7, 28);
@@ -573,5 +573,15 @@ describe('sent back', () => {
 
   it('is not asked for a guarantee while it is in the post', () => {
     expect(asksForGuarantee(receipt({ cat: 'kitchen', status: 'sent', sentOn: ago(1) }))).toBe(false);
+  });
+});
+
+describe('money back, when it was less than paid', () => {
+  it('counts what came back, not what was paid', () => {
+    const whole = receipt({ id: 'w', status: 'returned', returnedOn: ago(1), amount: 6000 });
+    const part = receipt({ id: 'p', status: 'returned', returnedOn: ago(1), amount: 6000, refunded: 3000 });
+    expect(refundOf(whole)).toBe(6000);
+    expect(refundOf(part)).toBe(3000);
+    expect(recoveredPence([whole, part])).toBe(9000);
   });
 });

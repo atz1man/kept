@@ -245,6 +245,17 @@ await page.getByRole('button', { name: /IKEA, MALM.*returned/ }).click().catch((
 await page.waitForTimeout(400);
 await audit(page, 'receipt detail · returned', findings);
 
+// Correcting the refund: the label, the field and its refusal exist only
+// once "Not the full amount?" is pressed, and an amount over the price shows
+// the refusal.
+await page.getByRole('button', { name: 'Not the full amount?' }).click();
+await page.waitForTimeout(200);
+await page.getByLabel('How much came back?').fill('99999');
+await page.waitForTimeout(200);
+await audit(page, 'receipt detail · refund amount', findings);
+await page.getByRole('button', { name: 'It was the full amount' }).click();
+await page.waitForTimeout(200);
+
 // The undo offer after a delete.
 await page.getByRole('button', { name: 'Delete' }).click().catch(() => {});
 await page.waitForTimeout(400);

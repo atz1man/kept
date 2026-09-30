@@ -98,6 +98,7 @@ export type Action =
   | { type: 'settings'; patch: Partial<Settings> }
   | { type: 'keep'; id: string }
   | { type: 'send'; id: string }
+  | { type: 'set-refund'; id: string; pence: number | null }
   | { type: 'unsend'; id: string }
   | { type: 'unkeep'; id: string }
   | { type: 'keep-closed'; ids: string[] }
@@ -173,7 +174,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       if (!r || r.status === 'returned') return state;
       const receipts = state.receipts.map((x) =>
         // `sentOn` stays: it is the day that decides whether this was in time.
-        x.id === action.id ? { ...x, status: 'returned' as const, returnedOn: toISODate(today), keptOn: undefined } : x,
+        x.id === action.id ? { ...x, status: 'returned' as const, returnedOn: toISODate(today), keptOn: undefined, refunded: undefined } : x,
       );
       /*
        * A sample, once there is real money beside it, is tidied away — not
@@ -224,7 +225,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       return {
         ...state,
         receipts: state.receipts.map((r) =>
-          r.id === action.id ? { ...r, status: 'active' as const, returnedOn: undefined, sentOn: undefined } : r,
+          r.id === action.id ? { ...r, status: 'active' as const, returnedOn: undefined, sentOn: undefined, refunded: undefined } : r,
         ),
       };
     case 'keep':
@@ -242,6 +243,22 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         receipts: state.receipts.map((r) =>
           r.id === action.id && r.status === 'kept' ? { ...r, status: 'active' as const, keptOn: undefined } : r,
         ),
+      };
+    case 'set-refund':
+      /*
+       * Less than was paid, recorded after the fact: the refund arrives, and
+       * it is £30 of the £60. Only on a refund, never more than the price,
+       * and the whole price (or null) clears it back to the one-tap case.
+       */
+      return {
+        ...state,
+        receipts: state.receipts.map((r) => {
+          if (r.id !== action.id || r.status !== 'returned') return r;
+          const p = action.pence;
+          if (p === null || p === r.amount) return { ...r, refunded: undefined };
+          if (!Number.isInteger(p) || p < 0 || p > r.amount) return r;
+          return { ...r, refunded: p };
+        }),
       };
     case 'send':
       /*
@@ -300,7 +317,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         // changed since, here or in another tab, is left as it now is.
         receipts: state.receipts.map((r) =>
           r.id === held.id && r.status === 'returned'
-            ? { ...r, status: held.was.status, returnedOn: undefined, keptOn: held.was.keptOn }
+            ? { ...r, status: held.was.status, returnedOn: undefined, keptOn: held.was.keptOn, refunded: undefined }
             : r,
         ),
         justReturned: null,

@@ -764,6 +764,44 @@ for (const cancel of [false, true]) {
 }
 
 /*
+ * Less than was paid. The one-tap return recorded the whole price, so a £30
+ * refund on a £60 order counted £60 as kept back. The refund can now be
+ * corrected on the receipt, and the list and its total follow it.
+ */
+{
+  const rCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const rp = await rCtx.newPage();
+  await rp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await rp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await rp.getByRole('button', { name: /Currys, JBL/ }).first().click();
+  await rp.getByRole('button', { name: 'Got my money back' }).click();
+  await rp.waitForTimeout(300);
+  await rp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await rp.getByRole('button', { name: /Currys, JBL.*returned/ }).click();
+  await rp.waitForTimeout(300);
+  let seen = { offered: (await rp.getByRole('button', { name: 'Not the full amount?' }).count()) === 1 };
+  if (seen.offered) {
+    await rp.getByRole('button', { name: 'Not the full amount?' }).click();
+    await rp.getByLabel('How much came back?').fill('999');
+    seen.tooMuchRefused = /More than the £89\.00 it cost/.test(await rp.locator('main').innerText());
+    await rp.getByLabel('How much came back?').fill('30');
+    await rp.getByRole('button', { name: 'Save', exact: true }).click();
+    await rp.waitForTimeout(300);
+    const detail = await rp.locator('main').innerText();
+    seen.detail = /Money back · £30\.00 recovered/.test(detail) && /of the £89\.00 it cost/.test(detail);
+    await rp.getByRole('button', { name: 'Back', exact: true }).click();
+    await rp.waitForTimeout(300);
+    seen.row = (await rp.getByRole('button', { name: /Currys, JBL.*£30\.00 back, returned/ }).count()) === 1;
+    const stored = await rp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => /JBL/.test(r.item)));
+    seen.stored = stored?.refunded === 3000;
+  }
+  results['a refund of less than was paid is recorded, and the list counts it'] =
+    seen.offered && seen.tooMuchRefused && seen.detail && seen.row && seen.stored;
+  if (!results['a refund of less than was paid is recorded, and the list counts it']) problems.push(`partial refund: ${JSON.stringify(seen)}`);
+  await rCtx.close();
+}
+
+/*
  * The order number. The parser read past it on purpose (it looks like a
  * price) and then threw it away, while returns forms, chat windows and the
  * letter to the shop all ask for it first. Read from a labelled line, it is

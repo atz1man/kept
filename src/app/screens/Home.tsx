@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { color, font, radius, shadow } from '../../tokens';
 import { addDays, fmtDate, fmtDateNear, fromISODate } from '../../lib/dates';
 import { money, sumPence } from '../../lib/money';
-import { bucket, coverLine, derive, everyReturnInTime, countsAsMoney, stillReturnablePence, timelineDots } from '../../lib/receipts';
+import { bucket, coverLine, derive, refundOf, everyReturnInTime, countsAsMoney, stillReturnablePence, timelineDots } from '../../lib/receipts';
 import { search, searchStatus, shouldOfferSearch } from '../../lib/search';
 import { midSentence } from '../../lib/words';
 import { heroCount, urgency } from '../../lib/urgency';
@@ -52,7 +52,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
   // receipt exists, whatever is on screen.
   const counts = countsAsMoney(receipts);
   const stillReturnable = stillReturnablePence({ closed, urgent, later, returned, kept, sent }, receipts);
-  const keptBack = sumPence(returned.filter(counts).map((r) => r.amount));
+  const keptBack = sumPence(returned.filter(counts).map(refundOf));
   const dots = timelineDots(receipts, today);
   const empty = receipts.length === 0;
   // Kept counts as settled: nothing is waiting to go back.
@@ -349,7 +349,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
                     a stray swipe could never be opened, corrected or deleted. */}
                 <Pressable
                   onClick={() => onOpen(r.id)}
-                  aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${money(r.amount)}, returned`}
+                  aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${money(refundOf(r))} back, returned`}
                   style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 15, background: color.creamAlt, border: '1.5px solid rgba(23,20,16,0.06)', borderRadius: radius.card }}
                 >
                   <div style={{ width: 40, height: 40, borderRadius: 12, background: color.yellowLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -367,7 +367,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
                       {r.item}
                     </div>
                   </div>
-                  <div style={{ fontFamily: font.figures, fontSize: 15, fontWeight: 700, color: color.amber, flexShrink: 0 }}>{money(r.amount)}</div>
+                  <div style={{ fontFamily: font.figures, fontSize: 15, fontWeight: 700, color: color.amber, flexShrink: 0 }}>{money(refundOf(r))}</div>
                 </Pressable>
               </li>
             ))}
