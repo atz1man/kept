@@ -96,12 +96,34 @@ const LABELLED_TOTAL = new RegExp(
     '(?![^£\\n]{0,24}\\b(?:before|excl?\\.?|excluding|ex|net|without|pre)\\b)' +
     '[^£\\n]{0,40}(?:\\n[ \\t]*)?' +
     POUNDS,
-  'i',
+  'gi',
 );
 
+/*
+ * "Total" is also a word in product names — Colgate Total, Total Care, Total
+ * Gym — and on a till slip the item lines come first, so "COLGATE TOTAL 125ML
+ * x2 £4.97" was read as the total of a £62.47 basket. What tells a label from
+ * a name is what stands before the word on its line: nothing (TOTAL £62.47,
+ * the till's own layout), or a word that makes it a label (Order total, Grand
+ * total, Your total). A "·", "|", ":" or dash starts a new part of the line,
+ * as it does in an email pasted onto one line.
+ *
+ * A preference, not a filter: a total with a name in front of it is still
+ * read when it is the only one, because "Argos total £64" is how some people
+ * type a receipt in and the figure is right.
+ */
+const AS_A_LABEL = /(?:^|\b(?:order|grand|basket|bag|cart|your|the|final|new|estimated|invoice|payment|purchase|transaction|sale|receipt)\s+)$/i;
+
+function readsAsLabel(text: string, at: number): boolean {
+  const lineStart = Math.max(text.lastIndexOf('\n', at - 1), -1) + 1;
+  const before = text.slice(lineStart, at).split(/[·|:—–]|\s-\s/).pop() ?? '';
+  return AS_A_LABEL.test(before.replace(/^\W+/, ''));
+}
+
 function pickAmount(text: string): Pence | null {
-  const labelled = LABELLED_TOTAL.exec(text);
-  if (labelled) return toPence(parseFloat(labelled[1].replace(/,/g, '')));
+  const labelled = [...text.matchAll(LABELLED_TOTAL)];
+  const chosen = labelled.find((m) => readsAsLabel(text, m.index!)) ?? labelled[0];
+  if (chosen) return toPence(parseFloat(chosen[1].replace(/,/g, '')));
   const all = amountsIn(text);
   if (all.length === 0) return null;
   return Math.max(...all);

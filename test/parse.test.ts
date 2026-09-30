@@ -654,6 +654,23 @@ describe('what an order email actually looks like', () => {
     expect(money(parse('Boots\nTotal VAT £3.33\nTotal £19.99').amount!)).toBe('£19.99');
   });
 
+  it('does not take a product called "Total" for the total', () => {
+    // Colgate Total is toothpaste. On a till slip the item lines come first,
+    // so the first "total" followed by a price was the toothpaste at £4.97,
+    // saved as the price of a £62.47 basket. Found scanning a Boots slip.
+    const slip = 'Boots\nNO7 SERUM £32.50\nCOLGATE TOTAL 125ML x2 £4.97\nTOTAL £62.47';
+    expect(money(parse(slip).amount!)).toBe('£62.47');
+    expect(money(parse('Boots\nHead & Shoulders Total Care £6.00\nOrder total £18.50').amount!)).toBe('£18.50');
+    // Split onto one line, as a pasted email often is.
+    expect(money(parse('Boots · Colgate Total £4.97 · Total £62.47').amount!)).toBe('£62.47');
+  });
+
+  it('still reads a total with a name in front of it when it is the only one', () => {
+    // A name in front, and a larger figure above it — the one reading the
+    // largest amount instead would pick.
+    expect(money(parse('Argos\nKenwood mixer £80.00\nPromotion -£16.00\nArgos total £64.00').amount!)).toBe('£64.00');
+  });
+
   it('still reads a total that mentions VAT in passing', () => {
     expect(money(parse('Currys\nTotal (inc. VAT) £204.99').amount!)).toBe('£204.99');
   });
