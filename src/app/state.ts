@@ -6,7 +6,8 @@ import { cleanupPhotos } from '../lib/photos';
 import { onNotificationTap, syncScheduled } from './schedule-native';
 import { currentDay, daysBetween, fromISODate, startOfDay, toISODate } from '../lib/dates';
 import { sharedTextFrom, strippedShareUrl } from '../lib/share';
-import { countsAsMoney, derive, makeReceiptId } from '../lib/receipts';
+import { awaitingArrival, countsAsMoney, derive, makeReceiptId } from '../lib/receipts';
+import { windowStartFor } from '../lib/draft';
 import { freshState, load, onExternalChange, save, type KeptState, type Settings } from '../lib/storage';
 import { quotaFull as quotaFullFor } from '../lib/quota';
 import { ONBOARDING_STEPS } from './screens/Onboarding';
@@ -99,6 +100,7 @@ export type Action =
   | { type: 'keep'; id: string }
   | { type: 'send'; id: string }
   | { type: 'unsend'; id: string }
+  | { type: 'arrived'; id: string }
   | { type: 'unkeep'; id: string }
   | { type: 'keep-closed'; ids: string[] }
   | { type: 'undo-keep' }
@@ -365,6 +367,24 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       // every later visit to Add re-read it and offered it again — two rows,
       // the money counted twice. Leaving Add WITHOUT saving keeps it.
       return { ...state, receipts: [...state.receipts, action.receipt], screen: 'home', sharedText: null };
+    case 'arrived': {
+      /*
+       * "It arrived today" — the one tap that turns a floor into a date. The
+       * arrival starts both statutory clocks, and the shop's own for a shop
+       * that counts from delivery; `windowStartFor` is the same rule an edit
+       * saves by, so the two ways of saying it cannot disagree. Routed through
+       * `update` so a moved deadline forgets what was said about the old one.
+       */
+      const r = state.receipts.find((x) => x.id === action.id);
+      if (!r || !awaitingArrival(r, today)) return state;
+      const arrivedOn = toISODate(today);
+      const receipt: Receipt = {
+        ...r,
+        arrivedOn,
+        windowStartsOn: windowStartFor(r.store, { dispatchedOn: r.windowStartsOn, arrivedOn, distance: r.distance }),
+      };
+      return reducer(state, { type: 'update', receipt }, today);
+    }
     case 'update': {
       /*
        * An edit that moves the deadline makes what was already said about the

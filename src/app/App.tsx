@@ -391,6 +391,7 @@ export function App() {
           onUnkeep={() => dispatch({ type: 'unkeep', id: selected.id })}
           onSend={() => dispatch({ type: 'send', id: selected.id })}
           onUnsend={() => dispatch({ type: 'unsend', id: selected.id })}
+          onArrived={() => dispatch({ type: 'arrived', id: selected.id })}
           onDelete={() => dispatch({ type: 'delete', id: selected.id })}
         />
       )}

@@ -19,6 +19,8 @@ interface Props {
   emphasised: boolean;
   /** True when a watched policy change touches this receipt's retailer. */
   policyChanged: boolean;
+  /** Ordered online and not yet known to have arrived (`awaitingArrival`). */
+  onItsWay?: boolean;
   onOpen: () => void;
   onReturn: () => void;
 }
@@ -30,7 +32,7 @@ interface Props {
  */
 const MIN_NAME_PX = 64;
 
-export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onOpen, onReturn }: Props) {
+export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsWay = false, onOpen, onReturn }: Props) {
   const [dx, setDx] = useState(0);
   const [dragging, setDragging] = useState(false);
   const startX = useRef<number | null>(null);
@@ -101,7 +103,7 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onOpen
         // agreement sweep reads the amount and the status off the last two
         // fields of this label — and because "mixer (sample)" is how a person
         // would say it.
-        aria-label={`${receipt.store}, ${receipt.item}${receipt.demo ? ' (sample)' : ''}, ${money(receipt.amount)}, ${urgency.label}`}
+        aria-label={`${receipt.store}, ${receipt.item}${receipt.demo ? ' (sample)' : ''}, ${money(receipt.amount)}${onItsWay ? ', on its way' : ''}, ${urgency.label}`}
         style={{
           display: 'flex', alignItems: 'center', gap: 13, padding: 15,
           background: emphasised ? color.white : color.cream,
@@ -168,6 +170,10 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onOpen
               the least room to explain itself. */}
           <div style={{ fontSize: 12, color: color.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {receipt.demo && <span>sample · </span>}
+            {/* Before the item for the same reason as "sample": this line
+                truncates from the tail. Until it arrives, the count beside it
+                runs from the order and is the earliest it can be. */}
+            {onItsWay && <span>on its way · </span>}
             {receipt.item}
           </div>
         </div>

@@ -292,3 +292,26 @@ export function everyReturnInTime(returned: readonly Receipt[], today: Date): bo
       daysBetween(fromISODate((r.sentOn ?? r.returnedOn)!), derive(r, today).deadline) >= 0,
   );
 }
+
+/**
+ * How long after an online order the app goes on asking whether it has come.
+ * Our number, not a shop's: long enough for ordinary delivery and a slow
+ * courier, short enough that an order from last spring with no arrival date
+ * is not still called "on its way". Past it, the detail screen's floor hedge
+ * and Edit remain.
+ */
+export const ARRIVAL_ASK_DAYS = 30;
+
+/**
+ * Ordered online, not yet known to have arrived. The moment most people add a
+ * receipt is the order email, which comes before the parcel — and every clock
+ * that matters for an online order starts at the doormat: the two statutory
+ * rights always, and the shop's own window for the shops that count from
+ * delivery. Until the arrival is known each of them is counted from the order,
+ * which is early, so the one tap that fixes it is worth offering.
+ */
+export function awaitingArrival(r: Receipt, today: Date): boolean {
+  if (r.status !== 'active' || !r.distance || r.arrivedOn) return false;
+  const since = daysBetween(fromISODate(r.purchasedOn), today);
+  return since >= 0 && since <= ARRIVAL_ASK_DAYS;
+}
