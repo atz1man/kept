@@ -913,6 +913,102 @@ for (const cancel of [false, true]) {
 }
 
 /*
+ * Store credit. A return that ended in credit rather than money had no way
+ * to be said, and credit that lapses unspent is money lost as surely as a
+ * missed window. It can be marked, dated from the credit note, and taken back.
+ */
+{
+  const kCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const kp = await kCtx.newPage();
+  await kp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await kp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await kp.getByRole('button', { name: /Currys, JBL/ }).first().click();
+  await kp.getByRole('button', { name: 'Got my money back' }).click();
+  await kp.waitForTimeout(300);
+  await kp.getByRole('button', { name: 'Back to receipts' }).click();
+  await kp.waitForTimeout(300);
+  await kp.getByRole('button', { name: /Currys, JBL.*returned$/ }).click();
+  await kp.waitForTimeout(300);
+  const mark = kp.getByRole('button', { name: 'It came back as store credit' });
+  const seen = { offered: (await mark.count()) === 1 };
+  const stored = () => kp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => /JBL/.test(r.item)));
+  if (seen.offered) {
+    await mark.click();
+    await kp.waitForTimeout(200);
+    seen.said = /Store credit · £89\.00 at Currys/.test(await kp.locator('main').innerText());
+    const today = await kp.evaluate(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
+    const shift = (iso, n) => { const d = new Date(`${iso}T12:00:00`); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+    await kp.locator('#credit-expires').fill(shift(today, -3));
+    await kp.waitForTimeout(200);
+    seen.beforeRefused = /It cannot run out before it was given/.test(await kp.locator('[data-credit]').innerText()) && (await stored())?.credit?.expires === undefined;
+    await kp.locator('#credit-expires').fill(shift(today, 365));
+    await kp.waitForTimeout(200);
+    seen.dated = (await stored())?.credit?.expires === shift(today, 365);
+    await kp.getByRole('button', { name: 'Back', exact: true }).click();
+    await kp.waitForTimeout(300);
+    seen.row = (await kp.getByRole('button', { name: /Currys, JBL.*£89\.00 in credit, returned$/ }).count()) === 1;
+    await kp.getByRole('button', { name: /Currys, JBL.*returned$/ }).click();
+    await kp.waitForTimeout(300);
+    await kp.getByRole('button', { name: 'It was money after all' }).click();
+    await kp.waitForTimeout(200);
+    seen.undone = (await stored())?.credit === undefined && /Money back · £89\.00 recovered/.test(await kp.locator('main').innerText());
+  }
+  const ok = seen.offered && seen.said && seen.beforeRefused && seen.dated && seen.row && seen.undone;
+  results['a refund that came as store credit can be said, dated from the note, and taken back'] = !!ok;
+  if (!ok) problems.push(`store credit: ${JSON.stringify(seen)}`);
+  await kCtx.close();
+}
+
+/*
+ * A year of use. Money back and Keeping it only ever grow, and forty settled
+ * rows sat below the deadlines that still needed something. Each shows its
+ * latest three and "Show all N"; a list with one more than that is shown
+ * whole, and a search shows everything it found.
+ */
+{
+  const yCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const yp = await yCtx.newPage();
+  await yp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await yp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await yp.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('kept.v1'));
+    const make = (i, status, extra) => ({
+      id: `y${status}${i}`, store: `Shop ${status} ${i}`, item: `Thing ${i}`, cat: 'other', amount: 1000 + i,
+      purchasedOn: '2026-01-10', windowDays: 28, policy: 'p', distance: false, status, ...extra,
+    });
+    s.receipts = [
+      ...Array.from({ length: 6 }, (_, i) => make(i, 'returned', { returnedOn: `2026-02-${String(10 + i).padStart(2, '0')}` })),
+      ...Array.from({ length: 4 }, (_, i) => make(i, 'kept', { keptOn: `2026-02-${String(10 + i).padStart(2, '0')}` })),
+    ];
+    localStorage.setItem('kept.v1', JSON.stringify(s));
+  });
+  await yp.reload({ waitUntil: 'networkidle' });
+  await yp.waitForTimeout(300);
+  const returnedRows = () => yp.getByRole('button', { name: /, returned$/ }).count();
+  const more = yp.getByRole('button', { name: 'Show all 6' });
+  const seen = {
+    held: (await returnedRows()) === 3 && (await more.count()) === 1 && (await more.getAttribute('aria-expanded')) === 'false',
+    latestFirst: /^Shop returned 5,/.test((await yp.getByRole('button', { name: /, returned$/ }).first().getAttribute('aria-label')) ?? ''),
+    keptWhole: (await yp.getByRole('button', { name: /keeping it$/ }).count()) === 4 && (await yp.getByRole('button', { name: /^Show all 4$/ }).count()) === 0,
+  };
+  if (seen.held) {
+    await more.click();
+    await yp.waitForTimeout(200);
+    seen.opened = (await returnedRows()) === 6 && (await yp.getByRole('button', { name: 'Show fewer' }).getAttribute('aria-expanded')) === 'true';
+    await yp.getByRole('button', { name: 'Show fewer' }).click();
+    await yp.waitForTimeout(200);
+    seen.closed = (await returnedRows()) === 3;
+    await yp.getByLabel(/Search/).first().fill('Shop returned 0');
+    await yp.waitForTimeout(300);
+    seen.searchFinds = (await returnedRows()) === 1 && /^Shop returned 0,/.test((await yp.getByRole('button', { name: /, returned$/ }).first().getAttribute('aria-label')) ?? '');
+  }
+  const ok = seen.held && seen.latestFirst && seen.keptWhole && seen.opened && seen.closed && seen.searchFinds;
+  results['a long settled list shows its latest few, the rest a tap away, and a search finds any of them'] = !!ok;
+  if (!ok) problems.push(`settled sections: ${JSON.stringify(seen)}`);
+  await yCtx.close();
+}
+
+/*
  * Correcting what was read, and typing one in. The confirmation card's shop,
  * total and date were facts: a misread total could be fixed only by editing
  * the raw text and reading it again, or by saving and finding Edit — and with

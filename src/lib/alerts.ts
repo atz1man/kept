@@ -1,6 +1,6 @@
 import { daysBetween, fmtDate, fromISODate } from './dates';
 import { money } from './money';
-import { derive } from './receipts';
+import { derive, refundOf } from './receipts';
 import type { Receipt } from './types';
 
 /**
@@ -25,7 +25,7 @@ export type ReturnRung = 'week' | 'soon' | 'today' | 'closed';
  * a different clock, usually a year or more later, and it is the one reason
  * to keep a receipt long after the window has shut.
  */
-export type AlertRung = ReturnRung | 'warranty' | 'refund';
+export type AlertRung = ReturnRung | 'warranty' | 'refund' | 'credit';
 
 /**
  * How long after something went back it is worth asking whether the money
@@ -54,6 +54,18 @@ export function remindedBeforeWindow(sent: readonly string[], receiptId: string)
  * the thing looked at while it is still covered.
  */
 export const WARRANTY_NOTICE_DAYS = 30;
+
+/**
+ * How far ahead of its expiry store credit is worth a reminder. Our number, as
+ * the guarantee's is: a month is time to find something worth buying, which a
+ * reminder on the last day is not.
+ */
+export const CREDIT_NOTICE_DAYS = 30;
+
+/** Store credit with a known expiry, on a real receipt: the one kind watched. */
+export function creditWatched(r: Receipt): boolean {
+  return r.status === 'returned' && !r.demo && !!r.credit?.expires;
+}
 
 /**
  * Whether a receipt's guarantee is worth a word from this app at all.
@@ -131,6 +143,15 @@ export function copyFor(rung: AlertRung, r: Receipt, daysLeft: number, deadline:
           r.distance ? ` For an online order, the shop has ${REFUND_CHASE_DAYS} days from getting it back to refund you.` : ''
         } If the money has not arrived, chase it.`,
       };
+    case 'credit':
+      // `daysLeft` and `deadline` are the CREDIT's here: the day the note
+      // says it runs out, which is still spendable.
+      return {
+        title: 'Your store credit is running out',
+        body: `${money(refundOf(r))} of ${r.store} credit, from ${r.item} — it runs out on ${fmtDate(deadline)}${
+          daysLeft > 0 ? `, ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} from now` : ', which is today'
+        }. Spend it before then.`,
+      };
     case 'warranty':
       // `daysLeft` and `deadline` are the GUARANTEE's here. Cover runs to the
       // end of `deadline`, the day `derive` still calls it live.
@@ -173,6 +194,15 @@ export function dueAlerts(
         out.push({ receiptId: r.id, rung: 'warranty', key, ...copyFor('warranty', r, w.daysLeft, w.ends) });
       }
     }
+    // Credit, a month before the note says it lapses, through its last day.
+    if (creditWatched(r)) {
+      const ends = fromISODate(r.credit!.expires!);
+      const left = daysBetween(today, ends);
+      const key = alertKey(r.id, 'credit');
+      if (left >= 0 && left <= CREDIT_NOTICE_DAYS && !sent.has(key)) {
+        out.push({ receiptId: r.id, rung: 'credit', key, ...copyFor('credit', r, left, ends) });
+      }
+    }
     if (r.status !== 'active') continue;
     /*
      * Never about the demo set.
@@ -200,7 +230,7 @@ export function dueAlerts(
   // one that gets read.
   // Only the ORDER of these numbers means anything — 'week' could be any value
   // above 'closed' and no test could tell, which is why none tries.
-  const order: Record<AlertRung, number> = { today: 0, soon: 1, closed: 2, week: 3, refund: 4, warranty: 5 };
+  const order: Record<AlertRung, number> = { today: 0, soon: 1, closed: 2, week: 3, refund: 4, credit: 5, warranty: 6 };
   return out.sort((a, b) => order[a.rung] - order[b.rung]);
 }
 
@@ -214,7 +244,7 @@ export function dueAlerts(
  */
 export function supersededKeys(alert: DeadlineAlert): string[] {
   // Its own clock, a single rung: nothing below it to have skipped.
-  if (alert.rung === 'warranty' || alert.rung === 'refund') return [];
+  if (alert.rung === 'warranty' || alert.rung === 'refund' || alert.rung === 'credit') return [];
   return LADDER.slice(0, LADDER.indexOf(alert.rung)).map((rung) => alertKey(alert.receiptId, rung));
 }
 

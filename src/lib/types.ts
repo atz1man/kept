@@ -92,6 +92,13 @@ export interface Receipt {
    */
   refunded?: number;
   /**
+   * The refund came as store credit, not money — the commonest way a return
+   * ends without cash, and one that had no way to be said. `expires` is the
+   * day the credit note says it runs out, where it says one: credit that
+   * lapses unspent is money lost as surely as a missed return window.
+   */
+  credit?: { expires?: string };
+  /**
    * The day the person decided to keep it. Keeping is the commonest end to a
    * purchase and had no way to be said: the only exits were "returned" and
    * Delete, so a kept coat went on raising return reminders, then sat at the

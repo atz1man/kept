@@ -112,6 +112,7 @@ export type Action =
   | { type: 'keep'; id: string }
   | { type: 'send'; id: string }
   | { type: 'set-refund'; id: string; pence: number | null }
+  | { type: 'set-credit'; id: string; credit: { expires?: string } | null }
   | { type: 'unsend'; id: string }
   | { type: 'set-return-ref'; id: string; ref: string | null }
   | { type: 'arrived'; id: string }
@@ -190,7 +191,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       if (!r || r.status === 'returned') return state;
       const receipts = state.receipts.map((x) =>
         // `sentOn` stays: it is the day that decides whether this was in time.
-        x.id === action.id ? { ...x, status: 'returned' as const, returnedOn: toISODate(today), keptOn: undefined, refunded: undefined } : x,
+        x.id === action.id ? { ...x, status: 'returned' as const, returnedOn: toISODate(today), keptOn: undefined, refunded: undefined, credit: undefined } : x,
       );
       /*
        * A sample, once there is real money beside it, is tidied away — not
@@ -245,7 +246,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         ...state,
         receipts: state.receipts.map((r) =>
           r.id === action.id
-            ? { ...r, status: 'active' as const, returnedOn: undefined, sentOn: undefined, refunded: undefined, returnRef: undefined }
+            ? { ...r, status: 'active' as const, returnedOn: undefined, sentOn: undefined, refunded: undefined, returnRef: undefined, credit: undefined }
             : r,
         ),
       };
@@ -290,6 +291,30 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         receipts,
         celebrating,
         ...(celebrating !== state.celebrating ? { shared: 'no' as const } : {}),
+      };
+    }
+    case 'set-credit': {
+      /*
+       * Store credit instead of money, and the day it runs out where the note
+       * says. Only on a refund. An expiry that is not a real date, or falls
+       * before the day it was given, is refused rather than stored: a
+       * reminder planned for a day that cannot exist fires never or at once.
+       */
+      const r = state.receipts.find((x) => x.id === action.id);
+      if (!r || r.status !== 'returned') return state;
+      const expires = action.credit?.expires;
+      if (expires !== undefined) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(expires) || toISODate(fromISODate(expires)) !== expires) return state;
+        if (r.returnedOn && daysBetween(fromISODate(r.returnedOn), fromISODate(expires)) < 0) return state;
+      }
+      const next: Receipt = { ...r, credit: action.credit ? (expires ? { expires } : {}) : undefined };
+      // A reminder already given about a different expiry says nothing about this one.
+      const moved = (r.credit?.expires ?? '') !== (next.credit?.expires ?? '');
+      const key = alertKey(r.id, 'credit');
+      return {
+        ...state,
+        receipts: state.receipts.map((x) => (x.id === r.id ? next : x)),
+        alertsSent: moved ? state.alertsSent.filter((k) => k !== key) : state.alertsSent,
       };
     }
     case 'send':
@@ -365,7 +390,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         // changed since, here or in another tab, is left as it now is.
         receipts: state.receipts.map((r) =>
           r.id === held.id && r.status === 'returned'
-            ? { ...r, status: held.was.status, returnedOn: undefined, keptOn: held.was.keptOn, refunded: undefined }
+            ? { ...r, status: held.was.status, returnedOn: undefined, keptOn: held.was.keptOn, refunded: undefined, credit: undefined }
             : r,
         ),
         justReturned: null,

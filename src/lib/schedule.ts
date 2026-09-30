@@ -1,6 +1,6 @@
 import { addDays, fromISODate, startOfDay } from './dates';
 import { derive } from './receipts';
-import { alertKey, copyFor, REFUND_CHASE_DAYS, warrantyWatched, WARRANTY_NOTICE_DAYS, type AlertRung, type ReturnRung } from './alerts';
+import { alertKey, copyFor, CREDIT_NOTICE_DAYS, creditWatched, REFUND_CHASE_DAYS, warrantyWatched, WARRANTY_NOTICE_DAYS, type AlertRung, type ReturnRung } from './alerts';
 import type { Receipt } from './types';
 
 /**
@@ -126,6 +126,15 @@ export function planAlerts(
         if (when.getTime() > now.getTime()) {
           out.push({ key, receiptId: r.id, rung: 'warranty', at: when, ...copyFor('warranty', r, WARRANTY_NOTICE_DAYS, w.ends) });
         }
+      }
+    }
+    // Store credit, at 9am a month before the note says it lapses.
+    if (creditWatched(r)) {
+      const ends = fromISODate(r.credit!.expires!);
+      const key = alertKey(r.id, 'credit');
+      const when = at9am(addDays(ends, -CREDIT_NOTICE_DAYS));
+      if (!sent.has(key) && when.getTime() > now.getTime()) {
+        out.push({ key, receiptId: r.id, rung: 'credit', at: when, ...copyFor('credit', r, CREDIT_NOTICE_DAYS, ends) });
       }
     }
     if (r.status !== 'active') continue;

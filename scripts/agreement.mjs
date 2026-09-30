@@ -69,7 +69,7 @@ await page.waitForTimeout(500);
  * were all its own: "£89.00" immediately followed by "2 days" reads as
  * "89.002 days", and a greedy \d+ happily takes "002".
  */
-const hero = await page.evaluate(() => {
+const readHero = () => page.evaluate(() => {
   const label = [...document.querySelectorAll('span')].find((s) => s.textContent.trim() === 'NEXT WINDOW TO CLOSE');
   const card = label?.closest('button');
   if (!card) return null;
@@ -85,6 +85,7 @@ const hero = await page.evaluate(() => {
     keptBack: footer.find((s) => /kept back/.test(s.textContent))?.textContent ?? null,
   };
 });
+const hero = await readHero();
 
 // Rows carry a structured accessible name — "Shop, item, £amount, urgency" —
 // which is the one place their facts are already separated for us.
@@ -150,6 +151,24 @@ if (alerts.length > 0) {
 }
 
 // --- Totals ---------------------------------------------------------------
+// Something refunded first. With nothing returned, "kept back" was compared
+// as £0.00 against £0.00 — agreeing about nothing — and a returned row's label
+// could change shape ("£30.00 back", "£30.00 in credit") without this check
+// ever reading one.
+if ((await page.getByRole('button', { name: /, returned$/ }).count()) === 0) {
+  await page.locator('li button').first().click();
+  await page.waitForTimeout(300);
+  await page.getByRole('button', { name: 'Got my money back' }).click();
+  await page.waitForTimeout(400);
+  await page.getByRole('button', { name: 'Back to receipts' }).click();
+  await page.waitForTimeout(400);
+}
+// The totals as they stand now, with the refund in them.
+const heroNow = await readHero();
+// Every row, not the latest few: a settled section holds the rest behind
+// "Show all", and the totals above count them whether or not they are shown.
+for (const more of await page.getByRole('button', { name: /^Show all \d+$/ }).all()) await more.click();
+await page.waitForTimeout(200);
 const rowMoney = await page.evaluate(() =>
   [...document.querySelectorAll('li button')].map((b) => {
     const label = b.getAttribute('aria-label') ?? '';
@@ -157,15 +176,19 @@ const rowMoney = await page.evaluate(() =>
     return { amount: parts.at(-2) ?? '', returned: parts.at(-1) === 'returned', demo: label.includes('(sample)') };
   }),
 );
-const sum = (list) => list.reduce((a, r) => a + Number((r.amount || '£0').replace(/[£,]/g, '')), 0);
+// The figure in the field, not the whole field: a returned row says "£30.00
+// back" or "£30.00 in credit", and the words are not part of the sum.
+const pounds = (field) => Number((money(field) ?? '£0').replace(/[£,]/g, ''));
+const sum = (list) => list.reduce((a, r) => a + pounds(r.amount), 0);
+if (!rowMoney.some((r) => r.returned)) disagreements.push({ what: 'the kept-back total was compared with no returned row to read', saw: [] });
 agree(
   'money still returnable, on the hero and summed from the rows',
-  Number((money(hero.returnable) ?? '£0').replace(/[£,]/g, '')).toFixed(2),
+  Number((money(heroNow?.returnable) ?? '£0').replace(/[£,]/g, '')).toFixed(2),
   sum(rowMoney.filter((r) => !r.returned)).toFixed(2),
 );
 agree(
   'money kept back, on the hero and summed from the returned rows',
-  Number((money(hero.keptBack) ?? '£0').replace(/[£,]/g, '')).toFixed(2),
+  Number((money(heroNow?.keptBack) ?? '£0').replace(/[£,]/g, '')).toFixed(2),
   sum(rowMoney.filter((r) => r.returned)).toFixed(2),
 );
 
