@@ -10,7 +10,7 @@ const TODAY = new Date(2026, 7, 28);
 
 const base: ReceiptDraft = {
   store: 'Currys', item: 'Headphones', cat: 'audio',
-  amountText: '89.00', purchasedOn: '2026-08-16', windowDaysText: '14', warrantyMonthsText: '',
+  amountText: '89.00', purchasedOn: '2026-08-16', windowDaysText: '14', warrantyMonthsText: '', orderRefText: '',
   distance: false,
   arrivedOnText: '',
   dispatchedOnText: '',
@@ -797,5 +797,26 @@ describe('the purchase date, as Add asks for it', () => {
     expect(purchaseProblem('2026-08-29', today)).toBe('That date is in the future');
     expect(purchaseProblem('', today)).toBe('Pick the date you bought it');
     expect(purchaseProblem('2026-02-30', today)).toBe('Pick the date you bought it');
+  });
+});
+
+describe('the order number, on the edit screen', () => {
+  it('is kept trimmed, cleared when blanked, and refused when absurd', () => {
+    const typed = validateDraft({ ...base, orderRefText: '  204-1234567  ' }, TODAY);
+    expect(typed.ok && typed.value.orderRef).toBe('204-1234567');
+    const blank = validateDraft({ ...base, orderRefText: '  ' }, TODAY);
+    expect(blank.ok && blank.value.orderRef).toBeUndefined();
+    const long = validateDraft({ ...base, orderRefText: 'X'.repeat(41) }, TODAY);
+    expect(!long.ok && long.errors.orderRefText).toBe('Longer than any order number');
+  });
+
+  it('round-trips through the draft, and clearing it clears the receipt', () => {
+    const r: Receipt = {
+      id: 'r', store: 'Currys', item: 'Headphones', cat: 'audio', amount: toPence(89),
+      purchasedOn: '2026-08-16', windowDays: 14, policy: 'p', distance: false, status: 'active', orderRef: 'OLD1234',
+    };
+    expect(draftFrom(r).orderRefText).toBe('OLD1234');
+    const cleared = validateDraft({ ...draftFrom(r), orderRefText: '' }, TODAY);
+    expect(cleared.ok && applyDraft(r, cleared.value).orderRef).toBeUndefined();
   });
 });

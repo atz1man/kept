@@ -280,6 +280,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       ...(windowStart ? { windowStartsOn: windowStart } : {}),
       windowDays: effectiveWindow,
       ...(distance && arrivedOn ? { arrivedOn } : {}),
+      ...(parsed.orderRef ? { orderRef: parsed.orderRef } : {}),
       policy: policyFor(store, effectiveWindow, inForce?.changedOn),
       distance,
       gotcha: policy?.gotcha,
@@ -510,6 +511,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
               )}
             </div>
           )}
+          {parsed.orderRef && <Row label="Order number" value={parsed.orderRef} mono />}
           <Row label="Return window" value={`${effectiveWindow} days`} mono={false} />
           <Row label="Deadline" value={deadline} mono accent />
           {scanShot && (

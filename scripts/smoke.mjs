@@ -763,6 +763,36 @@ for (const cancel of [false, true]) {
   await sCtx.close();
 }
 
+/*
+ * The order number. The parser read past it on purpose (it looks like a
+ * price) and then threw it away, while returns forms, chat windows and the
+ * letter to the shop all ask for it first. Read from a labelled line, it is
+ * shown before save, kept on the receipt, and quoted in the letter.
+ */
+{
+  const oCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const op = await oCtx.newPage();
+  await op.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await op.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await op.getByRole('button', { name: 'Add a receipt' }).click();
+  await op.locator('#paste').fill('Your John Lewis order\nOrder number: 12345678\nOrder placed 21 September 2026\nSony headphones £349.00\nOrder total: £349.00');
+  await op.getByRole('button', { name: 'Read it' }).click();
+  await op.waitForTimeout(300);
+  const card = await op.locator('main').innerText();
+  await op.getByRole('button', { name: 'Save receipt' }).click();
+  await op.waitForTimeout(400);
+  await op.getByRole('button', { name: /John Lewis/ }).first().click();
+  await op.waitForTimeout(300);
+  const detail = await op.locator('main').innerText();
+  await op.getByRole('button', { name: 'Something wrong with it?' }).click();
+  await op.waitForTimeout(200);
+  const letter = await op.getByLabel('The letter').innerText().catch(() => '');
+  results['the order number is read, kept, shown and quoted in the letter'] =
+    /Order number\s*12345678/.test(card) && /Order 12345678/.test(detail) && /\nOrder number: 12345678\n/.test(letter);
+  if (!results['the order number is read, kept, shown and quoted in the letter']) problems.push(`order number: ${JSON.stringify({ card: /12345678/.test(card), detail: /12345678/.test(detail), letter: letter.slice(0, 80) })}`);
+  await oCtx.close();
+}
+
 // The tab bar floats over every screen; its buttons must stay clickable.
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(400);
