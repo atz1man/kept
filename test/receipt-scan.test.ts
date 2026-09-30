@@ -57,6 +57,44 @@ VISA CONTACTLESS ****4021`);
     expect(v.amount).toBe(6247);
   });
 
+  it('Currys: a total in the thousands, with its comma', () => {
+    // The TV and its care plan. "1,448.00" was given no £, so the TOTAL line
+    // was not money and the care plan's £149.00 was saved as the price.
+    const v = read(`Currys
+Tottenham Court Rd
+LG OLED55C4 TV 1,299.00
+CARE & REPAIR 3YR 149.00
+TOTAL 1,448.00
+AMEX 1,448.00
+24/09/2026 15:20`);
+    expect(v.store).toBe('Currys');
+    expect(v.amount).toBe(144800);
+    // And beside the word, when something follows the figure on its line.
+    expect(read('Currys\nLG OLED55C4 TV 1,299.00\nCARE & REPAIR 149.00\nTOTAL 1,448.00 GBP\n24/09/2026').amount).toBe(144800);
+  });
+
+  it('reads a date printed year first', () => {
+    // 2026/09/21 and 2026.09.21 came through as no date at all.
+    for (const printed of ['2026/09/21 18:22', '2026.09.21', '2026/9/21']) {
+      const v = read(`UNIQLO
+Regent Street
+HEATTECH CREW NECK 14.95
+Total(tax incl.) 14.95
+${printed}`);
+      expect(v.purchasedOn).toBe('2026-09-21');
+    }
+  });
+
+  it('does not read a year-first number that is not a date as one', () => {
+    // Month 13 is not a month: left alone, and the real date below is read.
+    const v = read(`ARGOS
+REF 2026/13/21
+KETTLE 29.00
+TOTAL 29.00
+21/09/2026`);
+    expect(v.purchasedOn).toBe('2026-09-21');
+  });
+
   it('reads through the camera’s own mistakes', () => {
     // A lower-case o for a 0, a comma for the point, a date with dashes.
     const v = read(`JOHN LEWIS
