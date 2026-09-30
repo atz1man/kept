@@ -115,3 +115,11 @@ describe('finding a return by its tracking number', () => {
     expect(matches(make('Zara', 'Linen shirt'), 'jd0002')).toBe(false);
   });
 });
+
+describe('finding a receipt by its order number', () => {
+  it('matches the number, and leaves the rest alone', () => {
+    const withRef = { ...make('Amazon', 'Charger'), orderRef: '204-1234567-7654321' };
+    expect(matches(withRef, '204-1234567')).toBe(true);
+    expect(matches(make('Amazon', 'Charger'), '204-1234567')).toBe(false);
+  });
+});

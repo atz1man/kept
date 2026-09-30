@@ -18,6 +18,8 @@ export interface OrderEmail {
     item: string | null;
     arrivedOn?: string | null;
     dispatchedOn?: string | null;
+    /** The shop's order number, where the email labels one; null where it does not. */
+    orderRef?: string | null;
   };
 }
 
@@ -33,7 +35,7 @@ Delivered 17 September 2026
 Item(s) Subtotal: £25.99
 Postage & Packing: £0.00
 Order Total: £25.99`,
-    expect: { store: 'Amazon', pence: 2599, purchasedOn: '2026-09-14', item: 'Anker USB-C charger', arrivedOn: '2026-09-17' },
+    expect: { store: 'Amazon', pence: 2599, purchasedOn: '2026-09-14', item: 'Anker USB-C charger', arrivedOn: '2026-09-17', orderRef: '204-1234567-7654321' },
   },
   {
     name: 'ASOS, a thousand-pound figure without a comma',
@@ -55,7 +57,7 @@ Order placed: Sat 5 Sep 2026 23:10
 Item: Kenwood kMix stand mixer
 Quantity: 1
 Total to pay: £199.99`,
-    expect: { store: 'Argos', pence: 19999, purchasedOn: '2026-09-05', item: 'Kenwood kMix stand mixer' },
+    expect: { store: 'Argos', pence: 19999, purchasedOn: '2026-09-05', item: 'Kenwood kMix stand mixer', orderRef: null },
   },
   {
     name: 'John Lewis, delivered, VAT line before the total',
@@ -68,7 +70,7 @@ Delivered 6 September 2026
 Sony WH-1000XM6 headphones £349.00
 VAT £58.17
 Order total: £349.00`,
-    expect: { store: 'John Lewis', pence: 34900, purchasedOn: '2026-09-02', item: 'Sony WH-1000XM6 headphones', arrivedOn: '2026-09-06' },
+    expect: { store: 'John Lewis', pence: 34900, purchasedOn: '2026-09-02', item: 'Sony WH-1000XM6 headphones', arrivedOn: '2026-09-06', orderRef: '12345678' },
   },
   {
     name: 'Currys, total savings above the total',
@@ -77,7 +79,7 @@ Thanks for your order - 21/09/2026
 1 x Russell Hobbs kettle £39.99
 Total savings £10.00
 Total £29.99`,
-    expect: { store: 'Currys', pence: 2999, purchasedOn: '2026-09-21', item: 'Russell Hobbs kettle' },
+    expect: { store: 'Currys', pence: 2999, purchasedOn: '2026-09-21', item: 'Russell Hobbs kettle', orderRef: null },
   },
   {
     name: 'Zara, dispatched, a thousands comma',
@@ -96,7 +98,7 @@ Order date: 18/09/2026
 Product: No7 Protect & Perfect serum
 Advantage Card points earned: 36
 Order total £38.00`,
-    expect: { store: 'Boots', pence: 3800, purchasedOn: '2026-09-18', item: 'No7 Protect & Perfect serum' },
+    expect: { store: 'Boots', pence: 3800, purchasedOn: '2026-09-18', item: 'No7 Protect & Perfect serum', orderRef: null },
   },
   {
     name: 'IKEA, a sub-total written apart',
@@ -116,7 +118,7 @@ Placed on September 22, 2026
 1 x Slim fit chinos £30.00
 Delivery £3.99
 Order total £33.99`,
-    expect: { store: 'Next', pence: 3399, purchasedOn: '2026-09-22', item: 'Slim fit chinos' },
+    expect: { store: 'Next', pence: 3399, purchasedOn: '2026-09-22', item: 'Slim fit chinos', orderRef: '44521' },
   },
   {
     name: 'a shop kept does not know, labelled item',

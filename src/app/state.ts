@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useState } from 'react';
-import { pruneSent, remindedBeforeWindow } from '../lib/alerts';
+import { alertKey, pruneSent, remindedBeforeWindow } from '../lib/alerts';
 import { planAlerts } from '../lib/schedule';
 import { isNative } from '../lib/mirror';
 import { cleanupPhotos } from '../lib/photos';
@@ -408,13 +408,29 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
        * from 14 days to 30 on its last day never warned at the real
        * three-days-left or last day — the moment a warning was for.
        */
+      /*
+       * Each clock on its own. The guarantee's end moves with its length (or
+       * the purchase date), and a length corrected after its reminder fired
+       * was never reminded about again; and moving the RETURN deadline used
+       * to forget the guarantee reminder too, so it could arrive twice.
+       */
       const before = state.receipts.find((r) => r.id === action.receipt.id);
+      const id = action.receipt.id;
+      const coverEnd = (r: Receipt) => {
+        const w = derive(r, today).warranty;
+        return w ? toISODate(w.ends) : '';
+      };
       const moved =
         !before ||
         toISODate(derive(before, today).deadline) !== toISODate(derive(action.receipt, today).deadline);
+      const coverMoved = !before || coverEnd(before) !== coverEnd(action.receipt);
+      const forget = new Set<string>([
+        ...(moved ? (['week', 'soon', 'today', 'closed'] as const).map((rung) => alertKey(id, rung)) : []),
+        ...(coverMoved ? [alertKey(id, 'warranty')] : []),
+      ]);
       return {
         ...state,
-        alertsSent: moved ? state.alertsSent.filter((k) => !k.startsWith(`${action.receipt.id}:`)) : state.alertsSent,
+        alertsSent: forget.size > 0 ? state.alertsSent.filter((k) => !forget.has(k)) : state.alertsSent,
         receipts: state.receipts.map((r) => (r.id === action.receipt.id ? action.receipt : r)),
         screen: 'detail',
         selId: action.receipt.id,

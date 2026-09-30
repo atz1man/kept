@@ -256,6 +256,20 @@ export function Edit({ receipt, today, onSave, onCancel }: Props) {
             />
           )}
         </Field>
+
+        <Field id="e-order" label="Order number" error={errors.orderRefText} hint="Optional. Returns forms and the letter to the shop ask for it.">
+          {(p) => (
+            <input
+              {...p}
+              value={draft.orderRefText}
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              onChange={(e) => set('orderRefText', e.target.value)}
+              style={{ ...inputStyle(p['aria-invalid']), fontFamily: font.figures }}
+            />
+          )}
+        </Field>
       </div>
 
       {/* The date itself is in the field above now, so this says only what the

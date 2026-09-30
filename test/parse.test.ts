@@ -692,3 +692,64 @@ describe('what was bought', () => {
     expect(parse('Argos £12.00\nTotal £12.00').item).toBeNull();
   });
 });
+
+describe('order-email shapes the parser used to misread', () => {
+  const read = (text: string) => {
+    const out = parseReceiptText(text, TODAY);
+    if (!out.ok) throw new Error(out.reason);
+    return out.value;
+  };
+
+  it('does not take a total BEFORE something for the total', () => {
+    // Amazon's summary prints its ex-VAT line above the real one.
+    expect(read('Amazon.co.uk\nItem(s) Subtotal: £25.99\nTotal before VAT: £21.66\nVAT: £4.33\nOrder Total: £25.99').amount).toBe(2599);
+    expect(read('Argos\nTotal (ex VAT) £100.00\nTotal £120.00').amount).toBe(12000);
+    expect(read('Argos\nTotal excl. VAT £100.00\nTotal £120.00').amount).toBe(12000);
+    expect(read('Argos\nTotal exc. VAT £100.00\nTotal £120.00').amount).toBe(12000);
+    expect(read('Argos\nNet total £80.00\nGrand total £96.00').amount).toBe(9600);
+    // A total that only mentions VAT in passing is still the total.
+    expect(read('Argos\nTotal (inc. VAT) £12.00').amount).toBe(1200);
+  });
+
+  it('finds the figure on the line after its label, as a pasted table puts it', () => {
+    const t = read('John Lewis\nSubtotal\n£400.00\nDiscount\n-£51.00\nOrder total\n£349.00');
+    expect(t.amount).toBe(34900);
+  });
+
+  it('shortens a long product title to a name instead of throwing it away', () => {
+    const title = 'Anker USB C Charger, 735 Charger (Nano II 65W), 3-Port Fast Compact Foldable GaN Charger for MacBook Pro';
+    const item = read(`Amazon.co.uk\n1 x ${title} £39.99\nOrder Total: £39.99`).item!;
+    expect(item.length).toBeLessThanOrEqual(60);
+    expect(title.startsWith(item)).toBe(true);
+    expect(item).toMatch(/[A-Za-z0-9)]$/);
+    expect(read(`Argos\nItem: ${title}\nTotal £39.99`).item).toBe(item);
+  });
+
+  it('still refuses a long priced line that is only a guess, which is more often a banner', () => {
+    const banner = 'Spend just £10.00 more on eligible items from our partners to unlock free next day delivery today';
+    expect(read(`Argos\n${banner}\nTotal £39.99`).item).toBeNull();
+  });
+});
+
+describe('the order number', () => {
+  // Read past on purpose (it looks like a price) and then thrown away, and it
+  // is the first thing a returns form asks for. Only a LABELLED one.
+  const ref = (text: string) => {
+    const out = parseReceiptText(text, TODAY);
+    return out.ok ? out.value.orderRef : 'did not parse';
+  };
+
+  it('reads the labelled forms shops use, as the shop wrote it', () => {
+    expect(ref('Argos\nOrder number: 600123456\nTotal £10.00')).toBe('600123456');
+    expect(ref('Argos\nOrder #W1234567\nTotal £10.00')).toBe('W1234567');
+    expect(ref('Argos\norder id: w1234567\nTotal £10.00')).toBe('W1234567');
+    expect(ref('Argos\nOrder ref. 55512\nTotal £10.00')).toBe('55512');
+  });
+
+  it('never takes a date, a total or a short code for one', () => {
+    expect(ref('Argos\nOrder date: 21/08/2026\nOrder total: £10.00')).toBeNull();
+    expect(ref('Argos\nOrder no. AB12\nTotal £10.00')).toBeNull();
+    // Unlabelled digits are a phone number as often as an order.
+    expect(ref('Argos\n0345 640 2020\nTotal £10.00')).toBeNull();
+  });
+});

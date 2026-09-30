@@ -572,6 +572,27 @@ describe('undoing a return', () => {
   });
 });
 
+describe('an edit forgets only what it made stale', () => {
+  // Each clock on its own: a guarantee corrected after its reminder fired
+  // was never reminded about again, and moving the return deadline forgot the
+  // guarantee reminder too, so it could arrive twice.
+  const covered = { ...receipt('a'), warranty: { months: 12 } };
+  const said = ['a:week', 'a:soon', 'a:warranty', 'b:week'];
+  const edit = (r: typeof covered) => reducer(base({ receipts: [covered, receipt('b')], alertsSent: said }), { type: 'update', receipt: r }, TODAY).alertsSent;
+
+  it('re-arms the guarantee reminder when its length changes, and leaves the return reminders', () => {
+    expect(edit({ ...covered, warranty: { months: 24 } }).sort()).toEqual(['a:soon', 'a:week', 'b:week']);
+  });
+
+  it('re-arms the return reminders when the deadline moves, and leaves the guarantee one', () => {
+    expect(edit({ ...covered, windowDays: 60 }).sort()).toEqual(['a:warranty', 'b:week']);
+  });
+
+  it('forgets nothing when neither clock moves', () => {
+    expect(edit({ ...covered, item: 'Stand mixer' }).sort()).toEqual([...said].sort());
+  });
+});
+
 describe('sent back, waiting for the refund', () => {
   /*
    * Posting a parcel on day 27 and seeing the money on day 35 had nowhere to

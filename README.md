@@ -137,15 +137,15 @@ of the bundle rather than of a cache. `npm run ios` boots `dist-ios` and
 refuses if a worker registers, and it exists because every other sweep runs
 against the web build and nothing had ever loaded the one that ships.
 
-**The paper receipt can be photographed, and the picture is not read.** What a
-shop asks for at the counter is proof of purchase, and for a counter purchase
-that is the slip. `lib/photos.ts` keeps it on the filesystem, because a photo is
-megabytes against a `localStorage` quota in single figures — one snap would
-evict every receipt the app had. The control says outright that kept keeps the
-picture and does not read it: OCR is a separate problem with a separate failure
-mode, and a total this app got wrong from a blurry thermal print would be worse
-than no total at all. The disabled "Scan a paper receipt" button still says
-scanning is not built, because it is not.
+**The paper receipt can be photographed and kept.** What a shop asks for at
+the counter is proof of purchase, and for a counter purchase that is the slip.
+`lib/photos.ts` keeps it on the filesystem, because a photo is megabytes
+against a `localStorage` quota in single figures — one snap would evict every
+receipt the app had. A photo attached to a receipt is only kept, never read.
+Reading one is the separate "Scan a paper receipt" on the Add screen, which
+puts what it read in front of the person before anything is saved; see
+*Receipt scanning* below. A backup file carries the receipts, not the photos,
+and Settings says so beside the button.
 
 Three decisions there are worth knowing. There is deliberately **no `photo`
 field on `Receipt`** — the file is the truth, because a flag could not stay in
@@ -342,6 +342,7 @@ src/lib/          the decision logic — pure, tested, no React
   legal.ts        Consumer Rights Act + distance-selling rights, cumulative
   fault-letter.ts which remedy today falls in, and the letter that asks the shop for it
   refund-chase.ts when a refund is late, the tracking number it rests on, and the letter that chases it
+  persist.ts      asking the browser to keep the library, on the web
   quota.ts        what the free tier counts, and when it is full
   pricing.ts      the tiers, and what a tap on one is allowed to claim
   storage.ts      localStorage persistence, and the shape a stored state is

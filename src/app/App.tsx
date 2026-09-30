@@ -9,6 +9,7 @@ import { money, sumPence } from '../lib/money';
 import { countsAsMoney, recoveredPence } from '../lib/receipts';
 import { winSentence } from '../lib/words';
 import { exportBackup, wipe } from '../lib/storage';
+import { keepStorage } from '../lib/persist';
 import { backupFilename, saveJsonFile } from '../lib/save-file';
 import { FEATURED_TIER } from '../lib/pricing';
 import { SaveFailedBanner } from './components/SaveFailedBanner';
@@ -28,6 +29,13 @@ import { quotaFull, useApp } from './state';
 export function App() {
   const { state, dispatch, today, saveFailed } = useApp();
   const { screen, settings } = state;
+
+  // The web build's library lives only in this browser; ask it to keep it.
+  // Not from the landing page's demo frame, which stores nothing.
+  useEffect(() => {
+    if (state.embedded || isNative()) return;
+    void keepStorage(typeof navigator === 'undefined' ? undefined : navigator.storage);
+  }, [state.embedded]);
 
   /*
    * What iOS would say if asked, read only while it matters: until the
