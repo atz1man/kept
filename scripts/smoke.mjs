@@ -721,10 +721,18 @@ results['a returned receipt can still be opened'] =
 // And says WHEN. The date has been stored since this screen was written and
 // never shown: "£89.00 recovered ✓" reads the same whether the refund landed
 // last week or last year.
-results['a returned receipt says when the money came back'] = await page
-  .getByText(new RegExp(`recovered on ${new Date().toLocaleDateString('en-GB', { day: 'numeric' })} `))
-  .isVisible()
-  .catch(() => false);
+// The day the app STORED, not "today" as this check computes it: a run that
+// crosses midnight made the return on one day and asked about the next, and
+// failed on a screen that was right.
+{
+  const returnedOn = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => r.id === 'seed_currys')?.returnedOn ?? '');
+  const day = returnedOn ? String(Number(returnedOn.slice(8, 10))) : 'no date stored';
+  results['a returned receipt says when the money came back'] = await page
+    .getByText(new RegExp(`recovered on ${day} `))
+    .isVisible()
+    .catch(() => false);
+}
 await page.getByRole('button', { name: 'Not actually returned' }).click();
 await page.waitForTimeout(400);
 results['a return can be undone'] =
