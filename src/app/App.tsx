@@ -391,6 +391,7 @@ export function App() {
           onUnkeep={() => dispatch({ type: 'unkeep', id: selected.id })}
           onSend={() => dispatch({ type: 'send', id: selected.id })}
           onUnsend={() => dispatch({ type: 'unsend', id: selected.id })}
+          onArrived={() => dispatch({ type: 'arrived', id: selected.id })}
           onSetRefund={(pence) => dispatch({ type: 'set-refund', id: selected.id, pence })}
           onSetReturnRef={(ref) => dispatch({ type: 'set-return-ref', id: selected.id, ref })}
           onDelete={() => dispatch({ type: 'delete', id: selected.id })}
@@ -439,13 +440,16 @@ export function App() {
       {screen === 'celebrate' && state.celebrating && (
         <Celebrate
           amount={state.celebrating.amount}
+          cost={state.celebrating.cost}
           store={state.celebrating.store}
           inTime={state.celebrating.inTime}
           recovered={recovered}
           shared={state.shared}
           line={winLine}
           onShare={shareWin}
+          onSetRefund={(pence) => state.celebrating && dispatch({ type: 'set-refund', id: state.celebrating.id, pence })}
           onDone={() => dispatch({ type: 'go', screen: 'home' })}
+          undoShowing={!!state.justReturned}
         />
       )}
 

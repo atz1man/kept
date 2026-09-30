@@ -405,6 +405,10 @@ const wipeTo = (status) => `() => {
 
 const screens = [
   ['home', async () => {}],
+  // "Has it arrived?" and its two buttons, on an online order not yet known
+  // to have come — the seeded Zara coat, and the adversarial shirt.
+  ['detail · on its way', async (p) => { await p.getByRole('button', { name: /on its way/ }).first().click(); }],
+  ['home again', async (p) => { await p.getByRole('button', { name: 'Back', exact: true }).click(); }],
   ['detail', async (p) => { await p.locator('li button').first().click(); }],
   // Opens closed, and its letter is the widest block of text in the app:
   // prose with no breaks shorter than a shop name, in a box inside a card.
@@ -433,6 +437,17 @@ const screens = [
   ['back to home', async (p) => { await p.getByRole('button', { name: 'Cancel' }).click(); await p.getByRole('button', { name: 'Back', exact: true }).click(); }],
   ['watch', async (p) => { await p.getByRole('button', { name: /^Watch/ }).click(); }],
   ['add', async (p) => { await p.getByRole('button', { name: 'Add a receipt' }).click(); }],
+  // The celebration, with the refund form open and refusing: a form on the
+  // cream ground under the card, above the share.
+  ['celebrate · refund amount', async (p) => {
+    await p.getByRole('button', { name: 'Receipts', exact: true }).click();
+    await p.waitForTimeout(250);
+    await p.locator('li button').first().click();
+    await p.getByRole('button', { name: 'Got my money back' }).click();
+    await p.getByRole('button', { name: /^Not the full/ }).click();
+    await p.getByLabel('How much came back?').fill('99999');
+  }],
+  ['back from the celebration', async (p) => { await p.getByRole('button', { name: 'Back to receipts' }).click(); }],
   ['settings', async (p) => { await p.getByRole('button', { name: 'Settings', exact: true }).click(); }],
   // A modal, so it sizes itself rather than inheriting the page's padding —
   // the one surface here that can push a 320px viewport sideways on its own.

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { color, font, radius, shadow } from '../../tokens';
 import { addDays, fmtDate, fmtDateNear, fromISODate } from '../../lib/dates';
 import { money, sumPence } from '../../lib/money';
-import { bucket, settledRows, coverLine, derive, refundOf, everyReturnInTime, countsAsMoney, stillReturnablePence, timelineDots } from '../../lib/receipts';
+import { awaitingArrival, bucket, settledRows, coverLine, derive, refundOf, everyReturnInTime, countsAsMoney, stillReturnablePence, timelineDots } from '../../lib/receipts';
 import { search, searchStatus, shouldOfferSearch } from '../../lib/search';
 import { midSentence } from '../../lib/words';
 import { heroCount, urgency } from '../../lib/urgency';
@@ -249,6 +249,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
               <ReceiptRow
                 key={r.id}
                 receipt={r}
+                onItsWay={awaitingArrival(r, today)}
                 urgency={urgency(derive(r, today).daysLeft, urgentDays)}
                 emphasised
                 policyChanged={changedIds.has(r.id)}
@@ -280,6 +281,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
               <ReceiptRow
                 key={r.id}
                 receipt={r}
+                onItsWay={awaitingArrival(r, today)}
                 urgency={urgency(derive(r, today).daysLeft, urgentDays)}
                 emphasised
                 policyChanged={changedIds.has(r.id)}
@@ -299,6 +301,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
               <ReceiptRow
                 key={r.id}
                 receipt={r}
+                onItsWay={awaitingArrival(r, today)}
                 urgency={urgency(derive(r, today).daysLeft, urgentDays)}
                 emphasised={false}
                 policyChanged={changedIds.has(r.id)}
