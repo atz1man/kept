@@ -661,3 +661,29 @@ describe('less than was paid', () => {
     expect(a(reducer(part, { type: 'unreturn', id: 'a' }, TODAY)).refunded).toBeUndefined();
   });
 });
+
+describe('the tracking number on a return', () => {
+  const sent = () => reducer(base({ receipts: [receipt('a'), receipt('b')] }), { type: 'send', id: 'a' }, TODAY);
+  const a = (s: AppState) => s.receipts.find((r) => r.id === 'a')!;
+  const tracked = () => reducer(sent(), { type: 'set-return-ref', id: 'a', ref: '  JD0002  1234 ' }, TODAY);
+
+  it('is recorded on a receipt that has gone back, spacing tidied, and an empty one clears it', () => {
+    expect(a(tracked()).returnRef).toBe('JD0002 1234');
+    expect(a(reducer(tracked(), { type: 'set-return-ref', id: 'a', ref: ' ' }, TODAY)).returnRef).toBeUndefined();
+    expect(a(reducer(tracked(), { type: 'set-return-ref', id: 'a', ref: null }, TODAY)).returnRef).toBeUndefined();
+  });
+
+  it('refuses a receipt that has not gone back, and a reference longer than any tracking number', () => {
+    const live = base({ receipts: [receipt('a')] });
+    expect(reducer(live, { type: 'set-return-ref', id: 'a', ref: 'AB123' }, TODAY)).toEqual(live);
+    const s = sent();
+    expect(reducer(s, { type: 'set-return-ref', id: 'a', ref: 'X'.repeat(41) }, TODAY)).toEqual(s);
+  });
+
+  it('goes with the refund, and is forgotten when it turns out not to have gone', () => {
+    expect(a(reducer(tracked(), { type: 'return', id: 'a' }, TODAY)).returnRef).toBe('JD0002 1234');
+    expect(a(reducer(tracked(), { type: 'unsend', id: 'a' }, TODAY)).returnRef).toBeUndefined();
+    const back = reducer(tracked(), { type: 'return', id: 'a' }, TODAY);
+    expect(a(reducer(back, { type: 'unreturn', id: 'a' }, TODAY)).returnRef).toBeUndefined();
+  });
+});

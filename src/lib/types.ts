@@ -106,6 +106,13 @@ export interface Receipt {
    */
   sentOn?: string;
   /**
+   * The tracking or proof-of-postage reference for a return, as printed on the
+   * post office's slip. A refund chase rests on proof the parcel went, and for
+   * a cancelled online order that proof is what starts the shop's fourteen
+   * days (reg. 34). Carried through to the refund; cleared if it did not go.
+   */
+  returnRef?: string;
+  /**
    * True for the five receipts a fresh install arrives with.
    *
    * They exist so a first launch is a working app rather than an empty list,

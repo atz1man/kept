@@ -341,6 +341,7 @@ src/lib/          the decision logic — pure, tested, no React
   feed-signature.ts  whether the feed that answered was the right thing
   legal.ts        Consumer Rights Act + distance-selling rights, cumulative
   fault-letter.ts which remedy today falls in, and the letter that asks the shop for it
+  refund-chase.ts when a refund is late, the tracking number it rests on, and the letter that chases it
   quota.ts        what the free tier counts, and when it is full
   pricing.ts      the tiers, and what a tap on one is allowed to claim
   storage.ts      localStorage persistence, and the shape a stored state is
