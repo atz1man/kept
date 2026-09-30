@@ -64,9 +64,9 @@ export const WARRANTY_NOTICE_DAYS = 30;
  */
 export const CREDIT_NOTICE_DAYS = 30;
 
-/** Store credit with a known expiry, on a real receipt: the one kind watched. */
+/** Store credit with a known expiry, on a real receipt, not yet spent: the one kind watched. */
 export function creditWatched(r: Receipt): boolean {
-  return r.status === 'returned' && !r.demo && !!r.credit?.expires;
+  return r.status === 'returned' && !r.demo && !!r.credit?.expires && !r.credit.spentOn;
 }
 
 /**

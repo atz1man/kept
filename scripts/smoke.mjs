@@ -1494,6 +1494,61 @@ for (const cancel of [false, true]) {
 }
 
 /*
+ * Store credit, spent. "Spend it before then" fired on credit used the week
+ * it was given, and the only ways to stop it made the record false. Spent
+ * is recorded, survives a reload — the stored copy goes through the same
+ * sanitiser a backup does — drops out of what is coming up, and can be
+ * taken back.
+ */
+{
+  const cCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const cp = await cCtx.newPage();
+  await cp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await cp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await cp.waitForTimeout(300);
+  await cp.evaluate(() => {
+    const iso = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    const s = JSON.parse(localStorage.getItem('kept.v1'));
+    s.receipts.push({ id: 'r_credit', store: 'Next', item: 'Rain jacket', cat: 'clothing', amount: 5000, purchasedOn: iso(-20), windowDays: 28, policy: 'p', distance: false, status: 'returned', returnedOn: iso(-2), credit: { expires: iso(20) } });
+    localStorage.setItem('kept.v1', JSON.stringify(s));
+  });
+  await cp.reload({ waitUntil: 'networkidle' });
+  await cp.waitForTimeout(300);
+  const credit = () => cp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => r.id === 'r_credit')?.credit);
+  const listed = async () => {
+    await cp.getByRole('button', { name: /^Watch/ }).click({ timeout: 3000 }).catch(() => {});
+    await cp.waitForTimeout(300);
+    const n = await cp.getByRole('button', { name: /Store credit runs out/ }).count();
+    await cp.getByRole('button', { name: 'Receipts', exact: true }).click({ timeout: 3000 }).catch(() => {});
+    await cp.waitForTimeout(300);
+    return n;
+  };
+  const open = async () => {
+    await cp.getByRole('button', { name: /^Next, Rain jacket/ }).first().click({ timeout: 3000 }).catch(() => {});
+    await cp.waitForTimeout(300);
+  };
+  const seen = { listedBefore: (await listed()) === 1 };
+  await open();
+  seen.spentTap = await cp.getByRole('button', { name: 'I’ve spent it' }).click({ timeout: 3000 }).then(() => true, () => false);
+  await cp.waitForTimeout(300);
+  seen.recorded = !!(await credit())?.spentOn;
+  await cp.reload({ waitUntil: 'networkidle' });
+  await cp.waitForTimeout(300);
+  seen.survives = !!(await credit())?.spentOn;
+  seen.notListed = (await listed()) === 0;
+  await open();
+  seen.says = /Store credit · spent/.test(await cp.locator('main').innerText());
+  await cp.getByRole('button', { name: 'Not spent after all' }).click({ timeout: 3000 }).catch(() => {});
+  await cp.waitForTimeout(300);
+  const back = await credit();
+  seen.takenBack = back?.spentOn === undefined && !!back?.expires;
+  const ok = Object.values(seen).every(Boolean);
+  results['store credit can be marked spent, which stops its reminder and survives a reload'] = ok;
+  if (!ok) problems.push(`credit spent: ${JSON.stringify({ ...seen, back })}`);
+  await cCtx.close();
+}
+
+/*
  * Three places the lifecycle said something false, found by an audit.
  * The headline was `active[0]`, samples included: somebody who had just
  * saved their first purchase read "£89.00 back if it goes back by…" about

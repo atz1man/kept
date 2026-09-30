@@ -117,6 +117,8 @@ export type Action =
   | { type: 'send'; id: string; undoable?: boolean }
   | { type: 'set-refund'; id: string; pence: number | null }
   | { type: 'set-credit'; id: string; credit: { expires?: string } | null }
+  | { type: 'credit-spent'; id: string }
+  | { type: 'credit-unspent'; id: string }
   | { type: 'unsend'; id: string }
   | { type: 'fault-sent'; id: string; what: string }
   | { type: 'fault-unsent'; id: string }
@@ -326,7 +328,10 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         if (!/^\d{4}-\d{2}-\d{2}$/.test(expires) || toISODate(fromISODate(expires)) !== expires) return state;
         if (r.returnedOn && daysBetween(fromISODate(r.returnedOn), fromISODate(expires)) < 0) return state;
       }
-      const next: Receipt = { ...r, credit: action.credit ? (expires ? { expires } : {}) : undefined };
+      // The day it was spent survives a corrected expiry; "It was money after
+      // all" takes the whole credit, spent or not.
+      const spentOn = r.credit?.spentOn;
+      const next: Receipt = { ...r, credit: action.credit ? { ...(expires ? { expires } : {}), ...(spentOn ? { spentOn } : {}) } : undefined };
       // A reminder already given about a different expiry says nothing about this one.
       const moved = (r.credit?.expires ?? '') !== (next.credit?.expires ?? '');
       const key = alertKey(r.id, 'credit');
@@ -336,6 +341,31 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         alertsSent: moved ? state.alertsSent.filter((k) => k !== key) : state.alertsSent,
       };
     }
+    case 'credit-spent':
+      /*
+       * Spent. Credit was the one thing kept could be told about and never
+       * told it had gone: "spend it before then" still fired a month before
+       * the note's date on credit used the week it was given, and the only
+       * ways to stop it — clear the date, or "It was money after all" — made
+       * the record say something false. Only on credit not already spent.
+       */
+      return {
+        ...state,
+        receipts: state.receipts.map((r) =>
+          r.id === action.id && r.status === 'returned' && r.credit && !r.credit.spentOn
+            ? { ...r, credit: { ...r.credit, spentOn: toISODate(today) } }
+            : r,
+        ),
+      };
+    case 'credit-unspent':
+      return {
+        ...state,
+        receipts: state.receipts.map((r) => {
+          if (r.id !== action.id || !r.credit?.spentOn) return r;
+          const { spentOn: _gone, ...credit } = r.credit;
+          return { ...r, credit };
+        }),
+      };
     case 'fault-sent':
       /*
        * The fault letter has gone. On a receipt still with its owner — active

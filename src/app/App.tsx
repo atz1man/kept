@@ -448,6 +448,7 @@ export function App() {
           onSetRefund={(pence) => dispatch({ type: 'set-refund', id: selected.id, pence })}
           onSetReturnRef={(ref) => dispatch({ type: 'set-return-ref', id: selected.id, ref })}
           onSetCredit={(credit) => dispatch({ type: 'set-credit', id: selected.id, credit })}
+          onCreditSpent={(spent) => dispatch({ type: spent ? 'credit-spent' : 'credit-unspent', id: selected.id })}
           onFaultSent={(what) => dispatch({ type: 'fault-sent', id: selected.id, what })}
           onFaultUnsent={() => dispatch({ type: 'fault-unsent', id: selected.id })}
           onDelete={() => dispatch({ type: 'delete', id: selected.id })}

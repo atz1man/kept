@@ -96,8 +96,10 @@ export interface Receipt {
    * ends without cash, and one that had no way to be said. `expires` is the
    * day the credit note says it runs out, where it says one: credit that
    * lapses unspent is money lost as surely as a missed return window.
+   * `spentOn` is the day it was used: after it there is nothing to remind
+   * about, and "spend it before then" would be a reminder about nothing.
    */
-  credit?: { expires?: string };
+  credit?: { expires?: string; spentOn?: string };
   /**
    * The fault letter, once it has gone: the day it was sent and the person's
    * own words about what is wrong, so the letter can be shown again as sent.
