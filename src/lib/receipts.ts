@@ -101,7 +101,7 @@ export function coverLine(r: Receipt, today: Date): string | null {
  * back, and never over a guarantee already noted, clock or not.
  */
 export function asksForGuarantee(r: Receipt): boolean {
-  return r.status !== 'returned' && !r.warranty && r.cat !== 'clothing' && r.cat !== 'beauty';
+  return (r.status === 'active' || r.status === 'kept') && !r.warranty && r.cat !== 'clothing' && r.cat !== 'beauty';
 }
 
 export function derive(r: Receipt, today: Date): DerivedReceipt {
@@ -149,6 +149,8 @@ export interface Buckets {
   returned: Receipt[];
   /** Decided on and kept: no more return reminders, still has its rights. */
   kept: Receipt[];
+  /** Gone back to the shop, the refund still to come. */
+  sent: Receipt[];
 }
 
 /**
@@ -172,6 +174,7 @@ export function bucket(receipts: readonly Receipt[], today: Date, urgentDays: nu
     later: active.filter((x) => x.derived.daysLeft > urgentDays).map((x) => x.receipt),
     returned: latestFirst(receipts.filter((r) => r.status === 'returned'), (r) => r.returnedOn),
     kept: latestFirst(receipts.filter((r) => r.status === 'kept'), (r) => r.keptOn),
+    sent: latestFirst(receipts.filter((r) => r.status === 'sent'), (r) => r.sentOn),
   };
 }
 
@@ -283,7 +286,9 @@ export function everyReturnInTime(returned: readonly Receipt[], today: Date): bo
   if (returned.length === 0) return false;
   return returned.every(
     (r) =>
-      r.returnedOn !== undefined &&
-      daysBetween(fromISODate(r.returnedOn), derive(r, today).deadline) >= 0,
+      // The day it went BACK, where that was recorded, not the day the refund
+      // landed: posted on day 27 and refunded on day 35 is a return in time.
+      (r.sentOn ?? r.returnedOn) !== undefined &&
+      daysBetween(fromISODate((r.sentOn ?? r.returnedOn)!), derive(r, today).deadline) >= 0,
   );
 }

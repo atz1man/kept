@@ -45,6 +45,16 @@ export interface Settings {
   plan: 'free' | 'pro';
   deadlineAlerts: boolean;
   policyWatch: boolean;
+  /**
+   * Whether the iPhone app has said what its reminders are before iOS asks.
+   * iOS raises its permission dialog once per install and never again, and
+   * it used to arrive unannounced the moment the first real receipt was
+   * saved; declined in that surprise, deadline reminders were gone for good
+   * unless the person found the Settings app. The scheduler may only ask
+   * once this is true, and it becomes true when the person answers kept's
+   * own card, either way.
+   */
+  remindersExplained: boolean;
 }
 
 export interface KeptState {
@@ -73,6 +83,7 @@ export const DEFAULT_SETTINGS: Settings = {
   plan: 'free',
   deadlineAlerts: true,
   policyWatch: true,
+  remindersExplained: false,
 };
 
 export function freshState(today: Date): KeptState {
@@ -141,6 +152,7 @@ function readSettings(raw: unknown): Settings {
     plan: s.plan === 'pro' ? 'pro' : 'free',
     deadlineAlerts: bool(s.deadlineAlerts, DEFAULT_SETTINGS.deadlineAlerts),
     policyWatch: bool(s.policyWatch, DEFAULT_SETTINGS.policyWatch),
+    remindersExplained: bool(s.remindersExplained, DEFAULT_SETTINGS.remindersExplained),
   };
 }
 

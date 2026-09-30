@@ -552,3 +552,26 @@ describe('asking for a guarantee', () => {
     expect(asksForGuarantee(receipt({ cat: 'kitchen', warranty: { months: 0, note: 'lifetime' } }))).toBe(false);
   });
 });
+
+describe('sent back', () => {
+  it('is filed apart, latest first, and out of what is still returnable', () => {
+    const a = receipt({ id: 'a', status: 'sent', sentOn: ago(3) });
+    const b = receipt({ id: 'b', status: 'sent', sentOn: ago(1) });
+    const live = receipt({ id: 'live', purchasedOn: ago(2), windowDays: 30 });
+    const bk = bucket([a, b, live], TODAY, 7);
+    expect(bk.sent.map((r) => r.id)).toEqual(['b', 'a']);
+    expect([...bk.closed, ...bk.urgent, ...bk.later].map((r) => r.id)).toEqual(['live']);
+    expect(stillReturnablePence(bk, [a, b, live])).toBe(live.amount);
+  });
+
+  it('is judged in time by the day it went back, not the day the money came', () => {
+    // A 14-day window from 20 days ago closed 6 days ago; sent 8 days ago, refunded today.
+    const r = receipt({ purchasedOn: ago(20), windowDays: 14, status: 'returned', returnedOn: ago(0), sentOn: ago(8) });
+    expect(everyReturnInTime([r], TODAY)).toBe(true);
+    expect(everyReturnInTime([{ ...r, sentOn: undefined }], TODAY)).toBe(false);
+  });
+
+  it('is not asked for a guarantee while it is in the post', () => {
+    expect(asksForGuarantee(receipt({ cat: 'kitchen', status: 'sent', sentOn: ago(1) }))).toBe(false);
+  });
+});

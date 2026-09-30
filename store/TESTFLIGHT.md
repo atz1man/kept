@@ -18,7 +18,8 @@ Not people who will be kind about it.
    the Add screen. (There is no iPhone share-sheet entry yet: that is a
    native share extension, built on a Mac. The web app's share target works
    in Chrome on Android and desktop.)
-3. Turn on Deadline alerts in Settings and leave the app alone.
+3. When kept offers reminders after your first real receipt, turn them on
+   (iOS asks once), then leave the app alone.
 4. Return one thing, or mark one returned, and mark one you are keeping.
    Say what the app said each time.
 

@@ -202,4 +202,54 @@ export function legalRights(r: Receipt, today: Date, storeWindowOpen: boolean): 
   return coolingOff.live ? [coolingOff, reject] : [reject, coolingOff];
 }
 
+/**
+ * Which of a purchase's live clocks closes first — the shop's own window, the
+ * right to reject faulty goods, or (bought at a distance) the right to cancel.
+ *
+ * The onboarding, the listing, the rights page and the README all said kept
+ * "tells you which closes first", and no screen did: the receipt showed the
+ * shop's date in a ring and the legal ones in a panel below, and left the
+ * comparison to the reader. For IKEA's 365 days, B&Q's or John Lewis's, the
+ * first to go is the 30-day right to reject — the one that means a full
+ * refund for a fault rather than a repair — and nothing said so.
+ *
+ * `hedged` when the arrival date is unknown and the earliest clock is a legal
+ * one: those run from arrival, so the date is a floor and "first" is a
+ * likelihood, and the screen says so. Ties go to the shop, whose window is the
+ * any-reason return and the one a person is usually asking about.
+ */
+export interface FirstClock {
+  which: 'shop' | 'reject' | 'cancel';
+  on: Date;
+  hedged: boolean;
+}
+
+export function firstToClose(r: Receipt, today: Date, shopDeadline: Date): FirstClock | null {
+  const known = !r.distance || r.arrivedOn !== undefined;
+  const from = fromISODate(r.arrivedOn ?? r.purchasedOn);
+  const clocks: { which: FirstClock['which']; on: Date }[] = [
+    { which: 'shop', on: shopDeadline },
+    ...(r.distance ? [{ which: 'cancel' as const, on: addDays(from, COOLING_OFF_DAYS) }] : []),
+    { which: 'reject', on: addDays(from, REJECT_DAYS) },
+  ];
+  const live = clocks.filter((c) => daysBetween(today, c.on) >= 0);
+  if (live.length === 0) return null;
+  const first = live.reduce((a, b) => (daysBetween(b.on, a.on) > 0 ? b : a));
+  return { ...first, hedged: first.which !== 'shop' && !known };
+}
+
+/** The sentence for it, from the same constants as every other one here. */
+export function firstToCloseLine(c: FirstClock): string {
+  const lead = c.hedged ? 'Likely to close first' : 'Closes first';
+  const when = `${c.hedged ? 'no earlier than ' : ''}${fmtDate(c.on)}`;
+  switch (c.which) {
+    case 'shop':
+      return `${lead}: the shop’s own window, ${when}.`;
+    case 'reject':
+      return `${lead}: your ${REJECT_DAYS}-day right to reject faulty goods for a full refund, ${when}.`;
+    case 'cancel':
+      return `${lead}: your ${COOLING_OFF_DAYS}-day right to cancel for any reason, ${when}.`;
+  }
+}
+
 export const LEGAL_DISCLAIMER = 'Guidance, not legal advice.';
