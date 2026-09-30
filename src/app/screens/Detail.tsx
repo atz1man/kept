@@ -36,6 +36,7 @@ interface Props {
   onSetRefund: (pence: number | null) => void;
   onSetReturnRef: (ref: string | null) => void;
   onSetCredit: (credit: { expires?: string } | null) => void;
+  onCreditSpent: (spent: boolean) => void;
   onFaultSent: (what: string) => void;
   onFaultUnsent: () => void;
   onArrived: () => void;
@@ -44,7 +45,7 @@ interface Props {
 
 const cardLabel = { fontSize: 11, fontWeight: 700, letterSpacing: '1.4px', color: color.muted } as const;
 
-export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onSetCredit, onArrived, onFaultSent, onFaultUnsent, onDelete }: Props) {
+export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onSetCredit, onCreditSpent, onArrived, onFaultSent, onFaultUnsent, onDelete }: Props) {
   const [legalOpen, setLegalOpen] = useState(true);
   const d = derive(receipt, today);
   const u = urgency(d.daysLeft, urgentDays);
@@ -381,7 +382,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               year, and it is the only fact a returned receipt carries that is
               not already on the row. */}
           <RefundPanel receipt={receipt} returnedText={returnedText} onSetRefund={onSetRefund} />
-          <CreditPanel receipt={receipt} onSetCredit={onSetCredit} />
+          <CreditPanel receipt={receipt} onSetCredit={onSetCredit} onCreditSpent={onCreditSpent} />
           <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
             <Pressable
               className="k-row-white"
@@ -616,8 +617,26 @@ function RefundChasePanel({ receipt, today }: { receipt: Receipt; today: Date })
  * it lapses, a reminder is due a month before — credit that runs out unspent
  * is money lost as surely as a missed return window.
  */
-function CreditPanel({ receipt, onSetCredit }: { receipt: Receipt; onSetCredit: (credit: { expires?: string } | null) => void }) {
+function CreditPanel({ receipt, onSetCredit, onCreditSpent }: {
+  receipt: Receipt;
+  onSetCredit: (credit: { expires?: string } | null) => void;
+  onCreditSpent: (spent: boolean) => void;
+}) {
   const [text, setText] = useState(receipt.credit?.expires ?? '');
+  if (receipt.credit?.spentOn) {
+    // Spent: nothing left to remind about, and the record says so.
+    return (
+      <div data-credit-spent style={{ marginTop: 10, padding: 14, background: color.white, border: `1.5px solid ${color.border}`, borderRadius: 16 }}>
+        <div style={{ fontSize: 14, fontWeight: 700 }}>Store credit · spent {fmtDateLong(fromISODate(receipt.credit.spentOn))}</div>
+        <Pressable
+          onClick={() => onCreditSpent(false)}
+          style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', marginTop: 2, fontSize: 13, fontWeight: 600, textDecoration: 'underline' }}
+        >
+          Not spent after all
+        </Pressable>
+      </div>
+    );
+  }
   if (!receipt.credit) {
     return (
       <Pressable
@@ -663,12 +682,20 @@ function CreditPanel({ receipt, onSetCredit }: { receipt: Receipt; onSetCredit: 
           Optional, from the credit note. With a date, a reminder is due a month before it lapses.
         </div>
       )}
-      <Pressable
-        onClick={() => onSetCredit(null)}
-        style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', marginTop: 4, fontSize: 13, fontWeight: 600, textDecoration: 'underline' }}
-      >
-        It was money after all
-      </Pressable>
+      <div style={{ display: 'flex', flexWrap: 'wrap', columnGap: 16, marginTop: 4 }}>
+        <Pressable
+          onClick={() => onCreditSpent(true)}
+          style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', fontSize: 13, fontWeight: 700, textDecoration: 'underline' }}
+        >
+          I’ve spent it
+        </Pressable>
+        <Pressable
+          onClick={() => onSetCredit(null)}
+          style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', fontSize: 13, fontWeight: 600, textDecoration: 'underline' }}
+        >
+          It was money after all
+        </Pressable>
+      </div>
     </div>
   );
 }
