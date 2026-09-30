@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { color, font, radius, shadow } from '../../tokens';
 import { addDays, fmtDate, fmtDateLong, fmtDateNear, fromISODate, toISODate } from '../../lib/dates';
 import { money } from '../../lib/money';
-import { parseReceiptText, type ParsedReceipt } from '../../lib/parse';
+import { parseReceiptText, UNKNOWN_STORE_WINDOW_DAYS, type ParsedReceipt } from '../../lib/parse';
 import { fromScan, scanFailure } from '../../lib/receipt-scan';
-import { arrivalProblem, purchaseProblem, readAmount, windowStartFor } from '../../lib/draft';
+import { arrivalProblem, MAX_WINDOW_DAYS, purchaseProblem, readAmount, windowStartFor } from '../../lib/draft';
 import { makeReceiptId } from '../../lib/receipts';
 import { findStore, policyFor } from '../../lib/stores';
 import { windowInForceFor } from '../../lib/policy-feed';
@@ -108,6 +108,19 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
    */
   const [scannedText, setScannedText] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  /*
+   * Whether the card was typed in rather than read, and whether a READ card
+   * has been opened for correction. The rows it found were facts with no way
+   * to change them short of editing the raw text and reading it again, or
+   * saving and then finding Edit — and a camera will misread a total. Correct
+   * it turns the same rows into the same fields, holding what was read.
+   */
+  const [typedIn, setTypedIn] = useState(false);
+  const [correcting, setCorrecting] = useState(false);
+  // The window follows the shop until the person types one: a blank card
+  // seeded with 28 would have saved 28 for a Boots receipt, which gives 35.
+  const [windowText, setWindowText] = useState('');
+  const [windowEdited, setWindowEdited] = useState(false);
   // Read once, on arrival. A later keystroke must not re-trigger it.
   const [readShare, setReadShare] = useState(false);
 
@@ -120,6 +133,8 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
     }
     setParsed(outcome.value);
     setError(false);
+    setTypedIn(false);
+    setCorrecting(false);
     // Pre-filled when the paste says what it was, and still the person's to
     // change: it names the receipt on every screen after this one.
     setItem(outcome.value.item ?? '');
@@ -134,6 +149,38 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
   };
 
   const read = () => readText(text);
+
+  /** The same card, blank: every field is one the person fills in. */
+  const typeItIn = () => {
+    setParsed({
+      store: null, policy: null, amount: null, purchasedOn: toISODate(today), dateFound: false,
+      arrivedOn: null, dispatchedOn: null, windowDays: UNKNOWN_STORE_WINDOW_DAYS, item: null, orderRef: null,
+    });
+    setError(false);
+    setTypedIn(true);
+    setCorrecting(false);
+    setScannedText(null);
+    setScanShot(null);
+    setItem('');
+    setDistance(true);
+    setStoreName('');
+    setTotalText('');
+    setBoughtOn(toISODate(today));
+    setArrivedOn('');
+    setWindowText('');
+    setWindowEdited(false);
+  };
+
+  /** Every row the read found, as the field that sets it, holding the value it read. */
+  const startCorrecting = () => {
+    if (!parsed) return;
+    if (parsed.store !== null) setStoreName(parsed.store);
+    if (parsed.amount !== null) setTotalText((parsed.amount / 100).toFixed(2));
+    if (parsed.dateFound) setBoughtOn(parsed.purchasedOn);
+    setWindowText('');
+    setWindowEdited(false);
+    setCorrecting(true);
+  };
 
   /**
    * Read a photo of a till receipt into the paste box, then read that as a
@@ -186,9 +233,12 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
    * lands is a bug this codebase has already had once.
    */
   const typed = storeName.trim();
-  const knownFromTyped = parsed?.store ? undefined : typed ? findStore(typed) : undefined;
-  const policy = parsed?.policy ?? knownFromTyped ?? null;
-  const effectiveStore = parsed?.store ?? policy?.name ?? typed;
+  // The typed shop wins wherever there is a field for it: when the read found
+  // none, and when the person has opened the card to correct it.
+  const storeTyped = !!parsed && (parsed.store === null || correcting);
+  const knownFromTyped = storeTyped && typed ? findStore(typed) : undefined;
+  const policy = storeTyped ? knownFromTyped ?? null : parsed?.policy ?? null;
+  const effectiveStore = storeTyped ? policy?.name ?? typed : parsed?.store ?? '';
   /*
    * The feed first, then the table. A shop's window can have moved since this
    * build shipped, and the Watch tab was already saying so on the screen next
@@ -200,10 +250,26 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
    */
   // The date the person has confirmed where the paste gave none; the parsed
   // one otherwise, and while the typed one is not yet a date.
-  const boughtError = parsed && !parsed.dateFound ? purchaseProblem(boughtOn, today) : undefined;
-  const purchasedOn = parsed ? (parsed.dateFound || boughtError ? parsed.purchasedOn : boughtOn) : '';
+  const dateTyped = !!parsed && (!parsed.dateFound || correcting);
+  const boughtError = dateTyped ? purchaseProblem(boughtOn, today) : undefined;
+  const purchasedOn = parsed ? (!dateTyped || boughtError ? parsed.purchasedOn : boughtOn) : '';
   const inForce = policy && parsed ? windowInForceFor(policy.name, purchasedOn, updates) : undefined;
-  const effectiveWindow = inForce?.days ?? policy?.windowDays ?? parsed?.windowDays ?? 0;
+  const knownWindow = inForce?.days ?? policy?.windowDays ?? (storeTyped ? UNKNOWN_STORE_WINDOW_DAYS : parsed?.windowDays ?? 0);
+  /*
+   * The window, as a field, when the card is typed in or being corrected. A
+   * shop Kept has not checked gets 28 days as a guess, and until now that
+   * guess could not be changed before saving.
+   */
+  const windowTyped = typedIn || correcting;
+  const windowDaysRead = /^\d{1,4}$/.test(windowText.trim()) ? Number(windowText.trim()) : NaN;
+  const windowError = windowTyped && windowEdited
+    ? !Number.isInteger(windowDaysRead) || windowDaysRead < 1
+      ? 'Enter the number of days the shop gives'
+      : windowDaysRead > MAX_WINDOW_DAYS
+        ? 'Longer than any return window'
+        : undefined
+    : undefined;
+  const effectiveWindow = windowTyped && windowEdited && !windowError ? windowDaysRead : knownWindow;
 
   /**
    * The same rule the edit screen applies, from the same function. This screen
@@ -213,11 +279,13 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
    */
   const arrivalError = parsed && distance && arrivedOn ? arrivalProblem(arrivedOn, purchasedOn, today) : undefined;
 
-  const typedTotal = parsed && parsed.amount === null && totalText.trim() ? readAmount(totalText) : null;
-  const amount = parsed?.amount ?? (typedTotal?.ok ? typedTotal.pence : null);
+  const totalTyped = !!parsed && (parsed.amount === null || correcting);
+  const typedTotal = totalTyped && totalText.trim() ? readAmount(totalText) : null;
+  const amount = totalTyped ? (typedTotal?.ok ? typedTotal.pence : null) : parsed?.amount ?? null;
   const totalError = typedTotal && !typedTotal.ok ? typedTotal.error : undefined;
   const needsTotal = !!parsed && amount === null;
-  const cannotSave = quotaFull || !!arrivalError || needsTotal || !!boughtError;
+  const needsStore = !!parsed && storeTyped && !typed;
+  const cannotSave = quotaFull || !!arrivalError || needsTotal || !!boughtError || !!windowError || (typedIn && needsStore);
 
   /*
    * Where the clock starts, once, for the save AND the deadline preview. The
@@ -238,7 +306,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
   const photoToKeep = scannedPhotoToKeep(scanShot, text, keepPhoto);
 
   const save = async () => {
-    if (!parsed || quotaFull || arrivalError || boughtError || amount === null || saving) return;
+    if (!parsed || cannotSave || amount === null || saving) return;
     const store = savedStore;
     const id = makeReceiptId(today);
     /*
@@ -329,7 +397,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
         <div className="k-fade" role="alert" style={{ display: 'flex', gap: 10, background: color.white, border: '1.5px solid rgba(216,66,46,0.4)', borderRadius: 16, padding: '14px 16px', marginTop: 14 }}>
           <Warning stroke={color.danger} />
           <div style={{ fontSize: 13, color: color.danger, lineHeight: 1.5, fontWeight: 600 }}>
-            Couldn’t find a store or amount in that. Make sure the paste includes the shop’s name and a £ total — or add it by scanning the paper receipt.
+            Couldn’t find a store or amount in that. Make sure the paste includes the shop’s name and a £ total — or scan the paper receipt, or type it in yourself below.
           </div>
         </div>
       )}
@@ -354,7 +422,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       {parsed && (
         <div className="k-fade" style={{ background: color.white, border: `1.5px solid ${color.ink}`, borderRadius: radius.cardLg, padding: 18, marginTop: 16, boxShadow: shadow.hard }}>
           <div style={{ fontFamily: font.figures, fontSize: 11, letterSpacing: '1.6px', color: color.amber, fontWeight: 700 }}>
-            {scannedText !== null && text === scannedText ? 'READ FROM YOUR PHOTO' : 'FOUND IN YOUR PASTE'}
+            {typedIn ? 'TYPE IT IN' : scannedText !== null && text === scannedText ? 'READ FROM YOUR PHOTO' : 'FOUND IN YOUR PASTE'}
           </div>
           <div style={{ marginTop: 12 }}>
             <label htmlFor="add-item" style={{ display: 'block', fontSize: 12, fontWeight: 700, letterSpacing: '0.6px', color: color.muted, marginBottom: 6 }}>
@@ -372,7 +440,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
               }}
             />
           </div>
-          {parsed.store === null && (
+          {storeTyped && (
             <div style={{ marginTop: 12 }}>
               <label htmlFor="add-store" style={{ display: 'block', fontSize: 12, fontWeight: 700, letterSpacing: '0.6px', color: color.muted, marginBottom: 6 }}>
                 WHICH SHOP?
@@ -406,7 +474,9 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
                   ? inForce && effectiveWindow !== knownFromTyped.windowDays
                     ? `${knownFromTyped.name} — ${effectiveWindow} days, from a policy change on ${fmtDateLong(fromISODate(inForce.changedOn))}.`
                     : `${knownFromTyped.name} — ${effectiveWindow} days, from Kept’s list.`
-                  : 'We could not find a shop we know in that paste. Name it and we will use its real window if we have it.'}
+                  : typedIn || correcting
+                    ? 'Name the shop. If it is one Kept has checked, its real window is used.'
+                    : 'We could not find a shop we know in that paste. Name it and we will use its real window if we have it.'}
               </div>
             </div>
           )}
@@ -450,11 +520,11 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
               )}
             </div>
           )}
-          <Row label="Store" value={effectiveStore || 'Not recognised'} mono={false} />
-          {parsed.amount === null ? (
+          {!typedIn && !correcting && <Row label="Store" value={effectiveStore || 'Not recognised'} mono={false} />}
+          {totalTyped ? (
             <div style={{ margin: '4px 0 10px' }}>
               <label htmlFor="add-total" style={{ display: 'block', fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>
-                Total — the email didn’t say
+                {typedIn || correcting ? 'Total' : 'Total — the email didn’t say'}
               </label>
               <input
                 id="add-total"
@@ -477,14 +547,16 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
               )}
             </div>
           ) : (
-            <Row label="Total" value={money(parsed.amount)} mono />
+            <Row label="Total" value={money(parsed.amount ?? 0)} mono />
           )}
-          {parsed.dateFound ? (
+          {!dateTyped ? (
             <Row label="Bought" value={fmtDate(fromISODate(parsed.purchasedOn))} mono />
           ) : (
             <div style={{ margin: '4px 0 10px' }}>
               <label htmlFor="add-bought" style={{ display: 'block', fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>
-                Bought on — {scannedText !== null && text === scannedText ? 'not on the photo' : 'the email didn’t say'}
+                {typedIn || correcting
+                  ? 'Bought on'
+                  : `Bought on — ${scannedText !== null && text === scannedText ? 'not on the photo' : 'the email didn’t say'}`}
               </label>
               <input
                 id="add-bought"
@@ -506,14 +578,65 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
                 </div>
               ) : (
                 <div id="add-bought-note" style={{ fontSize: 12.5, color: color.muted, marginTop: 5 }}>
-                  Set to today as a guess. Every deadline counts from this day, so change it if you bought it earlier.
+                  {typedIn || correcting
+                    ? 'Every deadline counts from this day.'
+                    : 'Set to today as a guess. Every deadline counts from this day, so change it if you bought it earlier.'}
                 </div>
               )}
             </div>
           )}
           {parsed.orderRef && <Row label="Order number" value={parsed.orderRef} mono />}
-          <Row label="Return window" value={`${effectiveWindow} days`} mono={false} />
+          {windowTyped ? (
+            <div style={{ margin: '4px 0 10px' }}>
+              <label htmlFor="add-window" style={{ display: 'block', fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>
+                Return window, in days
+              </label>
+              <input
+                id="add-window"
+                inputMode="numeric"
+                value={windowEdited ? windowText : String(knownWindow)}
+                aria-invalid={!!windowError}
+                aria-describedby="add-window-note"
+                onChange={(e) => {
+                  setWindowText(e.target.value);
+                  setWindowEdited(true);
+                }}
+                style={{
+                  width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 14,
+                  border: `1.5px solid ${windowError ? color.danger : color.border}`, background: color.white,
+                  fontFamily: font.figures, fontSize: 14.5, color: color.ink,
+                }}
+              />
+              {windowError ? (
+                <div id="add-window-note" role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: color.danger, marginTop: 5 }}>
+                  {windowError}
+                </div>
+              ) : (
+                <div id="add-window-note" style={{ fontSize: 12.5, color: color.muted, marginTop: 5 }}>
+                  {windowEdited && effectiveWindow !== knownWindow
+                    ? `Your number, not ${policy ? `${policy.name}’s ${knownWindow}` : 'Kept’s guess'}. The receipt keeps it.`
+                    : policy
+                    ? `${policy.name} gives ${knownWindow} days${inForce ? `, since a policy change on ${fmtDateLong(fromISODate(inForce.changedOn))}` : ''}.`
+                    : `Not a shop Kept has checked, so ${UNKNOWN_STORE_WINDOW_DAYS} days is a guess — check the receipt or the shop’s site.`}
+                </div>
+              )}
+            </div>
+          ) : (
+            <Row label="Return window" value={`${effectiveWindow} days`} mono={false} />
+          )}
           <Row label="Deadline" value={deadline} mono accent />
+          {/* A camera misreads a total; a paste can carry two shops' names.
+              What was read is offered back as fields, holding the values it
+              read, rather than left as facts that can only be fixed after
+              saving. */}
+          {!typedIn && !correcting && (
+            <Pressable
+              onClick={startCorrecting}
+              style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', marginTop: 4, fontSize: 13, fontWeight: 600, textDecoration: 'underline' }}
+            >
+              Something wrong? Correct it
+            </Pressable>
+          )}
           {scanShot && (
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, minHeight: 44, fontSize: 14, color: photoToKeep || !keepPhoto ? color.ink : color.muted }}>
               <input
@@ -545,7 +668,17 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
               cursor: cannotSave ? 'not-allowed' : 'pointer',
             }}
           >
-            {quotaFull ? 'Go unlimited to save this' : arrivalError ? 'Fix the arrival date' : needsTotal ? 'Add the total to save' : 'Save receipt'}
+            {quotaFull
+              ? 'Go unlimited to save this'
+              : arrivalError
+                ? 'Fix the arrival date'
+                : typedIn && needsStore
+                  ? 'Add the shop to save'
+                  : needsTotal
+                    ? 'Add the total to save'
+                    : windowError
+                      ? 'Fix the return window'
+                      : 'Save receipt'}
           </Pressable>
         </div>
       )}
@@ -613,6 +746,16 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
             ? 'Reading it on this phone. Nothing is uploaded.'
             : 'Read on this phone — the photo is never uploaded. Check what it read before you save.'}
       </div>
+
+      {/* No email and no paper — a market stall, a receipt that went in the
+          bin, an order the inbox never kept. The same card, blank. */}
+      <Pressable
+        className="k-row-white"
+        onClick={typeItIn}
+        style={{ marginTop: 12, padding: 16, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 15 }}
+      >
+        Type it in yourself
+      </Pressable>
 
       {/* The three steps are a promise about the device holding them, and it
           was made everywhere: Web Share Target is Chromium's, so an iPhone

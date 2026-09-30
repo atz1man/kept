@@ -960,6 +960,67 @@ for (const cancel of [false, true]) {
 }
 
 /*
+ * Correcting what was read, and typing one in. The confirmation card's shop,
+ * total and date were facts: a misread total could be fixed only by editing
+ * the raw text and reading it again, or by saving and finding Edit — and with
+ * no email and no paper there was no way in at all. "Correct it" turns the
+ * rows into fields holding what was read; "Type it in yourself" opens the
+ * same card blank, whose window follows the shop until the person sets one.
+ */
+{
+  const tCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const tp = await tCtx.newPage();
+  await tp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await tp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await tp.getByRole('button', { name: 'Add a receipt' }).click();
+  await tp.locator('#paste').fill('Argos order · Kettle · Total £29.00 · 21 Aug 2026');
+  await tp.getByRole('button', { name: 'Read it' }).click();
+  await tp.waitForTimeout(300);
+  const seen = { offered: (await tp.getByRole('button', { name: 'Something wrong? Correct it' }).count()) === 1 };
+  const stored = (item) => tp.evaluate((i) => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => r.item === i), item);
+  if (seen.offered) {
+    await tp.getByRole('button', { name: 'Something wrong? Correct it' }).click();
+    await tp.waitForTimeout(200);
+    seen.heldWhatWasRead =
+      (await tp.locator('#add-store').inputValue()) === 'Argos' && (await tp.locator('#add-total').inputValue()) === '29.00' &&
+      (await tp.locator('#add-bought').inputValue()) === '2026-08-21' && (await tp.locator('#add-window').inputValue()) === '30';
+    await tp.locator('#add-item').fill('Kettle');
+    await tp.locator('#add-total').fill('19.00');
+    await tp.getByRole('button', { name: 'Save receipt' }).click();
+    await tp.waitForTimeout(400);
+    const k = await stored('Kettle');
+    seen.corrected = k?.amount === 1900 && k?.store === 'Argos' && k?.purchasedOn === '2026-08-21' && k?.windowDays === 30;
+  }
+  await tp.getByRole('button', { name: 'Add a receipt' }).click();
+  await tp.waitForTimeout(200);
+  const typeIt = tp.getByRole('button', { name: 'Type it in yourself' });
+  seen.typeOffered = (await typeIt.count()) === 1;
+  if (seen.typeOffered) {
+    await typeIt.click();
+    await tp.waitForTimeout(200);
+    seen.blank = /TYPE IT IN/.test(await tp.locator('main').innerText()) &&
+      (await tp.getByRole('button', { name: 'Add the shop to save' }).isDisabled());
+    await tp.locator('#add-item').fill('Face cream');
+    await tp.locator('#add-store').fill('boots');
+    await tp.locator('#add-total').fill('15');
+    await tp.waitForTimeout(200);
+    seen.followsShop = (await tp.locator('#add-window').inputValue()) === '35';
+    await tp.locator('#add-window').fill('0');
+    seen.zeroRefused = await tp.getByRole('button', { name: 'Fix the return window' }).isDisabled();
+    await tp.locator('#add-window').fill('60');
+    await tp.getByRole('button', { name: 'Save receipt' }).click();
+    await tp.waitForTimeout(400);
+    const today = await tp.evaluate(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
+    const c = await stored('Face cream');
+    seen.typed = c?.store === 'Boots' && c?.amount === 1500 && c?.windowDays === 60 && c?.purchasedOn === today;
+  }
+  const ok = seen.offered && seen.heldWhatWasRead && seen.corrected && seen.typeOffered && seen.blank && seen.followsShop && seen.zeroRefused && seen.typed;
+  results['what was read can be corrected before saving, and a receipt can be typed in from nothing'] = !!ok;
+  if (!ok) problems.push(`correct or type: ${JSON.stringify(seen)}`);
+  await tCtx.close();
+}
+
+/*
  * On its way. The order email is when most people add a receipt, and it comes
  * before the parcel — while ASOS, Amazon and Apple count from the doormat. The
  * app counted from the order and said, deep in the detail, that this was a
