@@ -1063,6 +1063,40 @@ for (const cancel of [false, true]) {
   await wCtx.close();
 }
 
+/*
+ * Saved. The save dropped the person on the list with nothing to say it had
+ * worked, or when it now has to go back by, and a receipt saved from the
+ * wrong email could be taken out only by finding it and deleting it. The
+ * list now says so, with the deadline, and offers it back.
+ */
+{
+  const vCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const vp = await vCtx.newPage();
+  await vp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await vp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  const count = () => vp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.length);
+  const before = await count();
+  await vp.getByRole('button', { name: 'Add a receipt' }).click();
+  await vp.locator('#paste').fill('Argos order · Kettle · Total £29.00 · 21 Sep 2026');
+  await vp.getByRole('button', { name: 'Read it' }).click();
+  await vp.waitForTimeout(300);
+  await vp.locator('#add-item').fill('Kettle');
+  await vp.getByRole('button', { name: 'Save receipt' }).click();
+  await vp.waitForTimeout(400);
+  const bar = vp.getByRole('status').filter({ hasText: /^Saved Kettle · return by / });
+  const seen = { said: (await bar.count()) === 1, stored: (await count()) === before + 1 };
+  if (seen.said) {
+    await bar.getByRole('button', { name: 'Undo' }).click();
+    await vp.waitForTimeout(300);
+    seen.undone = (await count()) === before && (await vp.getByRole('button', { name: /Argos, Kettle/ }).count()) === 0;
+    seen.gone = (await bar.count()) === 0;
+  }
+  const ok = seen.said && seen.stored && seen.undone && seen.gone;
+  results['a save says so, with the deadline, and can be taken back'] = !!ok;
+  if (!ok) problems.push(`saved: ${JSON.stringify(seen)}`);
+  await vCtx.close();
+}
+
 // The tab bar floats over every screen; its buttons must stay clickable.
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(400);
