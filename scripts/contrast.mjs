@@ -169,7 +169,10 @@ await sweep('home');
 const heldForSettled = await page.evaluate(() => {
   const raw = localStorage.getItem('kept.v1');
   const s = JSON.parse(raw);
-  s.receipts = s.receipts.map((r, i) => ({ ...r, status: 'returned', returnedOn: `2026-02-${String(10 + i).padStart(2, '0')}` }));
+  // Real days, one apart: a stamped "2026-02-${10 + i}" runs past the 28th
+  // on a seeded library and those rows are dropped on load as not dates.
+  const day = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  s.receipts = s.receipts.map((r, i) => ({ ...r, status: 'returned', returnedOn: day(i + 1) }));
   localStorage.setItem('kept.v1', JSON.stringify(s));
   return raw;
 });
