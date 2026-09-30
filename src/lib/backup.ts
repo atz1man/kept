@@ -177,6 +177,13 @@ export function readReceipt(raw: unknown, fromOutside = false): Receipt | null {
     status: r.status as ReceiptStatus,
     ...(r.returnedOn !== undefined ? { returnedOn: r.returnedOn as string } : {}),
     ...(refunded !== undefined ? { refunded } : {}),
+    // A sent fault letter: its day must be a real one, or the record is
+    // dropped — a reply asked about on a day that does not exist is never asked.
+    ...(() => {
+      const c = r.faultClaim as { sentOn?: unknown; what?: unknown } | undefined;
+      if (typeof c !== 'object' || c === null || !isISODate(c.sentOn)) return {};
+      return { faultClaim: { sentOn: c.sentOn, ...(isStr(c.what) ? { what: fromOutside ? trim(c.what, MAX_NOTE) : c.what } : {}) } };
+    })(),
     ...(r.keptOn !== undefined ? { keptOn: r.keptOn as string } : {}),
     ...(r.sentOn !== undefined ? { sentOn: r.sentOn as string } : {}),
     // A reference that would not have been accepted on screen is dropped, not

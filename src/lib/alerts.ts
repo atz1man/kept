@@ -1,4 +1,5 @@
 import { daysBetween, fmtDate, fromISODate } from './dates';
+import { REPLY_DAYS } from './fault-letter';
 import { money } from './money';
 import { derive } from './receipts';
 import type { Receipt } from './types';
@@ -25,7 +26,7 @@ export type ReturnRung = 'week' | 'soon' | 'today' | 'closed';
  * a different clock, usually a year or more later, and it is the one reason
  * to keep a receipt long after the window has shut.
  */
-export type AlertRung = ReturnRung | 'warranty' | 'refund';
+export type AlertRung = ReturnRung | 'warranty' | 'refund' | 'fault';
 
 /**
  * How long after something went back it is worth asking whether the money
@@ -54,6 +55,14 @@ export function remindedBeforeWindow(sent: readonly string[], receiptId: string)
  * the thing looked at while it is still covered.
  */
 export const WARRANTY_NOTICE_DAYS = 30;
+
+/**
+ * A fault letter sent about something still with its owner, on a real
+ * receipt: asked about once, on the day the letter asked the shop to reply by.
+ */
+export function faultWatched(r: Receipt): boolean {
+  return (r.status === 'active' || r.status === 'kept') && !r.demo && !!r.faultClaim;
+}
 
 /**
  * Whether a receipt's guarantee is worth a word from this app at all.
@@ -131,6 +140,13 @@ export function copyFor(rung: AlertRung, r: Receipt, daysLeft: number, deadline:
           r.distance ? ` For an online order, the shop has ${REFUND_CHASE_DAYS} days from getting it back to refund you.` : ''
         } If the money has not arrived, chase it.`,
       };
+    case 'fault':
+      // `deadline` is the day the letter went; `daysLeft` is unused. The
+      // fortnight is the letter's own ask, not the law's, and is called that.
+      return {
+        title: `Has ${r.store} replied?`,
+        body: `${what} — you wrote about the fault on ${fmtDate(deadline)} and asked for a reply within ${REPLY_DAYS} days. If nothing has come, Citizens Advice’s consumer service can tell you what to do next.`,
+      };
     case 'warranty':
       // `daysLeft` and `deadline` are the GUARANTEE's here. Cover runs to the
       // end of `deadline`, the day `derive` still calls it live.
@@ -173,6 +189,14 @@ export function dueAlerts(
         out.push({ receiptId: r.id, rung: 'warranty', key, ...copyFor('warranty', r, w.daysLeft, w.ends) });
       }
     }
+    // The fault letter, once, on the day its fortnight for a reply is up.
+    if (faultWatched(r)) {
+      const sentOn = fromISODate(r.faultClaim!.sentOn);
+      const key = alertKey(r.id, 'fault');
+      if (daysBetween(sentOn, today) >= REPLY_DAYS && !sent.has(key)) {
+        out.push({ receiptId: r.id, rung: 'fault', key, ...copyFor('fault', r, 0, sentOn) });
+      }
+    }
     if (r.status !== 'active') continue;
     /*
      * Never about the demo set.
@@ -200,7 +224,7 @@ export function dueAlerts(
   // one that gets read.
   // Only the ORDER of these numbers means anything — 'week' could be any value
   // above 'closed' and no test could tell, which is why none tries.
-  const order: Record<AlertRung, number> = { today: 0, soon: 1, closed: 2, week: 3, refund: 4, warranty: 5 };
+  const order: Record<AlertRung, number> = { today: 0, soon: 1, closed: 2, week: 3, refund: 4, fault: 5, warranty: 6 };
   return out.sort((a, b) => order[a.rung] - order[b.rung]);
 }
 
@@ -214,7 +238,7 @@ export function dueAlerts(
  */
 export function supersededKeys(alert: DeadlineAlert): string[] {
   // Its own clock, a single rung: nothing below it to have skipped.
-  if (alert.rung === 'warranty' || alert.rung === 'refund') return [];
+  if (alert.rung === 'warranty' || alert.rung === 'refund' || alert.rung === 'fault') return [];
   return LADDER.slice(0, LADDER.indexOf(alert.rung)).map((rung) => alertKey(alert.receiptId, rung));
 }
 

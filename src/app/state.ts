@@ -106,6 +106,8 @@ export type Action =
   | { type: 'send'; id: string }
   | { type: 'set-refund'; id: string; pence: number | null }
   | { type: 'unsend'; id: string }
+  | { type: 'fault-sent'; id: string; what: string }
+  | { type: 'fault-unsent'; id: string }
   | { type: 'set-return-ref'; id: string; ref: string | null }
   | { type: 'arrived'; id: string }
   | { type: 'unkeep'; id: string }
@@ -283,6 +285,28 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         ...(celebrating !== state.celebrating ? { shared: 'no' as const } : {}),
       };
     }
+    case 'fault-sent':
+      /*
+       * The fault letter has gone. On a receipt still with its owner — active
+       * or kept — which is where the panel that writes it lives. The words
+       * are kept, tidied, so the letter can be shown again as it was sent.
+       */
+      return {
+        ...state,
+        receipts: state.receipts.map((r) => {
+          if (r.id !== action.id || (r.status !== 'active' && r.status !== 'kept')) return r;
+          const what = action.what.trim().replace(/\s+/g, ' ');
+          return { ...r, faultClaim: { sentOn: toISODate(today), ...(what ? { what } : {}) } };
+        }),
+        // A reply asked about for an earlier letter says nothing about this one.
+        alertsSent: state.alertsSent.filter((k) => k !== alertKey(action.id, 'fault')),
+      };
+    case 'fault-unsent':
+      return {
+        ...state,
+        receipts: state.receipts.map((r) => (r.id === action.id ? { ...r, faultClaim: undefined } : r)),
+        alertsSent: state.alertsSent.filter((k) => k !== alertKey(action.id, 'fault')),
+      };
     case 'send':
       /*
        * Gone back, money still to come. From active only: a kept item that

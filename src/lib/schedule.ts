@@ -1,6 +1,7 @@
 import { addDays, fromISODate, startOfDay } from './dates';
 import { derive } from './receipts';
-import { alertKey, copyFor, REFUND_CHASE_DAYS, warrantyWatched, WARRANTY_NOTICE_DAYS, type AlertRung, type ReturnRung } from './alerts';
+import { alertKey, copyFor, faultWatched, REFUND_CHASE_DAYS, warrantyWatched, WARRANTY_NOTICE_DAYS, type AlertRung, type ReturnRung } from './alerts';
+import { REPLY_DAYS } from './fault-letter';
 import type { Receipt } from './types';
 
 /**
@@ -126,6 +127,15 @@ export function planAlerts(
         if (when.getTime() > now.getTime()) {
           out.push({ key, receiptId: r.id, rung: 'warranty', at: when, ...copyFor('warranty', r, WARRANTY_NOTICE_DAYS, w.ends) });
         }
+      }
+    }
+    // The fault letter: asked about at 9am on the day its reply was asked for.
+    if (faultWatched(r)) {
+      const sentOn = fromISODate(r.faultClaim!.sentOn);
+      const key = alertKey(r.id, 'fault');
+      const when = at9am(addDays(sentOn, REPLY_DAYS));
+      if (!sent.has(key) && when.getTime() > now.getTime()) {
+        out.push({ key, receiptId: r.id, rung: 'fault', at: when, ...copyFor('fault', r, 0, sentOn) });
       }
     }
     if (r.status !== 'active') continue;

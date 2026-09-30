@@ -92,6 +92,13 @@ export interface Receipt {
    */
   refunded?: number;
   /**
+   * The fault letter, once it has gone: the day it was sent and the person's
+   * own words about what is wrong, so the letter can be shown again as sent.
+   * The letter asks for a reply within a fortnight; without a record that it
+   * went, nothing could ask whether one came.
+   */
+  faultClaim?: { sentOn: string; what?: string };
+  /**
    * The day the person decided to keep it. Keeping is the commonest end to a
    * purchase and had no way to be said: the only exits were "returned" and
    * Delete, so a kept coat went on raising return reminders, then sat at the
