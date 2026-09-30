@@ -467,9 +467,12 @@ function Toggle({ label, detail, value, disabled, separator = true, onChange }: 
         opacity: disabled ? 0.55 : 1, cursor: disabled ? 'not-allowed' : 'pointer',
       }}
     >
-      <span style={{ fontSize: 14, fontWeight: 600 }}>{label}</span>
-      <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ fontSize: 14, color: color.muted }}>{detail}</span>
+      {/* The name keeps its line; only the status may wrap, beside the switch.
+          With the two sharing the row equally, "Blocked by your browser" split
+          the label as well — "Deadline / alerts" — on a phone. */}
+      <span style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>{label}</span>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+        <span style={{ fontSize: 14, color: color.muted, textAlign: 'right' }}>{detail}</span>
         <span
           aria-hidden="true"
           style={{
