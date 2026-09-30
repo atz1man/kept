@@ -819,7 +819,7 @@ for (const cancel of [false, true]) {
   await ap.reload({ waitUntil: 'networkidle' });
   await ap.waitForTimeout(300);
   const row = ap.getByRole('button', { name: /^ASOS, Trainers/ });
-  const seen = { listed: /on its way, 23 days left/.test((await row.getAttribute('aria-label').catch(() => '')) ?? '') };
+  const seen = { listed: /^ASOS, Trainers \(on its way\), £60\.00, 23 days left$/.test((await row.getAttribute('aria-label').catch(() => '')) ?? '') };
   await row.click().catch(() => {});
   await ap.waitForTimeout(300);
   const tap = ap.getByRole('button', { name: 'It arrived today' });

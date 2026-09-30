@@ -99,11 +99,11 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
           }
           onOpen();
         }}
-        // "(sample)" sits with the item rather than at the end, because the
+        // "(sample)" and "(on its way)" sit with the item rather than at the end, because the
         // agreement sweep reads the amount and the status off the last two
         // fields of this label — and because "mixer (sample)" is how a person
         // would say it.
-        aria-label={`${receipt.store}, ${receipt.item}${receipt.demo ? ' (sample)' : ''}, ${money(receipt.amount)}${onItsWay ? ', on its way' : ''}, ${urgency.label}`}
+        aria-label={`${receipt.store}, ${receipt.item}${receipt.demo ? ' (sample)' : ''}${onItsWay ? ' (on its way)' : ''}, ${money(receipt.amount)}, ${urgency.label}`}
         style={{
           display: 'flex', alignItems: 'center', gap: 13, padding: 15,
           background: emphasised ? color.white : color.cream,
