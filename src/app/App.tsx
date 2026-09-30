@@ -372,6 +372,7 @@ export function App() {
                 }
               : undefined
           }
+          onClearSamples={() => dispatch({ type: 'clear-samples' })}
           onAdd={() => dispatch({ type: 'go', screen: 'add' })}
           onWatch={() => dispatch({ type: 'go', screen: 'watch' })}
         />
@@ -429,6 +430,7 @@ export function App() {
           receipts={state.receipts}
           onExport={exportNow}
           onRestore={(receipts) => dispatch({ type: 'restore', receipts })}
+          onClearSamples={() => dispatch({ type: 'clear-samples' })}
           onWipe={() => {
             // Cleared from disk as well as from state: leaving the old blob
             // behind would mean "erase everything" removed it from the screen
