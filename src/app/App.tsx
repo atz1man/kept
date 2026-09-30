@@ -26,9 +26,54 @@ import { Onboarding } from './screens/Onboarding';
 import { Settings } from './screens/Settings';
 import { Watch } from './screens/Watch';
 import { quotaFull, useApp } from './state';
+import { backTarget, screenDepth } from './back';
 
 export function App() {
   const { state, dispatch, today, saveFailed } = useApp();
+
+  /*
+   * The phone's own Back. One history entry per level (`screenDepth`), pushed
+   * as the app goes deeper and taken back as it comes up, so the browser's
+   * Back steps up a level instead of leaving kept. Pops the app makes itself
+   * are counted and ignored by the listener, which otherwise reads every pop
+   * as the person pressing Back.
+   *
+   * Never inside the landing page's demo: an iframe shares the page's session
+   * history, and entries pushed there would make the visitor's Back step
+   * through the demo before it left the landing page.
+   */
+  const historyDepth = useRef(0);
+  const ownPops = useRef(0);
+  const screenNow = useRef(state.screen);
+  screenNow.current = state.screen;
+  useEffect(() => {
+    if (state.embedded) return;
+    const onPop = (e: PopStateEvent) => {
+      if (ownPops.current > 0) {
+        ownPops.current -= 1;
+        return;
+      }
+      const depth = (e.state as { keptDepth?: unknown } | null)?.keptDepth;
+      historyDepth.current = typeof depth === 'number' ? depth : 0;
+      const to = backTarget(screenNow.current);
+      if (to) dispatch({ type: 'go', screen: to });
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [state.embedded, dispatch]);
+  useEffect(() => {
+    if (state.embedded) return;
+    const target = screenDepth(state.screen);
+    if (target > historyDepth.current) {
+      for (let d = historyDepth.current + 1; d <= target; d++) history.pushState({ keptDepth: d }, '');
+      historyDepth.current = target;
+    } else if (target < historyDepth.current) {
+      const steps = historyDepth.current - target;
+      historyDepth.current = target;
+      ownPops.current += 1;
+      history.go(-steps);
+    }
+  }, [state.screen, state.embedded]);
   const { screen, settings } = state;
 
   // The web build's library lives only in this browser; ask it to keep it.
