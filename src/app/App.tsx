@@ -447,6 +447,7 @@ export function App() {
           onShare={shareWin}
           onSetRefund={(pence) => state.celebrating && dispatch({ type: 'set-refund', id: state.celebrating.id, pence })}
           onDone={() => dispatch({ type: 'go', screen: 'home' })}
+          undoShowing={!!state.justReturned}
         />
       )}
 

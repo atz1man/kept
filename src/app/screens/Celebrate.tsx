@@ -27,16 +27,26 @@ interface Props {
   onShare: () => void;
   onSetRefund: (pence: number | null) => void;
   onDone: () => void;
+  /**
+   * The return's undo offer is floating over the foot of the screen. It
+   * always is, for its first eight seconds: it rides above the tab bar and
+   * covered "Back to receipts" on a short phone.
+   */
+  undoShowing?: boolean;
 }
 
-export function Celebrate({ amount, cost, store, inTime, recovered, shared, line, onShare, onSetRefund, onDone }: Props) {
+export function Celebrate({ amount, cost, store, inTime, recovered, shared, line, onShare, onSetRefund, onDone, undoShowing = false }: Props) {
   const [correcting, setCorrecting] = useState(false);
   return (
     // Bottom padding clears the floating tab bar. The design drew this screen
     // with the same 40px inset every full-bleed screen has, which puts "Back to
     // receipts" underneath the bar — visible, and unclickable.
-    <div className="k-fade" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '6px 20px 104px' }}>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+    // Scrolls, like every other screen: it was sized to fit exactly, and the
+    // refund form opening under the card pushed its own buttons beneath the
+    // tab bar with no way to reach them. The middle grows to centre the card
+    // and never shrinks below its content.
+    <div className="k-fade" style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', padding: `6px 20px ${undoShowing ? 196 : 104}px` }}>
+      <div style={{ flex: '1 0 auto', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <div style={{ background: color.ink, color: color.cream, borderRadius: radius.heroLg, padding: '30px 26px', boxShadow: shadow.yellowXl, position: 'relative', overflow: 'hidden' }}>
           <LogoWatermark style={{ position: 'absolute', top: -28, right: -34, transform: 'rotate(12deg)', opacity: 0.14 }} />
           <LogoChecked />
