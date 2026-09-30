@@ -668,6 +668,28 @@ for (const cancel of [false, true]) {
 }
 
 /*
+ * The web build's library lives only in this browser, and it never asked the
+ * browser to keep it. It asks now, once, on open.
+ */
+{
+  const pCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  await pCtx.addInitScript(() => {
+    window.__persistAsked = 0;
+    if (navigator.storage) {
+      navigator.storage.persisted = async () => false;
+      navigator.storage.persist = async () => (window.__persistAsked += 1, true);
+    }
+  });
+  const pp = await pCtx.newPage();
+  await pp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await pp.waitForTimeout(400);
+  const asked = await pp.evaluate(() => window.__persistAsked);
+  results['the web app asks the browser to keep its library'] = asked === 1;
+  if (!results['the web app asks the browser to keep its library']) problems.push(`persist asked ${asked} times`);
+  await pCtx.close();
+}
+
+/*
  * Which clock closes first. Four places said kept tells you, and no screen
  * did. The headphones' 14 days go before the 30-day right to reject; the
  * coat, ordered online with no arrival date, loses its right to reject first,
@@ -773,10 +795,18 @@ results['a returned receipt can still be opened'] =
 // And says WHEN. The date has been stored since this screen was written and
 // never shown: "£89.00 recovered ✓" reads the same whether the refund landed
 // last week or last year.
-results['a returned receipt says when the money came back'] = await page
-  .getByText(new RegExp(`recovered on ${new Date().toLocaleDateString('en-GB', { day: 'numeric' })} `))
-  .isVisible()
-  .catch(() => false);
+// The day the app STORED, not "today" as this check computes it: a run that
+// crosses midnight made the return on one day and asked about the next, and
+// failed on a screen that was right.
+{
+  const returnedOn = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => r.id === 'seed_currys')?.returnedOn ?? '');
+  const day = returnedOn ? String(Number(returnedOn.slice(8, 10))) : 'no date stored';
+  results['a returned receipt says when the money came back'] = await page
+    .getByText(new RegExp(`recovered on ${day} `))
+    .isVisible()
+    .catch(() => false);
+}
 await page.getByRole('button', { name: 'Not actually returned' }).click();
 await page.waitForTimeout(400);
 results['a return can be undone'] =
