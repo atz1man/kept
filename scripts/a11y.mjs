@@ -105,6 +105,25 @@ await page.getByRole('button', { name: 'Skip' }).click().catch(() => {});
 await page.waitForTimeout(400);
 await audit(page, 'home', findings);
 
+// A long settled list: its latest three, "Show all", and the whole list. Every
+// receipt returned for the length of this step, then put back as it was.
+const heldForSettled = await page.evaluate(() => {
+  const raw = localStorage.getItem('kept.v1');
+  const s = JSON.parse(raw);
+  s.receipts = s.receipts.map((r, i) => ({ ...r, status: 'returned', returnedOn: `2026-02-${String(10 + i).padStart(2, '0')}` }));
+  localStorage.setItem('kept.v1', JSON.stringify(s));
+  return raw;
+});
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForTimeout(400);
+await audit(page, 'home · long settled list', findings);
+await page.getByRole('button', { name: /^Show all \d+$/ }).click();
+await page.waitForTimeout(200);
+await audit(page, 'home · settled list opened', findings);
+await page.evaluate((raw) => localStorage.setItem('kept.v1', raw), heldForSettled);
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForTimeout(400);
+
 await page.getByRole('button', { name: /Currys, JBL/ }).click();
 await page.waitForTimeout(400);
 await audit(page, 'receipt detail', findings);

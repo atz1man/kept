@@ -447,7 +447,10 @@ for (const width of WIDTHS) {
   await sweep(width, null, 'seeded', screens);
   await sweep(width, seedAdversarial(ADVERSARIAL), 'long content', screens, { expectKind: 'adversarial' });
   await sweep(width, wipeTo('none'), 'no receipts', [['home', async () => {}], ['add', async (p) => { await p.getByRole('button', { name: 'Add a receipt' }).click(); }]], { expectKind: 'none' });
-  await sweep(width, wipeTo('returned'), 'all returned', [['home', async () => {}]], { expectKind: 'returned' });
+  await sweep(width, wipeTo('returned'), 'all returned', [
+    ['home', async () => {}],
+    ['home · all shown', async (p) => { await p.getByRole('button', { name: /^Show all \d+$/ }).click(); }],
+  ], { expectKind: 'returned' });
   await sweep(width, null, 'webfont blocked', screens, { blockFonts: true });
 }
 
