@@ -440,13 +440,16 @@ export function App() {
       {screen === 'celebrate' && state.celebrating && (
         <Celebrate
           amount={state.celebrating.amount}
+          cost={state.celebrating.cost}
           store={state.celebrating.store}
           inTime={state.celebrating.inTime}
           recovered={recovered}
           shared={state.shared}
           line={winLine}
           onShare={shareWin}
+          onSetRefund={(pence) => state.celebrating && dispatch({ type: 'set-refund', id: state.celebrating.id, pence })}
           onDone={() => dispatch({ type: 'go', screen: 'home' })}
+          undoShowing={!!state.justReturned}
         />
       )}
 
