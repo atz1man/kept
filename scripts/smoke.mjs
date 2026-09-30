@@ -1342,6 +1342,49 @@ for (const cancel of [false, true]) {
   await tCtx.close();
 }
 
+/*
+ * Rights are shown while the thing is still with its owner. A returned
+ * online order said "you can cancel for any reason until …, n days left"
+ * about a right already used; one on its way back did the same. Bought three
+ * days ago, so every right is live and only the status can hide them.
+ */
+{
+  const rCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const rp = await rCtx.newPage();
+  await rp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await rp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await rp.waitForTimeout(300);
+  await rp.evaluate(() => {
+    const iso = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    const s = JSON.parse(localStorage.getItem('kept.v1'));
+    const base = { cat: 'clothing', amount: 4000, purchasedOn: iso(3), arrivedOn: iso(2), windowDays: 28, policy: 'p', distance: true };
+    s.receipts.push(
+      { ...base, id: 'r_back', store: 'ASOS', item: 'Jacket', status: 'returned', sentOn: iso(1), returnedOn: iso(0) },
+      { ...base, id: 'r_sent', store: 'Boohoo', item: 'Scarf', status: 'sent', sentOn: iso(1) },
+      { ...base, id: 'r_kept', store: 'Next', item: 'Jumper', status: 'kept', keptOn: iso(0) },
+    );
+    localStorage.setItem('kept.v1', JSON.stringify(s));
+  });
+  await rp.reload({ waitUntil: 'networkidle' });
+  await rp.waitForTimeout(300);
+  const rightsOn = async (name, store) => {
+    await rp.getByRole('button', { name }).first().click({ timeout: 3000 }).catch(() => {});
+    await rp.waitForTimeout(300);
+    const text = (await rp.locator('main').innerText().catch(() => '')) ?? '';
+    const opened = (await rp.getByRole('heading', { level: 1, name: store }).count()) === 1;
+    await rp.getByRole('button', { name: 'Back', exact: true }).click({ timeout: 3000 }).catch(() => {});
+    await rp.waitForTimeout(300);
+    return { opened, rights: /YOUR LEGAL RIGHT/.test(text), cancel: /cancel for any reason/i.test(text) };
+  };
+  const seen = { back: await rightsOn(/^ASOS, Jacket/, 'ASOS'), sent: await rightsOn(/^Boohoo, Scarf/, 'Boohoo'), kept: await rightsOn(/^Next, Jumper/, 'Next') };
+  const ok = seen.back.opened && !seen.back.rights && !seen.back.cancel &&
+    seen.sent.opened && !seen.sent.rights && !seen.sent.cancel &&
+    seen.kept.opened && seen.kept.rights;
+  results['a receipt that has gone back shows no live rights; a kept one keeps them'] = !!ok;
+  if (!ok) problems.push(`settled rights: ${JSON.stringify(seen)}`);
+  await rCtx.close();
+}
+
 // The tab bar floats over every screen; its buttons must stay clickable.
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(400);

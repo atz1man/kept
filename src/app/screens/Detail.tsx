@@ -278,6 +278,11 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
           )}
         </div>
 
+        {/* Only while it is still with its owner. A returned receipt said "you
+            can cancel for any reason until…, n days left" about a right it had
+            already used, and one on its way back likewise: what is left for
+            those is the refund, set out below. A kept one keeps its rights. */}
+        {(receipt.status === 'active' || receipt.status === 'kept') && (
         <div style={{ borderTop: `1.5px solid ${color.borderHair}`, padding: '15px 18px' }}>
           <Pressable
             onClick={() => setLegalOpen((v) => !v)}
@@ -309,6 +314,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               </div>
             ))}
         </div>
+        )}
 
         {asksForGuarantee(receipt) && (
           <div style={{ borderTop: `1.5px solid ${color.borderHair}`, padding: '15px 18px' }}>
