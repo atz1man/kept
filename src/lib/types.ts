@@ -108,6 +108,13 @@ export interface Receipt {
    */
   faultClaim?: { sentOn: string; what?: string };
   /**
+   * The day notice of cancellation went to the shop, for an order bought at a
+   * distance. Cancelling is telling the shop, not posting the parcel, and it
+   * is this day that starts the fourteen to send it back and decides whether
+   * the refund rule in regulation 34 applies.
+   */
+  cancelledOn?: string;
+  /**
    * The day the person decided to keep it. Keeping is the commonest end to a
    * purchase and had no way to be said: the only exits were "returned" and
    * Delete, so a kept coat went on raising return reminders, then sat at the

@@ -115,6 +115,8 @@ export type Action =
   | { type: 'keep'; id: string }
   /** `undoable`: from the swipe, which fires on rows people meant to open; the receipt's own screen has "Not sent after all" beside it. */
   | { type: 'send'; id: string; undoable?: boolean }
+  | { type: 'cancel-sent'; id: string }
+  | { type: 'cancel-unsent'; id: string }
   | { type: 'set-refund'; id: string; pence: number | null }
   | { type: 'set-credit'; id: string; credit: { expires?: string } | null }
   | { type: 'credit-spent'; id: string }
@@ -387,6 +389,22 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         ...state,
         receipts: state.receipts.map((r) => (r.id === action.id ? { ...r, faultClaim: undefined } : r)),
         alertsSent: state.alertsSent.filter((k) => k !== alertKey(action.id, 'fault')),
+      };
+    case 'cancel-sent':
+      /*
+       * Notice of cancellation has gone. Only on an online order still in
+       * hand, and once: the first day it went is the day the law counts from.
+       */
+      return {
+        ...state,
+        receipts: state.receipts.map((r) =>
+          r.id === action.id && r.distance && r.status === 'active' && !r.cancelledOn ? { ...r, cancelledOn: toISODate(today) } : r,
+        ),
+      };
+    case 'cancel-unsent':
+      return {
+        ...state,
+        receipts: state.receipts.map((r) => (r.id === action.id && r.cancelledOn ? { ...r, cancelledOn: undefined } : r)),
       };
     case 'send':
       /*

@@ -451,6 +451,8 @@ export function App() {
           onCreditSpent={(spent) => dispatch({ type: spent ? 'credit-spent' : 'credit-unspent', id: selected.id })}
           onFaultSent={(what) => dispatch({ type: 'fault-sent', id: selected.id, what })}
           onFaultUnsent={() => dispatch({ type: 'fault-unsent', id: selected.id })}
+          onCancelSent={() => dispatch({ type: 'cancel-sent', id: selected.id })}
+          onCancelUnsent={() => dispatch({ type: 'cancel-unsent', id: selected.id })}
           onDelete={() => dispatch({ type: 'delete', id: selected.id })}
         />
       )}

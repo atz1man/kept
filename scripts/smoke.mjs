@@ -1643,6 +1643,62 @@ for (const cancel of [false, true]) {
   await sCtx.close();
 }
 
+/*
+ * Cancelling an online order in writing. Cancelling is telling the shop,
+ * and kept recorded only the posting, so it never knew the day the fourteen
+ * to send it back count from. The notice is offered while the period runs,
+ * the day it went is kept across a reload, the receipt then says when the
+ * parcel must go by, and a counter purchase is offered nothing.
+ */
+{
+  const nCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const np = await nCtx.newPage();
+  await np.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await np.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await np.waitForTimeout(300);
+  const today = await np.evaluate(() => {
+    const iso = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    const s = JSON.parse(localStorage.getItem('kept.v1'));
+    s.receipts.push(
+      { id: 'r_online', store: 'ASOS', item: 'Trainers', cat: 'clothing', amount: 6000, purchasedOn: iso(3), arrivedOn: iso(2), windowDays: 28, policy: 'p', distance: true, status: 'active', orderRef: 'AS-123' },
+      { id: 'r_counter', store: 'Boots', item: 'Hairdryer', cat: 'other', amount: 3000, purchasedOn: iso(3), windowDays: 35, policy: 'p', distance: false, status: 'active' },
+    );
+    localStorage.setItem('kept.v1', JSON.stringify(s));
+    return iso(0);
+  });
+  await np.reload({ waitUntil: 'networkidle' });
+  await np.waitForTimeout(300);
+  const open = async (name) => { await np.getByRole('button', { name }).first().click({ timeout: 3000 }).catch(() => {}); await np.waitForTimeout(300); };
+  const back = async () => { await np.getByRole('button', { name: 'Back', exact: true }).click({ timeout: 3000 }).catch(() => {}); await np.waitForTimeout(300); };
+  const stored = () => np.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => r.id === 'r_online')?.cancelledOn);
+  const seen = {};
+  await open(/^Boots, Hairdryer/);
+  seen.counterNone = (await np.getByRole('button', { name: 'Cancel the order in writing' }).count()) === 0;
+  await back();
+  await open(/^ASOS, Trainers/);
+  await np.getByRole('button', { name: 'Cancel the order in writing' }).click({ timeout: 3000 }).catch(() => {});
+  await np.waitForTimeout(300);
+  const panel = (await np.locator('[data-cancel-panel]').innerText().catch(() => '')) ?? '';
+  seen.letter = /Dear ASOS,/.test(panel) && /Order number: AS-123/.test(panel) && /regulation 34/.test(panel);
+  await np.getByRole('button', { name: 'I’ve sent the notice' }).click({ timeout: 3000 }).catch(() => {});
+  await np.waitForTimeout(300);
+  seen.recorded = (await stored()) === today;
+  await np.reload({ waitUntil: 'networkidle' });
+  await np.waitForTimeout(300);
+  seen.survives = (await stored()) === today;
+  await open(/^ASOS, Trainers/);
+  await np.getByRole('button', { name: 'Order cancelled' }).click({ timeout: 3000 }).catch(() => {});
+  await np.waitForTimeout(300);
+  seen.sendBy = /Send it back by .+ — the law gives fourteen days from cancelling\./.test((await np.locator('[data-cancel-sent]').innerText().catch(() => '')) ?? '');
+  await np.getByRole('button', { name: 'Not sent after all' }).click({ timeout: 3000 }).catch(() => {});
+  await np.waitForTimeout(300);
+  seen.takenBack = (await stored()) === undefined;
+  const ok = Object.values(seen).every(Boolean);
+  results['an online order can be cancelled in writing, and the day it went decides when it must go back'] = ok;
+  if (!ok) problems.push(`cancel notice: ${JSON.stringify({ ...seen, panel: panel.slice(0, 120) })}`);
+  await nCtx.close();
+}
+
 // The tab bar floats over every screen; its buttons must stay clickable.
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(400);

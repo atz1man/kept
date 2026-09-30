@@ -70,6 +70,8 @@ export const COOLING_OFF_DAYS = 14;
  * changed the sentence about cancelling.
  */
 export const RETURN_AFTER_CANCEL_DAYS = 14;
+/** Reg. 28(1)(e), in the words the cooling-off sentence carries for toiletries and cosmetics. */
+export const SEALED_EXCEPTION = 'Not for sealed toiletries or cosmetics once the seal is broken.';
 
 const days = (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`;
 
@@ -161,18 +163,22 @@ function shortTermRejectRight(bought: Date, today: Date, hedged: boolean): Legal
   };
 }
 
-function coolingOffRight(bought: Date, today: Date, storeWindowOpen: boolean, hedged: boolean): LegalRight {
+function coolingOffRight(bought: Date, today: Date, storeWindowOpen: boolean, hedged: boolean, sealedGoods: boolean): LegalRight {
   const ends = addDays(bought, COOLING_OFF_DAYS);
   const left = daysBetween(today, ends);
   const shopStillOpen = storeWindowOpen ? ' The shop’s own window above is still open either way.' : '';
+  // Reg. 28(1)(e): sealed goods not fit to return for health or hygiene
+  // reasons, once unsealed after delivery, cannot be cancelled. Said as the
+  // rule it is, not as a verdict on this item — kept cannot see the seal.
+  const sealed = sealedGoods ? ` ${SEALED_EXCEPTION}` : '';
   return {
     chip: 'Consumer Contracts Regs',
     live: left >= 0,
     body:
       left >= 0
         ? hedged
-          ? `${COOLING_OFF_DAYS}-day cooling-off on distance purchases — you can cancel for any reason until at least ${fmtDate(ends)} (${days(left)} left), then ${RETURN_AFTER_CANCEL_DAYS} more days to send it back. ${AFTER_ARRIVAL}`
-          : `${COOLING_OFF_DAYS}-day cooling-off on distance purchases — you can cancel for any reason until ${fmtDate(ends)} (${days(left)} left), counting from the day it arrived, then ${RETURN_AFTER_CANCEL_DAYS} more days to send it back.`
+          ? `${COOLING_OFF_DAYS}-day cooling-off on distance purchases — you can cancel for any reason until at least ${fmtDate(ends)} (${days(left)} left), then ${RETURN_AFTER_CANCEL_DAYS} more days to send it back. ${AFTER_ARRIVAL}${sealed}`
+          : `${COOLING_OFF_DAYS}-day cooling-off on distance purchases — you can cancel for any reason until ${fmtDate(ends)} (${days(left)} left), counting from the day it arrived, then ${RETURN_AFTER_CANCEL_DAYS} more days to send it back.${sealed}`
         : hedged
           ? `Counting from your order, the ${COOLING_OFF_DAYS}-day cooling-off has run out — ${CHECK_ARRIVAL}.${shopStillOpen || ' You keep the rights above for anything that turns out to be faulty.'} ${UNTOLD_EXTENSION}`
           : `The ${COOLING_OFF_DAYS}-day cooling-off has passed, counting from the day it arrived.${shopStillOpen || ' You keep the rights above for anything that turns out to be faulty.'} ${UNTOLD_EXTENSION}`,
@@ -198,7 +204,7 @@ export function legalRights(r: Receipt, today: Date, storeWindowOpen: boolean): 
   const reject = shortTermRejectRight(from, today, !known);
   if (!r.distance) return [reject];
 
-  const coolingOff = coolingOffRight(from, today, storeWindowOpen, !known);
+  const coolingOff = coolingOffRight(from, today, storeWindowOpen, !known, r.cat === 'beauty');
   return coolingOff.live ? [coolingOff, reject] : [reject, coolingOff];
 }
 
