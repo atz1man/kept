@@ -21,7 +21,7 @@ const state = (r: Receipt, alertsSent: string[] = []): AppState => ({
   version: 1, receipts: [r], updates: [], onboardingSeen: true,
   settings: { ...DEFAULT_SETTINGS }, alertsSent,
   screen: 'detail', selId: r.id, obStep: 0, celebrating: null, shared: 'no', upgrading: null,
-  sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null,
+  sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null, justAdded: null,
 });
 
 describe('whether an order is still on its way', () => {

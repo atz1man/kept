@@ -6,7 +6,8 @@ import { FEED_PUBLIC_KEY, feedIsAcceptable, verifyFeed } from '../lib/feed-signa
 import { currentNotifyState, deliver, offerReminders, type NotifyState } from './notify';
 import { isNative } from '../lib/mirror';
 import { money, sumPence } from '../lib/money';
-import { countsAsMoney, recoveredPence } from '../lib/receipts';
+import { countsAsMoney, derive, recoveredPence } from '../lib/receipts';
+import { fmtDateNear } from '../lib/dates';
 import { winSentence } from '../lib/words';
 import { exportBackup, wipe } from '../lib/storage';
 import { keepStorage } from '../lib/persist';
@@ -466,6 +467,21 @@ export function App() {
           onDismiss={() => dispatch({ type: 'dismiss-undo' })}
         />
       )}
+
+      {state.justAdded && (() => {
+        // Where it went, in the words the list uses for it: the deadline it is
+        // now counting to. Found by id, so an undo that raced a sync says nothing.
+        const added = state.receipts.find((r) => r.id === state.justAdded);
+        if (!added) return null;
+        return (
+          <UndoBar
+            key={`added:${added.id}`}
+            label={`Saved ${added.item} · return by ${fmtDateNear(derive(added, today).deadline, today)}`}
+            onUndo={() => dispatch({ type: 'undo-add' })}
+            onDismiss={() => dispatch({ type: 'dismiss-undo' })}
+          />
+        );
+      })()}
 
       {state.justKept && (
         <UndoBar
