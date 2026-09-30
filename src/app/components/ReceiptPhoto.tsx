@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { color, radius } from '../../tokens';
 import { isNative } from '../../lib/mirror';
 import { deletePhoto, isCameraCancellation, readPhoto, savePhoto } from '../../lib/photos';
@@ -32,6 +32,15 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
    * the person goes and deletes photographs to make room that was never short.
    */
   const [failed, setFailed] = useState<'save' | 'camera' | null>(null);
+  /*
+   * Removing asks first. One tap deleted the file for good — no undo, and
+   * nothing anywhere else to restore it from, since a backup carries the
+   * receipts and not their photographs — on a button sitting right under the
+   * picture a person scrolls past with a thumb.
+   */
+  const [confirming, setConfirming] = useState(false);
+  /** Full screen, to hand across a counter: the one place a slip is asked for. */
+  const [viewing, setViewing] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -75,6 +84,7 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
 
   const remove = async () => {
     await deletePhoto(receiptId);
+    setConfirming(false);
     setData(null);
   };
 
@@ -90,12 +100,43 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
             alt="The paper receipt for this purchase"
             style={{ width: '100%', borderRadius: radius.card, border: `1.5px solid ${color.border}`, display: 'block' }}
           />
-          <Pressable
-            onClick={() => void remove()}
-            style={{ marginTop: 10, padding: '10px 14px', borderRadius: 999, border: `1.5px solid ${color.border}`, background: color.white, fontSize: 13, fontWeight: 700 }}
-          >
-            Remove the photo
-          </Pressable>
+          {confirming ? (
+            <div role="group" aria-label="Remove the photo?" style={{ marginTop: 10 }}>
+              <div style={{ fontSize: 13, color: color.bodyStrong, lineHeight: 1.5 }}>
+                Remove it for good? A backup does not carry photos, so it cannot be brought back.
+              </div>
+              <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
+                <Pressable
+                  onClick={() => void remove()}
+                  style={{ padding: '10px 14px', borderRadius: 999, background: color.danger, color: color.white, fontSize: 13, fontWeight: 700 }}
+                >
+                  Remove it for good
+                </Pressable>
+                <Pressable
+                  onClick={() => setConfirming(false)}
+                  style={{ padding: '10px 14px', borderRadius: 999, border: `1.5px solid ${color.border}`, background: color.white, fontSize: 13, fontWeight: 700 }}
+                >
+                  Keep it
+                </Pressable>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+              <Pressable
+                onClick={() => setViewing(true)}
+                style={{ padding: '10px 14px', borderRadius: 999, background: color.ink, color: color.cream, fontSize: 13, fontWeight: 700 }}
+              >
+                Show it full screen
+              </Pressable>
+              <Pressable
+                onClick={() => setConfirming(true)}
+                style={{ padding: '10px 14px', borderRadius: 999, border: `1.5px solid ${color.border}`, background: color.white, fontSize: 13, fontWeight: 700 }}
+              >
+                Remove the photo
+              </Pressable>
+            </div>
+          )}
+          {viewing && <FullScreen data={data} onClose={() => setViewing(false)} />}
         </>
       ) : (
         <>
@@ -120,6 +161,57 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * The slip, filling the screen, for handing across a counter.
+ *
+ * A dialog in the full sense: focus moves to Close when it opens and back to
+ * the picture when it shuts, and Escape shuts it — without those a keyboard or
+ * VoiceOver user is told nothing has appeared and cannot leave it.
+ */
+function FullScreen({ data, onClose }: { data: string; onClose: () => void }) {
+  const box = useRef<HTMLDivElement>(null);
+  const done = useRef(onClose);
+  done.current = onClose;
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    box.current?.querySelector('button')?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') done.current();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      opener?.focus();
+    };
+  }, []);
+  return (
+    <div
+      ref={box}
+      role="dialog"
+      aria-modal="true"
+      aria-label="The paper receipt"
+      style={{
+        position: 'fixed', inset: 0, zIndex: 70, background: color.ink, display: 'flex', flexDirection: 'column',
+        padding: 'calc(12px + env(safe-area-inset-top, 0px)) 12px calc(12px + env(safe-area-inset-bottom, 0px))',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Pressable
+          onClick={onClose}
+          style={{ width: 'auto', minHeight: 44, padding: '10px 18px', borderRadius: 999, background: color.cream, color: color.ink, fontSize: 14, fontWeight: 700 }}
+        >
+          Close
+        </Pressable>
+      </div>
+      <img
+        src={`data:image/jpeg;base64,${data}`}
+        alt="The paper receipt for this purchase, full screen"
+        style={{ flex: 1, minHeight: 0, width: '100%', objectFit: 'contain', marginTop: 12 }}
+      />
     </div>
   );
 }

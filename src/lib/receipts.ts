@@ -217,6 +217,8 @@ export function stillReturnablePence(b: Buckets, everything?: readonly Receipt[]
 
 /** What came back for one returned receipt: the refund recorded, or the whole price. */
 export function refundOf(r: Receipt): number {
+  // A swap brought back an item, not money: nothing recovered.
+  if (r.exchanged) return 0;
   return r.refunded ?? r.amount;
 }
 

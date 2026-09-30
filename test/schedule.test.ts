@@ -183,10 +183,10 @@ describe('the two boundaries iOS and the settings slider impose', () => {
 });
 
 describe('a kept receipt, on iOS', () => {
-  it('has nothing lodged with the system', () => {
+  it('has no return reminder lodged with the system — only the right to reject it if faulty', () => {
     const r = receipt();
     expect(planAlerts([r], TODAY, 7, new Set()).length).toBeGreaterThan(0);
-    expect(planAlerts([{ ...r, status: 'kept', keptOn: iso(TODAY) }], TODAY, 7, new Set())).toEqual([]);
+    expect(planAlerts([{ ...r, status: 'kept', keptOn: iso(TODAY) }], TODAY, 7, new Set()).map((a) => a.rung)).toEqual(['reject']);
   });
 });
 
@@ -205,7 +205,7 @@ describe('a guarantee, lodged a month ahead', () => {
   });
 
   it('is lodged for a kept receipt, and not for a returned one or a sample', () => {
-    expect(keys(plan([covered({ status: 'kept', keptOn: iso(TODAY) })]))).toEqual(['r1:warranty']);
+    expect(keys(plan([covered({ status: 'kept', keptOn: iso(TODAY) })]))).toEqual(['r1:reject', 'r1:warranty']);
     expect(plan([covered({ status: 'returned', returnedOn: iso(TODAY) })])).toEqual([]);
     expect(plan([covered({ demo: true })])).toEqual([]);
   });

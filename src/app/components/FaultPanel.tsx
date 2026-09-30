@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { color, radius } from '../../tokens';
-import { faultAdvice, faultLetter, REPLY_DAYS } from '../../lib/fault-letter';
+import { faultAdvice, faultLetter, finalRejectLetter, REPLY_DAYS } from '../../lib/fault-letter';
 import { addDays, daysBetween, fmtDateLong, fromISODate } from '../../lib/dates';
 import { LEGAL_DISCLAIMER } from '../../lib/legal';
 import type { Receipt } from '../../lib/types';
 import { Field, inputStyle } from './Field';
+import { Escalation } from './Escalation';
 import { Letter } from './Letter';
 import { Pressable } from './Pressable';
 
@@ -27,6 +28,10 @@ export function FaultPanel({ receipt, today, onSent, onUnsent }: {
   const [whatsWrong, setWhatsWrong] = useState(claim?.what ?? '');
   const advice = faultAdvice(receipt, today);
   const letter = faultLetter(receipt, today, whatsWrong);
+  // After the repair or replacement, if it did not work: the next letter.
+  const [stillWrong, setStillWrong] = useState(false);
+  const [nowWrong, setNowWrong] = useState('');
+  const followUp = finalRejectLetter(receipt, today, nowWrong);
 
   return (
     <div style={{ background: color.white, border: `1.5px solid ${color.border}`, borderRadius: radius.cardLg, marginTop: 12, padding: '15px 18px' }}>
@@ -54,6 +59,38 @@ export function FaultPanel({ receipt, today, onSent, onUnsent }: {
               {fmtDateLong(addDays(fromISODate(claim.sentOn), REPLY_DAYS))}.
               {daysBetween(fromISODate(claim.sentOn), today) >= REPLY_DAYS &&
                 ' No reply yet? Citizens Advice’s consumer service can tell you what to do next.'}
+              {daysBetween(fromISODate(claim.sentOn), today) >= REPLY_DAYS && <Escalation receipt={receipt} />}
+            </div>
+          )}
+          {followUp && (
+            <div style={{ marginTop: 10 }}>
+              <Pressable
+                onClick={() => setStillWrong((v) => !v)}
+                aria-expanded={stillWrong}
+                style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', fontSize: 13.5, fontWeight: 700, textDecoration: 'underline' }}
+              >
+                It was repaired or replaced, and it’s still not right
+              </Pressable>
+              {stillWrong && (
+                <div data-final-reject>
+                  <div style={{ fontSize: 13.5, lineHeight: 1.5, marginTop: 4, color: color.muted }}>
+                    After one repair or one replacement that has not fixed it, you can reject it for a refund — the final
+                    right to reject (section 24).
+                  </div>
+                  <Field id="fault-still" label="What’s wrong with it now?" hint="Optional. It goes into the letter as written.">
+                    {(p) => (
+                      <textarea
+                        {...p}
+                        rows={2}
+                        value={nowWrong}
+                        onChange={(e) => setNowWrong(e.target.value)}
+                        style={{ ...inputStyle(false), resize: 'vertical', minHeight: 56 }}
+                      />
+                    )}
+                  </Field>
+                  <Letter letter={followUp} title={`Final right to reject: ${receipt.item}`} receipt={receipt} />
+                </div>
+              )}
             </div>
           )}
           {letter && (

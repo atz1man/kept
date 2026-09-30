@@ -343,6 +343,8 @@ src/lib/          the decision logic — pure, tested, no React
   legal.ts        Consumer Rights Act + distance-selling rights, cumulative
   fault-letter.ts which remedy today falls in, and the letter that asks the shop for it
   refund-chase.ts when a refund is late, the tracking number it rests on, and the letter that chases it
+  cancel-notice.ts the notice that cancels an online order in writing, and the fourteen days to send it back
+  escalate.ts     when the shop will not pay: Section 75 and chargeback, each with its condition
   persist.ts      asking the browser to keep the library, on the web
   quota.ts        what the free tier counts, and when it is full
   pricing.ts      the tiers, and what a tap on one is allowed to claim
@@ -2227,6 +2229,29 @@ taken to have been there from the start, so it is the shop's to disprove.
 After that, the buyer has to prove it. The date and the days left are stated
 while that is true, as a floor when the arrival date is unknown, and the
 rights page states the rule in the same words (`PRESUMED_FAULT_RULE`).
+
+### The 30 days to reject a fault, announced
+
+kept said it counts both clocks down and, on iOS, "lodges each deadline", and
+only the shop's was ever lodged. The statutory clock that matters on its own
+is the 30-day short-term right to reject (Consumer Rights Act, s.22): on a
+35-day or 365-day shop window, the right to a full refund for a fault, without
+accepting a repair first, ran out with nothing said. It now gets one alert,
+`REJECT_NOTICE_DAYS` before it ends (`rejectWatched` in `src/lib/alerts.ts`),
+on both paths to a lock screen and in Coming up. The alert says what is lost
+after that day, which is that the shop can offer a repair or replacement first
+(s.23). It does not say the rights end.
+
+It is restrained on purpose.
+- An active receipt gets it only when the right ends at least
+  `REJECT_GAP_DAYS` before the shop's window. Closer than that, the shop's
+  ladder is already speaking about those days.
+- A kept receipt always gets it, because it has left the ladder.
+- It is never sent for a sample, or once a fault letter has gone.
+- The date counts from the arrival day. For an online order with no arrival
+  date it counts from the order date, and says "no earlier than".
+- The 14-day right to cancel gets no alert. Where the shop's window is
+  longer, the window covers a change of mind anyway.
 
 ## Receipt scanning
 

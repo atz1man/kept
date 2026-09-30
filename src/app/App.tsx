@@ -6,7 +6,7 @@ import { FEED_PUBLIC_KEY, feedIsAcceptable, verifyFeed } from '../lib/feed-signa
 import { currentNotifyState, deliver, offerReminders, type NotifyState } from './notify';
 import { isNative } from '../lib/mirror';
 import { money, sumPence } from '../lib/money';
-import { countsAsMoney, derive, recoveredPence } from '../lib/receipts';
+import { countsAsMoney, derive, makeReceiptId, recoveredPence } from '../lib/receipts';
 import { fmtDateNear } from '../lib/dates';
 import { winSentence } from '../lib/words';
 import { exportBackup, wipe } from '../lib/storage';
@@ -423,6 +423,7 @@ export function App() {
                 }
               : undefined
           }
+          onClearSamples={() => dispatch({ type: 'clear-samples' })}
           onAdd={() => dispatch({ type: 'go', screen: 'add' })}
           onWatch={() => dispatch({ type: 'go', screen: 'watch' })}
         />
@@ -439,6 +440,8 @@ export function App() {
           onEdit={() => dispatch({ type: 'go', screen: 'edit' })}
           onReturn={() => dispatch({ type: 'return', id: selected.id })}
           onUnreturn={() => dispatch({ type: 'unreturn', id: selected.id })}
+          onExchange={() => dispatch({ type: 'exchange', id: selected.id, newId: makeReceiptId() })}
+          onUnexchange={() => dispatch({ type: 'unexchange', id: selected.id })}
           onKeep={() => dispatch({ type: 'keep', id: selected.id })}
           onUnkeep={() => dispatch({ type: 'unkeep', id: selected.id })}
           onSend={() => dispatch({ type: 'send', id: selected.id })}
@@ -447,8 +450,11 @@ export function App() {
           onSetRefund={(pence) => dispatch({ type: 'set-refund', id: selected.id, pence })}
           onSetReturnRef={(ref) => dispatch({ type: 'set-return-ref', id: selected.id, ref })}
           onSetCredit={(credit) => dispatch({ type: 'set-credit', id: selected.id, credit })}
+          onCreditSpent={(spent) => dispatch({ type: spent ? 'credit-spent' : 'credit-unspent', id: selected.id })}
           onFaultSent={(what) => dispatch({ type: 'fault-sent', id: selected.id, what })}
           onFaultUnsent={() => dispatch({ type: 'fault-unsent', id: selected.id })}
+          onCancelSent={() => dispatch({ type: 'cancel-sent', id: selected.id })}
+          onCancelUnsent={() => dispatch({ type: 'cancel-unsent', id: selected.id })}
           onDelete={() => dispatch({ type: 'delete', id: selected.id })}
         />
       )}
@@ -480,6 +486,7 @@ export function App() {
           receipts={state.receipts}
           onExport={exportNow}
           onRestore={(receipts) => dispatch({ type: 'restore', receipts })}
+          onClearSamples={() => dispatch({ type: 'clear-samples' })}
           onWipe={() => {
             // Cleared from disk as well as from state: leaving the old blob
             // behind would mean "erase everything" removed it from the screen

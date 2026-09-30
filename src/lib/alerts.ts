@@ -1,5 +1,6 @@
-import { daysBetween, fmtDate, fromISODate } from './dates';
+import { addDays, daysBetween, fmtDate, fromISODate } from './dates';
 import { REPLY_DAYS } from './fault-letter';
+import { REJECT_DAYS } from './legal';
 import { money } from './money';
 import { derive, refundOf } from './receipts';
 import type { Receipt } from './types';
@@ -26,7 +27,7 @@ export type ReturnRung = 'week' | 'soon' | 'today' | 'closed';
  * a different clock, usually a year or more later, and it is the one reason
  * to keep a receipt long after the window has shut.
  */
-export type AlertRung = ReturnRung | 'warranty' | 'refund' | 'credit' | 'fault';
+export type AlertRung = ReturnRung | 'reject' | 'warranty' | 'refund' | 'credit' | 'fault';
 
 /**
  * How long after something went back it is worth asking whether the money
@@ -63,9 +64,9 @@ export const WARRANTY_NOTICE_DAYS = 30;
  */
 export const CREDIT_NOTICE_DAYS = 30;
 
-/** Store credit with a known expiry, on a real receipt: the one kind watched. */
+/** Store credit with a known expiry, on a real receipt, not yet spent: the one kind watched. */
 export function creditWatched(r: Receipt): boolean {
-  return r.status === 'returned' && !r.demo && !!r.credit?.expires;
+  return r.status === 'returned' && !r.demo && !!r.credit?.expires && !r.credit.spentOn;
 }
 
 /**
@@ -85,6 +86,51 @@ export function faultWatched(r: Receipt): boolean {
  */
 export function warrantyWatched(r: Receipt): boolean {
   return (r.status === 'active' || r.status === 'kept') && !r.demo && !!r.warranty && r.warranty.months > 0;
+}
+
+/**
+ * How long before the short-term right to reject ends it is worth a word.
+ * Our number, the same three days the shop's ladder calls "soon": time to try
+ * the thing properly and to tell the shop if it is not right.
+ */
+export const REJECT_NOTICE_DAYS = 3;
+
+/**
+ * How much earlier than the shop's own window the right to reject has to end
+ * before it earns an alert of its own. Our number. Inside a week of the
+ * shop's deadline the ladder is already talking about this receipt, and a
+ * second alert about the same days is the kind that gets notifications
+ * switched off.
+ */
+export const REJECT_GAP_DAYS = 7;
+
+/**
+ * The day the 30-day right to reject ends, when that day deserves its own
+ * alert, else null.
+ *
+ * kept told people it "counts both clocks down" and, natively, that it
+ * "lodges each deadline with iOS" — and only the shop's was ever lodged. The
+ * statutory clock that matters on its own is this one: a shop that gives 35
+ * or 365 days for a change of mind lets the 30 days to reject a FAULT, for a
+ * full refund and without accepting a repair first, run out unannounced.
+ *
+ * Kept receipts are watched whatever the shop's window: they have left the
+ * return ladder, and "is it working?" is the one question left worth asking
+ * before the right lapses. Active ones only when the right ends well before
+ * the shop's window. Never a sample, and never once a fault letter has gone:
+ * that has its own clock and its own follow-up. The 14-day right to cancel
+ * gets none — where the shop's window is longer it already covers a change of
+ * mind, and where it is shorter the ladder is already speaking.
+ */
+export function rejectWatched(r: Receipt, today: Date): { ends: Date; hedged: boolean } | null {
+  if (r.demo || r.faultClaim) return null;
+  if (r.status !== 'active' && r.status !== 'kept') return null;
+  // From the day it came, as the Act counts it; for an online order nobody
+  // has said arrived, the order date, which can only be earlier — so the
+  // alert comes early rather than late, and says "no earlier than".
+  const ends = addDays(fromISODate(r.arrivedOn ?? r.purchasedOn), REJECT_DAYS);
+  if (r.status === 'active' && daysBetween(ends, derive(r, today).deadline) < REJECT_GAP_DAYS) return null;
+  return { ends, hedged: r.distance && r.arrivedOn === undefined };
 }
 
 export interface DeadlineAlert {
@@ -142,6 +188,16 @@ export function copyFor(rung: AlertRung, r: Receipt, daysLeft: number, deadline:
         title: 'That window has closed',
         body: `${what} — the shop’s window has passed. If it turns out to be faulty, you still have rights.`,
       };
+    case 'reject': {
+      // `daysLeft` and `deadline` are the RIGHT's here. After it, the shop
+      // may repair or replace first (s.23) — which is what is being lost,
+      // and so what is said, rather than "your rights end".
+      const hedged = r.distance && r.arrivedOn === undefined;
+      return {
+        title: daysLeft > 0 ? `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left to reject it if it’s faulty` : 'Last day to reject it if it’s faulty',
+        body: `${what} — your ${REJECT_DAYS}-day right to reject faulty goods for a full refund ends ${hedged ? 'no earlier than' : 'on'} ${fmtDate(deadline)}. If anything is wrong with it, tell the shop before then: after it, they can offer a repair or replacement first.`,
+      };
+    }
     case 'refund':
       // `deadline` is the day it went back; `daysLeft` is unused. The legal
       // limit is stated only where it applies — a cancelled distance order —
@@ -210,6 +266,16 @@ export function dueAlerts(
         out.push({ receiptId: r.id, rung: 'warranty', key, ...copyFor('warranty', r, w.daysLeft, w.ends) });
       }
     }
+    // The right to reject a fault, in its last days, where nothing else is
+    // saying so. On a kept receipt as well as an active one.
+    const reject = rejectWatched(r, today);
+    if (reject) {
+      const left = daysBetween(today, reject.ends);
+      const key = alertKey(r.id, 'reject');
+      if (left >= 0 && left <= REJECT_NOTICE_DAYS && !sent.has(key)) {
+        out.push({ receiptId: r.id, rung: 'reject', key, ...copyFor('reject', r, left, reject.ends) });
+      }
+    }
     // Credit, a month before the note says it lapses, through its last day.
     if (creditWatched(r)) {
       const ends = fromISODate(r.credit!.expires!);
@@ -254,7 +320,7 @@ export function dueAlerts(
   // one that gets read.
   // Only the ORDER of these numbers means anything — 'week' could be any value
   // above 'closed' and no test could tell, which is why none tries.
-  const order: Record<AlertRung, number> = { today: 0, soon: 1, closed: 2, week: 3, refund: 4, credit: 5, fault: 6, warranty: 7 };
+  const order: Record<AlertRung, number> = { today: 0, soon: 1, closed: 2, week: 3, reject: 4, refund: 5, credit: 6, fault: 7, warranty: 8 };
   return out.sort((a, b) => order[a.rung] - order[b.rung]);
 }
 
@@ -268,7 +334,7 @@ export function dueAlerts(
  */
 export function supersededKeys(alert: DeadlineAlert): string[] {
   // Its own clock, a single rung: nothing below it to have skipped.
-  if (alert.rung === 'warranty' || alert.rung === 'refund' || alert.rung === 'credit' || alert.rung === 'fault') return [];
+  if (alert.rung === 'warranty' || alert.rung === 'refund' || alert.rung === 'credit' || alert.rung === 'fault' || alert.rung === 'reject') return [];
   return LADDER.slice(0, LADDER.indexOf(alert.rung)).map((rung) => alertKey(alert.receiptId, rung));
 }
 

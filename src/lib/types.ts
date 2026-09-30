@@ -96,8 +96,10 @@ export interface Receipt {
    * ends without cash, and one that had no way to be said. `expires` is the
    * day the credit note says it runs out, where it says one: credit that
    * lapses unspent is money lost as surely as a missed return window.
+   * `spentOn` is the day it was used: after it there is nothing to remind
+   * about, and "spend it before then" would be a reminder about nothing.
    */
-  credit?: { expires?: string };
+  credit?: { expires?: string; spentOn?: string };
   /**
    * The fault letter, once it has gone: the day it was sent and the person's
    * own words about what is wrong, so the letter can be shown again as sent.
@@ -105,6 +107,22 @@ export interface Receipt {
    * went, nothing could ask whether one came.
    */
   faultClaim?: { sentOn: string; what?: string };
+  /**
+   * The day notice of cancellation went to the shop, for an order bought at a
+   * distance. Cancelling is telling the shop, not posting the parcel, and it
+   * is this day that starts the fourteen to send it back and decides whether
+   * the refund rule in regulation 34 applies.
+   */
+  cancelledOn?: string;
+  /**
+   * Swapped for another rather than refunded — a different size, a
+   * replacement over the counter. The item went back and no money came: a
+   * returned receipt, counted as nothing recovered. It had no way to be said,
+   * so a swap was recorded as kept or as a refund, both false.
+   */
+  exchanged?: true;
+  /** On the receipt a swap produced: the id of the one it was swapped for. */
+  swappedFrom?: string;
   /**
    * The day the person decided to keep it. Keeping is the commonest end to a
    * purchase and had no way to be said: the only exits were "returned" and

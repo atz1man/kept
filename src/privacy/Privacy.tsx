@@ -18,7 +18,7 @@ import { CONTACT_EMAIL } from '../lib/brand';
 
 
 /** Moves whenever what this page says moves. */
-export const UPDATED_ON = '29 September 2026';
+export const UPDATED_ON = '30 September 2026';
 
 export function Privacy() {
   return (
@@ -36,6 +36,14 @@ export function Privacy() {
           Your receipts — the shop, the item, the amount and the dates — any photographs of receipts you take, your
           settings, and a note of which reminders have already been shown. On iPhone a second copy is kept in the app’s
           own Documents folder, so a damaged store can be recovered. Deleting the app deletes everything inside it.
+        </Section>
+
+        <Section title="Where your iPhone keeps it">
+          That Documents folder, with the receipt photographs in it, appears in the Files app under On My iPhone, so a
+          backup you save can be found and opened — which also means anyone using your unlocked phone can see it there.
+          It is also part of your iPhone’s own backup, to iCloud or to a computer, if you have that turned on: your
+          phone copies it along with everything else on the device. kept itself sends it nowhere, and that backup is
+          between you and Apple.
         </Section>
 
         <Section title="The one thing kept downloads">
@@ -61,7 +69,8 @@ export function Privacy() {
           kept uses the camera only when you choose to photograph a receipt. A picture taken to scan a receipt is read
           on this phone — the text is worked out here, not by a server. In the iPhone app it is then kept with the
           receipt as proof of purchase, unless you untick that before saving; in a browser it is discarded. A picture
-          kept with a receipt is stored with it, inside the app, and nowhere else, and it is never uploaded.
+          kept with a receipt is stored with it in the app’s Documents folder on this phone, and kept never uploads
+          it.
         </Section>
 
         <Section title="Backups">

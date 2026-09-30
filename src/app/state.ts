@@ -101,9 +101,12 @@ export type Action =
   | { type: 'return'; id: string }
   | { type: 'delete'; id: string }
   | { type: 'unreturn'; id: string }
+  | { type: 'exchange'; id: string; newId: string }
+  | { type: 'unexchange'; id: string }
   | { type: 'undo-delete' }
   | { type: 'dismiss-undo' }
   | { type: 'wipe' }
+  | { type: 'clear-samples' }
   | { type: 'sync'; state: KeptState }
   | { type: 'add'; receipt: Receipt }
   | { type: 'update'; receipt: Receipt }
@@ -114,8 +117,12 @@ export type Action =
   | { type: 'keep'; id: string }
   /** `undoable`: from the swipe, which fires on rows people meant to open; the receipt's own screen has "Not sent after all" beside it. */
   | { type: 'send'; id: string; undoable?: boolean }
+  | { type: 'cancel-sent'; id: string }
+  | { type: 'cancel-unsent'; id: string }
   | { type: 'set-refund'; id: string; pence: number | null }
   | { type: 'set-credit'; id: string; credit: { expires?: string } | null }
+  | { type: 'credit-spent'; id: string }
+  | { type: 'credit-unspent'; id: string }
   | { type: 'unsend'; id: string }
   | { type: 'fault-sent'; id: string; what: string }
   | { type: 'fault-unsent'; id: string }
@@ -245,6 +252,40 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         selId: null,
       };
     }
+    case 'exchange': {
+      /*
+       * Swapped for another. The one that went back is settled as returned
+       * with nothing recovered; the one that came home is a receipt of its
+       * own, opened straight away. It keeps the original's dates — the
+       * earlier clock, so any reminder comes early rather than late — and the
+       * screen says to change them if the shop gave a new receipt. What a
+       * shop's swap does to its window is the shop's policy, and not guessed.
+       */
+      const r = state.receipts.find((x) => x.id === action.id);
+      if (!r || r.status !== 'active' || state.receipts.some((x) => x.id === action.newId)) return state;
+      const { returnedOn: _r, keptOn: _k, sentOn: _s, refunded: _f, credit: _c, returnRef: _t, faultClaim: _fc, cancelledOn: _cn, ...rest } = r as Receipt & { cancelledOn?: string };
+      const swapIn: Receipt = { ...rest, id: action.newId, status: 'active', swappedFrom: r.id };
+      return {
+        ...state,
+        receipts: [
+          ...state.receipts.map((x) => (x.id === r.id ? { ...x, status: 'returned' as const, returnedOn: toISODate(today), exchanged: true as const } : x)),
+          swapIn,
+        ],
+        screen: 'detail',
+        selId: swapIn.id,
+        justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null,
+      };
+    }
+    case 'unexchange':
+      // Not swapped after all: the original back in hand, and the receipt the
+      // swap produced gone with it — it described an item that never came.
+      if (!state.receipts.some((r) => r.id === action.id && r.exchanged)) return state;
+      return {
+        ...state,
+        receipts: state.receipts
+          .filter((r) => r.swappedFrom !== action.id)
+          .map((r) => (r.id === action.id ? { ...r, status: 'active' as const, returnedOn: undefined, exchanged: undefined } : r)),
+      };
     case 'unreturn':
       /*
        * The swipe is a one-finger gesture on a row you might have meant to
@@ -264,8 +305,8 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
           r.id !== action.id || r.status !== 'returned'
             ? r
             : r.sentOn
-              ? { ...r, status: 'sent' as const, returnedOn: undefined, refunded: undefined, credit: undefined }
-              : { ...r, status: 'active' as const, returnedOn: undefined, refunded: undefined, returnRef: undefined, credit: undefined },
+              ? { ...r, status: 'sent' as const, returnedOn: undefined, refunded: undefined, credit: undefined, exchanged: undefined }
+              : { ...r, status: 'active' as const, returnedOn: undefined, refunded: undefined, returnRef: undefined, credit: undefined, exchanged: undefined },
         ),
       };
     case 'keep':
@@ -325,7 +366,10 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         if (!/^\d{4}-\d{2}-\d{2}$/.test(expires) || toISODate(fromISODate(expires)) !== expires) return state;
         if (r.returnedOn && daysBetween(fromISODate(r.returnedOn), fromISODate(expires)) < 0) return state;
       }
-      const next: Receipt = { ...r, credit: action.credit ? (expires ? { expires } : {}) : undefined };
+      // The day it was spent survives a corrected expiry; "It was money after
+      // all" takes the whole credit, spent or not.
+      const spentOn = r.credit?.spentOn;
+      const next: Receipt = { ...r, credit: action.credit ? { ...(expires ? { expires } : {}), ...(spentOn ? { spentOn } : {}) } : undefined };
       // A reminder already given about a different expiry says nothing about this one.
       const moved = (r.credit?.expires ?? '') !== (next.credit?.expires ?? '');
       const key = alertKey(r.id, 'credit');
@@ -335,6 +379,31 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         alertsSent: moved ? state.alertsSent.filter((k) => k !== key) : state.alertsSent,
       };
     }
+    case 'credit-spent':
+      /*
+       * Spent. Credit was the one thing kept could be told about and never
+       * told it had gone: "spend it before then" still fired a month before
+       * the note's date on credit used the week it was given, and the only
+       * ways to stop it — clear the date, or "It was money after all" — made
+       * the record say something false. Only on credit not already spent.
+       */
+      return {
+        ...state,
+        receipts: state.receipts.map((r) =>
+          r.id === action.id && r.status === 'returned' && r.credit && !r.credit.spentOn
+            ? { ...r, credit: { ...r.credit, spentOn: toISODate(today) } }
+            : r,
+        ),
+      };
+    case 'credit-unspent':
+      return {
+        ...state,
+        receipts: state.receipts.map((r) => {
+          if (r.id !== action.id || !r.credit?.spentOn) return r;
+          const { spentOn: _gone, ...credit } = r.credit;
+          return { ...r, credit };
+        }),
+      };
     case 'fault-sent':
       /*
        * The fault letter has gone. On a receipt still with its owner — active
@@ -356,6 +425,22 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         ...state,
         receipts: state.receipts.map((r) => (r.id === action.id ? { ...r, faultClaim: undefined } : r)),
         alertsSent: state.alertsSent.filter((k) => k !== alertKey(action.id, 'fault')),
+      };
+    case 'cancel-sent':
+      /*
+       * Notice of cancellation has gone. Only on an online order still in
+       * hand, and once: the first day it went is the day the law counts from.
+       */
+      return {
+        ...state,
+        receipts: state.receipts.map((r) =>
+          r.id === action.id && r.distance && r.status === 'active' && !r.cancelledOn ? { ...r, cancelledOn: toISODate(today) } : r,
+        ),
+      };
+    case 'cancel-unsent':
+      return {
+        ...state,
+        receipts: state.receipts.map((r) => (r.id === action.id && r.cancelledOn ? { ...r, cancelledOn: undefined } : r)),
       };
     case 'send':
       /*
@@ -629,6 +714,31 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         selId: null,
         screen: 'home',
       };
+    case 'clear-samples': {
+      /*
+       * The five samples, and nothing else. They had no way out but deleting
+       * each in turn or Erase everything, which takes the real receipts with
+       * them, so they sat on the list beside real purchases for good. No undo
+       * on offer: nothing anybody spent goes with them, and the library they
+       * leave behind is exactly the person's own.
+       */
+      if (!state.receipts.some((r) => r.demo)) return state;
+      const receipts = state.receipts.filter((r) => !r.demo);
+      const gone = (id: string | null) => !!id && !receipts.some((r) => r.id === id);
+      return {
+        ...state,
+        receipts,
+        alertsSent: pruneSent(state.alertsSent, receipts),
+        // An undo that names a sample would put it back; one that names a
+        // real receipt is left on offer.
+        justDeleted: state.justDeleted?.demo ? null : state.justDeleted,
+        justKept: state.justKept?.some((id) => gone(id)) ? null : state.justKept,
+        justReturned: gone(state.justReturned?.id ?? null) ? null : state.justReturned,
+        justAdded: gone(state.justAdded) ? null : state.justAdded,
+        justSent: gone(state.justSent) ? null : state.justSent,
+        ...(gone(state.selId) ? { selId: null, screen: 'home' as const } : {}),
+      };
+    }
     case 'sync': {
       // Adopt what another tab stored, keeping this tab's transient UI —
       // screen, selection, an undo still on offer. If the receipt open here

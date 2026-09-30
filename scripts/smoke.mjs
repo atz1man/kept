@@ -1386,6 +1386,169 @@ for (const cancel of [false, true]) {
 }
 
 /*
+ * Rights are shown while the thing is still with its owner. A returned
+ * online order said "you can cancel for any reason until …, n days left"
+ * about a right already used; one on its way back did the same. Bought three
+ * days ago, so every right is live and only the status can hide them.
+ */
+{
+  const rCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const rp = await rCtx.newPage();
+  await rp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await rp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await rp.waitForTimeout(300);
+  await rp.evaluate(() => {
+    const iso = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    const s = JSON.parse(localStorage.getItem('kept.v1'));
+    const base = { cat: 'clothing', amount: 4000, purchasedOn: iso(3), arrivedOn: iso(2), windowDays: 28, policy: 'p', distance: true };
+    s.receipts.push(
+      { ...base, id: 'r_back', store: 'ASOS', item: 'Jacket', status: 'returned', sentOn: iso(1), returnedOn: iso(0) },
+      { ...base, id: 'r_sent', store: 'Boohoo', item: 'Scarf', status: 'sent', sentOn: iso(1) },
+      { ...base, id: 'r_kept', store: 'Next', item: 'Jumper', status: 'kept', keptOn: iso(0) },
+    );
+    localStorage.setItem('kept.v1', JSON.stringify(s));
+  });
+  await rp.reload({ waitUntil: 'networkidle' });
+  await rp.waitForTimeout(300);
+  const rightsOn = async (name, store) => {
+    await rp.getByRole('button', { name }).first().click({ timeout: 3000 }).catch(() => {});
+    await rp.waitForTimeout(300);
+    const text = (await rp.locator('main').innerText().catch(() => '')) ?? '';
+    const opened = (await rp.getByRole('heading', { level: 1, name: store }).count()) === 1;
+    await rp.getByRole('button', { name: 'Back', exact: true }).click({ timeout: 3000 }).catch(() => {});
+    await rp.waitForTimeout(300);
+    return { opened, rights: /YOUR LEGAL RIGHT/.test(text), cancel: /cancel for any reason/i.test(text) };
+  };
+  const seen = { back: await rightsOn(/^ASOS, Jacket/, 'ASOS'), sent: await rightsOn(/^Boohoo, Scarf/, 'Boohoo'), kept: await rightsOn(/^Next, Jumper/, 'Next') };
+  const ok = seen.back.opened && !seen.back.rights && !seen.back.cancel &&
+    seen.sent.opened && !seen.sent.rights && !seen.sent.cancel &&
+    seen.kept.opened && seen.kept.rights;
+  results['a receipt that has gone back shows no live rights; a kept one keeps them'] = !!ok;
+  if (!ok) problems.push(`settled rights: ${JSON.stringify(seen)}`);
+  await rCtx.close();
+}
+
+/*
+ * The samples, removed together. Their only way out was one at a time or
+ * Erase everything, which takes the real receipts too. Not offered on the
+ * list while the samples are all there is — then they ARE the app — and
+ * offered once a real receipt sits beside them. A reload does not reseed.
+ */
+{
+  const xCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const xp = await xCtx.newPage();
+  await xp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await xp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await xp.waitForTimeout(300);
+  const offer = () => xp.getByRole('button', { name: 'Remove the samples' });
+  const stored = () => xp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.map((r) => ({ id: r.id, demo: !!r.demo })));
+  const seen = { notWhileAllSamples: (await offer().count()) === 0 };
+  await xp.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('kept.v1'));
+    const d = new Date();
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    s.receipts.push({ id: 'r_mine', store: 'Argos', item: 'Desk lamp', cat: 'home', amount: 2500, purchasedOn: iso, windowDays: 30, policy: 'Argos.', distance: false, status: 'active' });
+    localStorage.setItem('kept.v1', JSON.stringify(s));
+  });
+  await xp.reload({ waitUntil: 'networkidle' });
+  await xp.waitForTimeout(300);
+  seen.offered = (await offer().count()) === 1;
+  await offer().click({ timeout: 3000 }).catch(() => {});
+  await xp.waitForTimeout(300);
+  const after = await stored();
+  seen.onlyMine = after.length === 1 && after[0].id === 'r_mine';
+  seen.listClean = !/sample ·/.test(await xp.locator('main').innerText()) && (await xp.getByRole('button', { name: /^Argos, Desk lamp/ }).count()) === 1;
+  seen.offerGone = (await offer().count()) === 0;
+  await xp.reload({ waitUntil: 'networkidle' });
+  await xp.waitForTimeout(300);
+  seen.noReseed = (await stored()).length === 1;
+  // And Settings says nothing about samples that are not there.
+  await xp.getByRole('button', { name: 'Settings', exact: true }).click({ timeout: 3000 }).catch(() => {});
+  await xp.waitForTimeout(300);
+  seen.settingsQuiet = !/Sample receipts/.test(await xp.locator('main').innerText());
+  const ok = Object.values(seen).every(Boolean);
+  results['the samples can be removed together, leaving the real receipts, and do not come back'] = ok;
+  if (!ok) problems.push(`clear samples: ${JSON.stringify({ ...seen, after })}`);
+  await xCtx.close();
+}
+
+/*
+ * From Settings as well, where it is offered whenever there are samples:
+ * someone who wants a clean list before adding anything should not have to
+ * delete five receipts one at a time or erase the app to get it.
+ */
+{
+  const yCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const yp = await yCtx.newPage();
+  await yp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await yp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await yp.waitForTimeout(300);
+  await yp.getByRole('button', { name: 'Settings', exact: true }).click({ timeout: 3000 }).catch(() => {});
+  await yp.waitForTimeout(300);
+  await yp.getByRole('button', { name: 'Remove the samples' }).click({ timeout: 3000 }).catch(() => {});
+  await yp.waitForTimeout(300);
+  const left = await yp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.length);
+  results['the samples can be removed from Settings before anything real is added'] = left === 0;
+  if (left !== 0) problems.push(`clear samples from settings: ${left} left`);
+  await yCtx.close();
+}
+
+/*
+ * Store credit, spent. "Spend it before then" fired on credit used the week
+ * it was given, and the only ways to stop it made the record false. Spent
+ * is recorded, survives a reload — the stored copy goes through the same
+ * sanitiser a backup does — drops out of what is coming up, and can be
+ * taken back.
+ */
+{
+  const cCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const cp = await cCtx.newPage();
+  await cp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await cp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await cp.waitForTimeout(300);
+  await cp.evaluate(() => {
+    const iso = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    const s = JSON.parse(localStorage.getItem('kept.v1'));
+    s.receipts.push({ id: 'r_credit', store: 'Next', item: 'Rain jacket', cat: 'clothing', amount: 5000, purchasedOn: iso(-20), windowDays: 28, policy: 'p', distance: false, status: 'returned', returnedOn: iso(-2), credit: { expires: iso(20) } });
+    localStorage.setItem('kept.v1', JSON.stringify(s));
+  });
+  await cp.reload({ waitUntil: 'networkidle' });
+  await cp.waitForTimeout(300);
+  const credit = () => cp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => r.id === 'r_credit')?.credit);
+  const listed = async () => {
+    await cp.getByRole('button', { name: /^Watch/ }).click({ timeout: 3000 }).catch(() => {});
+    await cp.waitForTimeout(300);
+    const n = await cp.getByRole('button', { name: /Store credit runs out/ }).count();
+    await cp.getByRole('button', { name: 'Receipts', exact: true }).click({ timeout: 3000 }).catch(() => {});
+    await cp.waitForTimeout(300);
+    return n;
+  };
+  const open = async () => {
+    await cp.getByRole('button', { name: /^Next, Rain jacket/ }).first().click({ timeout: 3000 }).catch(() => {});
+    await cp.waitForTimeout(300);
+  };
+  const seen = { listedBefore: (await listed()) === 1 };
+  await open();
+  seen.spentTap = await cp.getByRole('button', { name: 'I’ve spent it' }).click({ timeout: 3000 }).then(() => true, () => false);
+  await cp.waitForTimeout(300);
+  seen.recorded = !!(await credit())?.spentOn;
+  await cp.reload({ waitUntil: 'networkidle' });
+  await cp.waitForTimeout(300);
+  seen.survives = !!(await credit())?.spentOn;
+  seen.notListed = (await listed()) === 0;
+  await open();
+  seen.says = /Store credit · spent/.test(await cp.locator('main').innerText());
+  await cp.getByRole('button', { name: 'Not spent after all' }).click({ timeout: 3000 }).catch(() => {});
+  await cp.waitForTimeout(300);
+  const back = await credit();
+  seen.takenBack = back?.spentOn === undefined && !!back?.expires;
+  const ok = Object.values(seen).every(Boolean);
+  results['store credit can be marked spent, which stops its reminder and survives a reload'] = ok;
+  if (!ok) problems.push(`credit spent: ${JSON.stringify({ ...seen, back })}`);
+  await cCtx.close();
+}
+
+/*
  * Three places the lifecycle said something false, found by an audit.
  * The headline was `active[0]`, samples included: somebody who had just
  * saved their first purchase read "£89.00 back if it goes back by…" about
@@ -1478,6 +1641,191 @@ for (const cancel of [false, true]) {
   results['the headline is a real receipt, a swipe sends an online order back, the list clears the undo bar, and a refund taken back leaves the posting'] = !!ok;
   if (!ok) problems.push(`lifecycle: ${JSON.stringify({ ...seen, before: before.slice(0, 80), after: after.slice(0, 80), bar: bar.slice(0, 80), z })}`);
   await sCtx.close();
+}
+
+/*
+ * Cancelling an online order in writing. Cancelling is telling the shop,
+ * and kept recorded only the posting, so it never knew the day the fourteen
+ * to send it back count from. The notice is offered while the period runs,
+ * the day it went is kept across a reload, the receipt then says when the
+ * parcel must go by, and a counter purchase is offered nothing.
+ */
+{
+  const nCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const np = await nCtx.newPage();
+  await np.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await np.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await np.waitForTimeout(300);
+  const today = await np.evaluate(() => {
+    const iso = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    const s = JSON.parse(localStorage.getItem('kept.v1'));
+    s.receipts.push(
+      { id: 'r_online', store: 'ASOS', item: 'Trainers', cat: 'clothing', amount: 6000, purchasedOn: iso(3), arrivedOn: iso(2), windowDays: 28, policy: 'p', distance: true, status: 'active', orderRef: 'AS-123' },
+      { id: 'r_counter', store: 'Boots', item: 'Hairdryer', cat: 'other', amount: 3000, purchasedOn: iso(3), windowDays: 35, policy: 'p', distance: false, status: 'active' },
+    );
+    localStorage.setItem('kept.v1', JSON.stringify(s));
+    return iso(0);
+  });
+  await np.reload({ waitUntil: 'networkidle' });
+  await np.waitForTimeout(300);
+  const open = async (name) => { await np.getByRole('button', { name }).first().click({ timeout: 3000 }).catch(() => {}); await np.waitForTimeout(300); };
+  const back = async () => { await np.getByRole('button', { name: 'Back', exact: true }).click({ timeout: 3000 }).catch(() => {}); await np.waitForTimeout(300); };
+  const stored = () => np.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => r.id === 'r_online')?.cancelledOn);
+  const seen = {};
+  await open(/^Boots, Hairdryer/);
+  seen.counterNone = (await np.getByRole('button', { name: 'Cancel the order in writing' }).count()) === 0;
+  await back();
+  await open(/^ASOS, Trainers/);
+  await np.getByRole('button', { name: 'Cancel the order in writing' }).click({ timeout: 3000 }).catch(() => {});
+  await np.waitForTimeout(300);
+  const panel = (await np.locator('[data-cancel-panel]').innerText().catch(() => '')) ?? '';
+  seen.letter = /Dear ASOS,/.test(panel) && /Order number: AS-123/.test(panel) && /regulation 34/.test(panel);
+  await np.getByRole('button', { name: 'I’ve sent the notice' }).click({ timeout: 3000 }).catch(() => {});
+  await np.waitForTimeout(300);
+  seen.recorded = (await stored()) === today;
+  await np.reload({ waitUntil: 'networkidle' });
+  await np.waitForTimeout(300);
+  seen.survives = (await stored()) === today;
+  await open(/^ASOS, Trainers/);
+  await np.getByRole('button', { name: 'Order cancelled' }).click({ timeout: 3000 }).catch(() => {});
+  await np.waitForTimeout(300);
+  seen.sendBy = /Send it back by .+ — the law gives fourteen days from cancelling\./.test((await np.locator('[data-cancel-sent]').innerText().catch(() => '')) ?? '');
+  await np.getByRole('button', { name: 'Not sent after all' }).click({ timeout: 3000 }).catch(() => {});
+  await np.waitForTimeout(300);
+  seen.takenBack = (await stored()) === undefined;
+  const ok = Object.values(seen).every(Boolean);
+  results['an online order can be cancelled in writing, and the day it went decides when it must go back'] = ok;
+  if (!ok) problems.push(`cancel notice: ${JSON.stringify({ ...seen, panel: panel.slice(0, 120) })}`);
+  await nCtx.close();
+}
+
+/*
+ * After the repair. The fault letter promised what came next — a refund if a
+ * repair or replacement did not put it right (section 24) — and nothing in
+ * the app followed it. Once a fault letter has gone, the next one is there.
+ */
+{
+  const fCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const fp = await fCtx.newPage();
+  await fp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await fp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await fp.waitForTimeout(300);
+  await fp.evaluate(() => {
+    const iso = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    const s = JSON.parse(localStorage.getItem('kept.v1'));
+    s.receipts.push({ id: 'r_fault', store: 'Currys', item: 'Kettle', cat: 'kitchen', amount: 4000, purchasedOn: iso(60), windowDays: 30, policy: 'p', distance: false, status: 'kept', keptOn: iso(55), faultClaim: { sentOn: iso(40), what: 'It trips the fuse' } });
+    localStorage.setItem('kept.v1', JSON.stringify(s));
+  });
+  await fp.reload({ waitUntil: 'networkidle' });
+  await fp.waitForTimeout(300);
+  await fp.getByRole('button', { name: /^Currys, Kettle/ }).first().click({ timeout: 3000 }).catch(() => {});
+  await fp.waitForTimeout(300);
+  await fp.getByRole('button', { name: 'Fault letter sent' }).click({ timeout: 3000 }).catch(() => {});
+  await fp.waitForTimeout(300);
+  const seen = {};
+  seen.tapped = await fp.getByRole('button', { name: 'It was repaired or replaced, and it’s still not right' }).click({ timeout: 3000 }).then(() => true, () => false);
+  await fp.waitForTimeout(300);
+  await fp.getByLabel(/what’s wrong with it now/i).fill('Still trips it', { timeout: 3000 }).catch(() => {});
+  await fp.waitForTimeout(200);
+  const text = (await fp.locator('[data-final-reject]').innerText().catch(() => '')) ?? '';
+  seen.letter = /Final right to reject: Kettle/.test(text) && /section 24\(5\)/.test(text) && /The problem now: Still trips it\./.test(text) && /section 24\(10\)/.test(text);
+  const ok = Object.values(seen).every(Boolean);
+  results['after a fault letter, the final right to reject is one tap away'] = ok;
+  if (!ok) problems.push(`final reject: ${JSON.stringify({ ...seen, text: text.slice(0, 160) })}`);
+  await fCtx.close();
+}
+
+/*
+ * When the shop will not pay. The refund chase and an unanswered fault
+ * letter both ended at the shop; the card's two doors — Section 75 where the
+ * price fits, a chargeback always — are now set out beside them.
+ */
+{
+  const eCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const ep = await eCtx.newPage();
+  await ep.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await ep.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await ep.waitForTimeout(300);
+  await ep.evaluate(() => {
+    const iso = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    const s = JSON.parse(localStorage.getItem('kept.v1'));
+    s.receipts.push(
+      { id: 'r_late', store: 'Argos', item: 'Blender', cat: 'kitchen', amount: 15000, purchasedOn: iso(40), windowDays: 30, policy: 'p', distance: false, status: 'sent', sentOn: iso(20) },
+      { id: 'r_small', store: 'Argos', item: 'Toaster', cat: 'kitchen', amount: 4000, purchasedOn: iso(40), windowDays: 30, policy: 'p', distance: false, status: 'sent', sentOn: iso(20) },
+      { id: 'r_quiet', store: 'Currys', item: 'Kettle', cat: 'kitchen', amount: 4000, purchasedOn: iso(60), windowDays: 30, policy: 'p', distance: false, status: 'kept', keptOn: iso(55), faultClaim: { sentOn: iso(20) } },
+    );
+    localStorage.setItem('kept.v1', JSON.stringify(s));
+  });
+  await ep.reload({ waitUntil: 'networkidle' });
+  await ep.waitForTimeout(300);
+  const escalationOn = async (name, toggle) => {
+    await ep.getByRole('button', { name }).first().click({ timeout: 3000 }).catch(() => {});
+    await ep.waitForTimeout(300);
+    if (toggle) { await ep.getByRole('button', { name: toggle }).click({ timeout: 3000 }).catch(() => {}); await ep.waitForTimeout(300); }
+    const t = (await ep.locator('[data-escalation]').innerText().catch(() => '')) ?? '';
+    await ep.getByRole('button', { name: 'Back', exact: true }).click({ timeout: 3000 }).catch(() => {});
+    await ep.waitForTimeout(300);
+    return t;
+  };
+  const big = await escalationOn(/^Argos, Blender/);
+  const small = await escalationOn(/^Argos, Toaster/);
+  const quiet = await escalationOn(/^Currys, Kettle/, 'Fault letter sent');
+  const seen = {
+    big: /Section 75/.test(big) && /£150\.00/.test(big) && /chargeback/.test(big),
+    small: !/Section 75/.test(small) && /chargeback/.test(small),
+    quiet: /chargeback/.test(quiet),
+  };
+  const ok = Object.values(seen).every(Boolean);
+  results['a late refund and an unanswered fault letter set out Section 75 and chargeback'] = ok;
+  if (!ok) problems.push(`escalation: ${JSON.stringify({ ...seen, big: big.slice(0, 80), small: small.slice(0, 80), quiet: quiet.slice(0, 80) })}`);
+  await eCtx.close();
+}
+
+/*
+ * Swapped for another. A swap had no way to be said, so it was recorded as
+ * kept or as a refund — both false, and the refund counted money that never
+ * came. The one that went back is settled with nothing recovered, the one
+ * that came home opens as a receipt of its own, and it can be taken back.
+ */
+{
+  const wCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const wp = await wCtx.newPage();
+  await wp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await wp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await wp.waitForTimeout(300);
+  await wp.evaluate(() => {
+    const iso = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    const s = JSON.parse(localStorage.getItem('kept.v1'));
+    s.receipts.push({ id: 'r_jeans', store: 'Next', item: 'Jeans, 32 waist', cat: 'clothing', amount: 4000, purchasedOn: iso(4), windowDays: 28, policy: 'p', distance: false, status: 'active' });
+    localStorage.setItem('kept.v1', JSON.stringify(s));
+  });
+  await wp.reload({ waitUntil: 'networkidle' });
+  await wp.waitForTimeout(300);
+  const stored = () => wp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.filter((r) => r.id === 'r_jeans' || r.swappedFrom === 'r_jeans'));
+  await wp.getByRole('button', { name: /^Next, Jeans/ }).first().click({ timeout: 3000 }).catch(() => {});
+  await wp.waitForTimeout(300);
+  const seen = {};
+  seen.tapped = await wp.getByRole('button', { name: 'Swapped it for another' }).click({ timeout: 3000 }).then(() => true, () => false);
+  await wp.waitForTimeout(300);
+  seen.swapInOpen = /keeps that receipt’s dates/.test((await wp.locator('[data-swap-in]').innerText().catch(() => '')) ?? '');
+  const after = await stored();
+  const orig = after.find((r) => r.id === 'r_jeans');
+  const swapIn = after.find((r) => r.swappedFrom === 'r_jeans');
+  seen.settled = orig?.status === 'returned' && orig?.exchanged === true;
+  seen.copied = !!swapIn && swapIn.status === 'active' && swapIn.purchasedOn === orig?.purchasedOn;
+  await wp.getByRole('button', { name: 'Back', exact: true }).click({ timeout: 3000 }).catch(() => {});
+  await wp.waitForTimeout(300);
+  seen.rowSays = (await wp.getByRole('button', { name: /^Next, Jeans, 32 waist, swapped for another$/ }).count()) === 1;
+  await wp.getByRole('button', { name: /swapped for another$/ }).first().click({ timeout: 3000 }).catch(() => {});
+  await wp.waitForTimeout(300);
+  await wp.getByRole('button', { name: 'Not swapped after all' }).click({ timeout: 3000 }).catch(() => {});
+  await wp.waitForTimeout(300);
+  const undone = await stored();
+  seen.undone = undone.length === 1 && undone[0].status === 'active' && undone[0].exchanged === undefined;
+  const ok = Object.values(seen).every(Boolean);
+  results['a swap settles the one that went back with nothing recovered, opens the one that came home, and can be taken back'] = ok;
+  if (!ok) problems.push(`swap: ${JSON.stringify({ ...seen, after, undone })}`);
+  await wCtx.close();
 }
 
 // The tab bar floats over every screen; its buttons must stay clickable.

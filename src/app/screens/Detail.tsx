@@ -12,6 +12,8 @@ import { urgency } from '../../lib/urgency';
 import { ChevronLeft, Warning } from '../components/Icons';
 import { Pressable } from '../components/Pressable';
 import { ReceiptPhoto } from '../components/ReceiptPhoto';
+import { CancelPanel } from '../components/CancelPanel';
+import { Escalation } from '../components/Escalation';
 import { FaultPanel } from '../components/FaultPanel';
 import { RefundForm } from '../components/RefundForm';
 import { Letter } from '../components/Letter';
@@ -28,6 +30,9 @@ interface Props {
   onEdit: () => void;
   onReturn: () => void;
   onUnreturn: () => void;
+  /** Swapped for another: settle this one and open the one that came home. */
+  onExchange: () => void;
+  onUnexchange: () => void;
   onKeep: () => void;
   onUnkeep: () => void;
   onSend: () => void;
@@ -36,15 +41,18 @@ interface Props {
   onSetRefund: (pence: number | null) => void;
   onSetReturnRef: (ref: string | null) => void;
   onSetCredit: (credit: { expires?: string } | null) => void;
+  onCreditSpent: (spent: boolean) => void;
   onFaultSent: (what: string) => void;
   onFaultUnsent: () => void;
+  onCancelSent: () => void;
+  onCancelUnsent: () => void;
   onArrived: () => void;
   onDelete: () => void;
 }
 
 const cardLabel = { fontSize: 11, fontWeight: 700, letterSpacing: '1.4px', color: color.muted } as const;
 
-export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onSetCredit, onArrived, onFaultSent, onFaultUnsent, onDelete }: Props) {
+export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onSetCredit, onCreditSpent, onArrived, onFaultSent, onFaultUnsent, onCancelSent, onCancelUnsent, onExchange, onUnexchange, onDelete }: Props) {
   const [legalOpen, setLegalOpen] = useState(true);
   const d = derive(receipt, today);
   const u = urgency(d.daysLeft, urgentDays);
@@ -278,6 +286,11 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
           )}
         </div>
 
+        {/* Only while it is still with its owner. A returned receipt said "you
+            can cancel for any reason until…, n days left" about a right it had
+            already used, and one on its way back likewise: what is left for
+            those is the refund, set out below. A kept one keeps its rights. */}
+        {(receipt.status === 'active' || receipt.status === 'kept') && (
         <div style={{ borderTop: `1.5px solid ${color.borderHair}`, padding: '15px 18px' }}>
           <Pressable
             onClick={() => setLegalOpen((v) => !v)}
@@ -309,6 +322,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               </div>
             ))}
         </div>
+        )}
 
         {asksForGuarantee(receipt) && (
           <div style={{ borderTop: `1.5px solid ${color.borderHair}`, padding: '15px 18px' }}>
@@ -362,6 +376,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
 
       {/* The rights above, turned into the letter that asks for them. Not on a
           refund: that purchase has already gone back. */}
+      {receipt.status === 'active' && <CancelPanel receipt={receipt} today={today} onSent={onCancelSent} onUnsent={onCancelUnsent} />}
       {(receipt.status === 'active' || receipt.status === 'kept') && <FaultPanel receipt={receipt} today={today} onSent={onFaultSent} onUnsent={onFaultUnsent} />}
 
       {receipt.gotcha && (
@@ -380,17 +395,25 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               the same sentence whether the refund landed last week or last
               year, and it is the only fact a returned receipt carries that is
               not already on the row. */}
-          <RefundPanel receipt={receipt} returnedText={returnedText} onSetRefund={onSetRefund} />
-          <CreditPanel receipt={receipt} onSetCredit={onSetCredit} />
+          {receipt.exchanged ? (
+            <div data-swapped style={{ marginTop: 16, padding: 15, textAlign: 'center', background: color.yellowLight, border: `1.5px solid ${color.ink}`, borderRadius: 16, fontWeight: 700 }}>
+              Swapped for another{returnedText ? ` on ${returnedText}` : ''} ✓
+            </div>
+          ) : (
+            <>
+              <RefundPanel receipt={receipt} returnedText={returnedText} onSetRefund={onSetRefund} />
+              <CreditPanel receipt={receipt} onSetCredit={onSetCredit} onCreditSpent={onCreditSpent} />
+            </>
+          )}
           <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
             <Pressable
               className="k-row-white"
-              onClick={onUnreturn}
+              onClick={receipt.exchanged ? onUnexchange : onUnreturn}
               style={{ flex: 1, padding: 15, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
             >
               {/* Posted first, so what is being taken back is the money:
                   the parcel went, and it goes back to waiting for a refund. */}
-              {receipt.sentOn ? 'The refund hasn’t come' : 'Not actually returned'}
+              {receipt.exchanged ? 'Not swapped after all' : receipt.sentOn ? 'The refund hasn’t come' : 'Not actually returned'}
             </Pressable>
           </div>
         </>
@@ -451,7 +474,24 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
           </div>
         </>
       ) : (
-        <ActiveActions distance={receipt.distance} onReturn={onReturn} onSend={onSend} onKeep={onKeep} />
+        <>
+          {/* The receipt a swap produced says where its dates came from:
+              the original's, which is the earlier clock, and not a guess at
+              what the shop's swap did to its window. */}
+          {receipt.swappedFrom && (
+            <div data-swap-in style={{ marginTop: 14, fontSize: 13.5, lineHeight: 1.5, color: color.body }}>
+              Swapped for the one you bought on {fmtDateLong(fromISODate(receipt.purchasedOn))}, so it keeps that receipt’s
+              dates. If the shop gave you a new receipt, change them with Edit.
+            </div>
+          )}
+          <ActiveActions distance={receipt.distance} onReturn={onReturn} onSend={onSend} onKeep={onKeep} />
+          <Pressable
+            onClick={onExchange}
+            style={{ display: 'flex', width: 'auto', minHeight: 44, alignItems: 'center', justifyContent: 'center', margin: '6px auto 0', padding: '0 16px', fontWeight: 600, fontSize: 14, textDecoration: 'underline' }}
+          >
+            Swapped it for another
+          </Pressable>
+        </>
       )}
       {/* Last, and quiet. It sat beside the primary action as a pill of its
           own, on every receipt: the one irreversible-looking choice here drawn
@@ -607,6 +647,7 @@ function RefundChasePanel({ receipt, today }: { receipt: Receipt; today: Date })
       </h2>
       <div style={{ fontSize: 13.5, lineHeight: 1.5, marginTop: 4, color: color.muted }}>{refundChaseLine(chase)}</div>
       <Letter letter={letter} title={`Refund not received: ${receipt.item}`} receipt={receipt} />
+      <Escalation receipt={receipt} />
       <div style={{ fontSize: 12, marginTop: 10, color: color.muted }}>{LEGAL_DISCLAIMER}</div>
     </section>
   );
@@ -618,8 +659,26 @@ function RefundChasePanel({ receipt, today }: { receipt: Receipt; today: Date })
  * it lapses, a reminder is due a month before — credit that runs out unspent
  * is money lost as surely as a missed return window.
  */
-function CreditPanel({ receipt, onSetCredit }: { receipt: Receipt; onSetCredit: (credit: { expires?: string } | null) => void }) {
+function CreditPanel({ receipt, onSetCredit, onCreditSpent }: {
+  receipt: Receipt;
+  onSetCredit: (credit: { expires?: string } | null) => void;
+  onCreditSpent: (spent: boolean) => void;
+}) {
   const [text, setText] = useState(receipt.credit?.expires ?? '');
+  if (receipt.credit?.spentOn) {
+    // Spent: nothing left to remind about, and the record says so.
+    return (
+      <div data-credit-spent style={{ marginTop: 10, padding: 14, background: color.white, border: `1.5px solid ${color.border}`, borderRadius: 16 }}>
+        <div style={{ fontSize: 14, fontWeight: 700 }}>Store credit · spent {fmtDateLong(fromISODate(receipt.credit.spentOn))}</div>
+        <Pressable
+          onClick={() => onCreditSpent(false)}
+          style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', marginTop: 2, fontSize: 13, fontWeight: 600, textDecoration: 'underline' }}
+        >
+          Not spent after all
+        </Pressable>
+      </div>
+    );
+  }
   if (!receipt.credit) {
     return (
       <Pressable
@@ -665,12 +724,20 @@ function CreditPanel({ receipt, onSetCredit }: { receipt: Receipt; onSetCredit: 
           Optional, from the credit note. With a date, a reminder is due a month before it lapses.
         </div>
       )}
-      <Pressable
-        onClick={() => onSetCredit(null)}
-        style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', marginTop: 4, fontSize: 13, fontWeight: 600, textDecoration: 'underline' }}
-      >
-        It was money after all
-      </Pressable>
+      <div style={{ display: 'flex', flexWrap: 'wrap', columnGap: 16, marginTop: 4 }}>
+        <Pressable
+          onClick={() => onCreditSpent(true)}
+          style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', fontSize: 13, fontWeight: 700, textDecoration: 'underline' }}
+        >
+          I’ve spent it
+        </Pressable>
+        <Pressable
+          onClick={() => onSetCredit(null)}
+          style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', fontSize: 13, fontWeight: 600, textDecoration: 'underline' }}
+        >
+          It was money after all
+        </Pressable>
+      </div>
     </div>
   );
 }

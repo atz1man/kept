@@ -115,3 +115,49 @@ describe('store credit, in a backup', () => {
     expect(readReceipt({ ...good, status: 'active', returnedOn: undefined })?.credit).toBeUndefined();
   });
 });
+
+describe('store credit, spent', () => {
+  /*
+   * Credit was the one thing kept could be told about and never told it had
+   * gone: "spend it before then" still fired a month before the note's date
+   * on credit used the week it was given, and the only ways to stop it made
+   * the record false.
+   */
+  const a = (s: AppState) => s.receipts[0];
+  const spent = () => reducer(state(credited(10)), { type: 'credit-spent', id: 'a' }, TODAY);
+
+  it('is recorded on the day, keeping what the credit was and when it would have run out', () => {
+    expect(a(spent()).credit).toEqual({ expires: iso(10), spentOn: toISODate(TODAY) });
+    expect(a(spent()).status).toBe('returned');
+  });
+
+  it('stops the reminder, on screen and lodged with the phone', () => {
+    expect(dueAlerts([a(spent())], TODAY, 7, new Set()).filter((x) => x.rung === 'credit')).toEqual([]);
+    const FUTURE = new Date(new Date().getFullYear() + 1, 5, 1);
+    const later = { ...credited(40), returnedOn: toISODate(FUTURE), credit: { expires: iso(60, FUTURE), spentOn: toISODate(FUTURE) } };
+    expect(planAlerts([later], FUTURE, 7, new Set()).map((p) => p.rung)).not.toContain('credit');
+    expect(planAlerts([{ ...later, credit: { expires: iso(60, FUTURE) } }], FUTURE, 7, new Set()).map((p) => p.rung)).toContain('credit');
+  });
+
+  it('can be taken back, and the reminder is due again', () => {
+    const back = reducer(spent(), { type: 'credit-unspent', id: 'a' }, TODAY);
+    expect(a(back).credit).toEqual({ expires: iso(10) });
+    expect(dueAlerts([a(back)], TODAY, 7, new Set()).map((x) => x.rung)).toContain('credit');
+  });
+
+  it('is only recorded on credit, once, and survives a corrected expiry', () => {
+    const money = { ...credited(10), credit: undefined };
+    expect(reducer(state(money), { type: 'credit-spent', id: 'a' }, TODAY)).toEqual(state(money));
+    const again = reducer(spent(), { type: 'credit-spent', id: 'a' }, addDays(TODAY, 3));
+    expect(a(again).credit?.spentOn).toBe(toISODate(TODAY));
+    const moved = reducer(spent(), { type: 'set-credit', id: 'a', credit: { expires: iso(20) } }, TODAY);
+    expect(a(moved).credit).toEqual({ expires: iso(20), spentOn: toISODate(TODAY) });
+    expect(a(reducer(spent(), { type: 'set-credit', id: 'a', credit: null }, TODAY)).credit).toBeUndefined();
+  });
+
+  it('is carried in a backup and through a reload, and a day that is not one is dropped', () => {
+    const r = a(spent());
+    expect(readReceipt(JSON.parse(JSON.stringify(r)))?.credit).toEqual({ expires: iso(10), spentOn: toISODate(TODAY) });
+    expect(readReceipt({ ...r, credit: { expires: iso(10), spentOn: '2026-02-31' } })?.credit).toEqual({ expires: iso(10) });
+  });
+});

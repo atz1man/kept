@@ -350,6 +350,40 @@ if (!/Deadline alerts/.test(settingsText)) {
       });
     }
 
+    // Shown full screen, to hand across a counter, and shut again with
+    // Escape; focus goes in to Close, as a dialog's must.
+    await np.getByRole('button', { name: 'Show it full screen' }).click().catch(() => {});
+    await np.waitForTimeout(300);
+    const dialog = np.getByRole('dialog', { name: 'The paper receipt' });
+    const full = {
+      open: await dialog.isVisible().catch(() => false),
+      focused: await np.evaluate(() => document.activeElement?.textContent?.trim() ?? ''),
+    };
+    await np.keyboard.press('Escape');
+    await np.waitForTimeout(300);
+    full.shut = (await dialog.count()) === 0;
+    if (!full.open || full.focused !== 'Close' || !full.shut) {
+      failures.push({ what: 'the receipt photo did not open full screen as a dialog that Escape shuts', saw: JSON.stringify(full) });
+    }
+
+    // Removing asks first — the file cannot be brought back — and "Keep it"
+    // keeps it. Only the second tap removes it.
+    const onDisk = async () => (await photos()).length;
+    const had = await onDisk();
+    await np.getByRole('button', { name: 'Remove the photo' }).click().catch(() => {});
+    await np.waitForTimeout(300);
+    const asked = { stillThere: (await onDisk()) === had, offered: await np.getByRole('button', { name: 'Remove it for good' }).isVisible().catch(() => false) };
+    await np.getByRole('button', { name: 'Keep it' }).click().catch(() => {});
+    await np.waitForTimeout(300);
+    asked.kept = (await onDisk()) === had && (await np.getByRole('img', { name: 'The paper receipt for this purchase' }).count()) === 1;
+    await np.getByRole('button', { name: 'Remove the photo' }).click().catch(() => {});
+    await np.getByRole('button', { name: 'Remove it for good' }).click().catch(() => {});
+    await np.waitForTimeout(400);
+    asked.removed = (await onDisk()) === had - 1;
+    if (!asked.stillThere || !asked.offered || !asked.kept || !asked.removed) {
+      failures.push({ what: 'removing a receipt photo did not ask first, or did not remove it when told', saw: JSON.stringify(asked) });
+    }
+
     // 2. Unticked: the next receipt saves without it. Counted against the
     //    disk as it stood, so a first save that kept nothing is not reported
     //    here a second time under the wrong name.
@@ -489,9 +523,10 @@ if (!/Deadline alerts/.test(settingsText)) {
     }
 
     /*
-     * Kept, with a guarantee: the return reminders go, and one reminder is
-     * lodged a month before cover ends — through the real plugin, at 9am on
-     * that morning, which a unit test of `planAlerts` cannot show.
+     * Kept, with a guarantee: the return reminders go, and two stay, each
+     * through the real plugin at 9am on its morning, which a unit test of
+     * `planAlerts` cannot show — the 30 days to reject a fault, three days
+     * before they end, and the guarantee, a month before cover ends.
      */
     await ap.getByRole('button', { name: 'Edit', exact: true }).click();
     await ap.locator('#e-warranty').fill('12');
@@ -502,10 +537,12 @@ if (!/Deadline alerts/.test(settingsText)) {
     const keptNotes = await ap.evaluate(() => window.__keptNotes().pending);
     const coverEnds = new Date(bought.getFullYear() + 1, bought.getMonth(), bought.getDate());
     const noticeDay = new Date(coverEnds.getFullYear(), coverEnds.getMonth(), coverEnds.getDate() - 30, 9, 0, 0, 0);
-    const onlyWarranty = keptNotes.length === 1 && String(keptNotes[0].extra?.key).endsWith(':warranty');
-    if (!onlyWarranty || new Date(keptNotes[0].schedule?.at).getTime() !== noticeDay.getTime()) {
+    const rejectDay = new Date(bought.getFullYear(), bought.getMonth(), bought.getDate() + 30 - 3, 9, 0, 0, 0);
+    const got = keptNotes.map((n) => [String(n.extra?.key).split(':').pop(), new Date(n.schedule?.at).getTime()]);
+    const expected = [['reject', rejectDay.getTime()], ['warranty', noticeDay.getTime()]];
+    if (JSON.stringify(got) !== JSON.stringify(expected)) {
       failures.push({
-        what: 'a kept purchase with a guarantee did not leave exactly one reminder, a month before cover ends',
+        what: 'a kept purchase with a guarantee did not leave exactly its two reminders: the right to reject, then the guarantee',
         saw: JSON.stringify(keptNotes.map((n) => ({ key: n.extra?.key, at: n.schedule?.at }))).slice(0, 300),
       });
     }

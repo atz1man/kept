@@ -20,6 +20,7 @@ interface Props {
   onExport: () => Promise<SaveOutcome>;
   onRestore: (receipts: Receipt[]) => void;
   onWipe: () => void;
+  onClearSamples: () => void;
   onUpgrade: (plan: 'monthly' | 'yearly' | 'lifetime') => void;
   onChange: (patch: Partial<SettingsShape>) => void;
 }
@@ -30,7 +31,7 @@ const RESTORE_FAILURES = {
   'nothing-usable': 'That backup’s receipts couldn’t be read — nothing was changed.',
 } as const;
 
-export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUpgrade, onChange }: Props) {
+export function Settings({ settings, receipts, onExport, onRestore, onWipe, onClearSamples, onUpgrade, onChange }: Props) {
   // How current the retailer table is, decided in `tableCheck` so that a date
   // set once cannot go on reassuring people years later.
   const check = tableCheck(new Date());
@@ -349,6 +350,23 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
           )}
         </div>
       </section>
+
+      {/* The samples, on their own: Erase everything was the only way to be
+          rid of all of them, and it takes the real receipts too. */}
+      {receipts.some((r) => r.demo) && (
+        <section style={{ background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: radius.cardLg, marginTop: 12, padding: 18 }}>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>Sample receipts</div>
+          <p style={{ fontSize: 13, color: color.muted, lineHeight: 1.55, marginTop: 6, marginBottom: 0 }}>
+            The receipts marked sample show what kept does. Removing them leaves your own receipts exactly as they are.
+          </p>
+          <Pressable
+            onClick={onClearSamples}
+            style={{ marginTop: 12, padding: 12, textAlign: 'center', background: color.white, border: `1.5px solid ${color.ink}`, borderRadius: 999, fontWeight: 700, fontSize: 13 }}
+          >
+            Remove the samples
+          </Pressable>
+        </section>
+      )}
 
       <section style={{ background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: radius.cardLg, marginTop: 12, padding: 18 }}>
         <div style={{ fontWeight: 700, fontSize: 15 }}>Erase everything</div>

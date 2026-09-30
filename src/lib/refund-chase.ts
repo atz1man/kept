@@ -1,6 +1,7 @@
 import { REFUND_CHASE_DAYS } from './alerts';
 import { addDays, daysBetween, fmtDateLong, fromISODate } from './dates';
 import { REPLY_DAYS } from './fault-letter';
+import { cancelledInTime } from './cancel-notice';
 import { COOLING_OFF_DAYS } from './legal';
 import { money } from './money';
 import type { Receipt } from './types';
@@ -67,7 +68,9 @@ export function refundChase(r: Receipt, today: Date): RefundChase | null {
   return {
     due,
     late: daysBetween(due, today) >= 0,
-    statutory: r.distance && daysBetween(handover, sent) <= COOLING_OFF_DAYS,
+    // Sent inside the period, or notice given inside it: cancelling is the
+    // notice, and the parcel then has fourteen days of its own to go back.
+    statutory: r.distance && (daysBetween(handover, sent) <= COOLING_OFF_DAYS || cancelledInTime(r)),
   };
 }
 
@@ -89,7 +92,9 @@ export function refundLetter(r: Receipt, today: Date): string | null {
 
   const body = c.statutory
     ? [
-        `On ${bought} I ordered “${r.item}” from you for ${money(r.amount)}${arrived}. I cancelled the order and sent it back to you on ${sent}.${proof}`,
+        r.cancelledOn
+          ? `On ${bought} I ordered “${r.item}” from you for ${money(r.amount)}${arrived}. I cancelled the order on ${fmtDateLong(fromISODate(r.cancelledOn))} and sent it back to you on ${sent}.${proof}`
+          : `On ${bought} I ordered “${r.item}” from you for ${money(r.amount)}${arrived}. I cancelled the order and sent it back to you on ${sent}.${proof}`,
         '',
         `Under the Consumer Contracts (Information, Cancellation and Additional Charges) Regulations 2013, regulation 34, you must refund a cancelled order within ${REFUND_CHASE_DAYS} days of the day you receive the goods back, or of the day I supply evidence of having sent them back, if that is earlier. The refund must include the standard delivery charge, if I paid one.`,
         '',
