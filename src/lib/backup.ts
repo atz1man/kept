@@ -190,6 +190,8 @@ export function readReceipt(raw: unknown, fromOutside = false): Receipt | null {
       return { faultClaim: { sentOn: c.sentOn, ...(isStr(c.what) ? { what: fromOutside ? trim(c.what, MAX_NOTE) : c.what } : {}) } };
     })(),
     ...(r.keptOn !== undefined ? { keptOn: r.keptOn as string } : {}),
+    // Notice of cancellation: an online order's, on a real day, or dropped.
+    ...(distance && isISODate(r.cancelledOn) ? { cancelledOn: r.cancelledOn } : {}),
     ...(r.sentOn !== undefined ? { sentOn: r.sentOn as string } : {}),
     // A reference that would not have been accepted on screen is dropped, not
     // truncated: half a tracking number finds somebody else's parcel.

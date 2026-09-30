@@ -12,6 +12,7 @@ import { urgency } from '../../lib/urgency';
 import { ChevronLeft, Warning } from '../components/Icons';
 import { Pressable } from '../components/Pressable';
 import { ReceiptPhoto } from '../components/ReceiptPhoto';
+import { CancelPanel } from '../components/CancelPanel';
 import { FaultPanel } from '../components/FaultPanel';
 import { RefundForm } from '../components/RefundForm';
 import { Letter } from '../components/Letter';
@@ -38,13 +39,15 @@ interface Props {
   onSetCredit: (credit: { expires?: string } | null) => void;
   onFaultSent: (what: string) => void;
   onFaultUnsent: () => void;
+  onCancelSent: () => void;
+  onCancelUnsent: () => void;
   onArrived: () => void;
   onDelete: () => void;
 }
 
 const cardLabel = { fontSize: 11, fontWeight: 700, letterSpacing: '1.4px', color: color.muted } as const;
 
-export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onSetCredit, onArrived, onFaultSent, onFaultUnsent, onDelete }: Props) {
+export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onSetCredit, onArrived, onFaultSent, onFaultUnsent, onCancelSent, onCancelUnsent, onDelete }: Props) {
   const [legalOpen, setLegalOpen] = useState(true);
   const d = derive(receipt, today);
   const u = urgency(d.daysLeft, urgentDays);
@@ -362,6 +365,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
 
       {/* The rights above, turned into the letter that asks for them. Not on a
           refund: that purchase has already gone back. */}
+      {receipt.status === 'active' && <CancelPanel receipt={receipt} today={today} onSent={onCancelSent} onUnsent={onCancelUnsent} />}
       {(receipt.status === 'active' || receipt.status === 'kept') && <FaultPanel receipt={receipt} today={today} onSent={onFaultSent} onUnsent={onFaultUnsent} />}
 
       {receipt.gotcha && (
