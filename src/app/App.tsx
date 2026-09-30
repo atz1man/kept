@@ -393,6 +393,7 @@ export function App() {
           onUnsend={() => dispatch({ type: 'unsend', id: selected.id })}
           onSetRefund={(pence) => dispatch({ type: 'set-refund', id: selected.id, pence })}
           onSetReturnRef={(ref) => dispatch({ type: 'set-return-ref', id: selected.id, ref })}
+          onSetCredit={(credit) => dispatch({ type: 'set-credit', id: selected.id, credit })}
           onDelete={() => dispatch({ type: 'delete', id: selected.id })}
         />
       )}

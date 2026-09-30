@@ -912,6 +912,53 @@ for (const cancel of [false, true]) {
   await oCtx.close();
 }
 
+/*
+ * Store credit. A return that ended in credit rather than money had no way
+ * to be said, and credit that lapses unspent is money lost as surely as a
+ * missed window. It can be marked, dated from the credit note, and taken back.
+ */
+{
+  const kCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const kp = await kCtx.newPage();
+  await kp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await kp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await kp.getByRole('button', { name: /Currys, JBL/ }).first().click();
+  await kp.getByRole('button', { name: 'Got my money back' }).click();
+  await kp.waitForTimeout(300);
+  await kp.getByRole('button', { name: 'Back to receipts' }).click();
+  await kp.waitForTimeout(300);
+  await kp.getByRole('button', { name: /Currys, JBL.*returned$/ }).click();
+  await kp.waitForTimeout(300);
+  const mark = kp.getByRole('button', { name: 'It came back as store credit' });
+  const seen = { offered: (await mark.count()) === 1 };
+  const stored = () => kp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => /JBL/.test(r.item)));
+  if (seen.offered) {
+    await mark.click();
+    await kp.waitForTimeout(200);
+    seen.said = /Store credit · £89\.00 at Currys/.test(await kp.locator('main').innerText());
+    const today = await kp.evaluate(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
+    const shift = (iso, n) => { const d = new Date(`${iso}T12:00:00`); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+    await kp.locator('#credit-expires').fill(shift(today, -3));
+    await kp.waitForTimeout(200);
+    seen.beforeRefused = /It cannot run out before it was given/.test(await kp.locator('[data-credit]').innerText()) && (await stored())?.credit?.expires === undefined;
+    await kp.locator('#credit-expires').fill(shift(today, 365));
+    await kp.waitForTimeout(200);
+    seen.dated = (await stored())?.credit?.expires === shift(today, 365);
+    await kp.getByRole('button', { name: 'Back', exact: true }).click();
+    await kp.waitForTimeout(300);
+    seen.row = (await kp.getByRole('button', { name: /Currys, JBL.*£89\.00 in credit, returned$/ }).count()) === 1;
+    await kp.getByRole('button', { name: /Currys, JBL.*returned$/ }).click();
+    await kp.waitForTimeout(300);
+    await kp.getByRole('button', { name: 'It was money after all' }).click();
+    await kp.waitForTimeout(200);
+    seen.undone = (await stored())?.credit === undefined && /Money back · £89\.00 recovered/.test(await kp.locator('main').innerText());
+  }
+  const ok = seen.offered && seen.said && seen.beforeRefused && seen.dated && seen.row && seen.undone;
+  results['a refund that came as store credit can be said, dated from the note, and taken back'] = !!ok;
+  if (!ok) problems.push(`store credit: ${JSON.stringify(seen)}`);
+  await kCtx.close();
+}
+
 // The tab bar floats over every screen; its buttons must stay clickable.
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(400);
