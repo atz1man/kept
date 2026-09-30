@@ -6,7 +6,7 @@ import { FEED_PUBLIC_KEY, feedIsAcceptable, verifyFeed } from '../lib/feed-signa
 import { currentNotifyState, deliver, offerReminders, type NotifyState } from './notify';
 import { isNative } from '../lib/mirror';
 import { money, sumPence } from '../lib/money';
-import { countsAsMoney, derive, recoveredPence } from '../lib/receipts';
+import { countsAsMoney, derive, makeReceiptId, recoveredPence } from '../lib/receipts';
 import { fmtDateNear } from '../lib/dates';
 import { winSentence } from '../lib/words';
 import { exportBackup, wipe } from '../lib/storage';
@@ -440,6 +440,8 @@ export function App() {
           onEdit={() => dispatch({ type: 'go', screen: 'edit' })}
           onReturn={() => dispatch({ type: 'return', id: selected.id })}
           onUnreturn={() => dispatch({ type: 'unreturn', id: selected.id })}
+          onExchange={() => dispatch({ type: 'exchange', id: selected.id, newId: makeReceiptId() })}
+          onUnexchange={() => dispatch({ type: 'unexchange', id: selected.id })}
           onKeep={() => dispatch({ type: 'keep', id: selected.id })}
           onUnkeep={() => dispatch({ type: 'unkeep', id: selected.id })}
           onSend={() => dispatch({ type: 'send', id: selected.id })}

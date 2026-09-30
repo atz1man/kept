@@ -201,6 +201,10 @@ export function readReceipt(raw: unknown, fromOutside = false): Receipt | null {
     ...(r.keptOn !== undefined ? { keptOn: r.keptOn as string } : {}),
     // Notice of cancellation: an online order's, on a real day, or dropped.
     ...(distance && isISODate(r.cancelledOn) ? { cancelledOn: r.cancelledOn } : {}),
+    // A swap: settled as returned with nothing recovered, and the receipt it
+    // produced knows which it came from.
+    ...(r.status === 'returned' && r.exchanged === true ? { exchanged: true as const } : {}),
+    ...(isStr(r.swappedFrom) && r.swappedFrom.length <= 100 ? { swappedFrom: r.swappedFrom } : {}),
     ...(r.sentOn !== undefined ? { sentOn: r.sentOn as string } : {}),
     // A reference that would not have been accepted on screen is dropped, not
     // truncated: half a tracking number finds somebody else's parcel.

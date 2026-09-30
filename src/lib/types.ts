@@ -115,6 +115,15 @@ export interface Receipt {
    */
   cancelledOn?: string;
   /**
+   * Swapped for another rather than refunded — a different size, a
+   * replacement over the counter. The item went back and no money came: a
+   * returned receipt, counted as nothing recovered. It had no way to be said,
+   * so a swap was recorded as kept or as a refund, both false.
+   */
+  exchanged?: true;
+  /** On the receipt a swap produced: the id of the one it was swapped for. */
+  swappedFrom?: string;
+  /**
    * The day the person decided to keep it. Keeping is the commonest end to a
    * purchase and had no way to be said: the only exits were "returned" and
    * Delete, so a kept coat went on raising return reminders, then sat at the
