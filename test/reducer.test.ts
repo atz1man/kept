@@ -17,7 +17,7 @@ const base = (over: Partial<AppState> = {}): AppState => ({
   version: 1, receipts: [receipt('a'), receipt('b')], updates: [], onboardingSeen: true,
   settings: { ...DEFAULT_SETTINGS }, alertsSent: [],
   screen: 'home', selId: null, obStep: 0, celebrating: null, shared: 'no', upgrading: null,
-  sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null, justAdded: null,
+  sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null,
   ...over,
 });
 
@@ -736,8 +736,69 @@ describe('the tracking number on a return', () => {
   it('goes with the refund, and is forgotten when it turns out not to have gone', () => {
     expect(a(reducer(tracked(), { type: 'return', id: 'a' }, TODAY)).returnRef).toBe('JD0002 1234');
     expect(a(reducer(tracked(), { type: 'unsend', id: 'a' }, TODAY)).returnRef).toBeUndefined();
+    // Taking back the refund leaves the posting; taking back the posting forgets it.
     const back = reducer(tracked(), { type: 'return', id: 'a' }, TODAY);
-    expect(a(reducer(back, { type: 'unreturn', id: 'a' }, TODAY)).returnRef).toBeUndefined();
+    const unrefunded = reducer(back, { type: 'unreturn', id: 'a' }, TODAY);
+    expect(a(unrefunded).returnRef).toBe('JD0002 1234');
+    expect(a(reducer(unrefunded, { type: 'unsend', id: 'a' }, TODAY)).returnRef).toBeUndefined();
+  });
+});
+
+describe('taking back a refund on a receipt that was posted first', () => {
+  /*
+   * "Not actually returned" sent it to active: the day it was posted and its
+   * tracking number went, and "go now or lose it" alerts started about a
+   * parcel already at the warehouse. One step back is waiting for the refund.
+   */
+  const a = (s: AppState) => s.receipts.find((r) => r.id === 'a')!;
+  const refunded = () => {
+    let s = reducer(base({ receipts: [receipt('a'), receipt('b')] }), { type: 'send', id: 'a' }, TODAY);
+    s = reducer(s, { type: 'set-return-ref', id: 'a', ref: 'JD0002' }, TODAY);
+    s = reducer(s, { type: 'return', id: 'a' }, TODAY);
+    return reducer(s, { type: 'set-refund', id: 'a', pence: 1000 }, TODAY);
+  };
+
+  it('goes back to waiting for the refund, still posted on the day it was, with its reference', () => {
+    const was = a(refunded());
+    const back = a(reducer(refunded(), { type: 'unreturn', id: 'a' }, TODAY));
+    expect(back.status).toBe('sent');
+    expect(back.sentOn).toBe(was.sentOn);
+    expect(back.sentOn).toBeDefined();
+    expect(back.returnRef).toBe('JD0002');
+    expect(back.returnedOn).toBeUndefined();
+    expect(back.refunded).toBeUndefined();
+  });
+
+  it('still puts a receipt returned over the counter back to active', () => {
+    const s = reducer(base({ receipts: [receipt('a')] }), { type: 'return', id: 'a' }, TODAY);
+    expect(a(reducer(s, { type: 'unreturn', id: 'a' }, TODAY)).status).toBe('active');
+  });
+});
+
+describe('a swipe that sends an online order back', () => {
+  const a = (s: AppState) => s.receipts.find((r) => r.id === 'a')!;
+  const swiped = () => reducer(base({ receipts: [receipt('a'), receipt('b')] }), { type: 'send', id: 'a', undoable: true }, TODAY);
+
+  it('is offered back, and the undo puts it back as it was', () => {
+    expect(swiped().justSent).toBe('a');
+    const undone = reducer(swiped(), { type: 'undo-send' }, TODAY);
+    expect(a(undone)).toEqual(receipt('a'));
+    expect(undone.justSent).toBeNull();
+  });
+
+  it('from the receipt screen is not, since "Not sent after all" is beside it', () => {
+    const s = reducer(base({ receipts: [receipt('a')] }), { type: 'send', id: 'a' }, TODAY);
+    expect(s.justSent).toBeNull();
+  });
+
+  it('is one undo on offer at a time, and leaves alone a receipt refunded since', () => {
+    const deleted = reducer(swiped(), { type: 'delete', id: 'b' }, TODAY);
+    expect(deleted.justSent).toBeNull();
+    expect(deleted.justDeleted).not.toBeNull();
+    const refunded = reducer(swiped(), { type: 'return', id: 'a' }, TODAY);
+    expect(refunded.justSent).toBeNull();
+    const late = { ...refunded, justSent: 'a' };
+    expect(a(reducer(late, { type: 'undo-send' }, TODAY)).status).toBe('returned');
   });
 });
 

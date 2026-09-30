@@ -1311,6 +1311,101 @@ for (const cancel of [false, true]) {
   await tCtx.close();
 }
 
+/*
+ * Three places the lifecycle said something false, found by an audit.
+ * The headline was `active[0]`, samples included: somebody who had just
+ * saved their first purchase read "£89.00 back if it goes back by…" about
+ * headphones nobody bought, unlabelled. A swipe on an ONLINE order recorded
+ * the money as back — the receipt's own screen leads with "I've sent it
+ * back" for exactly that order. And "Not actually returned" on a receipt
+ * that was posted first sent it to active, wiping the day it went.
+ */
+{
+  const sCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const sp = await sCtx.newPage();
+  await sp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await sp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await sp.waitForTimeout(300);
+  const hero = () => sp.getByRole('button', { name: /NEXT WINDOW TO CLOSE|WINDOW ALREADY CLOSED/ }).first().innerText().catch(() => '');
+  const zara = async () => (await sp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => r.id === 'seed_zara')));
+  const tap = (name) => sp.getByRole('button', { name }).first().click({ timeout: 3000 }).then(() => true, () => false);
+  const seen = {};
+  const before = await hero();
+  seen.sampleSaysSo = /Sample · /.test(before);
+  const today = await sp.evaluate(() => {
+    const iso = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    const s = JSON.parse(localStorage.getItem('kept.v1'));
+    // Real, and later than every sample: only the samples-first rule puts
+    // a sample above it.
+    s.receipts.push({ id: 'r_argos', store: 'Argos', item: 'Desk lamp', cat: 'home', amount: 2500, purchasedOn: iso(0), windowDays: 60, policy: 'Argos.', distance: false, status: 'active' });
+    localStorage.setItem('kept.v1', JSON.stringify(s));
+    return iso(0);
+  });
+  await sp.reload({ waitUntil: 'networkidle' });
+  await sp.waitForTimeout(300);
+  const after = await hero();
+  seen.realLeads = /Argos/.test(after) && !/Sample/.test(after);
+
+  // Swipe the online order.
+  const swipe = async () => {
+    const row = sp.getByRole('button', { name: /^Zara, Wool-blend/ }).first();
+    const box = await row.boundingBox();
+    if (!box) return;
+    const y = box.y + box.height / 2;
+    await sp.mouse.move(box.x + box.width - 40, y);
+    await sp.mouse.down();
+    for (let dx = 0; dx <= 110; dx += 22) { await sp.mouse.move(box.x + box.width - 40 - dx, y); await sp.waitForTimeout(30); }
+    await sp.mouse.up();
+    await sp.waitForTimeout(500);
+  };
+  await swipe();
+  let z = await zara();
+  const bar = (await sp.locator('[role="status"]').allInnerTexts()).join(' ');
+  seen.swipeSends = z?.status === 'sent' && z?.sentOn === today && !/MONEY BACK/.test(await sp.locator('main').innerText());
+  seen.offeredBack = /Marked Wool-blend overcoat sent back/.test(bar);
+  await tap('Undo');
+  await sp.waitForTimeout(400);
+  z = await zara();
+  seen.undone = z?.status === 'active' && z?.sentOn === undefined;
+
+  // Posted, then refunded, then the refund taken back: one step, to waiting.
+  await swipe();
+  await sp.getByRole('button', { name: /^Zara, Wool-blend/ }).first().click({ timeout: 3000 }).catch(() => {});
+  await sp.waitForTimeout(300);
+  await tap('Add the tracking number');
+  await sp.getByLabel('Tracking or proof-of-postage number').fill('JD0002', { timeout: 3000 }).catch(() => {});
+  await sp.getByLabel('Tracking or proof-of-postage number').press('Enter').catch(() => {});
+  await sp.waitForTimeout(200);
+  seen.tracked = (await zara())?.returnRef === 'JD0002';
+  await tap('Got my money back');
+  await sp.waitForTimeout(400);
+  await tap('Back to receipts');
+  await sp.waitForTimeout(300);
+  // With the bar up, the row just marked is the one a person reaches for,
+  // and the list scrolled to its end must put it clear of the bar.
+  seen.clearOfBar = await sp.evaluate(() => {
+    const row = [...document.querySelectorAll('button')].find((b) => /^Zara, Wool-blend/.test(b.getAttribute('aria-label') ?? ''));
+    let el = row?.parentElement;
+    while (el && !(el.scrollHeight > el.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(el).overflowY))) el = el.parentElement;
+    if (!row || !el || !document.querySelector('[role="status"] button')) return false;
+    el.scrollTop = el.scrollHeight;
+    const r = row.getBoundingClientRect();
+    return row.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2));
+  });
+  await sp.getByRole('button', { name: /^Zara, Wool-blend/ }).first().click({ timeout: 3000 }).catch(() => {});
+  await sp.waitForTimeout(300);
+  const posted = (await zara())?.sentOn;
+  seen.refunded = (await zara())?.status === 'returned';
+  seen.saysWhat = await tap('The refund hasn’t come');
+  await sp.waitForTimeout(300);
+  z = await zara();
+  seen.backToWaiting = z?.status === 'sent' && z?.sentOn === posted && !!posted && z?.returnRef === 'JD0002';
+  const ok = seen.sampleSaysSo && seen.realLeads && seen.swipeSends && seen.offeredBack && seen.undone && seen.tracked && seen.clearOfBar && seen.refunded && seen.saysWhat && seen.backToWaiting;
+  results['the headline is a real receipt, a swipe sends an online order back, the list clears the undo bar, and a refund taken back leaves the posting'] = !!ok;
+  if (!ok) problems.push(`lifecycle: ${JSON.stringify({ ...seen, before: before.slice(0, 80), after: after.slice(0, 80), bar: bar.slice(0, 80), z })}`);
+  await sCtx.close();
+}
+
 // The tab bar floats over every screen; its buttons must stay clickable.
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(400);
