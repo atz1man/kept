@@ -6,6 +6,7 @@ import { cleanupPhotos } from '../lib/photos';
 import { onNotificationTap, syncScheduled } from './schedule-native';
 import { currentDay, daysBetween, fromISODate, startOfDay, toISODate } from '../lib/dates';
 import { sharedTextFrom, strippedShareUrl } from '../lib/share';
+import { canSplit, splitReceipt, validSplit } from '../lib/split';
 import { awaitingArrival, countsAsMoney, derive, makeReceiptId, refundOf } from '../lib/receipts';
 import { windowStartFor } from '../lib/draft';
 import { readReturnRef } from '../lib/refund-chase';
@@ -103,6 +104,8 @@ export type Action =
   | { type: 'unreturn'; id: string }
   | { type: 'exchange'; id: string; newId: string }
   | { type: 'unexchange'; id: string }
+  | { type: 'split'; id: string; item: string; pence: number; newId: string }
+  | { type: 'unsplit'; id: string }
   | { type: 'undo-delete' }
   | { type: 'dismiss-undo' }
   | { type: 'wipe' }
@@ -286,6 +289,39 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
           .filter((r) => r.swappedFrom !== action.id)
           .map((r) => (r.id === action.id ? { ...r, status: 'active' as const, returnedOn: undefined, exchanged: undefined } : r)),
       };
+    case 'split': {
+      // A part out of a basket, as a receipt of its own; opened, since the
+      // reason to split is usually to do something with that part.
+      const r = state.receipts.find((x) => x.id === action.id);
+      if (!r || !canSplit(r) || state.receipts.some((x) => x.id === action.newId)) return state;
+      if (!validSplit(r, action.item, action.pence)) return state;
+      const { rest, part } = splitReceipt(r, action.item.trim().replace(/\s+/g, ' '), action.pence, action.newId);
+      return {
+        ...state,
+        receipts: [...state.receipts.map((x) => (x.id === r.id ? rest : x)), part],
+        screen: 'detail',
+        selId: part.id,
+        justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null,
+      };
+    }
+    case 'unsplit': {
+      // Back into the receipt it came from, money and all — only while that
+      // receipt is still here, so the amount has somewhere to go.
+      const part = state.receipts.find((x) => x.id === action.id);
+      const from = part?.splitFrom ? state.receipts.find((x) => x.id === part.splitFrom) : undefined;
+      // And only while both are still in hand: folding a returned part's
+      // money back, or money into a returned receipt, would rewrite a refund.
+      if (!part || !from || !canSplit(part) || !canSplit(from)) return state;
+      return {
+        ...state,
+        receipts: state.receipts
+          .filter((x) => x.id !== part.id)
+          .map((x) => (x.id === from.id ? { ...x, amount: x.amount + part.amount } : x)),
+        alertsSent: pruneSent(state.alertsSent, state.receipts.filter((x) => x.id !== part.id)),
+        screen: 'detail',
+        selId: from.id,
+      };
+    }
     case 'unreturn':
       /*
        * The swipe is a one-finger gesture on a row you might have meant to

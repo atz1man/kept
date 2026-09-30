@@ -15,6 +15,8 @@ import { ReceiptPhoto } from '../components/ReceiptPhoto';
 import { CancelPanel } from '../components/CancelPanel';
 import { Escalation } from '../components/Escalation';
 import { FaultPanel } from '../components/FaultPanel';
+import { SplitPanel } from '../components/SplitPanel';
+import { canSplit } from '../../lib/split';
 import { RefundForm } from '../components/RefundForm';
 import { Letter } from '../components/Letter';
 import { readReturnRef, refundChase, refundChaseLine, refundLetter } from '../../lib/refund-chase';
@@ -48,11 +50,17 @@ interface Props {
   onCancelUnsent: () => void;
   onArrived: () => void;
   onDelete: () => void;
+  /** One thing out of this receipt, as a receipt of its own. */
+  onSplit: (item: string, pence: number) => void;
+  /** Back into the receipt it was split from; offered only while that receipt is here. */
+  onUnsplit: (() => void) | null;
+  /** The receipt this part was split from, to name it. */
+  splitFromReceipt: Receipt | null;
 }
 
 const cardLabel = { fontSize: 11, fontWeight: 700, letterSpacing: '1.4px', color: color.muted } as const;
 
-export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onSetCredit, onCreditSpent, onArrived, onFaultSent, onFaultUnsent, onCancelSent, onCancelUnsent, onExchange, onUnexchange, onDelete }: Props) {
+export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onSetCredit, onCreditSpent, onArrived, onFaultSent, onFaultUnsent, onCancelSent, onCancelUnsent, onExchange, onUnexchange, onDelete, onSplit, onUnsplit, splitFromReceipt }: Props) {
   const [legalOpen, setLegalOpen] = useState(true);
   const d = derive(receipt, today);
   const u = urgency(d.daysLeft, urgentDays);
@@ -493,6 +501,19 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
           </Pressable>
         </>
       )}
+      {/* A part split out of a basket says where it came from, and can go back in. */}
+      {splitFromReceipt && onUnsplit && (
+        <div data-split-part style={{ marginTop: 14, fontSize: 13.5, lineHeight: 1.5, color: color.body, textAlign: 'center' }}>
+          Split out of the {splitFromReceipt.store} receipt for {splitFromReceipt.item}.{' '}
+          <Pressable
+            onClick={onUnsplit}
+            style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', fontSize: 13.5, fontWeight: 700, textDecoration: 'underline' }}
+          >
+            Not split after all
+          </Pressable>
+        </div>
+      )}
+      {canSplit(receipt) && <SplitPanel key={receipt.id} receipt={receipt} onSplit={onSplit} />}
       {/* Last, and quiet. It sat beside the primary action as a pill of its
           own, on every receipt: the one irreversible-looking choice here drawn
           with the weight of the one the screen is for. It has an undo, and it

@@ -123,6 +123,8 @@ export interface Receipt {
   exchanged?: true;
   /** On the receipt a swap produced: the id of the one it was swapped for. */
   swappedFrom?: string;
+  /** On a part split out of a receipt: the id of the receipt it came from. */
+  splitFrom?: string;
   /**
    * The day the person decided to keep it. Keeping is the commonest end to a
    * purchase and had no way to be said: the only exits were "returned" and
