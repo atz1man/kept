@@ -802,6 +802,87 @@ for (const cancel of [false, true]) {
 }
 
 /*
+ * The refund that does not come. The app followed a return to the post box,
+ * asked on day fourteen whether the money had arrived, and when it had not,
+ * said "chase it" and nothing more. Now the tracking number is kept the day it
+ * goes, and once the refund is late the receipt drafts the chase — citing
+ * regulation 34 only for an online order sent back inside the cancellation
+ * period, and asking plainly for anything else.
+ */
+{
+  const cCtx = await browser.newContext({ viewport: { width: 402, height: 874 }, permissions: ['clipboard-write'] });
+  await cCtx.addInitScript(() => {
+    const write = navigator.clipboard?.writeText?.bind(navigator.clipboard);
+    if (navigator.clipboard) navigator.clipboard.writeText = (t) => { window.__copied = t; return write ? write(t) : Promise.resolve(); };
+  });
+  const cp = await cCtx.newPage();
+  await cp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await cp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await cp.waitForTimeout(300);
+  const sendBack = async (row) => {
+    await cp.getByRole('button', { name: row }).first().click();
+    await cp.waitForTimeout(300);
+    await cp.getByRole('button', { name: 'I’ve sent it back' }).click().catch(() => {});
+    await cp.waitForTimeout(300);
+  };
+  await sendBack(/Zara, Wool/);
+  const add = cp.getByRole('button', { name: 'Add the tracking number' });
+  let seen = { offered: (await add.count()) === 1 };
+  if (seen.offered) {
+    await add.click();
+    await cp.getByLabel('Tracking or proof-of-postage number').fill('X'.repeat(41));
+    seen.tooLongRefused = /Longer than any tracking number/.test(await cp.locator('main').innerText());
+    await cp.getByLabel('Tracking or proof-of-postage number').fill('  JD0002  1234 ');
+    await cp.getByRole('button', { name: 'Save', exact: true }).click();
+    await cp.waitForTimeout(300);
+    const detail = await cp.locator('main').innerText();
+    seen.shown = /Tracking · JD0002 1234/.test(detail);
+    seen.notYetLate = (await cp.locator('[data-refund-chase]').count()) === 0;
+    await cp.getByRole('button', { name: 'Back', exact: true }).click();
+    await cp.waitForTimeout(300);
+    await sendBack(/Currys, JBL/);
+    await cp.getByRole('button', { name: 'Back', exact: true }).click();
+    await cp.waitForTimeout(300);
+    // Three weeks on: the Zara order went back ten days after it was placed,
+    // the headphones over a counter. Both refunds are now late.
+    await cp.evaluate(() => {
+      const iso = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+      const s = JSON.parse(localStorage.getItem('kept.v1'));
+      for (const r of s.receipts) {
+        if (r.id === 'seed_zara') Object.assign(r, { purchasedOn: iso(30), windowStartsOn: iso(29), sentOn: iso(20) });
+        if (r.id === 'seed_currys') Object.assign(r, { purchasedOn: iso(25), sentOn: iso(15) });
+      }
+      localStorage.setItem('kept.v1', JSON.stringify(s));
+    });
+    await cp.reload({ waitUntil: 'networkidle' });
+    await cp.waitForTimeout(300);
+    seen.listed = (await cp.getByRole('button', { name: /Zara, Wool.*refund late/ }).count()) === 1 &&
+      (await cp.getByRole('button', { name: /waiting for the refund/ }).count()) === 0;
+    const chaseFor = async (row) => {
+      await cp.getByRole('button', { name: row }).first().click();
+      await cp.waitForTimeout(300);
+      const panel = await cp.locator('[data-refund-chase]').innerText().catch(() => '');
+      const letter = await cp.locator('[data-refund-chase]').getByLabel('The letter').innerText().catch(() => '');
+      await cp.getByRole('button', { name: 'Copy the letter' }).click().catch(() => {});
+      await cp.waitForTimeout(200);
+      const copied = await cp.evaluate(() => window.__copied ?? null);
+      await cp.getByRole('button', { name: 'Back', exact: true }).click();
+      await cp.waitForTimeout(300);
+      return { panel: /The refund is late/.test(panel), letter, copied: copied === letter };
+    };
+    seen.online = await chaseFor(/Zara, Wool/);
+    seen.counter = await chaseFor(/Currys, JBL/);
+  }
+  const ok =
+    seen.offered && seen.tooLongRefused && seen.shown && seen.notYetLate && seen.listed &&
+    seen.online?.panel && /regulation 34/.test(seen.online.letter) && /The tracking reference is JD0002 1234\./.test(seen.online.letter) && seen.online.copied &&
+    seen.counter?.panel && /Please make it now, or tell me why/.test(seen.counter.letter) && !/regulation|cancel/i.test(seen.counter.letter);
+  results['a late refund is chased in a letter, citing the regulations only where they apply, with the tracking number kept'] = !!ok;
+  if (!ok) problems.push(`refund chase: ${JSON.stringify(seen)?.slice(0, 400)}`);
+  await cCtx.close();
+}
+
+/*
  * The order number. The parser read past it on purpose (it looks like a
  * price) and then threw it away, while returns forms, chat windows and the
  * letter to the shop all ask for it first. Read from a labelled line, it is

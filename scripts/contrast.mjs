@@ -179,6 +179,31 @@ await sweep('receipt detail · no guarantee');
 await page.getByRole('button', { name: 'I’ve sent it back' }).click();
 await page.waitForTimeout(300);
 await sweep('receipt detail · sent back');
+
+// The tracking number's field and its refusal exist only once asked for.
+await page.getByRole('button', { name: 'Add the tracking number' }).click();
+await page.waitForTimeout(200);
+await page.getByLabel('Tracking or proof-of-postage number').fill('X'.repeat(41));
+await page.waitForTimeout(200);
+await sweep('receipt detail · tracking number');
+await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+await page.waitForTimeout(200);
+
+// Three weeks on, the refund is late: the chase panel and its letter exist
+// only then.
+await page.evaluate(() => {
+  const d = new Date();
+  d.setDate(d.getDate() - 20);
+  const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const s = JSON.parse(localStorage.getItem('kept.v1'));
+  for (const r of s.receipts) if (r.status === 'sent') r.sentOn = iso;
+  localStorage.setItem('kept.v1', JSON.stringify(s));
+});
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForTimeout(400);
+await page.getByRole('button', { name: /Currys, Le Creuset/ }).click();
+await page.waitForTimeout(400);
+await sweep('receipt detail · refund late');
 await page.getByRole('button', { name: 'Back', exact: true }).click();
 await page.waitForTimeout(300);
 await sweep('home · sent back');

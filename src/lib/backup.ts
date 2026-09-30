@@ -1,6 +1,7 @@
 import { fromISODate, toISODate } from './dates';
 import { MAX_AMOUNT_PENCE, MAX_ORDER_REF, MAX_WINDOW_DAYS } from './draft';
 import { canonicalStoreName } from './stores';
+import { readReturnRef } from './refund-chase';
 import type { Category, Receipt, ReceiptStatus, Warranty } from './types';
 
 /**
@@ -178,6 +179,13 @@ export function readReceipt(raw: unknown, fromOutside = false): Receipt | null {
     ...(refunded !== undefined ? { refunded } : {}),
     ...(r.keptOn !== undefined ? { keptOn: r.keptOn as string } : {}),
     ...(r.sentOn !== undefined ? { sentOn: r.sentOn as string } : {}),
+    // A reference that would not have been accepted on screen is dropped, not
+    // truncated: half a tracking number finds somebody else's parcel.
+    ...(() => {
+      if (!isStr(r.returnRef)) return {};
+      const read = readReturnRef(r.returnRef);
+      return read.ok && read.ref ? { returnRef: read.ref } : {};
+    })(),
     // Carried through the round trip, because it decides whether the receipt
     // costs a free-tier slot: a restore that dropped it would silently charge
     // the person for the demo set their own backup was holding. Strictly
