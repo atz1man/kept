@@ -1281,6 +1281,49 @@ for (const cancel of [false, true]) {
 }
 
 /*
+ * The phone's own Back. The screens were never in the browser's history, so
+ * on the web — an installed app on Android, or a tab — Back from a receipt or
+ * from Edit left kept altogether. It now goes up one level, the app's own
+ * Back button leaves no stray entry behind, and Back from the list still
+ * leaves: going up is not the same as being trapped.
+ */
+{
+  const bCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const bp = await bCtx.newPage();
+  await bp.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
+  await bp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await bp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await bp.waitForTimeout(300);
+  const onHome = async () => (await bp.getByRole('button', { name: /Currys, JBL/ }).count()) > 0 && new URL(bp.url()).pathname === '/app/';
+  const onDetail = async () => (await bp.getByRole('heading', { level: 1, name: 'Currys' }).count()) === 1;
+  const back = async () => { await bp.goBack().catch(() => {}); await bp.waitForTimeout(400); };
+  const seen = {};
+  await bp.getByRole('button', { name: /Currys, JBL/ }).first().click();
+  await bp.waitForTimeout(300);
+  await bp.getByRole('button', { name: 'Edit', exact: true }).click();
+  await bp.waitForTimeout(300);
+  await back();
+  seen.editToDetail = await onDetail();
+  await back();
+  seen.detailToHome = await onHome();
+  // The app's own Back, then the browser's: one level each, no extra step.
+  // Short, caught clicks: where Back has already left kept there is no row
+  // to press, and that must read as this check failing, not as a timeout.
+  const tap = (name) => bp.getByRole('button', { name, exact: true }).first().click({ timeout: 3000 }).then(() => true, () => false);
+  seen.reopened = await tap(/Currys, JBL/);
+  await bp.waitForTimeout(300);
+  await tap('Back');
+  await bp.waitForTimeout(400);
+  seen.ownBack = await onHome();
+  await back();
+  seen.leaves = new URL(bp.url()).pathname === '/';
+  const ok = seen.editToDetail && seen.detailToHome && seen.reopened && seen.ownBack && seen.leaves;
+  results['the phone’s Back goes up a level, and leaves only from the list'] = !!ok;
+  if (!ok) problems.push(`back: ${JSON.stringify(seen)}`);
+  await bCtx.close();
+}
+
+/*
  * Coming up. Every dated thing ahead was already on its own receipt's screen,
  * and nothing put them side by side — "what do I have to do this month?"
  * meant opening every receipt. And the Watch tab was, until a real policy
