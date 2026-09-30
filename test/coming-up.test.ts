@@ -41,7 +41,8 @@ describe('what is coming up', () => {
   it('lists a guarantee ending, on a receipt with one, and not one years away', () => {
     const ending = r('g', 0, { status: 'kept', purchasedOn: toISODate(addMonths(TODAY, -12)), warranty: { months: 12 } });
     expect(comingUp([ending], TODAY).map((c) => c.kind)).toEqual(['warranty']);
-    expect(comingUp([r('far', 0, { status: 'kept', warranty: { months: 24 } })], TODAY)).toEqual([]);
+    // Its right to reject is listed; a guarantee two years off is not.
+    expect(comingUp([r('far', 0, { status: 'kept', warranty: { months: 24 } })], TODAY).map((c) => c.kind)).toEqual(['reject']);
   });
 
   it('puts the soonest first, and the one with money on a clock first on the same day', () => {
@@ -62,8 +63,8 @@ describe('what is coming up', () => {
     expect(days(sameDay)).toEqual([['ret', 'return', iso(10)], ['w', 'warranty', iso(10)]]);
   });
 
-  it('says nothing for a receipt that has settled, and marks a sample as one', () => {
-    expect(comingUp([r('kept', 5, { status: 'kept' }), r('back', 5, { status: 'returned', returnedOn: iso(-1) })], TODAY)).toEqual([]);
+  it('lists only the right to reject for a kept receipt, nothing for a returned one, and marks a sample as one', () => {
+    expect(days(comingUp([r('kept', 5, { status: 'kept' }), r('back', 5, { status: 'returned', returnedOn: iso(-1) })], TODAY))).toEqual([['kept', 'reject', iso(25)]]);
     expect(comingUp([r('s', 5, { demo: true })], TODAY)[0].demo).toBe(true);
   });
 });

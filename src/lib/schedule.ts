@@ -1,6 +1,6 @@
 import { addDays, fromISODate, startOfDay } from './dates';
 import { derive } from './receipts';
-import { alertKey, copyFor, CREDIT_NOTICE_DAYS, creditWatched, faultWatched, REFUND_CHASE_DAYS, warrantyWatched, WARRANTY_NOTICE_DAYS, type AlertRung, type ReturnRung } from './alerts';
+import { alertKey, copyFor, CREDIT_NOTICE_DAYS, creditWatched, faultWatched, REFUND_CHASE_DAYS, REJECT_NOTICE_DAYS, rejectWatched, warrantyWatched, WARRANTY_NOTICE_DAYS, type AlertRung, type ReturnRung } from './alerts';
 import { REPLY_DAYS } from './fault-letter';
 import type { Receipt } from './types';
 
@@ -127,6 +127,16 @@ export function planAlerts(
         if (when.getTime() > now.getTime()) {
           out.push({ key, receiptId: r.id, rung: 'warranty', at: when, ...copyFor('warranty', r, WARRANTY_NOTICE_DAYS, w.ends) });
         }
+      }
+    }
+    // The right to reject a fault, at 9am three days before it ends, where
+    // `rejectWatched` says nothing else is covering those days.
+    const reject = rejectWatched(r, today);
+    if (reject) {
+      const key = alertKey(r.id, 'reject');
+      const when = at9am(addDays(reject.ends, -REJECT_NOTICE_DAYS));
+      if (!sent.has(key) && when.getTime() > now.getTime()) {
+        out.push({ key, receiptId: r.id, rung: 'reject', at: when, ...copyFor('reject', r, REJECT_NOTICE_DAYS, reject.ends) });
       }
     }
     // Store credit, at 9am a month before the note says it lapses.

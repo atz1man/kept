@@ -184,8 +184,9 @@ describe('the demo set never interrupts', () => {
 });
 
 describe('a kept receipt', () => {
-  it('raises no return reminder, however close its deadline', () => {
-    expect(dueAlerts([closingIn(0, { status: 'kept', keptOn: toISODate(TODAY) })], TODAY, URGENT, none)).toEqual([]);
+  it('raises no return reminder, however close its deadline — only the right to reject it if faulty', () => {
+    // Bought 30 days ago: the shop's window and the 30-day right end today.
+    expect(dueAlerts([closingIn(0, { status: 'kept', keptOn: toISODate(TODAY) })], TODAY, URGENT, none).map((a) => a.rung)).toEqual(['reject']);
     expect(dueAlerts([closingIn(0)], TODAY, URGENT, none).length).toBeGreaterThan(0);
   });
 });

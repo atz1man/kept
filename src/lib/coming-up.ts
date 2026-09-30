@@ -1,4 +1,4 @@
-import { creditWatched, faultWatched, REFUND_CHASE_DAYS, warrantyWatched } from './alerts';
+import { creditWatched, faultWatched, REFUND_CHASE_DAYS, rejectWatched, warrantyWatched } from './alerts';
 import { addDays, daysBetween, fromISODate } from './dates';
 import { REPLY_DAYS } from './fault-letter';
 import { derive } from './receipts';
@@ -21,7 +21,7 @@ import type { Receipt } from './types';
 /** How far ahead the list looks. Our number: a month and a bit either side of payday. */
 export const COMING_UP_DAYS = 60;
 
-export type ComingKind = 'return' | 'refund' | 'fault' | 'credit' | 'warranty';
+export type ComingKind = 'return' | 'reject' | 'refund' | 'fault' | 'credit' | 'warranty';
 
 export interface ComingUp {
   receiptId: string;
@@ -33,7 +33,7 @@ export interface ComingUp {
 }
 
 /** Same-day order: the one with money on a clock first. */
-const ORDER: Record<ComingKind, number> = { return: 0, refund: 1, credit: 2, fault: 3, warranty: 4 };
+const ORDER: Record<ComingKind, number> = { return: 0, reject: 1, refund: 2, credit: 3, fault: 4, warranty: 5 };
 
 export function comingUp(receipts: readonly Receipt[], today: Date, days: number = COMING_UP_DAYS): ComingUp[] {
   const out: ComingUp[] = [];
@@ -49,6 +49,8 @@ export function comingUp(receipts: readonly Receipt[], today: Date, days: number
     if (r.status === 'sent' && r.sentOn) {
       push(r, addDays(fromISODate(r.sentOn), REFUND_CHASE_DAYS), 'refund', 'Refund due — chase it if it has not come');
     }
+    const reject = rejectWatched(r, today);
+    if (reject) push(r, reject.ends, 'reject', `Last day to reject it if it’s faulty${reject.hedged ? ' (or later)' : ''}`);
     if (faultWatched(r)) push(r, addDays(fromISODate(r.faultClaim!.sentOn), REPLY_DAYS), 'fault', 'The reply your fault letter asked for is due');
     if (creditWatched(r)) push(r, fromISODate(r.credit!.expires!), 'credit', 'Store credit runs out');
     if (warrantyWatched(r)) {
