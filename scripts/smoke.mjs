@@ -1699,6 +1699,42 @@ for (const cancel of [false, true]) {
   await nCtx.close();
 }
 
+/*
+ * After the repair. The fault letter promised what came next — a refund if a
+ * repair or replacement did not put it right (section 24) — and nothing in
+ * the app followed it. Once a fault letter has gone, the next one is there.
+ */
+{
+  const fCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const fp = await fCtx.newPage();
+  await fp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await fp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await fp.waitForTimeout(300);
+  await fp.evaluate(() => {
+    const iso = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    const s = JSON.parse(localStorage.getItem('kept.v1'));
+    s.receipts.push({ id: 'r_fault', store: 'Currys', item: 'Kettle', cat: 'kitchen', amount: 4000, purchasedOn: iso(60), windowDays: 30, policy: 'p', distance: false, status: 'kept', keptOn: iso(55), faultClaim: { sentOn: iso(40), what: 'It trips the fuse' } });
+    localStorage.setItem('kept.v1', JSON.stringify(s));
+  });
+  await fp.reload({ waitUntil: 'networkidle' });
+  await fp.waitForTimeout(300);
+  await fp.getByRole('button', { name: /^Currys, Kettle/ }).first().click({ timeout: 3000 }).catch(() => {});
+  await fp.waitForTimeout(300);
+  await fp.getByRole('button', { name: 'Fault letter sent' }).click({ timeout: 3000 }).catch(() => {});
+  await fp.waitForTimeout(300);
+  const seen = {};
+  seen.tapped = await fp.getByRole('button', { name: 'It was repaired or replaced, and it’s still not right' }).click({ timeout: 3000 }).then(() => true, () => false);
+  await fp.waitForTimeout(300);
+  await fp.getByLabel(/what’s wrong with it now/i).fill('Still trips it', { timeout: 3000 }).catch(() => {});
+  await fp.waitForTimeout(200);
+  const text = (await fp.locator('[data-final-reject]').innerText().catch(() => '')) ?? '';
+  seen.letter = /Final right to reject: Kettle/.test(text) && /section 24\(5\)/.test(text) && /The problem now: Still trips it\./.test(text) && /section 24\(10\)/.test(text);
+  const ok = Object.values(seen).every(Boolean);
+  results['after a fault letter, the final right to reject is one tap away'] = ok;
+  if (!ok) problems.push(`final reject: ${JSON.stringify({ ...seen, text: text.slice(0, 160) })}`);
+  await fCtx.close();
+}
+
 // The tab bar floats over every screen; its buttons must stay clickable.
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(400);

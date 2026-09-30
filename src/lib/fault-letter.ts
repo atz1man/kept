@@ -135,3 +135,47 @@ export function faultLetter(r: Receipt, today: Date, whatsWrong: string): string
     'Yours faithfully,',
   ].join('\n');
 }
+
+/**
+ * After the repair: the letter for when the first remedy did not work.
+ *
+ * The first letter says what comes next — "if a repair or replacement does
+ * not put this right, I will be entitled to … reject the goods for a refund
+ * (section 24)" — and then nothing in the app did. Section 24(5): after ONE
+ * repair or ONE replacement that has not put the goods right, the buyer may
+ * reject them for a refund (or keep them at a reduced price). Within six
+ * months of delivery the refund may not be cut for the use had of them
+ * (section 24(10)); after that, the Act allows a deduction, and this letter
+ * says nothing about one rather than conceding it.
+ *
+ * Offered once a fault letter has gone, and not once the claim is out of time.
+ */
+export function finalRejectLetter(r: Receipt, today: Date, whatsWrong: string): string | null {
+  if (!r.faultClaim) return null;
+  if (faultAdvice(r, today).remedy === 'too-late') return null;
+  const { from } = handedOver(r);
+  const bought = fmtDateLong(fromISODate(r.purchasedOn));
+  const arrived = r.arrivedOn && r.arrivedOn !== r.purchasedOn ? `, and it was delivered on ${fmtDateLong(fromISODate(r.arrivedOn))}` : '';
+  const reported = fmtDateLong(fromISODate(r.faultClaim.sentOn));
+  const problem = whatsWrong.trim().replace(/\s+/g, ' ');
+  const noDeduction = daysBetween(today, addMonths(from, PRESUMED_FAULT_MONTHS)) >= 0;
+  return [
+    `Dear ${r.store},`,
+    '',
+    `Final right to reject: ${r.item}`,
+    ...(r.orderRef ? [`Order number: ${r.orderRef}`] : []),
+    '',
+    `On ${bought} I bought “${r.item}” from you for ${money(r.amount)}${arrived}. I wrote to you about a fault on ${reported}, and the goods were repaired or replaced, but the fault has not been put right.${problem ? ` The problem now: ${problem}${/[.!?]$/.test(problem) ? '' : '.'}` : ''}`,
+    '',
+    'Under the Consumer Rights Act 2015, section 24(5), as a repair or replacement has not put the goods right, I am exercising my final right to reject them, and I am asking for a refund.',
+    ...(noDeduction
+      ? ['', `As this is within ${PRESUMED_FAULT_MONTHS} months of delivery, the refund may not be reduced for the use I have had of the goods (section 24(10)).`]
+      : []),
+    '',
+    'Please tell me how you would like them returned.',
+    '',
+    `Please reply within ${REPLY_DAYS} days to tell me what you will do.`,
+    '',
+    'Yours faithfully,',
+  ].join('\n');
+}
