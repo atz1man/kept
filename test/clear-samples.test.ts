@@ -21,7 +21,7 @@ const base = (over: Partial<AppState> = {}): AppState => ({
   version: 1, receipts: [sample('s1'), receipt('mine'), sample('s2')], updates: [], onboardingSeen: true,
   settings: { ...DEFAULT_SETTINGS }, alertsSent: ['s1:week', 'mine:week'],
   screen: 'home', selId: null, obStep: 0, celebrating: null, shared: 'no', upgrading: null,
-  sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null, justAdded: null,
+  sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null,
   ...over,
 });
 const clear = (s: AppState) => reducer(s, { type: 'clear-samples' }, TODAY);
@@ -43,6 +43,8 @@ describe('removing the samples', () => {
     expect(clear(base({ justReturned: { id: 'mine', was: { status: 'active' } } })).justReturned).not.toBeNull();
     expect(clear(base({ justKept: ['s2'] })).justKept).toBeNull();
     expect(clear(base({ justAdded: 'mine' })).justAdded).toBe('mine');
+    expect(clear(base({ justSent: 's2' })).justSent).toBeNull();
+    expect(clear(base({ justSent: 'mine' })).justSent).toBe('mine');
   });
 
   it('leaves a sample’s own screen for the list, and a real one open', () => {
