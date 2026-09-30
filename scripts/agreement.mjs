@@ -165,6 +165,10 @@ if ((await page.getByRole('button', { name: /, returned$/ }).count()) === 0) {
 }
 // The totals as they stand now, with the refund in them.
 const heroNow = await readHero();
+// Every row, not the latest few: a settled section holds the rest behind
+// "Show all", and the totals above count them whether or not they are shown.
+for (const more of await page.getByRole('button', { name: /^Show all \d+$/ }).all()) await more.click();
+await page.waitForTimeout(200);
 const rowMoney = await page.evaluate(() =>
   [...document.querySelectorAll('li button')].map((b) => {
     const label = b.getAttribute('aria-label') ?? '';

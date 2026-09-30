@@ -299,6 +299,27 @@ export function everyReturnInTime(returned: readonly Receipt[], today: Date): bo
 }
 
 /**
+ * How many rows a settled section shows before "Show all". Money back and
+ * Keeping it only ever grow — a year of use is forty rows below the deadlines
+ * that still need something — and the latest few are the ones anybody looks
+ * for; both lists are sorted latest first.
+ */
+export const SETTLED_SHOWN = 3;
+
+/**
+ * The rows a settled section shows, and how many it is holding back.
+ *
+ * Everything while searching: a search that found a refund and then hid it
+ * behind "Show all" would be answering the question and keeping the answer.
+ * And never just one held back: "Show all 4" to reveal a single row costs
+ * more than the row.
+ */
+export function settledRows<T>(rows: readonly T[], expanded: boolean, searching: boolean): { rows: readonly T[]; hidden: number } {
+  if (expanded || searching || rows.length <= SETTLED_SHOWN + 1) return { rows, hidden: 0 };
+  return { rows: rows.slice(0, SETTLED_SHOWN), hidden: rows.length - SETTLED_SHOWN };
+}
+
+/**
  * How long after an online order the app goes on asking whether it has come.
  * Our number, not a shop's: long enough for ordinary delivery and a slow
  * courier, short enough that an order from last spring with no arrival date

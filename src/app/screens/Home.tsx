@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { color, font, radius, shadow } from '../../tokens';
 import { addDays, fmtDate, fmtDateNear, fromISODate } from '../../lib/dates';
 import { money, sumPence } from '../../lib/money';
-import { awaitingArrival, bucket, coverLine, derive, refundOf, everyReturnInTime, countsAsMoney, stillReturnablePence, timelineDots } from '../../lib/receipts';
+import { awaitingArrival, bucket, settledRows, coverLine, derive, refundOf, everyReturnInTime, countsAsMoney, stillReturnablePence, timelineDots } from '../../lib/receipts';
 import { search, searchStatus, shouldOfferSearch } from '../../lib/search';
 import { midSentence } from '../../lib/words';
 import { heroCount, urgency } from '../../lib/urgency';
@@ -38,6 +38,8 @@ const sectionLabel = (c: string) => ({
 
 export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onOpen, onReturn, onKeepClosed, reminders, onAdd, onWatch }: Props) {
   const [query, setQuery] = useState('');
+  const [openReturned, setOpenReturned] = useState(false);
+  const [openKept, setOpenKept] = useState(false);
   const offerSearch = shouldOfferSearch(receipts);
   const searching = offerSearch && query.trim().length > 0;
   // Filtered inside the urgency buckets rather than flattened into one list:
@@ -352,8 +354,8 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
       {returned.length > 0 && (
         <>
           <h2 style={sectionLabel(color.muted)}>MONEY BACK ✓</h2>
-          <ul style={{ display: 'flex', flexDirection: 'column', gap: 9, margin: 0, padding: 0 }}>
-            {returned.map((r) => (
+          <ul id="money-back-list" style={{ display: 'flex', flexDirection: 'column', gap: 9, margin: 0, padding: 0 }}>
+            {settledRows(returned, openReturned, searching).rows.map((r) => (
               <li key={r.id} style={{ listStyle: 'none' }}>
                 {/* Reachable. These were inert, so a receipt marked returned by
                     a stray swipe could never be opened, corrected or deleted. */}
@@ -386,6 +388,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
               </li>
             ))}
           </ul>
+          <ShowAll list="money-back-list" total={returned.length} hidden={settledRows(returned, openReturned, searching).hidden} open={openReturned} onToggle={() => setOpenReturned((v) => !v)} />
         </>
       )}
 
@@ -395,8 +398,8 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
               from its warranty, its photo and the rights that outlast the
               shop's window, which is why it is kept here rather than deleted. */}
           <h2 style={sectionLabel(color.muted)}>KEEPING IT</h2>
-          <ul style={{ display: 'flex', flexDirection: 'column', gap: 9, margin: 0, padding: 0 }}>
-            {kept.map((r) => {
+          <ul id="keeping-list" style={{ display: 'flex', flexDirection: 'column', gap: 9, margin: 0, padding: 0 }}>
+            {settledRows(kept, openKept, searching).rows.map((r) => {
               const cover = coverLine(r, today);
               return (
               <li key={r.id} style={{ listStyle: 'none' }}>
@@ -419,9 +422,28 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
               );
             })}
           </ul>
+          <ShowAll list="keeping-list" total={kept.length} hidden={settledRows(kept, openKept, searching).hidden} open={openKept} onToggle={() => setOpenKept((v) => !v)} />
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * The way to the rest of a settled section, and back. Rendered only where
+ * something is, or was, held back — never under a list that fits.
+ */
+function ShowAll({ list, total, hidden, open, onToggle }: { list: string; total: number; hidden: number; open: boolean; onToggle: () => void }) {
+  if (!open && hidden === 0) return null;
+  return (
+    <Pressable
+      onClick={onToggle}
+      aria-expanded={open}
+      aria-controls={list}
+      style={{ display: 'flex', width: 'auto', minHeight: 44, alignItems: 'center', justifyContent: 'center', marginTop: 4, fontSize: 13.5, fontWeight: 600, color: color.bodyStrong, textDecoration: 'underline' }}
+    >
+      {open ? 'Show fewer' : `Show all ${total}`}
+    </Pressable>
   );
 }
 
