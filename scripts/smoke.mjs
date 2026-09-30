@@ -1159,6 +1159,60 @@ for (const cancel of [false, true]) {
   await wCtx.close();
 }
 
+/*
+ * After the fault letter. It was drafted and then forgotten: nothing kept
+ * that it went, and nothing asked whether the shop answered, though the
+ * letter itself asks for a reply within a fortnight. Now "I've sent the letter"
+ * records the day, the panel says when a reply was asked for, and once that
+ * day passes it says where to go next.
+ */
+{
+  const lCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const lp = await lCtx.newPage();
+  await lp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await lp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await lp.getByRole('button', { name: /IKEA, MALM/ }).first().click();
+  await lp.waitForTimeout(300);
+  await lp.getByRole('button', { name: 'Something wrong with it?' }).click();
+  await lp.getByLabel('What’s wrong with it?').fill('A drawer runner has snapped');
+  const sentButton = lp.getByRole('button', { name: 'I’ve sent the letter' });
+  const seen = { offered: (await sentButton.count()) === 1 };
+  const stored = () => lp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => /MALM/.test(r.item)));
+  if (seen.offered) {
+    await sentButton.click();
+    await lp.waitForTimeout(200);
+    const today = await lp.evaluate(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
+    const claim = (await stored())?.faultClaim;
+    seen.recorded = claim?.sentOn === today && claim?.what === 'A drawer runner has snapped';
+    seen.said = /Sent on .+, asking IKEA to reply by .+\./.test(await lp.locator('[data-fault-sent]').innerText().catch(() => '')) &&
+      (await lp.getByRole('button', { name: 'Fault letter sent' }).count()) === 1;
+    seen.notYet = !/No reply yet/.test(await lp.locator('[data-fault-sent]').innerText().catch(() => ''));
+    // A fortnight and more on, with no reply.
+    await lp.evaluate(() => {
+      const d = new Date(); d.setDate(d.getDate() - 20);
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const s = JSON.parse(localStorage.getItem('kept.v1'));
+      for (const r of s.receipts) if (r.faultClaim) r.faultClaim.sentOn = iso;
+      localStorage.setItem('kept.v1', JSON.stringify(s));
+    });
+    await lp.reload({ waitUntil: 'networkidle' });
+    await lp.waitForTimeout(300);
+    await lp.getByRole('button', { name: /IKEA, MALM/ }).first().click();
+    await lp.waitForTimeout(300);
+    await lp.getByRole('button', { name: 'Fault letter sent' }).click();
+    await lp.waitForTimeout(200);
+    seen.next = /No reply yet\? Citizens Advice’s consumer service can tell you what to do next\./.test(await lp.locator('[data-fault-sent]').innerText().catch(() => '')) &&
+      (await lp.getByLabel('What’s wrong with it?').inputValue()) === 'A drawer runner has snapped';
+    await lp.getByRole('button', { name: 'Not sent after all' }).click();
+    await lp.waitForTimeout(200);
+    seen.undone = (await stored())?.faultClaim === undefined && (await lp.getByRole('button', { name: 'Something wrong with it?' }).count()) === 1;
+  }
+  const ok = seen.offered && seen.recorded && seen.said && seen.notYet && seen.next && seen.undone;
+  results['a sent fault letter is recorded, says when a reply is due, and where to go when none comes'] = !!ok;
+  if (!ok) problems.push(`fault follow-up: ${JSON.stringify(seen)}`);
+  await lCtx.close();
+}
+
 // The tab bar floats over every screen; its buttons must stay clickable.
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(400);

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { color, radius } from '../../tokens';
-import { faultAdvice, faultLetter } from '../../lib/fault-letter';
+import { faultAdvice, faultLetter, REPLY_DAYS } from '../../lib/fault-letter';
+import { addDays, daysBetween, fmtDateLong, fromISODate } from '../../lib/dates';
 import { LEGAL_DISCLAIMER } from '../../lib/legal';
 import type { Receipt } from '../../lib/types';
 import { Field, inputStyle } from './Field';
@@ -14,9 +15,16 @@ import { Pressable } from './Pressable';
  *
  * The letter is built as the person types; `Letter` is how it leaves.
  */
-export function FaultPanel({ receipt, today }: { receipt: Receipt; today: Date }) {
+export function FaultPanel({ receipt, today, onSent, onUnsent }: {
+  receipt: Receipt;
+  today: Date;
+  /** The letter has gone, with the words it carried. */
+  onSent: (what: string) => void;
+  onUnsent: () => void;
+}) {
+  const claim = receipt.faultClaim;
   const [open, setOpen] = useState(false);
-  const [whatsWrong, setWhatsWrong] = useState('');
+  const [whatsWrong, setWhatsWrong] = useState(claim?.what ?? '');
   const advice = faultAdvice(receipt, today);
   const letter = faultLetter(receipt, today, whatsWrong);
 
@@ -27,7 +35,7 @@ export function FaultPanel({ receipt, today }: { receipt: Receipt; today: Date }
         aria-expanded={open}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, fontWeight: 700, fontSize: 15 }}
       >
-        <span>Something wrong with it?</span>
+        <span>{claim ? 'Fault letter sent' : 'Something wrong with it?'}</span>
         <svg width="10" height="7" viewBox="0 0 10 7" style={{ flexShrink: 0, transform: `rotate(${open ? 180 : 0}deg)`, transition: 'transform .2s' }} aria-hidden="true">
           <path d="M1 1.5l4 4 4-4" fill="none" stroke={color.muted} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
@@ -38,6 +46,16 @@ export function FaultPanel({ receipt, today }: { receipt: Receipt; today: Date }
           <div style={{ fontSize: 15, fontWeight: 700, marginTop: 12, color: color.bodyStrong }}>{advice.headline}</div>
           <div style={{ fontSize: 13.5, lineHeight: 1.5, marginTop: 4, color: color.muted }}>{advice.explain}</div>
 
+          {/* Once it has gone: when, and the reply the letter itself asked for.
+              The fortnight is the letter's ask, not the law's. */}
+          {claim && (
+            <div data-fault-sent style={{ marginTop: 12, padding: 12, background: color.creamAlt, border: `1.5px solid ${color.borderHair}`, borderRadius: 12, fontSize: 13.5, lineHeight: 1.5, color: color.body }}>
+              Sent on {fmtDateLong(fromISODate(claim.sentOn))}, asking {receipt.store} to reply by{' '}
+              {fmtDateLong(addDays(fromISODate(claim.sentOn), REPLY_DAYS))}.
+              {daysBetween(fromISODate(claim.sentOn), today) >= REPLY_DAYS &&
+                ' No reply yet? Citizens Advice’s consumer service can tell you what to do next.'}
+            </div>
+          )}
           {letter && (
             <>
               <Field id="fault-what" label="What’s wrong with it?" hint="Optional. In your own words — it goes into the letter as written.">
@@ -53,6 +71,13 @@ export function FaultPanel({ receipt, today }: { receipt: Receipt; today: Date }
               </Field>
 
               <Letter letter={letter} title={`Faulty goods: ${receipt.item}`} receipt={receipt} />
+              <Pressable
+                className="k-row-white"
+                onClick={() => (claim ? onUnsent() : onSent(whatsWrong))}
+                style={{ marginTop: 10, padding: 13, textAlign: 'center', borderRadius: 999, fontWeight: 700, fontSize: 14, background: color.white, border: `1.5px solid ${color.borderSoft}` }}
+              >
+                {claim ? 'Not sent after all' : 'I’ve sent the letter'}
+              </Pressable>
             </>
           )}
           <div style={{ fontSize: 12, marginTop: 10, color: color.muted }}>{LEGAL_DISCLAIMER}</div>

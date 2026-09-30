@@ -182,6 +182,13 @@ export function readReceipt(raw: unknown, fromOutside = false): Receipt | null {
     ...(r.status === 'returned' && typeof r.credit === 'object' && r.credit !== null
       ? { credit: isISODate((r.credit as { expires?: unknown }).expires) ? { expires: (r.credit as { expires: string }).expires } : {} }
       : {}),
+    // A sent fault letter: its day must be a real one, or the record is
+    // dropped — a reply asked about on a day that does not exist is never asked.
+    ...(() => {
+      const c = r.faultClaim as { sentOn?: unknown; what?: unknown } | undefined;
+      if (typeof c !== 'object' || c === null || !isISODate(c.sentOn)) return {};
+      return { faultClaim: { sentOn: c.sentOn, ...(isStr(c.what) ? { what: fromOutside ? trim(c.what, MAX_NOTE) : c.what } : {}) } };
+    })(),
     ...(r.keptOn !== undefined ? { keptOn: r.keptOn as string } : {}),
     ...(r.sentOn !== undefined ? { sentOn: r.sentOn as string } : {}),
     // A reference that would not have been accepted on screen is dropped, not
