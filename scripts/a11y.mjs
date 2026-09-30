@@ -105,6 +105,28 @@ await page.getByRole('button', { name: 'Skip' }).click().catch(() => {});
 await page.waitForTimeout(400);
 await audit(page, 'home', findings);
 
+// A long settled list: its latest three, "Show all", and the whole list. Every
+// receipt returned for the length of this step, then put back as it was.
+const heldForSettled = await page.evaluate(() => {
+  const raw = localStorage.getItem('kept.v1');
+  const s = JSON.parse(raw);
+  // Real days, one apart: a stamped "2026-02-${10 + i}" runs past the 28th
+  // on a seeded library and those rows are dropped on load as not dates.
+  const day = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  s.receipts = s.receipts.map((r, i) => ({ ...r, status: 'returned', returnedOn: day(i + 1) }));
+  localStorage.setItem('kept.v1', JSON.stringify(s));
+  return raw;
+});
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForTimeout(400);
+await audit(page, 'home · long settled list', findings);
+await page.getByRole('button', { name: /^Show all \d+$/ }).click();
+await page.waitForTimeout(200);
+await audit(page, 'home · settled list opened', findings);
+await page.evaluate((raw) => localStorage.setItem('kept.v1', raw), heldForSettled);
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForTimeout(400);
+
 // An online order not yet known to have arrived: "Has it arrived?" and its
 // two buttons exist only on such a receipt.
 await page.getByRole('button', { name: /on its way/ }).first().click();
