@@ -656,3 +656,87 @@ describe('what the share line may claim', () => {
     expect(warned(['b:soon'])).toBe(false);
   });
 });
+
+describe('less than was paid', () => {
+  // A £30 refund on a £60 order counted £60 as kept back.
+  const returned = () => reducer(base({ receipts: [receipt('a'), receipt('b')] }), { type: 'return', id: 'a' }, TODAY);
+  const a = (s: AppState) => s.receipts.find((r) => r.id === 'a')!;
+
+  it('records the refund on a returned receipt, and the full price clears it', () => {
+    const part = reducer(returned(), { type: 'set-refund', id: 'a', pence: 3000 }, TODAY);
+    expect(a(part).refunded).toBe(3000);
+    expect(a(reducer(part, { type: 'set-refund', id: 'a', pence: a(part).amount }, TODAY)).refunded).toBeUndefined();
+    expect(a(reducer(part, { type: 'set-refund', id: 'a', pence: null }, TODAY)).refunded).toBeUndefined();
+  });
+
+  it('refuses more than the price, a fraction of a penny, or a receipt that has not gone back', () => {
+    const r = returned();
+    expect(reducer(r, { type: 'set-refund', id: 'a', pence: a(r).amount + 1 }, TODAY)).toEqual(r);
+    expect(reducer(r, { type: 'set-refund', id: 'a', pence: 10.5 }, TODAY)).toEqual(r);
+    const live = base();
+    expect(reducer(live, { type: 'set-refund', id: 'a', pence: 100 }, TODAY)).toEqual(live);
+  });
+
+  it('is forgotten when the return is taken back, so a later return starts from the whole price', () => {
+    const part = reducer(returned(), { type: 'set-refund', id: 'a', pence: 3000 }, TODAY);
+    expect(a(reducer(part, { type: 'unreturn', id: 'a' }, TODAY)).refunded).toBeUndefined();
+  });
+});
+
+describe('the celebration of a refund that was less than the price', () => {
+  // Shown, and shared, as the whole price: "£60 back" for a £30 refund.
+  const won = () => reducer(base({ receipts: [{ ...receipt('a'), store: 'Currys' }] }), { type: 'return', id: 'a' }, TODAY);
+
+  it('knows which receipt it is about and what it cost', () => {
+    expect(won().celebrating).toMatchObject({ id: 'a', amount: toPence(64.99), cost: toPence(64.99) });
+  });
+
+  it('follows the refund when it is corrected, and back again', () => {
+    const part = reducer(won(), { type: 'set-refund', id: 'a', pence: 3000 }, TODAY);
+    expect(part.celebrating?.amount).toBe(3000);
+    expect(part.celebrating?.cost).toBe(toPence(64.99));
+    expect(reducer(part, { type: 'set-refund', id: 'a', pence: null }, TODAY).celebrating?.amount).toBe(toPence(64.99));
+  });
+
+  it('is not moved by correcting a different refund', () => {
+    const earlier = { ...receipt('b'), status: 'returned' as const, returnedOn: '2026-08-20' };
+    const s = reducer(base({ receipts: [{ ...receipt('a'), store: 'Currys' }, earlier] }), { type: 'return', id: 'a' }, TODAY);
+    const after = reducer(s, { type: 'set-refund', id: 'b', pence: 1000 }, TODAY);
+    expect(after.receipts.find((r) => r.id === 'b')!.refunded).toBe(1000);
+    expect(after.celebrating?.amount).toBe(toPence(64.99));
+  });
+
+  it('forgets that the old figure was shared, and leaves a refused correction alone', () => {
+    const shared = reducer(won(), { type: 'shared', outcome: 'shared' }, TODAY);
+    expect(reducer(shared, { type: 'set-refund', id: 'a', pence: 3000 }, TODAY).shared).toBe('no');
+    const tooMuch = reducer(shared, { type: 'set-refund', id: 'a', pence: toPence(999) }, TODAY);
+    expect(tooMuch.celebrating?.amount).toBe(toPence(64.99));
+    expect(tooMuch.shared).toBe('shared');
+  });
+});
+
+describe('the tracking number on a return', () => {
+  const sent = () => reducer(base({ receipts: [receipt('a'), receipt('b')] }), { type: 'send', id: 'a' }, TODAY);
+  const a = (s: AppState) => s.receipts.find((r) => r.id === 'a')!;
+  const tracked = () => reducer(sent(), { type: 'set-return-ref', id: 'a', ref: '  JD0002  1234 ' }, TODAY);
+
+  it('is recorded on a receipt that has gone back, spacing tidied, and an empty one clears it', () => {
+    expect(a(tracked()).returnRef).toBe('JD0002 1234');
+    expect(a(reducer(tracked(), { type: 'set-return-ref', id: 'a', ref: ' ' }, TODAY)).returnRef).toBeUndefined();
+    expect(a(reducer(tracked(), { type: 'set-return-ref', id: 'a', ref: null }, TODAY)).returnRef).toBeUndefined();
+  });
+
+  it('refuses a receipt that has not gone back, and a reference longer than any tracking number', () => {
+    const live = base({ receipts: [receipt('a')] });
+    expect(reducer(live, { type: 'set-return-ref', id: 'a', ref: 'AB123' }, TODAY)).toEqual(live);
+    const s = sent();
+    expect(reducer(s, { type: 'set-return-ref', id: 'a', ref: 'X'.repeat(41) }, TODAY)).toEqual(s);
+  });
+
+  it('goes with the refund, and is forgotten when it turns out not to have gone', () => {
+    expect(a(reducer(tracked(), { type: 'return', id: 'a' }, TODAY)).returnRef).toBe('JD0002 1234');
+    expect(a(reducer(tracked(), { type: 'unsend', id: 'a' }, TODAY)).returnRef).toBeUndefined();
+    const back = reducer(tracked(), { type: 'return', id: 'a' }, TODAY);
+    expect(a(reducer(back, { type: 'unreturn', id: 'a' }, TODAY)).returnRef).toBeUndefined();
+  });
+});

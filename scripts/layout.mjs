@@ -411,6 +411,24 @@ const screens = [
   ['detail · something wrong', async (p) => { await p.getByRole('button', { name: 'Something wrong with it?' }).click(); }],
   // Its own panel and three buttons, reached only by sending something back.
   ['detail · sent back', async (p) => { await p.getByRole('button', { name: 'I’ve sent it back' }).click(); }],
+  ['detail · tracking number', async (p) => { await p.getByRole('button', { name: 'Add the tracking number' }).click(); }],
+  // Three weeks on: the chase letter carries the shop's name and the item's,
+  // which is where adversarial content has the most prose to push sideways.
+  ['detail · refund late', async (p) => {
+    await p.getByLabel('Tracking or proof-of-postage number').fill('JD0002 1234 5678 9012 3456 7890 ABCDEFGH');
+    await p.getByRole('button', { name: 'Save', exact: true }).click();
+    await p.evaluate(() => {
+      const d = new Date();
+      d.setDate(d.getDate() - 20);
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const s = JSON.parse(localStorage.getItem('kept.v1'));
+      for (const r of s.receipts) if (r.status === 'sent') r.sentOn = iso;
+      localStorage.setItem('kept.v1', JSON.stringify(s));
+    });
+    await p.reload({ waitUntil: 'networkidle' });
+    await p.waitForTimeout(300);
+    await p.getByRole('button', { name: /refund late/ }).first().click();
+  }],
   ['edit', async (p) => { await p.getByRole('button', { name: 'Edit', exact: true }).click(); }],
   ['back to home', async (p) => { await p.getByRole('button', { name: 'Cancel' }).click(); await p.getByRole('button', { name: 'Back', exact: true }).click(); }],
   ['watch', async (p) => { await p.getByRole('button', { name: /^Watch/ }).click(); }],
@@ -422,6 +440,17 @@ const screens = [
     await p.locator('#add-store').fill('A shop with a name long enough to wrap onto several lines on a small phone');
     await p.locator('#add-window').fill('0');
   }],
+  // The celebration, with the refund form open and refusing: a form on the
+  // cream ground under the card, above the share.
+  ['celebrate · refund amount', async (p) => {
+    await p.getByRole('button', { name: 'Receipts', exact: true }).click();
+    await p.waitForTimeout(250);
+    await p.locator('li button').first().click();
+    await p.getByRole('button', { name: 'Got my money back' }).click();
+    await p.getByRole('button', { name: /^Not the full/ }).click();
+    await p.getByLabel('How much came back?').fill('99999');
+  }],
+  ['back from the celebration', async (p) => { await p.getByRole('button', { name: 'Back to receipts' }).click(); }],
   ['settings', async (p) => { await p.getByRole('button', { name: 'Settings', exact: true }).click(); }],
   // A modal, so it sizes itself rather than inheriting the page's padding —
   // the one surface here that can push a 320px viewport sideways on its own.

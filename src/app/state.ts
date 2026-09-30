@@ -6,7 +6,8 @@ import { cleanupPhotos } from '../lib/photos';
 import { onNotificationTap, syncScheduled } from './schedule-native';
 import { currentDay, daysBetween, fromISODate, startOfDay, toISODate } from '../lib/dates';
 import { sharedTextFrom, strippedShareUrl } from '../lib/share';
-import { countsAsMoney, derive, makeReceiptId } from '../lib/receipts';
+import { countsAsMoney, derive, makeReceiptId, refundOf } from '../lib/receipts';
+import { readReturnRef } from '../lib/refund-chase';
 import { freshState, load, onExternalChange, save, type KeptState, type Settings } from '../lib/storage';
 import { quotaFull as quotaFullFor } from '../lib/quota';
 import { ONBOARDING_STEPS } from './screens/Onboarding';
@@ -57,7 +58,11 @@ export interface AppState extends KeptState {
    * claim about the product, put in the user's mouth, to be sent to their
    * friends.
    */
-  celebrating: { amount: number; store: string; inTime: boolean; warned: boolean } | null;
+  /*
+   * `id` and `cost` so the figure can be corrected where it is celebrated: a
+   * £30 refund on a £60 order was shown, and shared, as "£60 back".
+   */
+  celebrating: { id: string; amount: number; cost: number; store: string; inTime: boolean; warned: boolean } | null;
   /**
    * What happened when the win was shared. Not a boolean, because "the copy
    * failed" and "it has not been tried" are different things to say — and the
@@ -98,7 +103,9 @@ export type Action =
   | { type: 'settings'; patch: Partial<Settings> }
   | { type: 'keep'; id: string }
   | { type: 'send'; id: string }
+  | { type: 'set-refund'; id: string; pence: number | null }
   | { type: 'unsend'; id: string }
+  | { type: 'set-return-ref'; id: string; ref: string | null }
   | { type: 'unkeep'; id: string }
   | { type: 'keep-closed'; ids: string[] }
   | { type: 'undo-keep' }
@@ -173,7 +180,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       if (!r || r.status === 'returned') return state;
       const receipts = state.receipts.map((x) =>
         // `sentOn` stays: it is the day that decides whether this was in time.
-        x.id === action.id ? { ...x, status: 'returned' as const, returnedOn: toISODate(today), keptOn: undefined } : x,
+        x.id === action.id ? { ...x, status: 'returned' as const, returnedOn: toISODate(today), keptOn: undefined, refunded: undefined } : x,
       );
       /*
        * A sample, once there is real money beside it, is tidied away — not
@@ -202,7 +209,9 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         ...undo,
         screen: 'celebrate',
         celebrating: {
+          id: r.id,
           amount: r.amount,
+          cost: r.amount,
           store: r.store,
           // Judged on the day it went back, where that was recorded: posted on
           // day 27 and refunded on day 35 is a return made in time.
@@ -224,7 +233,9 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       return {
         ...state,
         receipts: state.receipts.map((r) =>
-          r.id === action.id ? { ...r, status: 'active' as const, returnedOn: undefined, sentOn: undefined } : r,
+          r.id === action.id
+            ? { ...r, status: 'active' as const, returnedOn: undefined, sentOn: undefined, refunded: undefined, returnRef: undefined }
+            : r,
         ),
       };
     case 'keep':
@@ -243,6 +254,33 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
           r.id === action.id && r.status === 'kept' ? { ...r, status: 'active' as const, keptOn: undefined } : r,
         ),
       };
+    case 'set-refund': {
+      /*
+       * Less than was paid, recorded after the fact: the refund arrives, and
+       * it is £30 of the £60. Only on a refund, never more than the price,
+       * and the whole price (or null) clears it back to the one-tap case.
+       */
+      const receipts = state.receipts.map((r) => {
+        if (r.id !== action.id || r.status !== 'returned') return r;
+        const p = action.pence;
+        if (p === null || p === r.amount) return { ...r, refunded: undefined };
+        if (!Number.isInteger(p) || p < 0 || p > r.amount) return r;
+        return { ...r, refunded: p };
+      });
+      const changed = receipts.find((r) => r.id === action.id);
+      // The celebration of this very refund follows it, and a line already
+      // shared about the old figure is not a line shared about this one.
+      const celebrating =
+        state.celebrating && changed && state.celebrating.id === action.id && refundOf(changed) !== state.celebrating.amount
+          ? { ...state.celebrating, amount: refundOf(changed) }
+          : state.celebrating;
+      return {
+        ...state,
+        receipts,
+        celebrating,
+        ...(celebrating !== state.celebrating ? { shared: 'no' as const } : {}),
+      };
+    }
     case 'send':
       /*
        * Gone back, money still to come. From active only: a kept item that
@@ -259,8 +297,23 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       return {
         ...state,
         receipts: state.receipts.map((r) =>
-          r.id === action.id && r.status === 'sent' ? { ...r, status: 'active' as const, sentOn: undefined } : r,
+          r.id === action.id && r.status === 'sent' ? { ...r, status: 'active' as const, sentOn: undefined, returnRef: undefined } : r,
         ),
+      };
+    case 'set-return-ref':
+      /*
+       * Proof it went, added the day it goes. Only while it is on its way: a
+       * reference means nothing on a receipt that has not been sent, and one
+       * the screen would refuse is refused here too.
+       */
+      return {
+        ...state,
+        receipts: state.receipts.map((r) => {
+          if (r.id !== action.id || r.status !== 'sent') return r;
+          const read = readReturnRef(action.ref ?? '');
+          if (!read.ok) return r;
+          return { ...r, returnRef: read.ref ?? undefined };
+        }),
       };
     case 'keep-closed': {
       /*
@@ -300,7 +353,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         // changed since, here or in another tab, is left as it now is.
         receipts: state.receipts.map((r) =>
           r.id === held.id && r.status === 'returned'
-            ? { ...r, status: held.was.status, returnedOn: undefined, keptOn: held.was.keptOn }
+            ? { ...r, status: held.was.status, returnedOn: undefined, keptOn: held.was.keptOn, refunded: undefined }
             : r,
         ),
         justReturned: null,

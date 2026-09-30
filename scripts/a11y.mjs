@@ -120,6 +120,31 @@ await audit(page, 'receipt detail · no guarantee', findings);
 await page.getByRole('button', { name: 'I’ve sent it back' }).click();
 await page.waitForTimeout(300);
 await audit(page, 'receipt detail · sent back', findings);
+
+// The tracking number's field and its refusal exist only once asked for.
+await page.getByRole('button', { name: 'Add the tracking number' }).click();
+await page.waitForTimeout(200);
+await page.getByLabel('Tracking or proof-of-postage number').fill('X'.repeat(41));
+await page.waitForTimeout(200);
+await audit(page, 'receipt detail · tracking number', findings);
+await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+await page.waitForTimeout(200);
+
+// Three weeks on, the refund is late: the chase panel and its letter exist
+// only then.
+await page.evaluate(() => {
+  const d = new Date();
+  d.setDate(d.getDate() - 20);
+  const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const s = JSON.parse(localStorage.getItem('kept.v1'));
+  for (const r of s.receipts) if (r.status === 'sent') r.sentOn = iso;
+  localStorage.setItem('kept.v1', JSON.stringify(s));
+});
+await page.reload({ waitUntil: 'networkidle' });
+await page.waitForTimeout(400);
+await page.getByRole('button', { name: /Currys, Le Creuset/ }).click();
+await page.waitForTimeout(400);
+await audit(page, 'receipt detail · refund late', findings);
 await page.getByRole('button', { name: 'Back', exact: true }).click();
 await page.waitForTimeout(300);
 await audit(page, 'home · sent back', findings);
@@ -167,6 +192,17 @@ await page.waitForTimeout(400);
 await page.getByRole('button', { name: 'Got my money back' }).click();
 await page.waitForTimeout(500);
 await audit(page, 'celebrate', findings);
+// Less than the price, said where it is celebrated: the form and its refusal,
+// then the card with "of the £… it cost" on the dark ground.
+await page.getByRole('button', { name: /^Not the full/ }).click();
+await page.waitForTimeout(200);
+await page.getByLabel('How much came back?').fill('99999');
+await page.waitForTimeout(200);
+await audit(page, 'celebrate · refund amount', findings);
+await page.getByLabel('How much came back?').fill('1');
+await page.getByRole('button', { name: 'Save', exact: true }).click();
+await page.waitForTimeout(300);
+await audit(page, 'celebrate · less than the price', findings);
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(300);
 
@@ -256,6 +292,17 @@ await page.waitForTimeout(400);
 await page.getByRole('button', { name: /IKEA, MALM.*returned/ }).click().catch(() => {});
 await page.waitForTimeout(400);
 await audit(page, 'receipt detail · returned', findings);
+
+// Correcting the refund: the label, the field and its refusal exist only
+// once "Not the full amount?" is pressed, and an amount over the price shows
+// the refusal.
+await page.getByRole('button', { name: 'Not the full amount?' }).click();
+await page.waitForTimeout(200);
+await page.getByLabel('How much came back?').fill('99999');
+await page.waitForTimeout(200);
+await audit(page, 'receipt detail · refund amount', findings);
+await page.getByRole('button', { name: 'It was the full amount' }).click();
+await page.waitForTimeout(200);
 
 // The undo offer after a delete.
 await page.getByRole('button', { name: 'Delete' }).click().catch(() => {});

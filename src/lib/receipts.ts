@@ -215,10 +215,15 @@ export function stillReturnablePence(b: Buckets, everything?: readonly Receipt[]
   return sumPence([...b.urgent, ...b.later].filter(counts).map((r) => r.amount));
 }
 
+/** What came back for one returned receipt: the refund recorded, or the whole price. */
+export function refundOf(r: Receipt): number {
+  return r.refunded ?? r.amount;
+}
+
 /** The money a person has actually had back — the same rule as the total above. */
 export function recoveredPence(receipts: readonly Receipt[]): number {
   const counts = countsAsMoney(receipts);
-  return sumPence(receipts.filter((r) => r.status === 'returned' && counts(r)).map((r) => r.amount));
+  return sumPence(receipts.filter((r) => r.status === 'returned' && counts(r)).map(refundOf));
 }
 
 /**
