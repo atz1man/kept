@@ -730,3 +730,26 @@ describe('order-email shapes the parser used to misread', () => {
     expect(read(`Argos\n${banner}\nTotal £39.99`).item).toBeNull();
   });
 });
+
+describe('the order number', () => {
+  // Read past on purpose (it looks like a price) and then thrown away, and it
+  // is the first thing a returns form asks for. Only a LABELLED one.
+  const ref = (text: string) => {
+    const out = parseReceiptText(text, TODAY);
+    return out.ok ? out.value.orderRef : 'did not parse';
+  };
+
+  it('reads the labelled forms shops use, as the shop wrote it', () => {
+    expect(ref('Argos\nOrder number: 600123456\nTotal £10.00')).toBe('600123456');
+    expect(ref('Argos\nOrder #W1234567\nTotal £10.00')).toBe('W1234567');
+    expect(ref('Argos\norder id: w1234567\nTotal £10.00')).toBe('W1234567');
+    expect(ref('Argos\nOrder ref. 55512\nTotal £10.00')).toBe('55512');
+  });
+
+  it('never takes a date, a total or a short code for one', () => {
+    expect(ref('Argos\nOrder date: 21/08/2026\nOrder total: £10.00')).toBeNull();
+    expect(ref('Argos\nOrder no. AB12\nTotal £10.00')).toBeNull();
+    // Unlabelled digits are a phone number as often as an order.
+    expect(ref('Argos\n0345 640 2020\nTotal £10.00')).toBeNull();
+  });
+});

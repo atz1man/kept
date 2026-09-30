@@ -32,6 +32,13 @@ export interface ParsedReceipt {
    * the one thing that names the receipt on every screen after.
    */
   item: string | null;
+  /**
+   * The shop's own order number, when the paste labels one — "Order #…",
+   * "Order number: …", "Order ID", "Reference". It was read past on purpose
+   * (it looks like a price) and then thrown away, and it is the first thing
+   * a returns form, a chat window and the letter to the shop all ask for.
+   */
+  orderRef: string | null;
 }
 
 export type ParseOutcome =
@@ -511,6 +518,23 @@ function cleanItem(raw: string, long: 'shorten' | 'refuse' = 'refuse'): string |
  * correction, but a guess that reads like the answer is how "Delivery" ends up
  * as the name of a receipt.
  */
+/**
+ * Only a LABELLED order number: a bare run of digits in an email is as likely
+ * a phone number, a postcode's neighbour or a price, and a wrong reference on
+ * a returns form is worse than none. The token must carry at least four
+ * digits, so "Order Total" and "Order date" can never be read as one.
+ */
+const ORDER_REF =
+  /\b(?:order|receipt|transaction|trans|booking)\s*(?:number|no\.?|num|#|id|ref(?:erence)?)\s*[:#.]?\s*#?\s*([A-Z0-9][A-Z0-9-]{3,29})\b/i;
+
+function pickOrderRef(text: string): string | null {
+  for (const line of text.split('\n')) {
+    const m = ORDER_REF.exec(line);
+    if (m && (m[1].match(/\d/g) ?? []).length >= 4) return m[1].toUpperCase();
+  }
+  return null;
+}
+
 function pickItem(text: string, store: StorePolicy | null): string | null {
   // "Item: Wool coat", "Product - Kettle", "Description: …"
   const labelled = /(?:^|\n|·)\s*(?:item|product|description)(?:\s+name)?\s*[:\-–]\s*([^\n·]+)/i.exec(text);
@@ -560,6 +584,7 @@ export function parseReceiptText(text: string, today: Date = new Date()): ParseO
       dispatchedOn: dispatched ? toISODate(dispatched) : null,
       windowDays: policy?.windowDays ?? UNKNOWN_STORE_WINDOW_DAYS,
       item: pickItem(text, policy),
+      orderRef: pickOrderRef(text),
     },
   };
 }

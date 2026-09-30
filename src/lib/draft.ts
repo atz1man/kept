@@ -23,6 +23,8 @@ export interface ReceiptDraft {
   windowDaysText: string;
   /** Blank means no warranty at all — not a warranty of zero months. */
   warrantyMonthsText: string;
+  /** The shop's order number; blank when unknown. */
+  orderRefText: string;
   /**
    * Ordered online, by phone, or away from the shop. Editable because it
    * decides whether the app states a 14-day right to cancel for any reason,
@@ -68,6 +70,8 @@ export const MAX_WINDOW_DAYS = 3650;
  * backup file, and a ceiling only the typing respects is not a ceiling.
  */
 export const MAX_AMOUNT_PENCE = 100_000_000;
+/** Longer than any shop's order number; a guard against a pasted essay. */
+export const MAX_ORDER_REF = 40;
 /** A hundred years. Longer than any guarantee anyone will honour. */
 const MAX_WARRANTY_MONTHS = 1200;
 
@@ -80,6 +84,8 @@ export interface ValidDraft {
   windowDays: number;
   /** Absent when the receipt should carry no warranty clock. */
   warrantyMonths?: number;
+  /** Absent when blank. */
+  orderRef?: string;
   distance: boolean;
   /** Absent when unknown; both statutory clocks then fall back to the order. */
   arrivedOn?: string;
@@ -278,6 +284,9 @@ export function validateDraft(draft: ReceiptDraft, today: Date): DraftOutcome {
     else warrantyMonths = months;
   }
 
+  const orderRef = draft.orderRefText.trim();
+  if (orderRef.length > MAX_ORDER_REF) errors.orderRefText = 'Longer than any order number';
+
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   return {
     ok: true,
@@ -286,6 +295,7 @@ export function validateDraft(draft: ReceiptDraft, today: Date): DraftOutcome {
       ...(arrivedOn ? { arrivedOn } : {}),
       ...(dispatchedOn ? { dispatchedOn } : {}),
       ...(warrantyMonths ? { warrantyMonths } : {}),
+      ...(orderRef ? { orderRef } : {}),
     },
   };
 }
@@ -301,6 +311,7 @@ export function draftFrom(r: Receipt): ReceiptDraft {
     purchasedOn: r.purchasedOn,
     windowDaysText: String(r.windowDays),
     warrantyMonthsText: r.warranty && r.warranty.months > 0 ? String(r.warranty.months) : '',
+    orderRefText: r.orderRef ?? '',
     distance: r.distance,
     arrivedOnText: r.arrivedOn ?? '',
     dispatchedOnText: r.windowStartsOn ?? '',
@@ -389,6 +400,8 @@ export function applyDraft(original: Receipt, valid: ValidDraft): Receipt {
     // Clearing the field clears the date, and so does saying it was bought in
     // a shop — a counter purchase has no separate arrival.
     arrivedOn: valid.distance ? valid.arrivedOn : undefined,
+    // Cleared by clearing the field, like the dates above.
+    orderRef: valid.orderRef,
     // Clearing the field clears the clock. The note, if any, came from the
     // manufacturer's own wording and is kept only while a clock is there to
     // caption.

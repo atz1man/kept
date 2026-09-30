@@ -139,6 +139,11 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
           <div style={{ minWidth: 0, flex: '1 1 60%' }}>
             <h1 tabIndex={-1} style={{ fontSize: 21, fontWeight: 700, margin: 0 }}>{receipt.store}</h1>
             <div style={{ fontSize: 13, color: color.faint, marginTop: 3 }}>{receipt.item}</div>
+            {receipt.orderRef && (
+              <div style={{ fontSize: 12, color: color.faint, marginTop: 3, fontFamily: font.figures, userSelect: 'text', overflowWrap: 'anywhere' }}>
+                Order {receipt.orderRef}
+              </div>
+            )}
           </div>
           <div style={{ fontFamily: font.figures, fontSize: 26, fontWeight: 700, color: color.yellow }}>
             {money(receipt.amount)}
