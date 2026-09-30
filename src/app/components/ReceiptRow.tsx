@@ -22,7 +22,7 @@ interface Props {
   /** Ordered online and not yet known to have arrived (`awaitingArrival`). */
   onItsWay?: boolean;
   onOpen: () => void;
-  onReturn: () => void;
+  onSwipe: () => void;
 }
 
 /**
@@ -32,7 +32,7 @@ interface Props {
  */
 const MIN_NAME_PX = 64;
 
-export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsWay = false, onOpen, onReturn }: Props) {
+export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsWay = false, onOpen, onSwipe }: Props) {
   const [dx, setDx] = useState(0);
   const [dragging, setDragging] = useState(false);
   const startX = useRef<number | null>(null);
@@ -43,14 +43,15 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
     startX.current = null;
     setDragging(false);
     setDx(0);
-    if (commit) onReturn();
+    if (commit) onSwipe();
   };
 
   return (
     <li style={{ position: 'relative', listStyle: 'none' }}>
       {/* The backing revealed by the swipe. Hidden from assistive tech: it is
           the visual result of a gesture, not a second control — the keyboard
-          route to the same outcome is "Got my money back" on the detail screen. */}
+          route to the same outcome is the first button on the detail screen:
+          "I've sent it back" for an online order, "Got my money back" otherwise. */}
       <div
         aria-hidden="true"
         style={{
@@ -61,7 +62,7 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
       >
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700 }}>
           <Tick size={14} />
-          Returned
+          {receipt.distance ? 'Sent back' : 'Returned'}
         </span>
       </div>
 
