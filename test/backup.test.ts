@@ -472,6 +472,18 @@ describe('a partial refund, in a backup', () => {
   });
 });
 
+describe('a return’s tracking number, in a backup', () => {
+  it('is carried, tidied, when the screen would have accepted it', () => {
+    expect(readReceipt({ ...good, status: 'sent', sentOn: '2026-09-01', returnRef: ' JD0002  1234 ' })?.returnRef).toBe('JD0002 1234');
+  });
+  it('is dropped whole, not cut short, when it is too long — and the receipt is kept', () => {
+    const long = readReceipt({ ...good, status: 'sent', sentOn: '2026-09-01', returnRef: 'X'.repeat(41) });
+    expect(long).not.toBeNull();
+    expect(long?.returnRef).toBeUndefined();
+    expect(readReceipt({ ...good, returnRef: 42 })?.returnRef).toBeUndefined();
+  });
+});
+
 describe('the order number, in a backup', () => {
   it('is carried, and a runaway one is cut to length', () => {
     expect(readReceipt({ ...good, orderRef: '204-1234567-7654321' })?.orderRef).toBe('204-1234567-7654321');

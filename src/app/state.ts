@@ -7,6 +7,7 @@ import { onNotificationTap, syncScheduled } from './schedule-native';
 import { currentDay, daysBetween, fromISODate, startOfDay, toISODate } from '../lib/dates';
 import { sharedTextFrom, strippedShareUrl } from '../lib/share';
 import { countsAsMoney, derive, makeReceiptId } from '../lib/receipts';
+import { readReturnRef } from '../lib/refund-chase';
 import { freshState, load, onExternalChange, save, type KeptState, type Settings } from '../lib/storage';
 import { quotaFull as quotaFullFor } from '../lib/quota';
 import { ONBOARDING_STEPS } from './screens/Onboarding';
@@ -100,6 +101,7 @@ export type Action =
   | { type: 'send'; id: string }
   | { type: 'set-refund'; id: string; pence: number | null }
   | { type: 'unsend'; id: string }
+  | { type: 'set-return-ref'; id: string; ref: string | null }
   | { type: 'unkeep'; id: string }
   | { type: 'keep-closed'; ids: string[] }
   | { type: 'undo-keep' }
@@ -225,7 +227,9 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       return {
         ...state,
         receipts: state.receipts.map((r) =>
-          r.id === action.id ? { ...r, status: 'active' as const, returnedOn: undefined, sentOn: undefined, refunded: undefined } : r,
+          r.id === action.id
+            ? { ...r, status: 'active' as const, returnedOn: undefined, sentOn: undefined, refunded: undefined, returnRef: undefined }
+            : r,
         ),
       };
     case 'keep':
@@ -276,8 +280,23 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       return {
         ...state,
         receipts: state.receipts.map((r) =>
-          r.id === action.id && r.status === 'sent' ? { ...r, status: 'active' as const, sentOn: undefined } : r,
+          r.id === action.id && r.status === 'sent' ? { ...r, status: 'active' as const, sentOn: undefined, returnRef: undefined } : r,
         ),
+      };
+    case 'set-return-ref':
+      /*
+       * Proof it went, added the day it goes. Only while it is on its way: a
+       * reference means nothing on a receipt that has not been sent, and one
+       * the screen would refuse is refused here too.
+       */
+      return {
+        ...state,
+        receipts: state.receipts.map((r) => {
+          if (r.id !== action.id || r.status !== 'sent') return r;
+          const read = readReturnRef(action.ref ?? '');
+          if (!read.ok) return r;
+          return { ...r, returnRef: read.ref ?? undefined };
+        }),
       };
     case 'keep-closed': {
       /*
