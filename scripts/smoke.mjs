@@ -1463,7 +1463,7 @@ for (const cancel of [false, true]) {
   const seen = {};
   seen.tapped = await fp.getByRole('button', { name: 'It was repaired or replaced, and it’s still not right' }).click({ timeout: 3000 }).then(() => true, () => false);
   await fp.waitForTimeout(300);
-  await fp.getByLabel(/What’s wrong with it now/).fill('Still trips it', { timeout: 3000 }).catch(() => {});
+  await fp.getByLabel(/what’s wrong with it now/i).fill('Still trips it', { timeout: 3000 }).catch(() => {});
   await fp.waitForTimeout(200);
   const text = (await fp.locator('[data-final-reject]').innerText().catch(() => '')) ?? '';
   seen.letter = /Final right to reject: Kettle/.test(text) && /section 24\(5\)/.test(text) && /The problem now: Still trips it\./.test(text) && /section 24\(10\)/.test(text);
