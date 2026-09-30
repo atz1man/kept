@@ -17,7 +17,7 @@ const base = (over: Partial<AppState> = {}): AppState => ({
   version: 1, receipts: [receipt('a'), receipt('b')], updates: [], onboardingSeen: true,
   settings: { ...DEFAULT_SETTINGS }, alertsSent: [],
   screen: 'home', selId: null, obStep: 0, celebrating: null, shared: 'no', upgrading: null,
-  sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null,
+  sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null, justAdded: null,
   ...over,
 });
 
@@ -738,5 +738,36 @@ describe('the tracking number on a return', () => {
     expect(a(reducer(tracked(), { type: 'unsend', id: 'a' }, TODAY)).returnRef).toBeUndefined();
     const back = reducer(tracked(), { type: 'return', id: 'a' }, TODAY);
     expect(a(reducer(back, { type: 'unreturn', id: 'a' }, TODAY)).returnRef).toBeUndefined();
+  });
+});
+
+describe('a receipt just saved', () => {
+  const added = { ...receipt('new'), item: 'Kettle' };
+  const saved = (over: Partial<AppState> = {}) => reducer(base({ screen: 'add', ...over }), { type: 'add', receipt: added }, TODAY);
+
+  it('is offered back, the only undo on offer', () => {
+    const s = saved({ justKept: ['a'], justReturned: { id: 'a', was: { status: 'active', keptOn: undefined } } });
+    expect(s.justAdded).toBe('new');
+    expect(s.justKept).toBeNull();
+    expect(s.justReturned).toBeNull();
+    expect(s.screen).toBe('home');
+  });
+
+  it('is taken out again by undo, with what was said about it', () => {
+    const s = { ...saved(), alertsSent: ['new:week', 'a:week'] };
+    const undone = reducer(s, { type: 'undo-add' }, TODAY);
+    expect(undone.receipts.map((r) => r.id)).toEqual(['a', 'b']);
+    expect(undone.justAdded).toBeNull();
+    expect(undone.alertsSent).toEqual(['a:week']);
+  });
+
+  it('stops being offered once dismissed, once anything else happens, or on the next screen', () => {
+    expect(reducer(saved(), { type: 'dismiss-undo' }, TODAY).justAdded).toBeNull();
+    expect(reducer(saved(), { type: 'go', screen: 'settings' }, TODAY).justAdded).toBeNull();
+    expect(reducer(saved(), { type: 'delete', id: 'a' }, TODAY).justAdded).toBeNull();
+    expect(reducer(saved(), { type: 'return', id: 'a' }, TODAY).justAdded).toBeNull();
+    // Dismissed, an undo takes nothing out.
+    const dismissed = reducer(saved(), { type: 'dismiss-undo' }, TODAY);
+    expect(reducer(dismissed, { type: 'undo-add' }, TODAY).receipts).toHaveLength(3);
   });
 });

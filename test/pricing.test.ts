@@ -69,7 +69,7 @@ describe('what the iOS build sells', () => {
       version: 1, receipts, updates: [], onboardingSeen: true,
       settings: { ...DEFAULT_SETTINGS, plan: 'free' }, alertsSent: [],
       screen: 'home', selId: null, obStep: 0, celebrating: null, shared: 'no', upgrading: null,
-      sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null,
+      sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null, justAdded: null,
     };
   };
 

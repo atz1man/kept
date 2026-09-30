@@ -34,6 +34,13 @@ export interface AppState extends KeptState {
    */
   justKept: string[] | null;
   /**
+   * The receipt just saved, held only long enough to offer it back. Saving
+   * dropped the person on the list with nothing to say it had worked, or
+   * where the new row went, and a receipt saved from the wrong email could be
+   * removed only by finding it and deleting it.
+   */
+  justAdded: string | null;
+  /**
    * The receipt just marked returned, and what it was before, held only long
    * enough to offer it back. The swipe that marks a return is a one-finger
    * gesture on a row you might have meant to open, so it fires by accident;
@@ -115,6 +122,7 @@ export type Action =
   | { type: 'keep-closed'; ids: string[] }
   | { type: 'undo-keep' }
   | { type: 'undo-return' }
+  | { type: 'undo-add' }
   | { type: 'shared'; outcome: 'shared' | 'copied' | 'failed' }
   | { type: 'upgrade-ask'; period: Period }
   | { type: 'upgrade-cancel' };
@@ -147,7 +155,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       return {
         ...state,
         justDeleted: null,
-        justKept: null, justReturned: null,
+        justKept: null, justReturned: null, justAdded: null,
         // The undo is gone, so what was said about the receipt it held goes too.
         alertsSent: state.justDeleted ? pruneSent(state.alertsSent, state.receipts) : state.alertsSent,
         screen: action.screen,
@@ -171,8 +179,8 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
        */
       const held = state.receipts.some((r) => r.id === action.id);
       return held
-        ? { ...state, justDeleted: null, justKept: null, justReturned: null, screen: 'detail', selId: action.id }
-        : { ...state, justDeleted: null, justKept: null, justReturned: null, screen: 'home', selId: null };
+        ? { ...state, justDeleted: null, justKept: null, justReturned: null, justAdded: null, screen: 'detail', selId: action.id }
+        : { ...state, justDeleted: null, justKept: null, justReturned: null, justAdded: null, screen: 'home', selId: null };
     }
     case 'ob-next':
       return state.obStep >= ONBOARDING_STEPS - 1
@@ -203,6 +211,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         justReturned: { id: r.id, was: { status: r.status, keptOn: r.keptOn } },
         justDeleted: null,
         justKept: null,
+        justAdded: null,
         alertsSent: state.justDeleted ? pruneSent(state.alertsSent, state.receipts) : state.alertsSent,
       };
       if (!countsAsMoney(state.receipts)(r)) {
@@ -389,6 +398,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         ...state,
         receipts: state.receipts.map((r) => (ids.has(r.id) ? { ...r, status: 'kept' as const, keptOn: on } : r)),
         justKept: [...ids],
+        justAdded: null,
         // One undo on offer at a time; a delete's is forgotten as if dismissed.
         justDeleted: null,
         justReturned: null,
@@ -421,7 +431,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         receipts: state.receipts.map((r) =>
           ids.has(r.id) && r.status === 'kept' ? { ...r, status: 'active' as const, keptOn: undefined } : r,
         ),
-        justKept: null, justReturned: null,
+        justKept: null, justReturned: null, justAdded: null,
       };
     }
     case 'delete': {
@@ -434,7 +444,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         // was the only action in the app with no way out — a backup is not an
         // undo.
         justDeleted: removed,
-        justKept: null, justReturned: null,
+        justKept: null, justReturned: null, justAdded: null,
         // Forget what we said about receipts that no longer exist, so the
         // sent-list cannot grow without bound over years of use — but NOT yet
         // about this one. It is on offer to undo, and an undo that brought
@@ -459,6 +469,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       return { ...state, receipts: [...state.receipts, restoring], justDeleted: null };
     }
     case 'dismiss-undo':
+      if (state.justAdded) return { ...state, justAdded: null };
       if (state.justKept) return { ...state, justKept: null };
       if (state.justReturned) return { ...state, justReturned: null };
       return state.justDeleted
@@ -468,7 +479,24 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       // A shared email is spent once it is saved. It was never cleared, so
       // every later visit to Add re-read it and offered it again — two rows,
       // the money counted twice. Leaving Add WITHOUT saving keeps it.
-      return { ...state, receipts: [...state.receipts, action.receipt], screen: 'home', sharedText: null };
+      // Offered back at once, the only undo on offer; a delete's is forgotten.
+      return {
+        ...state,
+        receipts: [...state.receipts, action.receipt],
+        screen: 'home',
+        sharedText: null,
+        justAdded: action.receipt.id,
+        justDeleted: null,
+        justKept: null,
+        justReturned: null,
+        alertsSent: state.justDeleted ? pruneSent(state.alertsSent, state.receipts) : state.alertsSent,
+      };
+    case 'undo-add': {
+      const id = state.justAdded;
+      if (!id) return state;
+      const receipts = state.receipts.filter((r) => r.id !== id);
+      return { ...state, receipts, justAdded: null, alertsSent: pruneSent(state.alertsSent, receipts) };
+    }
     case 'arrived': {
       /*
        * "It arrived today" — the one tap that turns a floor into a date. The
@@ -550,7 +578,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         receipts: [],
         alertsSent: [],
         justDeleted: null,
-        justKept: null, justReturned: null,
+        justKept: null, justReturned: null, justAdded: null,
         selId: null,
         screen: 'home',
       };
@@ -639,7 +667,7 @@ export function useApp() {
         sharedText: incoming,
         embedded,
         justDeleted: null,
-        justKept: null, justReturned: null,
+        justKept: null, justReturned: null, justAdded: null,
         selId: null,
         obStep: 0,
         celebrating: null,
