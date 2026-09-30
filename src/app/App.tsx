@@ -6,6 +6,7 @@ import { FEED_PUBLIC_KEY, feedIsAcceptable, verifyFeed } from '../lib/feed-signa
 import { currentNotifyState, deliver, offerReminders, type NotifyState } from './notify';
 import { isNative } from '../lib/mirror';
 import { money, sumPence } from '../lib/money';
+import { canSplit } from '../lib/split';
 import { countsAsMoney, derive, makeReceiptId, recoveredPence } from '../lib/receipts';
 import { fmtDateNear } from '../lib/dates';
 import { winSentence } from '../lib/words';
@@ -441,6 +442,12 @@ export function App() {
           onReturn={() => dispatch({ type: 'return', id: selected.id })}
           onUnreturn={() => dispatch({ type: 'unreturn', id: selected.id })}
           onExchange={() => dispatch({ type: 'exchange', id: selected.id, newId: makeReceiptId() })}
+          onSplit={(item, pence) => dispatch({ type: 'split', id: selected.id, item, pence, newId: makeReceiptId() })}
+          splitFromReceipt={(selected.splitFrom && state.receipts.find((r) => r.id === selected.splitFrom)) || null}
+          onUnsplit={(() => {
+            const from = selected.splitFrom ? state.receipts.find((r) => r.id === selected.splitFrom) : undefined;
+            return from && canSplit(from) && canSplit(selected) ? () => dispatch({ type: 'unsplit', id: selected.id }) : null;
+          })()}
           onUnexchange={() => dispatch({ type: 'unexchange', id: selected.id })}
           onKeep={() => dispatch({ type: 'keep', id: selected.id })}
           onUnkeep={() => dispatch({ type: 'unkeep', id: selected.id })}

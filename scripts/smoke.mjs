@@ -1828,6 +1828,51 @@ for (const cancel of [false, true]) {
   await wCtx.close();
 }
 
+/*
+ * One thing out of a basket. A receipt holds one item and one amount, and
+ * returning one thing from three settled the whole receipt — the two that
+ * stayed lost their guarantee reminder and their fault letter with it.
+ */
+{
+  const sCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const sp = await sCtx.newPage();
+  await sp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await sp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await sp.waitForTimeout(300);
+  await sp.evaluate(() => {
+    const iso = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    const s = JSON.parse(localStorage.getItem('kept.v1'));
+    s.receipts.push({ id: 'r_basket', store: 'Boots', item: 'Shopping', cat: 'beauty', amount: 6000, purchasedOn: iso(3), windowDays: 35, policy: 'p', distance: false, status: 'active', warranty: { months: 24 } });
+    localStorage.setItem('kept.v1', JSON.stringify(s));
+  });
+  await sp.reload({ waitUntil: 'networkidle' });
+  await sp.waitForTimeout(300);
+  const stored = () => sp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.filter((r) => r.id === 'r_basket' || r.splitFrom === 'r_basket'));
+  await sp.getByRole('button', { name: /^Boots, Shopping/ }).first().click({ timeout: 3000 }).catch(() => {});
+  await sp.waitForTimeout(300);
+  const seen = {};
+  seen.offered = await sp.getByRole('button', { name: 'More than one thing on this receipt? Split it' }).click({ timeout: 3000 }).then(() => true, () => false);
+  await sp.waitForTimeout(200);
+  await sp.getByLabel('What is it?').fill('Hairdryer', { timeout: 3000 }).catch(() => {});
+  await sp.getByLabel('What did it cost?').fill('25', { timeout: 3000 }).catch(() => {});
+  await sp.getByRole('button', { name: 'Split it out' }).click({ timeout: 3000 }).catch(() => {});
+  await sp.waitForTimeout(400);
+  let rows = await stored();
+  const rest = rows.find((r) => r.id === 'r_basket');
+  const part = rows.find((r) => r.splitFrom === 'r_basket');
+  seen.split = rest?.amount === 3500 && part?.amount === 2500 && part?.item === 'Hairdryer' && part?.purchasedOn === rest?.purchasedOn && part?.warranty?.months === 24;
+  seen.partOpen = /Split out of the Boots receipt for Shopping\./.test((await sp.locator('[data-split-part]').innerText().catch(() => '')) ?? '');
+  // The part goes back on its own; the rest stays in hand with its guarantee.
+  await sp.getByRole('button', { name: 'Got my money back' }).click({ timeout: 3000 }).catch(() => {});
+  await sp.waitForTimeout(400);
+  rows = await stored();
+  seen.partAlone = rows.find((r) => r.splitFrom === 'r_basket')?.status === 'returned' && rows.find((r) => r.id === 'r_basket')?.status === 'active';
+  const ok = Object.values(seen).every(Boolean);
+  results['a basket can be split, and one thing returned while the rest stays in hand'] = ok;
+  if (!ok) problems.push(`split: ${JSON.stringify({ ...seen, rows })}`);
+  await sCtx.close();
+}
+
 // The tab bar floats over every screen; its buttons must stay clickable.
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(400);

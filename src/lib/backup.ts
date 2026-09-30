@@ -205,6 +205,7 @@ export function readReceipt(raw: unknown, fromOutside = false): Receipt | null {
     // produced knows which it came from.
     ...(r.status === 'returned' && r.exchanged === true ? { exchanged: true as const } : {}),
     ...(isStr(r.swappedFrom) && r.swappedFrom.length <= 100 ? { swappedFrom: r.swappedFrom } : {}),
+    ...(isStr(r.splitFrom) && r.splitFrom.length <= 100 ? { splitFrom: r.splitFrom } : {}),
     ...(r.sentOn !== undefined ? { sentOn: r.sentOn as string } : {}),
     // A reference that would not have been accepted on screen is dropped, not
     // truncated: half a tracking number finds somebody else's parcel.
