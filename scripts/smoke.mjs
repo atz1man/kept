@@ -1247,6 +1247,37 @@ for (const cancel of [false, true]) {
   await lCtx.close();
 }
 
+/*
+ * Coming up. Every dated thing ahead was already on its own receipt's screen,
+ * and nothing put them side by side — "what do I have to do this month?"
+ * meant opening every receipt. And the Watch tab was, until a real policy
+ * change is published, all samples. It now opens on the next sixty days,
+ * soonest first, each row opening its receipt.
+ */
+{
+  const wCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const wp = await wCtx.newPage();
+  await wp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await wp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await wp.getByRole('button', { name: /^Watch/ }).click();
+  await wp.waitForTimeout(300);
+  const rows = wp.getByRole('button', { name: /: Last day to return it\./ });
+  const labels = await rows.evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')));
+  const seen = {
+    listed: labels.length >= 3,
+    soonestFirst: /in 2 days: .*Currys, JBL/.test(labels[0] ?? ''),
+  };
+  if (seen.listed) {
+    await rows.first().click();
+    await wp.waitForTimeout(300);
+    seen.opens = (await wp.getByRole('heading', { level: 1, name: 'Currys' }).count()) === 1;
+  }
+  const ok = seen.listed && seen.soonestFirst && seen.opens;
+  results['the Watch tab opens on what is coming up, soonest first, and each row opens its receipt'] = !!ok;
+  if (!ok) problems.push(`coming up: ${JSON.stringify({ ...seen, first: labels[0] })}`);
+  await wCtx.close();
+}
+
 // The tab bar floats over every screen; its buttons must stay clickable.
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(400);
