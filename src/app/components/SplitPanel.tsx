@@ -23,14 +23,14 @@ export function SplitPanel({ receipt, onSplit }: { receipt: Receipt; onSplit: (i
     return (
       <Pressable
         onClick={() => setOpen(true)}
-        style={{ display: 'flex', width: 'auto', minHeight: 44, alignItems: 'center', justifyContent: 'center', margin: '10px auto 0', padding: '0 16px', fontWeight: 600, fontSize: 14, textDecoration: 'underline' }}
+        style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', justifyContent: 'center', padding: '0 8px', fontWeight: 600, fontSize: 14, textDecoration: 'underline' }}
       >
-        More than one thing on this receipt? Split it
+        Split this receipt
       </Pressable>
     );
   }
   return (
-    <div data-split style={{ marginTop: 14, padding: 14, background: color.white, border: `1.5px solid ${color.border}`, borderRadius: 16 }}>
+    <div data-split style={{ flexBasis: '100%', marginTop: 14, padding: 14, background: color.white, border: `1.5px solid ${color.border}`, borderRadius: 16 }}>
       <div style={{ fontSize: 13.5, lineHeight: 1.5, color: color.body, marginBottom: 10 }}>
         Take one thing out as its own receipt, with the same shop and dates, so it can go back or stay on its own. The
         rest of the {money(receipt.amount)} stays here.

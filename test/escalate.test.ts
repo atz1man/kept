@@ -27,6 +27,13 @@ describe('where the shop will not pay', () => {
     expect(lines[0]).toMatch(/chargeback/);
     expect(lines[0]).toMatch(/rather than the law/);
     expect(lines[0]).not.toMatch(/\d+ days/);
+    // Nothing above it says what "that" is, so it does not say "below that".
+    expect(lines[0]).toMatch(/^Paid by card\? /);
+    expect(lines[0]).not.toMatch(/below that/);
+  });
+
+  it('says "below that" only under the Section 75 line it points at', () => {
+    expect(escalation(r(249.99)).lines[1]).toMatch(/^Paid by debit card, or credit card below that\? /);
   });
 
   it('leads with Section 75 where it fits, quoting the price', () => {

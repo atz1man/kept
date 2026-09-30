@@ -1851,7 +1851,7 @@ for (const cancel of [false, true]) {
   await sp.getByRole('button', { name: /^Boots, Shopping/ }).first().click({ timeout: 3000 }).catch(() => {});
   await sp.waitForTimeout(300);
   const seen = {};
-  seen.offered = await sp.getByRole('button', { name: 'More than one thing on this receipt? Split it' }).click({ timeout: 3000 }).then(() => true, () => false);
+  seen.offered = await sp.getByRole('button', { name: 'Split this receipt' }).click({ timeout: 3000 }).then(() => true, () => false);
   await sp.waitForTimeout(200);
   await sp.getByLabel('What is it?').fill('Hairdryer', { timeout: 3000 }).catch(() => {});
   await sp.getByLabel('What did it cost?').fill('25', { timeout: 3000 }).catch(() => {});
