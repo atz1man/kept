@@ -43,7 +43,9 @@ export function escalation(r: Receipt): Escalation {
             `Paid by credit card? At ${money(r.amount)}, Section 75 of the Consumer Credit Act makes the card company equally responsible with the shop — for a single item costing over £100 — so you can claim from them instead.`,
           ]
         : []),
-      'Paid by debit card, or credit card below that? Ask your bank for a chargeback. It is the card scheme’s rule rather than the law, and banks set time limits, so ask soon.',
+      // "Below that" only where "that" has been said: on a £40 kettle there
+      // is no Section 75 line above it, and the sentence pointed at nothing.
+      `${s75Fits(r) ? 'Paid by debit card, or credit card below that?' : 'Paid by card?'} Ask your bank for a chargeback. It is the card scheme’s rule rather than the law, and banks set time limits, so ask soon.`,
     ],
   };
 }

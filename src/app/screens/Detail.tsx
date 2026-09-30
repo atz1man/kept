@@ -493,12 +493,17 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
             </div>
           )}
           <ActiveActions distance={receipt.distance} onReturn={onReturn} onSend={onSend} onKeep={onKeep} />
-          <Pressable
-            onClick={onExchange}
-            style={{ display: 'flex', width: 'auto', minHeight: 44, alignItems: 'center', justifyContent: 'center', margin: '6px auto 0', padding: '0 16px', fontWeight: 600, fontSize: 14, textDecoration: 'underline' }}
-          >
-            Swapped it for another
-          </Pressable>
+          {/* The two less common endings, side by side and quiet: they were a
+              stack of three underlined lines with Delete, each on its own. */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', columnGap: 12, marginTop: 6 }}>
+            <Pressable
+              onClick={onExchange}
+              style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', justifyContent: 'center', padding: '0 8px', fontWeight: 600, fontSize: 14, textDecoration: 'underline' }}
+            >
+              Swapped it for another
+            </Pressable>
+            {canSplit(receipt) && <SplitPanel key={receipt.id} receipt={receipt} onSplit={onSplit} />}
+          </div>
         </>
       )}
       {/* A part split out of a basket says where it came from, and can go back in. */}
@@ -513,7 +518,11 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
           </Pressable>
         </div>
       )}
-      {canSplit(receipt) && <SplitPanel key={receipt.id} receipt={receipt} onSplit={onSplit} />}
+      {receipt.status === 'kept' && canSplit(receipt) && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', marginTop: 10 }}>
+          <SplitPanel key={receipt.id} receipt={receipt} onSplit={onSplit} />
+        </div>
+      )}
       {/* Last, and quiet. It sat beside the primary action as a pill of its
           own, on every receipt: the one irreversible-looking choice here drawn
           with the weight of the one the screen is for. It has an undo, and it
