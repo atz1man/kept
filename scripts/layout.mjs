@@ -433,6 +433,19 @@ const screens = [
   ['back to home', async (p) => { await p.getByRole('button', { name: 'Cancel' }).click(); await p.getByRole('button', { name: 'Back', exact: true }).click(); }],
   ['watch', async (p) => { await p.getByRole('button', { name: /^Watch/ }).click(); }],
   ['add', async (p) => { await p.getByRole('button', { name: 'Add a receipt' }).click(); }],
+  // A refund marked as store credit, with its date refused: a white card of
+  // its own under the refund panel, on a returned receipt.
+  ['detail · store credit', async (p) => {
+    await p.getByRole('button', { name: 'Receipts', exact: true }).click();
+    await p.waitForTimeout(250);
+    await p.locator('li button').first().click();
+    await p.getByRole('button', { name: 'Got my money back' }).click();
+    await p.getByRole('button', { name: 'Back to receipts' }).click();
+    await p.getByRole('button', { name: /, returned$/ }).first().click();
+    await p.getByRole('button', { name: 'It came back as store credit' }).click();
+    await p.locator('#credit-expires').fill('2000-01-01');
+  }],
+  ['back from the credit', async (p) => { await p.getByRole('button', { name: 'Back', exact: true }).click(); }],
   ['settings', async (p) => { await p.getByRole('button', { name: 'Settings', exact: true }).click(); }],
   // A modal, so it sizes itself rather than inheriting the page's padding —
   // the one surface here that can push a 320px viewport sideways on its own.
