@@ -4,7 +4,7 @@ import { addDays, fmtDateLong, fmtDatesTogether, fromISODate } from '../../lib/d
 import { firstToClose, firstToCloseLine, LEGAL_DISCLAIMER, legalRights } from '../../lib/legal';
 import { REFUND_CHASE_DAYS } from '../../lib/alerts';
 import { money } from '../../lib/money';
-import { asksForGuarantee, derive, refundOf } from '../../lib/receipts';
+import { asksForGuarantee, awaitingArrival, derive, refundOf } from '../../lib/receipts';
 import type { Receipt } from '../../lib/types';
 import { clockFor, findStore } from '../../lib/stores';
 import { returnsPageFor } from '../../lib/returns-pages';
@@ -35,12 +35,13 @@ interface Props {
   /** Record less than the full price as refunded; null for the whole price. */
   onSetRefund: (pence: number | null) => void;
   onSetReturnRef: (ref: string | null) => void;
+  onArrived: () => void;
   onDelete: () => void;
 }
 
 const cardLabel = { fontSize: 11, fontWeight: 700, letterSpacing: '1.4px', color: color.muted } as const;
 
-export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onDelete }: Props) {
+export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onArrived, onDelete }: Props) {
   const [legalOpen, setLegalOpen] = useState(true);
   const d = derive(receipt, today);
   const u = urgency(d.daysLeft, urgentDays);
@@ -241,6 +242,35 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               {receipt.store} counts from {clockStart === 'dispatch' ? 'dispatch' : 'the day it arrives'}, not from your
               order — and this receipt does not say when that was, so the date above is the earliest it can be, never
               the latest.
+            </div>
+          )}
+          {/* The fix for the floor above, in one tap, while the parcel could
+              plausibly still be coming. The order email is when most people
+              add a receipt, and it arrives before the parcel does. */}
+          {awaitingArrival(receipt, today) && (
+            <div data-arrival style={{ marginTop: 12, padding: 14, background: color.creamAlt, border: `1.5px solid ${color.borderHair}`, borderRadius: 14 }}>
+              <div style={{ fontWeight: 700, fontSize: 14.5 }}>Has it arrived?</div>
+              <div style={{ fontSize: 13, lineHeight: 1.5, marginTop: 3, color: color.body }}>
+                {clockStart === 'delivery'
+                  ? `${receipt.store}’s window and your legal rights both start the day it arrives, not the day you ordered.`
+                  : 'Your legal rights start the day it arrives, not the day you ordered.'}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+                <Pressable
+                  className="k-cta-yellow"
+                  onClick={onArrived}
+                  style={{ flex: '1 1 auto', width: 'auto', padding: 12, textAlign: 'center', background: color.yellow, border: `1.5px solid ${color.ink}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+                >
+                  It arrived today
+                </Pressable>
+                <Pressable
+                  className="k-row-white"
+                  onClick={onEdit}
+                  style={{ flex: '1 1 auto', width: 'auto', padding: 12, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+                >
+                  It came earlier
+                </Pressable>
+              </div>
             </div>
           )}
         </div>
