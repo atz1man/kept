@@ -51,6 +51,36 @@ describe('the controls it names', () => {
   });
 });
 
+describe('where the iPhone keeps it', () => {
+  /*
+   * The page said a receipt photograph was stored "inside the app, and nowhere
+   * else". Info.plist opts in to `UIFileSharingEnabled`, which puts the
+   * Documents folder — the photographs and the mirror of every receipt — in
+   * the Files app, and Documents is in the iPhone's own backup, which is the
+   * reason the mirror lives there. Both are the person's own device and
+   * nothing kept sends; neither was said. Held to the files that decide it, so
+   * the page cannot drift from the build again.
+   */
+  const plist = readFileSync(join(ROOT, 'ios', 'App', 'App', 'Info.plist'), 'utf8');
+  const mirror = readFileSync(join(ROOT, 'src', 'lib', 'mirror.ts'), 'utf8');
+  const photos = readFileSync(join(ROOT, 'src', 'lib', 'photos.ts'), 'utf8');
+
+  it('says the folder shows in the Files app, while the build shares it', () => {
+    expect(plist).toMatch(/<key>UIFileSharingEnabled<\/key>\s*<true\/>/);
+    expect(page).toContain('appears in the Files app under On My iPhone');
+  });
+
+  it('says it goes into the iPhone’s own backup, while the mirror and photos live in Documents', () => {
+    expect(mirror).toContain('Directory.Documents');
+    expect(photos).toContain('Directory.Documents');
+    expect(page).toContain('part of your iPhone’s own backup');
+  });
+
+  it('no longer claims a photograph is nowhere but inside the app', () => {
+    expect(page).not.toMatch(/inside the app, and nowhere else/);
+  });
+});
+
 describe('what it says about itself', () => {
   it('opens with the sentence the app shows, word for word', () => {
     const statement = 'Everything lives on this device. No account, nothing uploaded, no one reading your purchases.';
