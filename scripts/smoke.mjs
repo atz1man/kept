@@ -912,6 +912,49 @@ for (const cancel of [false, true]) {
   await oCtx.close();
 }
 
+/*
+ * The celebration of a partial refund. The one-tap return records the whole
+ * price, and the screen that follows it — the one that shows the figure, and
+ * shares it — went straight back to the list, so "£89.00 back" was shown and
+ * shared about a £30 refund. The figure can be corrected there, before the
+ * share, and the share carries the corrected one.
+ */
+{
+  const wCtx = await browser.newContext({ viewport: { width: 402, height: 874 }, permissions: ['clipboard-write'] });
+  await wCtx.addInitScript(() => {
+    // No share sheet here, so the win goes to the clipboard — caught on the way.
+    delete Navigator.prototype.share;
+    const write = navigator.clipboard?.writeText?.bind(navigator.clipboard);
+    if (navigator.clipboard) navigator.clipboard.writeText = (t) => { window.__copied = t; return write ? write(t) : Promise.resolve(); };
+  });
+  const wp = await wCtx.newPage();
+  await wp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await wp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await wp.getByRole('button', { name: /Currys, JBL/ }).first().click();
+  await wp.getByRole('button', { name: 'Got my money back' }).click();
+  await wp.waitForTimeout(400);
+  const offer = wp.getByRole('button', { name: 'Not the full £89.00?' });
+  const seen = { offered: (await offer.count()) === 1 };
+  if (seen.offered) {
+    await offer.click();
+    await wp.getByLabel('How much came back?').fill('30');
+    await wp.getByRole('button', { name: 'Save', exact: true }).click();
+    await wp.waitForTimeout(300);
+    const card = await wp.locator('main').innerText();
+    seen.card = /MONEY BACK\s*£30\.00/.test(card) && /of the £89\.00 it cost/.test(card);
+    await wp.getByRole('button', { name: 'Share the win' }).click();
+    await wp.waitForTimeout(300);
+    const copied = await wp.evaluate(() => window.__copied ?? '');
+    seen.shared = /£30\.00/.test(copied) && !/£89\.00/.test(copied);
+    const stored = await wp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => /JBL/.test(r.item)));
+    seen.stored = stored?.refunded === 3000;
+  }
+  const ok = seen.offered && seen.card && seen.shared && seen.stored;
+  results['a partial refund is corrected where it is celebrated, and the share says what came back'] = !!ok;
+  if (!ok) problems.push(`celebrate partial: ${JSON.stringify(seen)}`);
+  await wCtx.close();
+}
+
 // The tab bar floats over every screen; its buttons must stay clickable.
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(400);

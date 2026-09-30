@@ -42,7 +42,7 @@ describe('scrolling in the native shell', () => {
      * screen deliberately without a scroller: it is built to fit, and a step
      * that scrolls is a step that is too long.
      */
-    const screens = ['Home', 'Add', 'Detail', 'Edit', 'Settings', 'Watch'];
+    const screens = ['Home', 'Add', 'Detail', 'Edit', 'Settings', 'Watch', 'Celebrate'];
     for (const name of screens) {
       expect(read(`src/app/screens/${name}.tsx`), name).toMatch(/overflow: 'auto'/);
     }
