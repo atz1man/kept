@@ -44,6 +44,19 @@ CHANGE 2.00
     expect(v.item).toBe('NO7 SERUM 30ML');
   });
 
+  it('Boots: a toothpaste called Total is an item, not the total', () => {
+    const v = read(`Boots
+Oxford Street
+DATE 27/09/2026 14:32
+NO7 PROTECT&PERFECT SERUM 32.50
+BaByliss HAIRDRYER 5736U 25.00
+COLGATE TOTAL 125ML x2 4.97
+TOTAL 62.47
+VISA CONTACTLESS ****4021`);
+    expect(v.store).toBe('Boots');
+    expect(v.amount).toBe(6247);
+  });
+
   it('reads through the camera’s own mistakes', () => {
     // A lower-case o for a 0, a comma for the point, a date with dashes.
     const v = read(`JOHN LEWIS
