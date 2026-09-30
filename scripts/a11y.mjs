@@ -187,6 +187,12 @@ await page.getByRole('button', { name: 'Something wrong with it?' }).click();
 await page.waitForTimeout(300);
 await page.getByLabel('What’s wrong with it?').fill('The left ear cup crackles');
 await audit(page, 'receipt detail · something wrong', findings);
+// Sent: the panel's record of when, and the reply it asked for.
+await page.getByRole('button', { name: 'I’ve sent the letter' }).click();
+await page.waitForTimeout(200);
+await audit(page, 'receipt detail · fault letter sent', findings);
+await page.getByRole('button', { name: 'Not sent after all' }).click();
+await page.waitForTimeout(200);
 await page.getByRole('button', { name: 'Something wrong with it?' }).click();
 await page.waitForTimeout(200);
 

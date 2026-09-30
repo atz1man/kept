@@ -413,6 +413,8 @@ const screens = [
   // Opens closed, and its letter is the widest block of text in the app:
   // prose with no breaks shorter than a shop name, in a box inside a card.
   ['detail · something wrong', async (p) => { await p.getByRole('button', { name: 'Something wrong with it?' }).click(); }],
+  // Sent, with its record of when and the reply asked for.
+  ['detail · fault letter sent', async (p) => { await p.getByRole('button', { name: 'I’ve sent the letter' }).click(); }],
   // Its own panel and three buttons, reached only by sending something back.
   ['detail · sent back', async (p) => { await p.getByRole('button', { name: 'I’ve sent it back' }).click(); }],
   ['detail · tracking number', async (p) => { await p.getByRole('button', { name: 'Add the tracking number' }).click(); }],

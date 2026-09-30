@@ -36,13 +36,15 @@ interface Props {
   onSetRefund: (pence: number | null) => void;
   onSetReturnRef: (ref: string | null) => void;
   onSetCredit: (credit: { expires?: string } | null) => void;
+  onFaultSent: (what: string) => void;
+  onFaultUnsent: () => void;
   onArrived: () => void;
   onDelete: () => void;
 }
 
 const cardLabel = { fontSize: 11, fontWeight: 700, letterSpacing: '1.4px', color: color.muted } as const;
 
-export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onSetCredit, onArrived, onDelete }: Props) {
+export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onSetCredit, onArrived, onFaultSent, onFaultUnsent, onDelete }: Props) {
   const [legalOpen, setLegalOpen] = useState(true);
   const d = derive(receipt, today);
   const u = urgency(d.daysLeft, urgentDays);
@@ -360,7 +362,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
 
       {/* The rights above, turned into the letter that asks for them. Not on a
           refund: that purchase has already gone back. */}
-      {(receipt.status === 'active' || receipt.status === 'kept') && <FaultPanel receipt={receipt} today={today} />}
+      {(receipt.status === 'active' || receipt.status === 'kept') && <FaultPanel receipt={receipt} today={today} onSent={onFaultSent} onUnsent={onFaultUnsent} />}
 
       {receipt.gotcha && (
         <div style={{ display: 'flex', gap: 10, background: color.yellowLight, border: `1.5px solid ${color.ink}`, borderRadius: 16, padding: '14px 16px', marginTop: 12 }}>
