@@ -345,6 +345,7 @@ src/lib/          the decision logic — pure, tested, no React
   refund-chase.ts when a refund is late, the tracking number it rests on, and the letter that chases it
   cancel-notice.ts the notice that cancels an online order in writing, and the fourteen days to send it back
   escalate.ts     when the shop will not pay: Section 75 and chargeback, each with its condition
+  split.ts        one thing out of a basket, as a receipt of its own on the same clocks
   persist.ts      asking the browser to keep the library, on the web
   quota.ts        what the free tier counts, and when it is full
   pricing.ts      the tiers, and what a tap on one is allowed to claim
