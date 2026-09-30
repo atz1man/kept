@@ -524,6 +524,30 @@ if (!/Deadline alerts/.test(settingsText)) {
   // Never asked: iOS asks once, when there is first something worth saying,
   // and then lodges it. Refused: nothing is lodged, and Settings says where to
   // change it rather than showing a switch that does nothing.
+  // "Not now" on kept's card: iOS is never asked, so its one dialog is kept
+  // for the day they switch reminders on; alerts go off and the card goes.
+  {
+    const nctx2 = await browser.newContext({ viewport: { width: 402, height: 874 } });
+    await answeringBridge(nctx2, { notifications: 'prompt' });
+    const np2 = await nctx2.newPage();
+    await np2.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
+    await np2.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+    await np2.getByRole('button', { name: 'Add a receipt' }).click();
+    await np2.locator('#paste').fill(`Thanks for your Argos order\nOrder date: ${when}\nTotal £249.99`);
+    await np2.getByRole('button', { name: 'Read it' }).click();
+    await np2.getByRole('button', { name: 'Save receipt' }).click();
+    await np2.waitForTimeout(1200);
+    await np2.getByRole('button', { name: 'Not now' }).click().catch(() => {});
+    await np2.waitForTimeout(800);
+    const n2 = await np2.evaluate(() => window.__keptNotes());
+    const alertsOn = await np2.evaluate(() => JSON.parse(localStorage.getItem('kept.v1') ?? '{}').settings?.deadlineAlerts);
+    const cardGone = (await np2.getByRole('button', { name: 'Turn on reminders' }).count()) === 0;
+    if (n2.asked !== 0 || n2.pending.length !== 0 || alertsOn !== false || !cardGone) {
+      failures.push({ what: '"Not now" asked iOS anyway, lodged reminders, or left alerts on', saw: `asked ${n2.asked}, ${n2.pending.length} pending, alerts ${alertsOn}, card gone ${cardGone}` });
+    }
+    await nctx2.close();
+  }
+
   for (const permission of ['prompt', 'denied']) {
     const pctx = await browser.newContext({ viewport: { width: 402, height: 874 } });
     await answeringBridge(pctx, { notifications: permission });
@@ -536,8 +560,31 @@ if (!/Deadline alerts/.test(settingsText)) {
     await pp.getByRole('button', { name: 'Save receipt' }).click();
     await pp.waitForTimeout(1200);
     const n = await pp.evaluate(() => window.__keptNotes());
-    if (permission === 'prompt' && (n.asked !== 1 || n.pending.length === 0)) {
-      failures.push({ what: 'a first purchase did not ask for notifications once and then lodge its reminders', saw: `asked ${n.asked}, ${n.pending.length} pending` });
+    if (permission === 'prompt') {
+      /*
+       * iOS asks once. The first purchase no longer raises its dialog out of
+       * nowhere: kept's own card says what reminders are for, and only
+       * "Turn on reminders" asks — once — after which they are lodged.
+       */
+      const card = pp.getByRole('button', { name: 'Turn on reminders' });
+      const shown = (await card.count()) === 1;
+      if (n.asked !== 0 || !shown) {
+        failures.push({ what: 'a first purchase asked iOS before explaining, or never explained', saw: `asked ${n.asked}, card ${shown}` });
+      } else {
+        // axe over the card, which only the native build renders.
+        await pp.addScriptTag({ path: `${ROOT}node_modules/axe-core/axe.min.js` });
+        const axe = await pp.evaluate(async () =>
+          (await window.axe.run(document, { resultTypes: ['violations'] })).violations.map((v) => `${v.id} (${v.nodes.length})`),
+        );
+        if (axe.length > 0) failures.push({ what: 'axe violations on the reminders card', saw: axe.join(', ') });
+        await card.click();
+        await pp.waitForTimeout(1200);
+        const after = await pp.evaluate(() => window.__keptNotes());
+        const gone = (await pp.getByRole('button', { name: 'Turn on reminders' }).count()) === 0;
+        if (after.asked !== 1 || after.pending.length === 0 || !gone) {
+          failures.push({ what: 'turning reminders on did not ask iOS once and then lodge them', saw: `asked ${after.asked}, ${after.pending.length} pending, card gone ${gone}` });
+        }
+      }
     }
     if (permission === 'denied') {
       if (n.pending.length > 0) failures.push({ what: 'reminders were lodged with notifications refused', saw: `${n.pending.length} pending` });

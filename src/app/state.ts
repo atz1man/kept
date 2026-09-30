@@ -632,11 +632,13 @@ export function useApp() {
     }
     void syncScheduled(
       planAlerts(state.receipts, today, state.settings.urgentDays, new Set(state.alertsSent)),
+      state.settings.remindersExplained,
     );
   }, [
     state.embedded,
     state.receipts,
     state.settings.deadlineAlerts,
+    state.settings.remindersExplained,
     state.settings.urgentDays,
     state.alertsSent,
     today,

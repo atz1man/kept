@@ -3,7 +3,8 @@ import { color, paperGrain } from '../tokens';
 import { dueAlerts, supersededKeys } from '../lib/alerts';
 import { FEED_SIG_URL, FEED_URL, mergeFeed, policyAlertFor, readFeed } from '../lib/policy-feed';
 import { FEED_PUBLIC_KEY, feedIsAcceptable, verifyFeed } from '../lib/feed-signature';
-import { deliver } from './notify';
+import { currentNotifyState, deliver, offerReminders, type NotifyState } from './notify';
+import { isNative } from '../lib/mirror';
 import { money, sumPence } from '../lib/money';
 import { countsAsMoney, recoveredPence } from '../lib/receipts';
 import { winSentence } from '../lib/words';
@@ -27,6 +28,23 @@ import { quotaFull, useApp } from './state';
 export function App() {
   const { state, dispatch, today, saveFailed } = useApp();
   const { screen, settings } = state;
+
+  /*
+   * What iOS would say if asked, read only while it matters: until the
+   * reminders card has been answered. Read again as receipts change, because
+   * the first real one is what makes the card worth showing.
+   */
+  const [nativePermission, setNativePermission] = useState<NotifyState | null>(null);
+  useEffect(() => {
+    if (!isNative() || settings.remindersExplained) return;
+    let live = true;
+    void currentNotifyState().then((p) => {
+      if (live) setNativePermission(p);
+    });
+    return () => {
+      live = false;
+    };
+  }, [settings.remindersExplained, state.receipts.length]);
 
   const selected = state.receipts.find((r) => r.id === state.selId) ?? null;
   /**
@@ -329,6 +347,22 @@ export function App() {
           onOpen={(id) => dispatch({ type: 'open', id })}
           onReturn={(id) => dispatch({ type: 'return', id })}
           onKeepClosed={(ids) => dispatch({ type: 'keep-closed', ids })}
+          reminders={
+            offerReminders({
+              native: isNative(),
+              alertsOn: settings.deadlineAlerts,
+              explained: settings.remindersExplained,
+              permission: nativePermission,
+              receipts: state.receipts,
+            })
+              ? {
+                  onYes: () => dispatch({ type: 'settings', patch: { remindersExplained: true } }),
+                  // Declined here, before iOS was ever asked: the one chance
+                  // at its dialog is kept for the day they switch it on.
+                  onNo: () => dispatch({ type: 'settings', patch: { remindersExplained: true, deadlineAlerts: false } }),
+                }
+              : undefined
+          }
           onAdd={() => dispatch({ type: 'go', screen: 'add' })}
           onWatch={() => dispatch({ type: 'go', screen: 'watch' })}
         />

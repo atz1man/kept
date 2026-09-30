@@ -1,5 +1,6 @@
 import { isNative } from '../lib/mirror';
 import type { DeadlineAlert } from '../lib/alerts';
+import type { Receipt } from '../lib/types';
 
 /**
  * Delivering an alert on this platform, and being straight about the limits.
@@ -93,6 +94,32 @@ export async function currentNotifyState(): Promise<NotifyState> {
   } catch {
     return 'unsupported';
   }
+}
+
+/**
+ * Whether to show the card that explains reminders before iOS asks.
+ *
+ * iOS raises its permission dialog once. It used to arrive unannounced the
+ * moment the first real receipt was saved; now the scheduler may not raise it
+ * until this card has been answered. Shown only in the iPhone app, with
+ * alerts switched on, while iOS has not been asked, and once there is a real
+ * receipt with a deadline to be reminded about — before that, there is
+ * nothing to explain it with.
+ */
+export function offerReminders(o: {
+  native: boolean;
+  alertsOn: boolean;
+  explained: boolean;
+  permission: NotifyState | null;
+  receipts: readonly Receipt[];
+}): boolean {
+  return (
+    o.native &&
+    o.alertsOn &&
+    !o.explained &&
+    o.permission === 'default' &&
+    o.receipts.some((r) => r.status === 'active' && !r.demo)
+  );
 }
 
 /** True when this is the landing page's embedded demo rather than the real app. */
