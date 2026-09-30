@@ -298,6 +298,18 @@ await sweep('add receipt · shop not recognised');
 await page.fill('#add-store', 'Boots');
 await page.waitForTimeout(300);
 await sweep('add receipt · shop named by hand');
+// Correcting what was read: the found rows become fields holding it, and
+// the window gets a field and a note of its own.
+await page.getByRole('button', { name: 'Something wrong? Correct it' }).click();
+await page.waitForTimeout(300);
+await sweep('add receipt · correcting');
+// Typed in from nothing, with a window refused: the blank card, the
+// disabled save, and the window's refusal exist only here.
+await page.getByRole('button', { name: 'Type it in yourself' }).click();
+await page.waitForTimeout(300);
+await page.fill('#add-window', '0');
+await page.waitForTimeout(200);
+await sweep('add receipt · typed in');
 await page.fill('#paste', 'Your Apple order · Total £129.00 · 25 Aug');
 await page.getByRole('button', { name: 'Read it' }).click();
 await page.waitForTimeout(400);
