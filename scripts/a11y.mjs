@@ -340,6 +340,16 @@ await audit(page, 'receipt detail · refund amount', findings);
 await page.getByRole('button', { name: 'It was the full amount' }).click();
 await page.waitForTimeout(200);
 
+// Store credit: the panel, its date field, and the date's refusal exist only
+// once a refund is said to have come as credit.
+await page.getByRole('button', { name: 'It came back as store credit' }).click();
+await page.waitForTimeout(200);
+await page.locator('#credit-expires').fill('2000-01-01');
+await page.waitForTimeout(200);
+await audit(page, 'receipt detail · store credit', findings);
+await page.getByRole('button', { name: 'It was money after all' }).click();
+await page.waitForTimeout(200);
+
 // The undo offer after a delete.
 await page.getByRole('button', { name: 'Delete' }).click().catch(() => {});
 await page.waitForTimeout(400);

@@ -361,7 +361,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
                     a stray swipe could never be opened, corrected or deleted. */}
                 <Pressable
                   onClick={() => onOpen(r.id)}
-                  aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${money(refundOf(r))} back, returned`}
+                  aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${money(refundOf(r))} ${r.credit ? 'in credit' : 'back'}, returned`}
                   style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 15, background: color.creamAlt, border: '1.5px solid rgba(23,20,16,0.06)', borderRadius: radius.card }}
                 >
                   <div style={{ width: 40, height: 40, borderRadius: 12, background: color.yellowLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -379,7 +379,11 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
                       {r.item}
                     </div>
                   </div>
-                  <div style={{ fontFamily: font.figures, fontSize: 15, fontWeight: 700, color: color.amber, flexShrink: 0 }}>{money(refundOf(r))}</div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontFamily: font.figures, fontSize: 15, fontWeight: 700, color: color.amber }}>{money(refundOf(r))}</div>
+                    {/* Credit is not cash: it is still at the shop, to be spent. */}
+                    {r.credit && <div style={{ fontSize: 11, fontWeight: 700, color: color.muted, marginTop: 2 }}>credit</div>}
+                  </div>
                 </Pressable>
               </li>
             ))}

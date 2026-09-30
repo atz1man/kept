@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { color, font, radius, shadow } from '../../tokens';
-import { addDays, fmtDateLong, fmtDatesTogether, fromISODate } from '../../lib/dates';
+import { addDays, daysBetween, fmtDateLong, fmtDatesTogether, fromISODate } from '../../lib/dates';
 import { firstToClose, firstToCloseLine, LEGAL_DISCLAIMER, legalRights } from '../../lib/legal';
 import { REFUND_CHASE_DAYS } from '../../lib/alerts';
 import { money } from '../../lib/money';
@@ -35,6 +35,7 @@ interface Props {
   /** Record less than the full price as refunded; null for the whole price. */
   onSetRefund: (pence: number | null) => void;
   onSetReturnRef: (ref: string | null) => void;
+  onSetCredit: (credit: { expires?: string } | null) => void;
   onFaultSent: (what: string) => void;
   onFaultUnsent: () => void;
   onArrived: () => void;
@@ -43,7 +44,7 @@ interface Props {
 
 const cardLabel = { fontSize: 11, fontWeight: 700, letterSpacing: '1.4px', color: color.muted } as const;
 
-export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onArrived, onFaultSent, onFaultUnsent, onDelete }: Props) {
+export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onSetCredit, onArrived, onFaultSent, onFaultUnsent, onDelete }: Props) {
   const [legalOpen, setLegalOpen] = useState(true);
   const d = derive(receipt, today);
   const u = urgency(d.daysLeft, urgentDays);
@@ -380,6 +381,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               year, and it is the only fact a returned receipt carries that is
               not already on the row. */}
           <RefundPanel receipt={receipt} returnedText={returnedText} onSetRefund={onSetRefund} />
+          <CreditPanel receipt={receipt} onSetCredit={onSetCredit} />
           <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
             <Pressable
               className="k-row-white"
@@ -521,7 +523,8 @@ function RefundPanel({ receipt, returnedText, onSetRefund }: {
   return (
     <div style={{ marginTop: 16, padding: 15, textAlign: 'center', background: color.yellowLight, border: `1.5px solid ${color.ink}`, borderRadius: 16 }}>
       <div style={{ fontWeight: 700 }}>
-        Money back · {money(got)} recovered{returnedText ? ` on ${returnedText}` : ''} ✓
+        {receipt.credit ? `Store credit · ${money(got)} at ${receipt.store}` : `Money back · ${money(got)} recovered`}
+        {returnedText ? ` on ${returnedText}` : ''} ✓
       </div>
       {got !== receipt.amount && (
         <div style={{ fontSize: 13, color: color.body, marginTop: 4 }}>of the {money(receipt.amount)} it cost</div>
@@ -646,5 +649,68 @@ function RefundChasePanel({ receipt, today }: { receipt: Receipt; today: Date })
       <Letter letter={letter} title={`Refund not received: ${receipt.item}`} receipt={receipt} />
       <div style={{ fontSize: 12, marginTop: 10, color: color.muted }}>{LEGAL_DISCLAIMER}</div>
     </section>
+  );
+}
+
+/**
+ * Store credit rather than money: the commonest way a return ends without
+ * cash, and one that had no way to be said. With the day the credit note says
+ * it lapses, a reminder is due a month before — credit that runs out unspent
+ * is money lost as surely as a missed return window.
+ */
+function CreditPanel({ receipt, onSetCredit }: { receipt: Receipt; onSetCredit: (credit: { expires?: string } | null) => void }) {
+  const [text, setText] = useState(receipt.credit?.expires ?? '');
+  if (!receipt.credit) {
+    return (
+      <Pressable
+        onClick={() => onSetCredit({})}
+        style={{ display: 'flex', width: 'auto', minHeight: 44, alignItems: 'center', justifyContent: 'center', marginTop: 6, fontSize: 13.5, fontWeight: 600, textDecoration: 'underline' }}
+      >
+        It came back as store credit
+      </Pressable>
+    );
+  }
+  const given = receipt.returnedOn;
+  const error =
+    text && given && daysBetween(fromISODate(given), fromISODate(text)) < 0 ? 'It cannot run out before it was given' : undefined;
+  return (
+    <div data-credit style={{ marginTop: 10, padding: 14, background: color.white, border: `1.5px solid ${color.border}`, borderRadius: 16 }}>
+      <label htmlFor="credit-expires" style={{ display: 'block', fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>
+        When does the credit run out?
+      </label>
+      <input
+        id="credit-expires"
+        type="date"
+        value={text}
+        aria-invalid={!!error}
+        aria-describedby="credit-expires-note"
+        onChange={(e) => {
+          const v = e.target.value;
+          setText(v);
+          const bad = v && given && daysBetween(fromISODate(given), fromISODate(v)) < 0;
+          if (!bad) onSetCredit(v ? { expires: v } : {});
+        }}
+        style={{
+          width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 14,
+          border: `1.5px solid ${error ? color.danger : color.border}`, background: color.white,
+          fontFamily: font.figures, fontSize: 14.5, color: color.ink,
+        }}
+      />
+      {error ? (
+        <div id="credit-expires-note" role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: color.danger, marginTop: 5 }}>
+          {error}
+        </div>
+      ) : (
+        <div id="credit-expires-note" style={{ fontSize: 12.5, color: color.muted, marginTop: 5, lineHeight: 1.5 }}>
+          Optional, from the credit note. With a date, a reminder is due a month before it lapses.
+        </div>
+      )}
+      <Pressable
+        onClick={() => onSetCredit(null)}
+        style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', marginTop: 4, fontSize: 13, fontWeight: 600, textDecoration: 'underline' }}
+      >
+        It was money after all
+      </Pressable>
+    </div>
   );
 }

@@ -457,6 +457,14 @@ const screens = [
     await p.getByLabel('How much came back?').fill('99999');
   }],
   ['back from the celebration', async (p) => { await p.getByRole('button', { name: 'Back to receipts' }).click(); }],
+  // A refund marked as store credit, with its date refused: a white card of
+  // its own under the refund panel, on the receipt the celebration returned.
+  ['detail · store credit', async (p) => {
+    await p.getByRole('button', { name: /, returned$/ }).first().click();
+    await p.getByRole('button', { name: 'It came back as store credit' }).click();
+    await p.locator('#credit-expires').fill('2000-01-01');
+  }],
+  ['back from the credit', async (p) => { await p.getByRole('button', { name: 'Back', exact: true }).click(); }],
   ['settings', async (p) => { await p.getByRole('button', { name: 'Settings', exact: true }).click(); }],
   // A modal, so it sizes itself rather than inheriting the page's padding —
   // the one surface here that can push a 320px viewport sideways on its own.

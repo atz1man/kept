@@ -177,6 +177,11 @@ export function readReceipt(raw: unknown, fromOutside = false): Receipt | null {
     status: r.status as ReceiptStatus,
     ...(r.returnedOn !== undefined ? { returnedOn: r.returnedOn as string } : {}),
     ...(refunded !== undefined ? { refunded } : {}),
+    // Store credit: kept when it is an object, its expiry only when it is a
+    // real date. A malformed expiry drops the date, not the fact of the credit.
+    ...(r.status === 'returned' && typeof r.credit === 'object' && r.credit !== null
+      ? { credit: isISODate((r.credit as { expires?: unknown }).expires) ? { expires: (r.credit as { expires: string }).expires } : {} }
+      : {}),
     // A sent fault letter: its day must be a real one, or the record is
     // dropped — a reply asked about on a day that does not exist is never asked.
     ...(() => {

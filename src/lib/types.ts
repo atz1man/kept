@@ -92,6 +92,13 @@ export interface Receipt {
    */
   refunded?: number;
   /**
+   * The refund came as store credit, not money — the commonest way a return
+   * ends without cash, and one that had no way to be said. `expires` is the
+   * day the credit note says it runs out, where it says one: credit that
+   * lapses unspent is money lost as surely as a missed return window.
+   */
+  credit?: { expires?: string };
+  /**
    * The fault letter, once it has gone: the day it was sent and the person's
    * own words about what is wrong, so the letter can be shown again as sent.
    * The letter asks for a reply within a fortnight; without a record that it
