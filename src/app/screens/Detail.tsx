@@ -388,12 +388,6 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
             >
               Not actually returned
             </Pressable>
-            <Pressable
-              onClick={onDelete}
-              style={{ width: 'auto', padding: '15px 18px', textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, color: color.danger, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
-            >
-              Delete
-            </Pressable>
           </div>
         </>
       ) : receipt.status === 'sent' ? (
@@ -420,12 +414,6 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               style={{ flex: 1, padding: 16, textAlign: 'center', background: color.yellow, border: `1.5px solid ${color.ink}`, borderRadius: 999, fontWeight: 700, fontSize: 15, boxShadow: shadow.hard }}
             >
               Got my money back
-            </Pressable>
-            <Pressable
-              onClick={onDelete}
-              style={{ width: 'auto', padding: '16px 18px', textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, color: color.danger, borderRadius: 999, fontWeight: 700, fontSize: 15 }}
-            >
-              Delete
             </Pressable>
           </div>
           <Pressable
@@ -456,51 +444,21 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
             >
               Not keeping it after all
             </Pressable>
-            <Pressable
-              onClick={onDelete}
-              style={{ width: 'auto', padding: '15px 18px', textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, color: color.danger, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
-            >
-              Delete
-            </Pressable>
           </div>
         </>
       ) : (
-        <>
-        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-          <Pressable
-            className="k-cta-yellow"
-            onClick={onReturn}
-            style={{ flex: 1, padding: 16, textAlign: 'center', background: color.yellow, border: `1.5px solid ${color.ink}`, borderRadius: 999, fontWeight: 700, fontSize: 15, boxShadow: shadow.hard }}
-          >
-            Got my money back
-          </Pressable>
-          <Pressable
-            onClick={onDelete}
-            style={{ width: 'auto', padding: '16px 18px', textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, color: color.danger, borderRadius: 999, fontWeight: 700, fontSize: 15 }}
-          >
-            Delete
-          </Pressable>
-        </div>
-        {/* The two other ends: in the post with the refund to come, and the
-            commonest of all, which had no way to be said. */}
-        <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
-          <Pressable
-            className="k-row-white"
-            onClick={onSend}
-            style={{ flex: '1 1 140px', padding: 15, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
-          >
-            I’ve sent it back
-          </Pressable>
-          <Pressable
-            className="k-row-white"
-            onClick={onKeep}
-            style={{ flex: '1 1 140px', padding: 15, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
-          >
-            I’m keeping it
-          </Pressable>
-        </div>
-        </>
+        <ActiveActions distance={receipt.distance} onReturn={onReturn} onSend={onSend} onKeep={onKeep} />
       )}
+      {/* Last, and quiet. It sat beside the primary action as a pill of its
+          own, on every receipt: the one irreversible-looking choice here drawn
+          with the weight of the one the screen is for. It has an undo, and it
+          is still one tap — it is just not the second thing you see. */}
+      <Pressable
+        onClick={onDelete}
+        style={{ display: 'flex', width: 'auto', minHeight: 44, alignItems: 'center', justifyContent: 'center', margin: '18px auto 0', padding: '0 16px', fontWeight: 600, fontSize: 14, color: color.danger }}
+      >
+        Delete
+      </Pressable>
     </div>
   );
 }
@@ -710,5 +668,42 @@ function CreditPanel({ receipt, onSetCredit }: { receipt: Receipt; onSetCredit: 
         It was money after all
       </Pressable>
     </div>
+  );
+}
+
+/**
+ * The three ends of a purchase still in hand, led by the likelier next step.
+ * Bought online, the next thing that happens is the parcel going back — the
+ * refund comes days later, and "Got my money back" first invited marking the
+ * money as arrived before it had. Bought over a counter, the refund is handed
+ * over at the till the moment it goes back, so that is the step.
+ */
+function ActiveActions({ distance, onReturn, onSend, onKeep }: {
+  distance: boolean;
+  onReturn: () => void;
+  onSend: () => void;
+  onKeep: () => void;
+}) {
+  const primary = { flex: 1, padding: 16, textAlign: 'center', background: color.yellow, border: `1.5px solid ${color.ink}`, borderRadius: 999, fontWeight: 700, fontSize: 15, boxShadow: shadow.hard } as const;
+  const secondary = { flex: '1 1 140px', padding: 15, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 } as const;
+  const sent = { label: 'I’ve sent it back', onClick: onSend };
+  const back = { label: 'Got my money back', onClick: onReturn };
+  const [first, second] = distance ? [sent, back] : [back, sent];
+  return (
+    <>
+      <div style={{ display: 'flex', marginTop: 16 }}>
+        <Pressable className="k-cta-yellow" onClick={first.onClick} style={primary}>
+          {first.label}
+        </Pressable>
+      </div>
+      <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+        <Pressable className="k-row-white" onClick={second.onClick} style={secondary}>
+          {second.label}
+        </Pressable>
+        <Pressable className="k-row-white" onClick={onKeep} style={secondary}>
+          I’m keeping it
+        </Pressable>
+      </div>
+    </>
   );
 }

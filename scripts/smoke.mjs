@@ -1159,6 +1159,39 @@ for (const cancel of [false, true]) {
   await wCtx.close();
 }
 
+/*
+ * The receipt's actions, in the order a person needs them. "Got my money
+ * back" led on every receipt — for an online order, before the parcel had
+ * even gone — and Delete sat beside it as a pill of its own. The primary is
+ * now the likelier next step for how it was bought, and Delete is last.
+ */
+{
+  const aCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const ap = await aCtx.newPage();
+  await ap.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await ap.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  const actions = async (row) => {
+    await ap.getByRole('button', { name: row }).first().click();
+    await ap.waitForTimeout(300);
+    const out = await ap.evaluate(() => {
+      const buttons = [...document.querySelectorAll('main button')].map((b) => ({ text: b.textContent.trim(), primary: b.classList.contains('k-cta-yellow') }));
+      return { primary: buttons.filter((b) => b.primary).map((b) => b.text), last: buttons.at(-1)?.text };
+    });
+    await ap.getByRole('button', { name: 'Back', exact: true }).click();
+    await ap.waitForTimeout(300);
+    return out;
+  };
+  const counter = await actions(/Currys, JBL/);
+  const online = await actions(/Zara, Wool/);
+  const ok =
+    counter.primary.includes('Got my money back') && !counter.primary.includes('I’ve sent it back') &&
+    online.primary.includes('I’ve sent it back') && !online.primary.includes('Got my money back') &&
+    counter.last === 'Delete' && online.last === 'Delete';
+  results['a receipt leads with the likelier next step for how it was bought, and puts Delete last'] = !!ok;
+  if (!ok) problems.push(`receipt actions: ${JSON.stringify({ counter, online })}`);
+  await aCtx.close();
+}
+
 // The tab bar floats over every screen; its buttons must stay clickable.
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(400);
