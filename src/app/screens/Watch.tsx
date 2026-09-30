@@ -1,5 +1,7 @@
 import { color, radius } from '../../tokens';
-import { fmtDateLong, fromISODate, relativeAgo } from '../../lib/dates';
+import { daysBetween, fmtDate, fmtDateLong, fromISODate, relativeAgo } from '../../lib/dates';
+import { COMING_UP_DAYS, comingUp } from '../../lib/coming-up';
+import { Pressable } from '../components/Pressable';
 import { assess } from '../../lib/policy-feed';
 import type { PolicyUpdate, Receipt } from '../../lib/types';
 
@@ -9,6 +11,7 @@ interface Props {
   today: Date;
   /** The Settings switch. It decides whether anything is fetched at all. */
   watching: boolean;
+  onOpen: (id: string) => void;
 }
 
 /**
@@ -17,6 +20,8 @@ interface Props {
  * item is a headline for one person and an alarm for another, and only the
  * device knows which.
  */
+const sectionLabel = { fontSize: 11, fontWeight: 700, letterSpacing: '1.4px', color: color.muted, margin: '20px 4px 10px' } as const;
+
 /** "currys.co.uk" from the full address — the part a person recognises. */
 function hostOf(url: string): string {
   try {
@@ -26,7 +31,9 @@ function hostOf(url: string): string {
   }
 }
 
-export function Watch({ updates, receipts, today, watching }: Props) {
+export function Watch({ updates, receipts, today, watching, onOpen }: Props) {
+  const ahead = comingUp(receipts, today);
+  const byId = new Map(receipts.map((r) => [r.id, r]));
   const assessed = assess(updates, receipts, today);
   const onlySamples = updates.length > 0 && updates.every((u) => u.demo);
 
@@ -41,14 +48,60 @@ export function Watch({ updates, receipts, today, watching }: Props) {
       className="k-fade"
       tabIndex={0}
       role="region"
-      aria-label="Policy updates"
+      aria-label="Coming up and policy changes"
       style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px' }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 2px 4px' }}>
         <span className="k-pulse" style={{ width: 8, height: 8, borderRadius: 999, background: color.yellow }} />
-        <h1 tabIndex={-1} style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Policy watch</h1>
+        <h1 tabIndex={-1} style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Watch</h1>
       </div>
-      <p style={{ fontSize: 13, color: color.muted, padding: '0 2px 14px', margin: 0 }}>
+
+      {/* Every dated thing ahead, across every receipt, in one list. Each date
+          was already on its own receipt's screen; nothing put them side by
+          side, so "what do I have to do this month?" meant opening each one.
+          And it is this tab's first content from day one: the policy feed
+          below is samples until a real change is published. */}
+      <h2 style={sectionLabel}>COMING UP</h2>
+      {ahead.length === 0 ? (
+        <p style={{ fontSize: 13.5, color: color.muted, margin: '0 2px', lineHeight: 1.5 }}>
+          Nothing dated in the next {COMING_UP_DAYS} days.
+        </p>
+      ) : (
+        <ul style={{ display: 'flex', flexDirection: 'column', gap: 8, margin: 0, padding: 0 }}>
+          {ahead.map((c) => {
+            const r = byId.get(c.receiptId)!;
+            const n = daysBetween(today, c.date);
+            const when = n === 0 ? 'today' : n === 1 ? 'tomorrow' : `in ${n} days`;
+            return (
+              <li key={`${c.receiptId}:${c.kind}`} style={{ listStyle: 'none' }}>
+                <Pressable
+                  onClick={() => onOpen(c.receiptId)}
+                  aria-label={`${fmtDate(c.date)}, ${when}: ${c.what}. ${r.store}, ${r.item}${c.demo ? ' (sample)' : ''}`}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px', background: color.white,
+                    border: `1.5px solid ${n <= 3 ? color.ink : color.border}`, borderRadius: radius.card, textAlign: 'left',
+                  }}
+                >
+                  <span style={{ width: 52, flexShrink: 0, textAlign: 'center' }}>
+                    <span style={{ display: 'block', fontWeight: 700, fontSize: 15 }}>{fmtDate(c.date)}</span>
+                    <span style={{ display: 'block', fontSize: 11, color: n <= 3 ? color.danger : color.muted, fontWeight: 600, marginTop: 2 }}>{when}</span>
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', fontWeight: 700, fontSize: 14, color: color.bodyStrong }}>{c.what}</span>
+                    <span style={{ display: 'block', fontSize: 12.5, color: color.muted, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {c.demo && 'sample · '}
+                      {r.store} · {r.item}
+                    </span>
+                  </span>
+                </Pressable>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <h2 style={sectionLabel}>POLICY CHANGES</h2>
+      <p style={{ fontSize: 13, color: color.muted, padding: '0 2px 12px', margin: 0 }}>
         Shops rewrite the rules quietly. You hear about it first — and every receipt you hold is checked against
         the change.
       </p>
