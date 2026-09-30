@@ -1,11 +1,16 @@
+import { useState } from 'react';
 import { color, font, radius, shadow } from '../../tokens';
 import { winCardLine } from '../win-card';
 import { money, type Pence } from '../../lib/money';
 import { LogoChecked, LogoWatermark } from '../components/Icons';
 import { Pressable } from '../components/Pressable';
+import { RefundForm } from '../components/RefundForm';
 
 interface Props {
+  /** What came back — the price, unless it has been said to be less. */
   amount: Pence;
+  /** What it cost. */
+  cost: Pence;
   store: string;
   /**
    * Whether the shop's own window was still open when this was marked
@@ -20,10 +25,12 @@ interface Props {
   /** The sentence itself, so a failed copy can still be read and selected. */
   line: string;
   onShare: () => void;
+  onSetRefund: (pence: number | null) => void;
   onDone: () => void;
 }
 
-export function Celebrate({ amount, store, inTime, recovered, shared, line, onShare, onDone }: Props) {
+export function Celebrate({ amount, cost, store, inTime, recovered, shared, line, onShare, onSetRefund, onDone }: Props) {
+  const [correcting, setCorrecting] = useState(false);
   return (
     // Bottom padding clears the floating tab bar. The design drew this screen
     // with the same 40px inset every full-bleed screen has, which puts "Back to
@@ -39,6 +46,9 @@ export function Celebrate({ amount, store, inTime, recovered, shared, line, onSh
           <div style={{ fontFamily: font.figures, fontSize: 56, fontWeight: 700, letterSpacing: '-2.5px', color: color.yellow, marginTop: 4 }}>
             {money(amount)}
           </div>
+          {amount !== cost && (
+            <div style={{ fontFamily: font.figures, fontSize: 13, color: color.faint, marginTop: 2 }}>of the {money(cost)} it cost</div>
+          )}
           <div style={{ fontSize: 15, color: color.onInkBody, marginTop: 8 }}>
             {winCardLine(store, inTime)}
           </div>
@@ -49,6 +59,22 @@ export function Celebrate({ amount, store, inTime, recovered, shared, line, onSh
           <div style={{ fontFamily: font.figures, fontSize: 11, color: color.onInkFaint, marginTop: 14, textAlign: 'center', letterSpacing: '1px' }}>
             kept. — stop donating money to shops
           </div>
+        </div>
+        {/* Before the share, not after it: the figure on the card is the one
+            the share sends. The one-tap return records the whole price, which
+            is wrong for the common partial case — and this screen is where
+            the figure is read. */}
+        <div style={{ textAlign: 'center', marginTop: 8 }}>
+          {!correcting ? (
+            <Pressable
+              onClick={() => setCorrecting(true)}
+              style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', fontSize: 13.5, fontWeight: 600, textDecoration: 'underline', color: color.bodyStrong }}
+            >
+              {amount !== cost ? 'Change the amount' : `Not the full ${money(cost)}?`}
+            </Pressable>
+          ) : (
+            <RefundForm id="celebrate-refund" cost={cost} current={amount} onSet={onSetRefund} onClose={() => setCorrecting(false)} />
+          )}
         </div>
       </div>
 

@@ -5,7 +5,6 @@ import { firstToClose, firstToCloseLine, legalRights } from '../../lib/legal';
 import { REFUND_CHASE_DAYS } from '../../lib/alerts';
 import { money } from '../../lib/money';
 import { asksForGuarantee, derive, refundOf } from '../../lib/receipts';
-import { readAmount } from '../../lib/draft';
 import type { Receipt } from '../../lib/types';
 import { clockFor, findStore } from '../../lib/stores';
 import { returnsPageFor } from '../../lib/returns-pages';
@@ -14,6 +13,7 @@ import { ChevronLeft, Warning } from '../components/Icons';
 import { Pressable } from '../components/Pressable';
 import { ReceiptPhoto } from '../components/ReceiptPhoto';
 import { FaultPanel } from '../components/FaultPanel';
+import { RefundForm } from '../components/RefundForm';
 
 /** 2π × 40, the circumference of the ring the countdown draws on. */
 const RING_CIRCUMFERENCE = 251.3;
@@ -480,16 +480,7 @@ function RefundPanel({ receipt, returnedText, onSetRefund }: {
   onSetRefund: (pence: number | null) => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const [text, setText] = useState('');
   const got = refundOf(receipt);
-  const read = text.trim() ? readAmount(text) : null;
-  const error =
-    read && !read.ok ? read.error : read && read.ok && read.pence > receipt.amount ? `More than the ${money(receipt.amount)} it cost` : undefined;
-  const save = () => {
-    if (!read || !read.ok || error) return;
-    onSetRefund(read.pence);
-    setEditing(false);
-  };
   return (
     <div style={{ marginTop: 16, padding: 15, textAlign: 'center', background: color.yellowLight, border: `1.5px solid ${color.ink}`, borderRadius: 16 }}>
       <div style={{ fontWeight: 700 }}>
@@ -500,64 +491,13 @@ function RefundPanel({ receipt, returnedText, onSetRefund }: {
       )}
       {!editing ? (
         <Pressable
-          onClick={() => {
-            setText(got !== receipt.amount ? (got / 100).toFixed(2) : '');
-            setEditing(true);
-          }}
+          onClick={() => setEditing(true)}
           style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', marginTop: 4, fontSize: 13, fontWeight: 600, textDecoration: 'underline' }}
         >
           {got !== receipt.amount ? 'Change the amount' : 'Not the full amount?'}
         </Pressable>
       ) : (
-        // On white, not the panel's yellow: the refusal's red is legible on
-        // white and measured 4.02:1 on the yellow.
-        <div style={{ textAlign: 'left', marginTop: 10, padding: 12, background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 12 }}>
-          <label htmlFor="refund-amount" style={{ display: 'block', fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>
-            How much came back?
-          </label>
-          <input
-            id="refund-amount"
-            inputMode="decimal"
-            value={text}
-            placeholder={(receipt.amount / 100).toFixed(2)}
-            aria-invalid={!!error}
-            aria-describedby={error ? 'refund-amount-error' : undefined}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') save();
-            }}
-            style={{
-              width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 14,
-              border: `1.5px solid ${error ? color.danger : color.border}`, background: color.white,
-              fontFamily: font.figures, fontSize: 14.5, color: color.ink,
-            }}
-          />
-          {error && (
-            <div id="refund-amount-error" role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: color.danger, marginTop: 5 }}>
-              {error}
-            </div>
-          )}
-          <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
-            <Pressable
-              className="k-cta-yellow"
-              onClick={save}
-              disabled={!read || !read.ok || !!error}
-              style={{ flex: 1, padding: 12, textAlign: 'center', background: color.yellow, border: `1.5px solid ${color.ink}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
-            >
-              Save
-            </Pressable>
-            <Pressable
-              className="k-row-white"
-              onClick={() => {
-                onSetRefund(null);
-                setEditing(false);
-              }}
-              style={{ flex: 1, padding: 12, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
-            >
-              It was the full amount
-            </Pressable>
-          </div>
-        </div>
+        <RefundForm id="refund-amount" cost={receipt.amount} current={got} onSet={onSetRefund} onClose={() => setEditing(false)} />
       )}
     </div>
   );
