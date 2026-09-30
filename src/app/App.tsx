@@ -422,7 +422,7 @@ export function App() {
         />
       )}
 
-      {screen === 'watch' && <Watch updates={state.updates} receipts={state.receipts} today={today} watching={settings.policyWatch} />}
+      {screen === 'watch' && <Watch updates={state.updates} receipts={state.receipts} today={today} watching={settings.policyWatch} onOpen={(id) => dispatch({ type: 'open', id })} />}
 
       {screen === 'detail' && selected && (
         <Detail

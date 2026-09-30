@@ -328,6 +328,7 @@ src/lib/          the decision logic — pure, tested, no React
   returns-pages.ts each shop's own returns page, read from store/retailer-sources.json
   urgency.ts      the red / yellow / neutral ladder
   alerts.ts       which deadlines are worth interrupting someone about
+  coming-up.ts    every dated thing ahead, across every receipt, in one list
   schedule.ts     the same decisions, lodged with iOS days in advance
   words.ts        fitting a name someone typed into the middle of a sentence
   contrast.ts     WCAG luminance and ratio, used to hold the palette to AA
