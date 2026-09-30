@@ -350,6 +350,40 @@ if (!/Deadline alerts/.test(settingsText)) {
       });
     }
 
+    // Shown full screen, to hand across a counter, and shut again with
+    // Escape; focus goes in to Close, as a dialog's must.
+    await np.getByRole('button', { name: 'Show it full screen' }).click().catch(() => {});
+    await np.waitForTimeout(300);
+    const dialog = np.getByRole('dialog', { name: 'The paper receipt' });
+    const full = {
+      open: await dialog.isVisible().catch(() => false),
+      focused: await np.evaluate(() => document.activeElement?.textContent?.trim() ?? ''),
+    };
+    await np.keyboard.press('Escape');
+    await np.waitForTimeout(300);
+    full.shut = (await dialog.count()) === 0;
+    if (!full.open || full.focused !== 'Close' || !full.shut) {
+      failures.push({ what: 'the receipt photo did not open full screen as a dialog that Escape shuts', saw: JSON.stringify(full) });
+    }
+
+    // Removing asks first — the file cannot be brought back — and "Keep it"
+    // keeps it. Only the second tap removes it.
+    const onDisk = async () => (await photos()).length;
+    const had = await onDisk();
+    await np.getByRole('button', { name: 'Remove the photo' }).click().catch(() => {});
+    await np.waitForTimeout(300);
+    const asked = { stillThere: (await onDisk()) === had, offered: await np.getByRole('button', { name: 'Remove it for good' }).isVisible().catch(() => false) };
+    await np.getByRole('button', { name: 'Keep it' }).click().catch(() => {});
+    await np.waitForTimeout(300);
+    asked.kept = (await onDisk()) === had && (await np.getByRole('img', { name: 'The paper receipt for this purchase' }).count()) === 1;
+    await np.getByRole('button', { name: 'Remove the photo' }).click().catch(() => {});
+    await np.getByRole('button', { name: 'Remove it for good' }).click().catch(() => {});
+    await np.waitForTimeout(400);
+    asked.removed = (await onDisk()) === had - 1;
+    if (!asked.stillThere || !asked.offered || !asked.kept || !asked.removed) {
+      failures.push({ what: 'removing a receipt photo did not ask first, or did not remove it when told', saw: JSON.stringify(asked) });
+    }
+
     // 2. Unticked: the next receipt saves without it. Counted against the
     //    disk as it stood, so a first save that kept nothing is not reported
     //    here a second time under the wrong name.
