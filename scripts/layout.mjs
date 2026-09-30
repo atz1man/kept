@@ -415,6 +415,13 @@ const screens = [
   ['back to home', async (p) => { await p.getByRole('button', { name: 'Cancel' }).click(); await p.getByRole('button', { name: 'Back', exact: true }).click(); }],
   ['watch', async (p) => { await p.getByRole('button', { name: /^Watch/ }).click(); }],
   ['add', async (p) => { await p.getByRole('button', { name: 'Add a receipt' }).click(); }],
+  // The blank card, with every field it can show: shop, total, date, window
+  // and its refusal — the tallest state this screen has.
+  ['add · typed in', async (p) => {
+    await p.getByRole('button', { name: 'Type it in yourself' }).click();
+    await p.locator('#add-store').fill('A shop with a name long enough to wrap onto several lines on a small phone');
+    await p.locator('#add-window').fill('0');
+  }],
   ['settings', async (p) => { await p.getByRole('button', { name: 'Settings', exact: true }).click(); }],
   // A modal, so it sizes itself rather than inheriting the page's padding —
   // the one surface here that can push a 320px viewport sideways on its own.
