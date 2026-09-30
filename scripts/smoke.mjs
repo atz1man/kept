@@ -1437,6 +1437,52 @@ for (const cancel of [false, true]) {
   await sCtx.close();
 }
 
+/*
+ * When the shop will not pay. The refund chase and an unanswered fault
+ * letter both ended at the shop; the card's two doors — Section 75 where the
+ * price fits, a chargeback always — are now set out beside them.
+ */
+{
+  const eCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const ep = await eCtx.newPage();
+  await ep.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await ep.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await ep.waitForTimeout(300);
+  await ep.evaluate(() => {
+    const iso = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    const s = JSON.parse(localStorage.getItem('kept.v1'));
+    s.receipts.push(
+      { id: 'r_late', store: 'Argos', item: 'Blender', cat: 'kitchen', amount: 15000, purchasedOn: iso(40), windowDays: 30, policy: 'p', distance: false, status: 'sent', sentOn: iso(20) },
+      { id: 'r_small', store: 'Argos', item: 'Toaster', cat: 'kitchen', amount: 4000, purchasedOn: iso(40), windowDays: 30, policy: 'p', distance: false, status: 'sent', sentOn: iso(20) },
+      { id: 'r_quiet', store: 'Currys', item: 'Kettle', cat: 'kitchen', amount: 4000, purchasedOn: iso(60), windowDays: 30, policy: 'p', distance: false, status: 'kept', keptOn: iso(55), faultClaim: { sentOn: iso(20) } },
+    );
+    localStorage.setItem('kept.v1', JSON.stringify(s));
+  });
+  await ep.reload({ waitUntil: 'networkidle' });
+  await ep.waitForTimeout(300);
+  const escalationOn = async (name, toggle) => {
+    await ep.getByRole('button', { name }).first().click({ timeout: 3000 }).catch(() => {});
+    await ep.waitForTimeout(300);
+    if (toggle) { await ep.getByRole('button', { name: toggle }).click({ timeout: 3000 }).catch(() => {}); await ep.waitForTimeout(300); }
+    const t = (await ep.locator('[data-escalation]').innerText().catch(() => '')) ?? '';
+    await ep.getByRole('button', { name: 'Back', exact: true }).click({ timeout: 3000 }).catch(() => {});
+    await ep.waitForTimeout(300);
+    return t;
+  };
+  const big = await escalationOn(/^Argos, Blender/);
+  const small = await escalationOn(/^Argos, Toaster/);
+  const quiet = await escalationOn(/^Currys, Kettle/, 'Fault letter sent');
+  const seen = {
+    big: /Section 75/.test(big) && /£150\.00/.test(big) && /chargeback/.test(big),
+    small: !/Section 75/.test(small) && /chargeback/.test(small),
+    quiet: /chargeback/.test(quiet),
+  };
+  const ok = Object.values(seen).every(Boolean);
+  results['a late refund and an unanswered fault letter set out Section 75 and chargeback'] = ok;
+  if (!ok) problems.push(`escalation: ${JSON.stringify({ ...seen, big: big.slice(0, 80), small: small.slice(0, 80), quiet: quiet.slice(0, 80) })}`);
+  await eCtx.close();
+}
+
 // The tab bar floats over every screen; its buttons must stay clickable.
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(400);

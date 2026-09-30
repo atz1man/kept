@@ -5,6 +5,7 @@ import { addDays, daysBetween, fmtDateLong, fromISODate } from '../../lib/dates'
 import { LEGAL_DISCLAIMER } from '../../lib/legal';
 import type { Receipt } from '../../lib/types';
 import { Field, inputStyle } from './Field';
+import { Escalation } from './Escalation';
 import { Letter } from './Letter';
 import { Pressable } from './Pressable';
 
@@ -54,6 +55,7 @@ export function FaultPanel({ receipt, today, onSent, onUnsent }: {
               {fmtDateLong(addDays(fromISODate(claim.sentOn), REPLY_DAYS))}.
               {daysBetween(fromISODate(claim.sentOn), today) >= REPLY_DAYS &&
                 ' No reply yet? Citizens Advice’s consumer service can tell you what to do next.'}
+              {daysBetween(fromISODate(claim.sentOn), today) >= REPLY_DAYS && <Escalation receipt={receipt} />}
             </div>
           )}
           {letter && (

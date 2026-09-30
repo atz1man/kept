@@ -12,6 +12,7 @@ import { urgency } from '../../lib/urgency';
 import { ChevronLeft, Warning } from '../components/Icons';
 import { Pressable } from '../components/Pressable';
 import { ReceiptPhoto } from '../components/ReceiptPhoto';
+import { Escalation } from '../components/Escalation';
 import { FaultPanel } from '../components/FaultPanel';
 import { RefundForm } from '../components/RefundForm';
 import { Letter } from '../components/Letter';
@@ -607,6 +608,7 @@ function RefundChasePanel({ receipt, today }: { receipt: Receipt; today: Date })
       </h2>
       <div style={{ fontSize: 13.5, lineHeight: 1.5, marginTop: 4, color: color.muted }}>{refundChaseLine(chase)}</div>
       <Letter letter={letter} title={`Refund not received: ${receipt.item}`} receipt={receipt} />
+      <Escalation receipt={receipt} />
       <div style={{ fontSize: 12, marginTop: 10, color: color.muted }}>{LEGAL_DISCLAIMER}</div>
     </section>
   );

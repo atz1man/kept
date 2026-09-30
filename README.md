@@ -343,6 +343,7 @@ src/lib/          the decision logic — pure, tested, no React
   legal.ts        Consumer Rights Act + distance-selling rights, cumulative
   fault-letter.ts which remedy today falls in, and the letter that asks the shop for it
   refund-chase.ts when a refund is late, the tracking number it rests on, and the letter that chases it
+  escalate.ts     when the shop will not pay: Section 75 and chargeback, each with its condition
   persist.ts      asking the browser to keep the library, on the web
   quota.ts        what the free tier counts, and when it is full
   pricing.ts      the tiers, and what a tap on one is allowed to claim
