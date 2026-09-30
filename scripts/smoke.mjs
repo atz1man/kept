@@ -1311,6 +1311,37 @@ for (const cancel of [false, true]) {
   await wCtx.close();
 }
 
+/*
+ * A switch's name on one line. With the name and its status sharing the row
+ * equally, "Blocked by your browser" split the name as well — "Deadline /
+ * alerts" — on a phone. Nothing overflowed and no word was crushed, so no
+ * sweep saw it; it was found by looking.
+ */
+{
+  const tCtx = await browser.newContext({ viewport: { width: 320, height: 740 } });
+  const tp = await tCtx.newPage();
+  await tp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await tp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await tp.getByRole('button', { name: 'Settings', exact: true }).click();
+  await tp.waitForTimeout(300);
+  const lines = await tp.evaluate(() =>
+    [...document.querySelectorAll('[role="switch"]')].map((sw) => {
+      // The TEXT's line boxes: the span is a flex item, so its own box is
+      // one rectangle however many lines the words take.
+      const name = sw.querySelector('span');
+      if (!name) return { name: null, lines: 0 };
+      const range = document.createRange();
+      range.selectNodeContents(name);
+      const tops = new Set([...range.getClientRects()].map((r) => Math.round(r.top)));
+      return { name: name.textContent, lines: tops.size };
+    }),
+  );
+  const ok = lines.length >= 2 && lines.every((l) => l.lines === 1);
+  results['every switch in Settings keeps its name on one line, on a small phone'] = ok;
+  if (!ok) problems.push(`switch names: ${JSON.stringify(lines)}`);
+  await tCtx.close();
+}
+
 // The tab bar floats over every screen; its buttons must stay clickable.
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(400);
