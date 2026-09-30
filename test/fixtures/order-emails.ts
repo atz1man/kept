@@ -121,6 +121,54 @@ Order total £33.99`,
     expect: { store: 'Next', pence: 3399, purchasedOn: '2026-09-22', item: 'Slim fit chinos', orderRef: '44521' },
   },
   {
+    name: 'H&M, a date written with dots',
+    text: `H&M
+Thank you for shopping with us!
+Order number 56789012345
+Order date 23.09.2026
+Relaxed Fit Jeans £24.99
+Oversized T-shirt £9.99
+Subtotal £34.98
+Shipping £3.99
+Total £38.97
+You earned 38 points`,
+    expect: { store: 'H&M', pence: 3897, purchasedOn: '2026-09-23', item: 'Relaxed Fit Jeans', orderRef: '56789012345' },
+  },
+  {
+    name: 'Uniqlo, a date written year first',
+    text: `UNIQLO
+Thank you for your order
+Order No. 1234567890123
+Order Date: 2026/09/20
+HEATTECH Crew Neck T-shirt £14.90
+Subtotal: £14.90
+Shipping: £3.95
+Total (tax incl.): £18.85`,
+    expect: { store: 'Uniqlo', pence: 1885, purchasedOn: '2026-09-20', item: 'HEATTECH Crew Neck T-shirt' },
+  },
+  {
+    name: 'Next, the logo line and a promotion above the order',
+    text: `NEXT
+Free delivery on orders over £50 — use code FREEDEL
+Your order is confirmed
+Order No: N4829X7
+Placed on: 22/09/2026
+Quilted Jacket  Size M  £55.00
+Order total £55.00`,
+    expect: { store: 'Next', pence: 5500, purchasedOn: '2026-09-22', item: 'Quilted Jacket Size M', orderRef: 'N4829X7' },
+  },
+  {
+    name: 'Apple Store, month-first dates, delivered',
+    text: `Apple Store
+Order Number: W1234567890
+Ordered: Sep 19, 2026
+Delivered: Sep 23, 2026
+AirPods Pro (2nd generation) £229.00
+Subtotal £229.00
+Total £229.00`,
+    expect: { store: 'Apple', pence: 22900, purchasedOn: '2026-09-19', item: 'AirPods Pro (2nd generation)', arrivedOn: '2026-09-23' },
+  },
+  {
     name: 'a shop kept does not know, labelled item',
     text: `Order confirmation — The Corner Bookshop
 Order date: 24 September 2026

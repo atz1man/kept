@@ -671,6 +671,29 @@ describe('what an order email actually looks like', () => {
     expect(money(parse('Argos\nKenwood mixer £80.00\nPromotion -£16.00\nArgos total £64.00').amount!)).toBe('£64.00');
   });
 
+  it('reads a date written with dots or dashes, or year first', () => {
+    // Only slashes were read, so these fell back to today: a deadline later
+    // than the real one.
+    expect(parse('H&M order\nOrder date 23.08.2026\nTotal £38.97').purchasedOn).toBe('2026-08-23');
+    expect(parse('H&M order\nOrder date 23-08-2026\nTotal £38.97').purchasedOn).toBe('2026-08-23');
+    expect(parse('Uniqlo order\nOrder Date: 2026/08/20\nTotal £18.85').purchasedOn).toBe('2026-08-20');
+    expect(parse('Uniqlo order\nOrder Date: 2026.8.20\nTotal £18.85').purchasedOn).toBe('2026-08-20');
+  });
+
+  it('does not read a price, or a mix of separators, as a date', () => {
+    const p = parse('Argos order\nCable 12.50\nRef 23.07-2026\nTotal £12.50');
+    expect(p.dateFound).toBe(false);
+  });
+
+  it('takes a shop from a whole line at the top, not from a word elsewhere', () => {
+    // The logo line an email opens with.
+    expect(parse('NEXT\nThanks!\nTotal £55.00').store).toBe('Next');
+    expect(parse('Apple Store\nTotal £229.00').store).toBe('Apple');
+    // Not a whole line, or not near the top: still not the shop.
+    expect(parse('Next day delivery\nTotal £55.00').store).toBeNull();
+    expect(parse('Garden centre\nPlants\nCompost\nThanks\nnext\nTotal £55.00').store).toBeNull();
+  });
+
   it('still reads a total that mentions VAT in passing', () => {
     expect(money(parse('Currys\nTotal (inc. VAT) £204.99').amount!)).toBe('£204.99');
   });

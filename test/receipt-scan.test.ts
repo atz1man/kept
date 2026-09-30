@@ -132,7 +132,8 @@ TOTAL 24.99
     // Shaped like money and made only of letters OCR confuses with digits:
     // without a real digit in it, it is a code, not a price.
     expect(fromScan('REF DB.SO')).toBe('REF DB.SO');
-    expect(fromScan('29.09.26')).toBe('29/09/26');
+    // Read as the date it is: the parser reads dotted dates itself now.
+    expect(read('ARGOS\nKETTLE 29.00\nTOTAL 29.00\n27.09.26').purchasedOn).toBe('2026-09-27');
     expect(fromScan('29.09.26')).not.toContain('£');
   });
 

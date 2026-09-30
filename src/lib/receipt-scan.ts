@@ -34,27 +34,6 @@ function fixMoneyTokens(line: string): string {
 }
 
 /*
- * 29.09.26 and 29-09-2026 as the parser reads them, day first: 29/09/26.
- *
- * A date that starts with a four-digit year is read year, month, day
- * (2026/09/21, 2026.09.21) and handed on as 2026-09-21, the one year-first
- * form the parser already reads. Nobody writes the year first and then the
- * day, so this one is never ambiguous. Unread, the receipt came through with
- * no date at all.
- */
-function slashDates(line: string): string {
-  // Not range-checked here: the parser reads 2026-13-21 as no date, which is
-  // what a check here would do too.
-  const yearFirst = line.replace(/\b(\d{4})[./-](\d{1,2})[./-](\d{1,2})\b/g, (_, y: string, m: string, d: string) =>
-    `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`);
-  return yearFirst.replace(/\b(\d{1,2})[.-](\d{1,2})[.-](\d{2}|\d{4})\b/g, (whole, d: string, m: string, y: string) => {
-    const dd = Number(d);
-    const mm = Number(m);
-    return dd >= 1 && dd <= 31 && mm >= 1 && mm <= 12 ? `${d}/${m}/${y}` : whole;
-  });
-}
-
-/*
  * A line whose money is the bill rather than a thing on it. Till receipts say
  * BALANCE DUE or AMOUNT DUE where an email says Total; the parser looks for
  * "total", so these are named as one.
@@ -108,7 +87,7 @@ export function fromScan(ocr: string): string {
   const shop = shopHeading(lines);
   const body = lines
     .filter((l) => l.length > 0)
-    .map((l) => poundSigns(slashDates(fixMoneyTokens(l))).replace(DUE, 'Total $1'));
+    .map((l) => poundSigns(fixMoneyTokens(l)).replace(DUE, 'Total $1'));
   return [...(shop ? [`Receipt from ${shop}`] : []), ...body].join('\n');
 }
 
