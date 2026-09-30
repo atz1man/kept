@@ -834,6 +834,8 @@ for (const cancel of [false, true]) {
     });
     await cp.reload({ waitUntil: 'networkidle' });
     await cp.waitForTimeout(300);
+    seen.listed = (await cp.getByRole('button', { name: /Zara, Wool.*refund late/ }).count()) === 1 &&
+      (await cp.getByRole('button', { name: /waiting for the refund/ }).count()) === 0;
     const chaseFor = async (row) => {
       await cp.getByRole('button', { name: row }).first().click();
       await cp.waitForTimeout(300);
@@ -850,7 +852,7 @@ for (const cancel of [false, true]) {
     seen.counter = await chaseFor(/Currys, JBL/);
   }
   const ok =
-    seen.offered && seen.tooLongRefused && seen.shown && seen.notYetLate &&
+    seen.offered && seen.tooLongRefused && seen.shown && seen.notYetLate && seen.listed &&
     seen.online?.panel && /regulation 34/.test(seen.online.letter) && /The tracking reference is JD0002 1234\./.test(seen.online.letter) && seen.online.copied &&
     seen.counter?.panel && /Please make it now, or tell me why/.test(seen.counter.letter) && !/regulation|cancel/i.test(seen.counter.letter);
   results['a late refund is chased in a letter, citing the regulations only where they apply, with the tracking number kept'] = !!ok;
