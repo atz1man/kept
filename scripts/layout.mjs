@@ -405,6 +405,10 @@ const wipeTo = (status) => `() => {
 
 const screens = [
   ['home', async () => {}],
+  // "Has it arrived?" and its two buttons, on an online order not yet known
+  // to have come — the seeded Zara coat, and the adversarial shirt.
+  ['detail · on its way', async (p) => { await p.getByRole('button', { name: /on its way/ }).first().click(); }],
+  ['home again', async (p) => { await p.getByRole('button', { name: 'Back', exact: true }).click(); }],
   ['detail', async (p) => { await p.locator('li button').first().click(); }],
   // Opens closed, and its letter is the widest block of text in the app:
   // prose with no breaks shorter than a shop name, in a box inside a card.
