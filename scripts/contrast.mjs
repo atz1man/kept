@@ -164,6 +164,14 @@ await page.reload({ waitUntil: 'networkidle' });
 await page.waitForTimeout(600);
 await sweep('home');
 
+// An online order not yet known to have arrived: "Has it arrived?" and its
+// two buttons exist only on such a receipt.
+await page.getByRole('button', { name: /on its way/ }).first().click();
+await page.waitForTimeout(400);
+await sweep('receipt detail · on its way');
+await page.getByRole('button', { name: 'Back', exact: true }).click();
+await page.waitForTimeout(300);
+
 await page.getByRole('button', { name: /Currys, JBL/ }).click();
 await page.waitForTimeout(400);
 await sweep('receipt detail');

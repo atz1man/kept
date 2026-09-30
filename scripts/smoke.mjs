@@ -974,6 +974,53 @@ for (const cancel of [false, true]) {
 }
 
 /*
+ * On its way. The order email is when most people add a receipt, and it comes
+ * before the parcel — while ASOS, Amazon and Apple count from the doormat. The
+ * app counted from the order and said, deep in the detail, that this was a
+ * floor. The row now says it is on its way, and one tap on the receipt moves
+ * the window to the day it came.
+ */
+{
+  const aCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const ap = await aCtx.newPage();
+  await ap.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await ap.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await ap.waitForTimeout(300);
+  const today = await ap.evaluate(() => {
+    const iso = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    const s = JSON.parse(localStorage.getItem('kept.v1'));
+    s.receipts.push({
+      id: 'r_asos', store: 'ASOS', item: 'Trainers', cat: 'clothing', amount: 6000, purchasedOn: iso(5),
+      windowDays: 28, policy: 'ASOS · 28 days from delivery.', distance: true, status: 'active',
+    });
+    localStorage.setItem('kept.v1', JSON.stringify(s));
+    return iso(0);
+  });
+  await ap.reload({ waitUntil: 'networkidle' });
+  await ap.waitForTimeout(300);
+  const row = ap.getByRole('button', { name: /^ASOS, Trainers/ });
+  const seen = { listed: /^ASOS, Trainers \(on its way\), £60\.00, 23 days left$/.test((await row.getAttribute('aria-label').catch(() => '')) ?? '') };
+  await row.click().catch(() => {});
+  await ap.waitForTimeout(300);
+  const tap = ap.getByRole('button', { name: 'It arrived today' });
+  seen.offered = (await tap.count()) === 1;
+  if (seen.offered) {
+    await tap.click();
+    await ap.waitForTimeout(300);
+    seen.gone = (await ap.locator('[data-arrival]').count()) === 0;
+    const stored = await ap.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => r.id === 'r_asos'));
+    seen.stored = stored?.arrivedOn === today && stored?.windowStartsOn === today;
+    await ap.getByRole('button', { name: 'Back', exact: true }).click();
+    await ap.waitForTimeout(300);
+    seen.relisted = /^ASOS, Trainers, £60\.00, 28 days left$/.test((await row.getAttribute('aria-label').catch(() => '')) ?? '');
+  }
+  const ok = seen.listed && seen.offered && seen.gone && seen.stored && seen.relisted;
+  results['an order on its way says so, and "It arrived today" starts the window at the doormat'] = !!ok;
+  if (!ok) problems.push(`on its way: ${JSON.stringify(seen)}`);
+  await aCtx.close();
+}
+
+/*
  * The celebration of a partial refund. The one-tap return records the whole
  * price, and the screen that follows it — the one that shows the figure, and
  * shares it — went straight back to the list, so "£89.00 back" was shown and

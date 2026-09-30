@@ -105,6 +105,14 @@ await page.getByRole('button', { name: 'Skip' }).click().catch(() => {});
 await page.waitForTimeout(400);
 await audit(page, 'home', findings);
 
+// An online order not yet known to have arrived: "Has it arrived?" and its
+// two buttons exist only on such a receipt.
+await page.getByRole('button', { name: /on its way/ }).first().click();
+await page.waitForTimeout(400);
+await audit(page, 'receipt detail · on its way', findings);
+await page.getByRole('button', { name: 'Back', exact: true }).click();
+await page.waitForTimeout(300);
+
 await page.getByRole('button', { name: /Currys, JBL/ }).click();
 await page.waitForTimeout(400);
 await audit(page, 'receipt detail', findings);
