@@ -104,3 +104,11 @@ describe('the letter', () => {
     expect(faultLetter(counter(addDays(TODAY, -5)), TODAY, '')!).toContain(`Please reply within ${REPLY_DAYS} days`);
   });
 });
+
+describe('the order number, in the letter', () => {
+  it('is quoted under the heading when known, and absent when not', () => {
+    const withRef = faultLetter(counter(addDays(TODAY, -5), { orderRef: '204-1234567-7654321' }), TODAY, '')!;
+    expect(withRef.split('\n').slice(0, 5)).toEqual(['Dear Currys,', '', 'Faulty goods: Bosch dishwasher', 'Order number: 204-1234567-7654321', '']);
+    expect(faultLetter(counter(addDays(TODAY, -5)), TODAY, '')!).not.toContain('Order number');
+  });
+});

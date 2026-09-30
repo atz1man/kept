@@ -24,5 +24,6 @@ describe('a corpus of order emails', () => {
     });
     if (e.expect.arrivedOn !== undefined) expect(v.arrivedOn).toBe(e.expect.arrivedOn);
     if (e.expect.dispatchedOn !== undefined) expect(v.dispatchedOn).toBe(e.expect.dispatchedOn);
+    if (e.expect.orderRef !== undefined) expect(v.orderRef).toBe(e.expect.orderRef);
   });
 });

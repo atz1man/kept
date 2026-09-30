@@ -32,6 +32,13 @@ export interface ParsedReceipt {
    * the one thing that names the receipt on every screen after.
    */
   item: string | null;
+  /**
+   * The shop's own order number, when the paste labels one — "Order #…",
+   * "Order number: …", "Order ID", "Reference". It was read past on purpose
+   * (it looks like a price) and then thrown away, and it is the first thing
+   * a returns form, a chat window and the letter to the shop all ask for.
+   */
+  orderRef: string | null;
 }
 
 export type ParseOutcome =
@@ -72,8 +79,23 @@ function amountsIn(text: string): Pence[] {
  * something else (savings, VAT, discount) is not the order total either; a
  * total that merely mentions VAT in passing — "Total (inc. VAT)" — is.
  */
+/*
+ * Nor a total BEFORE something: "Total before VAT", "Total excl. VAT",
+ * "Total (ex VAT)", "Net total". Amazon's order summary prints its ex-VAT line
+ * above the real total, and a figure that is not what was paid became the
+ * receipt's price. Checked anywhere in the label, not only straight after
+ * the word.
+ *
+ * And the figure may sit on the NEXT line: an order summary pasted from a
+ * table puts "Order total" in one cell and "£349.00" in the next, and the
+ * label found nothing, so the largest figure on the page won — a subtotal
+ * before a discount, or a "free delivery over £50" banner.
+ */
 const LABELLED_TOTAL = new RegExp(
-  '(?<![a-z])(?<!sub[\\s-])total(?!\\s*(?:savings?|saved|discounts?|vat|tax)\\b)[^£\\n]{0,40}' + POUNDS,
+  '(?<![a-z])(?<!sub[\\s-])(?<!net\\s)total(?!\\s*(?:savings?|saved|discounts?|vat|tax)\\b)' +
+    '(?![^£\\n]{0,24}\\b(?:before|excl?\\.?|excluding|ex|net|without|pre)\\b)' +
+    '[^£\\n]{0,40}(?:\\n[ \\t]*)?' +
+    POUNDS,
   'i',
 );
 
@@ -463,12 +485,28 @@ export const UNKNOWN_STORE_WINDOW_DAYS = 28;
 const NOT_AN_ITEM = /\b(?:sub[\s-]?total|total|delivery|shipping|postage|p&p|vat|tax|discount|saving|savings|saved|promo|voucher|gift\s?card|payment|paid|card|visa|mastercard|amex|paypal|klarna|refund|balance|cash|change|tender(?:ed)?|contactless|order\s+(?:number|no|#|ref)|you\s+(?:paid|saved))\b/i;
 
 /** Tidy a candidate: no bullets, no trailing price or separators, no runaway length. */
-function cleanItem(raw: string): string | null {
-  const s = raw
+/** Where a long product title is cut: the name of a receipt, not its catalogue entry. */
+const ITEM_SHORTENED_TO = 60;
+
+/**
+ * @param long 'shorten' where the line is explicitly an item — labelled, or
+ *             on a quantity line — so a long product title is cut to a name
+ *             rather than thrown away (most Amazon titles are over 80
+ *             characters, and all of them were being dropped). 'refuse' for
+ *             the guess from any priced line, where a long line is far more
+ *             likely a banner than a product.
+ */
+function cleanItem(raw: string, long: 'shorten' | 'refuse' = 'refuse'): string | null {
+  let s = raw
     .replace(/£\s?[\d,.]+/g, '')
     .replace(/^[\s•*·\-–—:|]+|[\s•*·\-–—:|,]+$/g, '')
     .replace(/\s{2,}/g, ' ')
     .trim();
+  if (s.length > 80 && long === 'shorten') {
+    const cut = s.slice(0, ITEM_SHORTENED_TO + 1);
+    const space = cut.lastIndexOf(' ');
+    s = (space > 20 ? cut.slice(0, space) : cut.slice(0, ITEM_SHORTENED_TO)).replace(/[\s,;:(\-–—]+$/, '');
+  }
   if (s.length < 3 || s.length > 80) return null;
   if (!/[a-z]{3}/i.test(s)) return null;
   return s;
@@ -480,17 +518,34 @@ function cleanItem(raw: string): string | null {
  * correction, but a guess that reads like the answer is how "Delivery" ends up
  * as the name of a receipt.
  */
+/**
+ * Only a LABELLED order number: a bare run of digits in an email is as likely
+ * a phone number, a postcode's neighbour or a price, and a wrong reference on
+ * a returns form is worse than none. The token must carry at least four
+ * digits, so "Order Total" and "Order date" can never be read as one.
+ */
+const ORDER_REF =
+  /\b(?:order|receipt|transaction|trans|booking)\s*(?:number|no\.?|num|#|id|ref(?:erence)?)\s*[:#.]?\s*#?\s*([A-Z0-9][A-Z0-9-]{3,29})\b/i;
+
+function pickOrderRef(text: string): string | null {
+  for (const line of text.split('\n')) {
+    const m = ORDER_REF.exec(line);
+    if (m && (m[1].match(/\d/g) ?? []).length >= 4) return m[1].toUpperCase();
+  }
+  return null;
+}
+
 function pickItem(text: string, store: StorePolicy | null): string | null {
   // "Item: Wool coat", "Product - Kettle", "Description: …"
   const labelled = /(?:^|\n|·)\s*(?:item|product|description)(?:\s+name)?\s*[:\-–]\s*([^\n·]+)/i.exec(text);
   if (labelled) {
-    const s = cleanItem(labelled[1]);
+    const s = cleanItem(labelled[1], 'shorten');
     if (s && !NOT_AN_ITEM.test(s)) return s;
   }
   // "1 x Wool coat", "Qty: 2 × Socks"
   const qty = /(?:^|\n|·)\s*(?:qty\s*:?\s*)?\d{1,2}\s*[x×]\s+([^\n·]+)/i.exec(text);
   if (qty) {
-    const s = cleanItem(qty[1]);
+    const s = cleanItem(qty[1], 'shorten');
     if (s && !NOT_AN_ITEM.test(s)) return s;
   }
   // A line with a price on it that is not money about the order.
@@ -529,6 +584,7 @@ export function parseReceiptText(text: string, today: Date = new Date()): ParseO
       dispatchedOn: dispatched ? toISODate(dispatched) : null,
       windowDays: policy?.windowDays ?? UNKNOWN_STORE_WINDOW_DAYS,
       item: pickItem(text, policy),
+      orderRef: pickOrderRef(text),
     },
   };
 }

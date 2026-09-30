@@ -1,5 +1,5 @@
 import { fromISODate, toISODate } from './dates';
-import { MAX_AMOUNT_PENCE, MAX_WINDOW_DAYS } from './draft';
+import { MAX_AMOUNT_PENCE, MAX_ORDER_REF, MAX_WINDOW_DAYS } from './draft';
 import { canonicalStoreName } from './stores';
 import type { Category, Receipt, ReceiptStatus, Warranty } from './types';
 
@@ -172,6 +172,7 @@ export function readReceipt(raw: unknown, fromOutside = false): Receipt | null {
       return warranty ? { warranty } : {};
     })(),
     ...(isStr(r.gotcha) ? { gotcha: fromOutside ? trim(r.gotcha, MAX_NOTE) : r.gotcha } : {}),
+    ...(isStr(r.orderRef) ? { orderRef: trim(r.orderRef, MAX_ORDER_REF) } : {}),
     status: r.status as ReceiptStatus,
     ...(r.returnedOn !== undefined ? { returnedOn: r.returnedOn as string } : {}),
     ...(refunded !== undefined ? { refunded } : {}),

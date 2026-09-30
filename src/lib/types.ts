@@ -54,6 +54,12 @@ export interface Receipt {
    * them is how the app came to state one when it meant the other.
    */
   arrivedOn?: string;
+  /**
+   * The shop's order number, as the shop wrote it — read from a labelled line
+   * in the paste, or typed on the edit screen. The first thing a returns
+   * form, a chat window and the letter to the shop all ask for.
+   */
+  orderRef?: string;
   policy: string;
   /**
    * Whether this was a DISTANCE purchase — ordered online, by phone, or away

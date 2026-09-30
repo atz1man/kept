@@ -471,3 +471,16 @@ describe('a partial refund, in a backup', () => {
     expect(readReceipt({ ...good, refunded: 'lots' })?.refunded).toBeUndefined();
   });
 });
+
+describe('the order number, in a backup', () => {
+  it('is carried, and a runaway one is cut to length', () => {
+    expect(readReceipt({ ...good, orderRef: '204-1234567-7654321' })?.orderRef).toBe('204-1234567-7654321');
+    expect(readReceipt({ ...good, orderRef: 'X'.repeat(500) })?.orderRef).toHaveLength(40);
+  });
+
+  it('is left off when it is not a string or is blank, without losing the receipt', () => {
+    expect(readReceipt({ ...good, orderRef: 42 })?.orderRef).toBeUndefined();
+    expect(readReceipt({ ...good, orderRef: '   ' })?.orderRef).toBeUndefined();
+    expect(readReceipt({ ...good, orderRef: 42 })).not.toBeNull();
+  });
+});
