@@ -33,9 +33,21 @@ function fixMoneyTokens(line: string): string {
   });
 }
 
-/** 29.09.26 and 29-09-2026 as the parser reads them, day first: 29/09/26. */
+/*
+ * 29.09.26 and 29-09-2026 as the parser reads them, day first: 29/09/26.
+ *
+ * A date that starts with a four-digit year is read year, month, day
+ * (2026/09/21, 2026.09.21) and handed on as 2026-09-21, the one year-first
+ * form the parser already reads. Nobody writes the year first and then the
+ * day, so this one is never ambiguous. Unread, the receipt came through with
+ * no date at all.
+ */
 function slashDates(line: string): string {
-  return line.replace(/\b(\d{1,2})[.-](\d{1,2})[.-](\d{2}|\d{4})\b/g, (whole, d: string, m: string, y: string) => {
+  // Not range-checked here: the parser reads 2026-13-21 as no date, which is
+  // what a check here would do too.
+  const yearFirst = line.replace(/\b(\d{4})[./-](\d{1,2})[./-](\d{1,2})\b/g, (_, y: string, m: string, d: string) =>
+    `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`);
+  return yearFirst.replace(/\b(\d{1,2})[.-](\d{1,2})[.-](\d{2}|\d{4})\b/g, (whole, d: string, m: string, y: string) => {
     const dd = Number(d);
     const mm = Number(m);
     return dd >= 1 && dd <= 31 && mm >= 1 && mm <= 12 ? `${d}/${m}/${y}` : whole;
@@ -52,12 +64,20 @@ const DUE = /\b(balance\s+due|amount\s+due|total\s+due|to\s+pay)\b/i;
 /** A money word that marks the figure on its line as money. */
 const MONEY_WORD = /\b(total|sub\s?total|balance|due|to\s+pay|cash|change|card|visa|mastercard|amex|contactless|vat|paid)\b/i;
 
+/*
+ * A till's figure: 7.45, or 1,448.00 with its thousands grouped. The grouped
+ * form had no £ added, so on a £1,448 receipt for a television and its care
+ * plan the TOTAL line was not money at all and the care plan's £149.00 was
+ * read as the price — on exactly the purchases where a return matters most.
+ */
+const TILL_FIGURE = '(?:\\d{1,3}(?:,\\d{3})+|\\d{1,5})\\.\\d{2}';
+
 /** Add the £ a till receipt leaves off: to a figure ending a line, or beside a money word. */
 function poundSigns(line: string): string {
   if (/£/.test(line)) return line;
-  const end = /(^|\s)(-?\d{1,5}\.\d{2})\s*$/;
+  const end = new RegExp(`(^|\\s)(-?${TILL_FIGURE})\\s*$`);
   if (end.test(line)) return line.replace(end, (_, sp: string, n: string) => `${sp}£${n}`);
-  if (MONEY_WORD.test(line)) return line.replace(/(^|\s)(\d{1,5}\.\d{2})\b/, (_, sp: string, n: string) => `${sp}£${n}`);
+  if (MONEY_WORD.test(line)) return line.replace(new RegExp(`(^|\\s)(${TILL_FIGURE})\\b`), (_, sp: string, n: string) => `${sp}£${n}`);
   return line;
 }
 
