@@ -105,6 +105,8 @@ export function refundLetter(r: Receipt, today: Date): string | null {
     `Dear ${r.store},`,
     '',
     `Refund not received: ${r.item}`,
+    // The first thing a customer-service reply asks for, as the fault letter gives it.
+    ...(r.orderRef ? [`Order number: ${r.orderRef}`] : []),
     '',
     ...body,
     '',

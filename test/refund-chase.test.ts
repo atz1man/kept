@@ -73,6 +73,11 @@ describe('the letter', () => {
     expect(refundLetter(posted(20, 25), TODAY)).not.toContain('tracking');
   });
 
+  it('quotes the order number under the subject, where one was kept', () => {
+    expect(refundLetter(posted(20, 25, { orderRef: 'W1234567' }), TODAY)).toContain('Refund not received: Wool coat\nOrder number: W1234567\n');
+    expect(refundLetter(posted(20, 25), TODAY)).not.toContain('Order number');
+  });
+
   it('says what the panel above it says about the law', () => {
     expect(refundChaseLine(refundChase(posted(20, 25), TODAY)!)).toContain('cancellation period');
     expect(refundChaseLine(refundChase(posted(20, 60), TODAY)!)).not.toContain('cancellation');
