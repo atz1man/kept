@@ -1429,6 +1429,71 @@ for (const cancel of [false, true]) {
 }
 
 /*
+ * The samples, removed together. Their only way out was one at a time or
+ * Erase everything, which takes the real receipts too. Not offered on the
+ * list while the samples are all there is — then they ARE the app — and
+ * offered once a real receipt sits beside them. A reload does not reseed.
+ */
+{
+  const xCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const xp = await xCtx.newPage();
+  await xp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await xp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await xp.waitForTimeout(300);
+  const offer = () => xp.getByRole('button', { name: 'Remove the samples' });
+  const stored = () => xp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.map((r) => ({ id: r.id, demo: !!r.demo })));
+  const seen = { notWhileAllSamples: (await offer().count()) === 0 };
+  await xp.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('kept.v1'));
+    const d = new Date();
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    s.receipts.push({ id: 'r_mine', store: 'Argos', item: 'Desk lamp', cat: 'home', amount: 2500, purchasedOn: iso, windowDays: 30, policy: 'Argos.', distance: false, status: 'active' });
+    localStorage.setItem('kept.v1', JSON.stringify(s));
+  });
+  await xp.reload({ waitUntil: 'networkidle' });
+  await xp.waitForTimeout(300);
+  seen.offered = (await offer().count()) === 1;
+  await offer().click({ timeout: 3000 }).catch(() => {});
+  await xp.waitForTimeout(300);
+  const after = await stored();
+  seen.onlyMine = after.length === 1 && after[0].id === 'r_mine';
+  seen.listClean = !/sample ·/.test(await xp.locator('main').innerText()) && (await xp.getByRole('button', { name: /^Argos, Desk lamp/ }).count()) === 1;
+  seen.offerGone = (await offer().count()) === 0;
+  await xp.reload({ waitUntil: 'networkidle' });
+  await xp.waitForTimeout(300);
+  seen.noReseed = (await stored()).length === 1;
+  // And Settings says nothing about samples that are not there.
+  await xp.getByRole('button', { name: 'Settings', exact: true }).click({ timeout: 3000 }).catch(() => {});
+  await xp.waitForTimeout(300);
+  seen.settingsQuiet = !/Sample receipts/.test(await xp.locator('main').innerText());
+  const ok = Object.values(seen).every(Boolean);
+  results['the samples can be removed together, leaving the real receipts, and do not come back'] = ok;
+  if (!ok) problems.push(`clear samples: ${JSON.stringify({ ...seen, after })}`);
+  await xCtx.close();
+}
+
+/*
+ * From Settings as well, where it is offered whenever there are samples:
+ * someone who wants a clean list before adding anything should not have to
+ * delete five receipts one at a time or erase the app to get it.
+ */
+{
+  const yCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const yp = await yCtx.newPage();
+  await yp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await yp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await yp.waitForTimeout(300);
+  await yp.getByRole('button', { name: 'Settings', exact: true }).click({ timeout: 3000 }).catch(() => {});
+  await yp.waitForTimeout(300);
+  await yp.getByRole('button', { name: 'Remove the samples' }).click({ timeout: 3000 }).catch(() => {});
+  await yp.waitForTimeout(300);
+  const left = await yp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.length);
+  results['the samples can be removed from Settings before anything real is added'] = left === 0;
+  if (left !== 0) problems.push(`clear samples from settings: ${left} left`);
+  await yCtx.close();
+}
+
+/*
  * Three places the lifecycle said something false, found by an audit.
  * The headline was `active[0]`, samples included: somebody who had just
  * saved their first purchase read "£89.00 back if it goes back by…" about

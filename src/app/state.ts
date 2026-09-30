@@ -104,6 +104,7 @@ export type Action =
   | { type: 'undo-delete' }
   | { type: 'dismiss-undo' }
   | { type: 'wipe' }
+  | { type: 'clear-samples' }
   | { type: 'sync'; state: KeptState }
   | { type: 'add'; receipt: Receipt }
   | { type: 'update'; receipt: Receipt }
@@ -629,6 +630,31 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         selId: null,
         screen: 'home',
       };
+    case 'clear-samples': {
+      /*
+       * The five samples, and nothing else. They had no way out but deleting
+       * each in turn or Erase everything, which takes the real receipts with
+       * them, so they sat on the list beside real purchases for good. No undo
+       * on offer: nothing anybody spent goes with them, and the library they
+       * leave behind is exactly the person's own.
+       */
+      if (!state.receipts.some((r) => r.demo)) return state;
+      const receipts = state.receipts.filter((r) => !r.demo);
+      const gone = (id: string | null) => !!id && !receipts.some((r) => r.id === id);
+      return {
+        ...state,
+        receipts,
+        alertsSent: pruneSent(state.alertsSent, receipts),
+        // An undo that names a sample would put it back; one that names a
+        // real receipt is left on offer.
+        justDeleted: state.justDeleted?.demo ? null : state.justDeleted,
+        justKept: state.justKept?.some((id) => gone(id)) ? null : state.justKept,
+        justReturned: gone(state.justReturned?.id ?? null) ? null : state.justReturned,
+        justAdded: gone(state.justAdded) ? null : state.justAdded,
+        justSent: gone(state.justSent) ? null : state.justSent,
+        ...(gone(state.selId) ? { selId: null, screen: 'home' as const } : {}),
+      };
+    }
     case 'sync': {
       // Adopt what another tab stored, keeping this tab's transient UI —
       // screen, selection, an undo still on offer. If the receipt open here

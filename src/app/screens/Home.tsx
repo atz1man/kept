@@ -33,13 +33,15 @@ interface Props {
   reminders?: { onYes: () => void; onNo: () => void };
   onAdd: () => void;
   onWatch: () => void;
+  /** Takes the five samples off the list, leaving the person's own receipts. */
+  onClearSamples: () => void;
 }
 
 const sectionLabel = (c: string) => ({
   fontSize: 11, fontWeight: 700, letterSpacing: '1.4px', color: c, margin: '20px 4px 10px',
 });
 
-export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onOpen, onSwipe, onKeepClosed, reminders, onAdd, onWatch, undoShowing = false }: Props) {
+export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onOpen, onSwipe, onKeepClosed, reminders, onAdd, onWatch, onClearSamples, undoShowing = false }: Props) {
   const [query, setQuery] = useState('');
   const [openReturned, setOpenReturned] = useState(false);
   const [openKept, setOpenKept] = useState(false);
@@ -154,6 +156,22 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
           keptBack={money(keptBack)}
           onOpen={() => onOpen(next.id)}
         />
+      )}
+
+      {/* Once there is a real receipt, the samples are clutter beside it, and
+          their only way out was one at a time or Erase everything. Offered
+          here, where the clutter is, and not while nothing real exists:
+          then the samples ARE the app, showing what it does. */}
+      {!searching && receipts.some((r) => !r.demo) && receipts.some((r) => r.demo) && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', margin: '14px 2px 4px', fontSize: 13, color: color.muted }}>
+          <span style={{ minWidth: 0 }}>Receipts marked sample are ours, not yours.</span>
+          <Pressable
+            onClick={onClearSamples}
+            style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', fontSize: 13, fontWeight: 700, color: color.ink, textDecoration: 'underline' }}
+          >
+            Remove the samples
+          </Pressable>
+        </div>
       )}
 
       {offerSearch && (
