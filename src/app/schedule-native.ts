@@ -40,16 +40,21 @@ import type { PlannedAlert } from '../lib/schedule';
  */
 let queue: Promise<unknown> = Promise.resolve();
 
-export function syncScheduled(plan: readonly PlannedAlert[]): Promise<boolean> {
+/**
+ * @param mayAsk Whether this sync may raise iOS's permission dialog. False
+ *               until the app has explained its reminders; with permission
+ *               already granted it makes no difference.
+ */
+export function syncScheduled(plan: readonly PlannedAlert[], mayAsk = true): Promise<boolean> {
   const run = queue.then(
-    () => syncNow(plan),
-    () => syncNow(plan),
+    () => syncNow(plan, mayAsk),
+    () => syncNow(plan, mayAsk),
   );
   queue = run.catch(() => undefined);
   return run;
 }
 
-async function syncNow(plan: readonly PlannedAlert[]): Promise<boolean> {
+async function syncNow(plan: readonly PlannedAlert[], mayAsk: boolean): Promise<boolean> {
   if (!isNative()) return false;
   try {
     const { LocalNotifications } = await import('@capacitor/local-notifications');
@@ -88,6 +93,8 @@ async function syncNow(plan: readonly PlannedAlert[]): Promise<boolean> {
 
     const permission = await LocalNotifications.checkPermissions();
     if (permission.display !== 'granted') {
+      // Not yet explained: say nothing to iOS. The card on Home asks first.
+      if (!mayAsk) return false;
       const asked = await LocalNotifications.requestPermissions();
       // Refused is an answer, not an error. The app keeps working; the
       // Settings screen is where the consequence belongs, not a thrown promise.

@@ -194,6 +194,15 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onUp
             Restore
           </Pressable>
         </div>
+        {/* Said where the button is: a backup carries every receipt and its
+            dates, and the photos stay on the phone. The listing promises both
+            a restore on a new phone and a photo kept with each receipt, and
+            nothing said the two do not travel together. */}
+        {isNative() && (
+          <div style={{ fontSize: 12.5, color: color.muted, lineHeight: 1.5, marginTop: 8 }}>
+            A backup carries every receipt and its dates. Photos of receipts stay on this phone.
+          </div>
+        )}
         <input
           ref={fileInput}
           type="file"

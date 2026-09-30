@@ -93,6 +93,25 @@ describe('asking for permission', () => {
     expect(calls).toContain('schedule');
   });
 
+  it('does not raise the dialog before the app has explained its reminders', async () => {
+    // iOS asks once. Unexplained, a sync with a deadline to lodge says nothing
+    // to iOS and lodges nothing; explained, the same sync asks.
+    const { syncScheduled } = await import('../src/app/schedule-native');
+    expect(await syncScheduled([alert('r1:today')], false)).toBe(false);
+    expect(calls).not.toContain('request');
+    expect(calls).not.toContain('schedule');
+    await syncScheduled([alert('r1:today')], true);
+    expect(calls).toContain('request');
+  });
+
+  it('lodges without asking when iOS already said yes, explained or not', async () => {
+    permission = 'granted';
+    const { syncScheduled } = await import('../src/app/schedule-native');
+    await syncScheduled([alert('r1:today')], false);
+    expect(calls).not.toContain('request');
+    expect(calls).toContain('schedule');
+  });
+
   it('does not schedule anything when permission is refused', async () => {
     permission = 'denied';
     const { syncScheduled } = await import('../src/app/schedule-native');
