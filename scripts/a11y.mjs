@@ -317,6 +317,17 @@ await page.getByRole('button', { name: 'Delete' }).click().catch(() => {});
 await page.waitForTimeout(400);
 await audit(page, 'home · delete undo', findings);
 
+// The offer after a save: its wording, the deadline in it, and its Undo.
+await page.getByRole('button', { name: 'Add a receipt' }).click();
+await page.waitForTimeout(300);
+await page.fill('#paste', 'Argos order · Kettle · Total £29.00 · 21 Sep 2026');
+await page.getByRole('button', { name: 'Read it' }).click();
+await page.waitForTimeout(300);
+await page.fill('#add-item', 'Kettle');
+await page.getByRole('button', { name: 'Save receipt' }).click();
+await page.waitForTimeout(400);
+await audit(page, 'home · saved', findings);
+
 // The standing warning when the device will not save.
 await page.evaluate(() => {
   const real = localStorage.setItem.bind(localStorage);
