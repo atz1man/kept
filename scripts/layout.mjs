@@ -415,6 +415,24 @@ const screens = [
   ['detail · something wrong', async (p) => { await p.getByRole('button', { name: 'Something wrong with it?' }).click(); }],
   // Its own panel and three buttons, reached only by sending something back.
   ['detail · sent back', async (p) => { await p.getByRole('button', { name: 'I’ve sent it back' }).click(); }],
+  ['detail · tracking number', async (p) => { await p.getByRole('button', { name: 'Add the tracking number' }).click(); }],
+  // Three weeks on: the chase letter carries the shop's name and the item's,
+  // which is where adversarial content has the most prose to push sideways.
+  ['detail · refund late', async (p) => {
+    await p.getByLabel('Tracking or proof-of-postage number').fill('JD0002 1234 5678 9012 3456 7890 ABCDEFGH');
+    await p.getByRole('button', { name: 'Save', exact: true }).click();
+    await p.evaluate(() => {
+      const d = new Date();
+      d.setDate(d.getDate() - 20);
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const s = JSON.parse(localStorage.getItem('kept.v1'));
+      for (const r of s.receipts) if (r.status === 'sent') r.sentOn = iso;
+      localStorage.setItem('kept.v1', JSON.stringify(s));
+    });
+    await p.reload({ waitUntil: 'networkidle' });
+    await p.waitForTimeout(300);
+    await p.getByRole('button', { name: /refund late/ }).first().click();
+  }],
   ['edit', async (p) => { await p.getByRole('button', { name: 'Edit', exact: true }).click(); }],
   ['back to home', async (p) => { await p.getByRole('button', { name: 'Cancel' }).click(); await p.getByRole('button', { name: 'Back', exact: true }).click(); }],
   ['watch', async (p) => { await p.getByRole('button', { name: /^Watch/ }).click(); }],

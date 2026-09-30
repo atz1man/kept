@@ -85,6 +85,13 @@ export interface Receipt {
   /** ISO date the refund landed — set when the receipt is marked returned. */
   returnedOn?: string;
   /**
+   * How much actually came back, in pence, when it was less than was paid:
+   * one of two sizes sent back, a partial refund, a deduction for a missing
+   * box. Absent means the whole price, which is the one-tap case. It used to
+   * be the only case, so a £30 refund on a £60 order counted £60 as kept back.
+   */
+  refunded?: number;
+  /**
    * The day the person decided to keep it. Keeping is the commonest end to a
    * purchase and had no way to be said: the only exits were "returned" and
    * Delete, so a kept coat went on raising return reminders, then sat at the
@@ -104,6 +111,13 @@ export interface Receipt {
    * was in time, not the day the money arrived.
    */
   sentOn?: string;
+  /**
+   * The tracking or proof-of-postage reference for a return, as printed on the
+   * post office's slip. A refund chase rests on proof the parcel went, and for
+   * a cancelled online order that proof is what starts the shop's fourteen
+   * days (reg. 34). Carried through to the refund; cleared if it did not go.
+   */
+  returnRef?: string;
   /**
    * True for the five receipts a fresh install arrives with.
    *

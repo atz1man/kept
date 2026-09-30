@@ -108,6 +108,14 @@ describe('what the filter says out loud', () => {
   });
 });
 
+describe('finding a return by its tracking number', () => {
+  it('matches the reference the courier’s email quotes', () => {
+    const r = { ...make('Zara', 'Linen shirt'), status: 'sent' as const, returnRef: 'JD0002 1234' };
+    expect(matches(r, 'jd0002')).toBe(true);
+    expect(matches(make('Zara', 'Linen shirt'), 'jd0002')).toBe(false);
+  });
+});
+
 describe('finding a receipt by its order number', () => {
   it('matches the number, and leaves the rest alone', () => {
     const withRef = { ...make('Amazon', 'Charger'), orderRef: '204-1234567-7654321' };

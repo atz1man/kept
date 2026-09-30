@@ -24,8 +24,9 @@ export function matches(receipt: Receipt, query: string): boolean {
   // underneath it. No test pins it, because there is nothing to pin.
   if (terms.length === 0) return true;
   // The order number too: "which one was 204-1234567" is a question people
-  // arrive with, from an email or a returns label, holding nothing else.
-  const haystack = `${receipt.store} ${receipt.item} ${receipt.orderRef ?? ''}`.toLowerCase();
+  // arrive with, from an email or a returns label, holding nothing else. And
+  // a return's tracking number, which is what the courier's email quotes.
+  const haystack = `${receipt.store} ${receipt.item} ${receipt.orderRef ?? ''} ${receipt.returnRef ?? ''}`.toLowerCase();
   return terms.every((t) => haystack.includes(t));
 }
 

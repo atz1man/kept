@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { color, font, radius, shadow } from '../../tokens';
 import { addDays, fmtDateLong, fmtDatesTogether, fromISODate } from '../../lib/dates';
-import { firstToClose, firstToCloseLine, legalRights } from '../../lib/legal';
+import { firstToClose, firstToCloseLine, LEGAL_DISCLAIMER, legalRights } from '../../lib/legal';
 import { REFUND_CHASE_DAYS } from '../../lib/alerts';
 import { money } from '../../lib/money';
-import { asksForGuarantee, awaitingArrival, derive } from '../../lib/receipts';
+import { asksForGuarantee, awaitingArrival, derive, refundOf } from '../../lib/receipts';
+import { readAmount } from '../../lib/draft';
 import type { Receipt } from '../../lib/types';
 import { clockFor, findStore } from '../../lib/stores';
 import { returnsPageFor } from '../../lib/returns-pages';
@@ -13,6 +14,8 @@ import { ChevronLeft, Warning } from '../components/Icons';
 import { Pressable } from '../components/Pressable';
 import { ReceiptPhoto } from '../components/ReceiptPhoto';
 import { FaultPanel } from '../components/FaultPanel';
+import { Letter } from '../components/Letter';
+import { readReturnRef, refundChase, refundChaseLine, refundLetter } from '../../lib/refund-chase';
 
 /** 2π × 40, the circumference of the ring the countdown draws on. */
 const RING_CIRCUMFERENCE = 251.3;
@@ -29,13 +32,16 @@ interface Props {
   onUnkeep: () => void;
   onSend: () => void;
   onUnsend: () => void;
+  /** Record less than the full price as refunded; null for the whole price. */
+  onSetRefund: (pence: number | null) => void;
+  onSetReturnRef: (ref: string | null) => void;
   onArrived: () => void;
   onDelete: () => void;
 }
 
 const cardLabel = { fontSize: 11, fontWeight: 700, letterSpacing: '1.4px', color: color.muted } as const;
 
-export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onArrived, onDelete }: Props) {
+export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onArrived, onDelete }: Props) {
   const [legalOpen, setLegalOpen] = useState(true);
   const d = derive(receipt, today);
   const u = urgency(d.daysLeft, urgentDays);
@@ -371,9 +377,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               the same sentence whether the refund landed last week or last
               year, and it is the only fact a returned receipt carries that is
               not already on the row. */}
-          <div style={{ marginTop: 16, padding: 15, textAlign: 'center', background: color.yellowLight, border: `1.5px solid ${color.ink}`, borderRadius: 16, fontWeight: 700 }}>
-            Money back · {money(receipt.amount)} recovered{returnedText ? ` on ${returnedText}` : ''} ✓
-          </div>
+          <RefundPanel receipt={receipt} returnedText={returnedText} onSetRefund={onSetRefund} />
           <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
             <Pressable
               className="k-row-white"
@@ -404,7 +408,9 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               {receipt.sentOn && ` If it has not arrived by ${fmtDateLong(addDays(fromISODate(receipt.sentOn), REFUND_CHASE_DAYS))}, chase it`}
               {receipt.sentOn && (receipt.distance ? ` — for an online order, the shop has ${REFUND_CHASE_DAYS} days from getting it back.` : '.')}
             </div>
+            <ReturnRefField receipt={receipt} onSetReturnRef={onSetReturnRef} />
           </div>
+          <RefundChasePanel receipt={receipt} today={today} />
           <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
             <Pressable
               className="k-cta-yellow"
@@ -494,5 +500,209 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * What came back, and the way to say it was less. The one-tap return records
+ * the whole price, which is right most of the time and wrong for the common
+ * partial case — one of two sizes sent back, a deduction for a missing box —
+ * and the "kept back" total then counted money that never came.
+ */
+function RefundPanel({ receipt, returnedText, onSetRefund }: {
+  receipt: Receipt;
+  returnedText: string | undefined;
+  onSetRefund: (pence: number | null) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState('');
+  const got = refundOf(receipt);
+  const read = text.trim() ? readAmount(text) : null;
+  const error =
+    read && !read.ok ? read.error : read && read.ok && read.pence > receipt.amount ? `More than the ${money(receipt.amount)} it cost` : undefined;
+  const save = () => {
+    if (!read || !read.ok || error) return;
+    onSetRefund(read.pence);
+    setEditing(false);
+  };
+  return (
+    <div style={{ marginTop: 16, padding: 15, textAlign: 'center', background: color.yellowLight, border: `1.5px solid ${color.ink}`, borderRadius: 16 }}>
+      <div style={{ fontWeight: 700 }}>
+        Money back · {money(got)} recovered{returnedText ? ` on ${returnedText}` : ''} ✓
+      </div>
+      {got !== receipt.amount && (
+        <div style={{ fontSize: 13, color: color.body, marginTop: 4 }}>of the {money(receipt.amount)} it cost</div>
+      )}
+      {receipt.returnRef && (
+        <div style={{ fontSize: 13, color: color.body, marginTop: 4, overflowWrap: 'anywhere' }}>Tracking · {receipt.returnRef}</div>
+      )}
+      {!editing ? (
+        <Pressable
+          onClick={() => {
+            setText(got !== receipt.amount ? (got / 100).toFixed(2) : '');
+            setEditing(true);
+          }}
+          style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', marginTop: 4, fontSize: 13, fontWeight: 600, textDecoration: 'underline' }}
+        >
+          {got !== receipt.amount ? 'Change the amount' : 'Not the full amount?'}
+        </Pressable>
+      ) : (
+        // On white, not the panel's yellow: the refusal's red is legible on
+        // white and measured 4.02:1 on the yellow.
+        <div style={{ textAlign: 'left', marginTop: 10, padding: 12, background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 12 }}>
+          <label htmlFor="refund-amount" style={{ display: 'block', fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>
+            How much came back?
+          </label>
+          <input
+            id="refund-amount"
+            inputMode="decimal"
+            value={text}
+            placeholder={(receipt.amount / 100).toFixed(2)}
+            aria-invalid={!!error}
+            aria-describedby={error ? 'refund-amount-error' : undefined}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') save();
+            }}
+            style={{
+              width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 14,
+              border: `1.5px solid ${error ? color.danger : color.border}`, background: color.white,
+              fontFamily: font.figures, fontSize: 14.5, color: color.ink,
+            }}
+          />
+          {error && (
+            <div id="refund-amount-error" role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: color.danger, marginTop: 5 }}>
+              {error}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+            <Pressable
+              className="k-cta-yellow"
+              onClick={save}
+              disabled={!read || !read.ok || !!error}
+              style={{ flex: 1, padding: 12, textAlign: 'center', background: color.yellow, border: `1.5px solid ${color.ink}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+            >
+              Save
+            </Pressable>
+            <Pressable
+              className="k-row-white"
+              onClick={() => {
+                onSetRefund(null);
+                setEditing(false);
+              }}
+              style={{ flex: 1, padding: 12, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+            >
+              It was the full amount
+            </Pressable>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Proof it went: the reference on the post office's slip, or the courier's
+ * tracking number. A chase rests on it, and for a cancelled online order it is
+ * what starts the shop's fourteen days. Optional — most refunds just arrive.
+ */
+function ReturnRefField({ receipt, onSetReturnRef }: { receipt: Receipt; onSetReturnRef: (ref: string | null) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState('');
+  const read = readReturnRef(text);
+  const error = read.ok ? undefined : read.error;
+  const save = () => {
+    if (!read.ok) return;
+    onSetReturnRef(read.ref);
+    setEditing(false);
+  };
+  if (!editing) {
+    return (
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, marginTop: 6 }}>
+        {receipt.returnRef && (
+          <span style={{ fontSize: 13, color: color.body, overflowWrap: 'anywhere', minWidth: 0 }}>Tracking · {receipt.returnRef}</span>
+        )}
+        <Pressable
+          onClick={() => {
+            setText(receipt.returnRef ?? '');
+            setEditing(true);
+          }}
+          style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', fontSize: 13, fontWeight: 600, textDecoration: 'underline' }}
+        >
+          {receipt.returnRef ? 'Change' : 'Add the tracking number'}
+        </Pressable>
+      </div>
+    );
+  }
+  return (
+    <div style={{ marginTop: 10 }}>
+      <label htmlFor="return-ref" style={{ display: 'block', fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>
+        Tracking or proof-of-postage number
+      </label>
+      <input
+        id="return-ref"
+        value={text}
+        autoCapitalize="characters"
+        autoComplete="off"
+        spellCheck={false}
+        aria-invalid={!!error}
+        aria-describedby={error ? 'return-ref-error' : undefined}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') save();
+        }}
+        style={{
+          width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 14,
+          border: `1.5px solid ${error ? color.danger : color.border}`, background: color.white,
+          fontFamily: font.figures, fontSize: 14.5, color: color.ink,
+        }}
+      />
+      {error && (
+        <div id="return-ref-error" role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: color.danger, marginTop: 5 }}>
+          {error}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+        <Pressable
+          className="k-cta-yellow"
+          onClick={save}
+          disabled={!!error}
+          style={{ flex: 1, padding: 12, textAlign: 'center', background: color.yellow, border: `1.5px solid ${color.ink}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+        >
+          Save
+        </Pressable>
+        <Pressable
+          className="k-row-white"
+          onClick={() => setEditing(false)}
+          style={{ flex: 1, padding: 12, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+        >
+          Cancel
+        </Pressable>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Once the refund is late, the letter that chases it. Open, not folded away
+ * like the fault panel: by now this is the one thing the receipt is for.
+ */
+function RefundChasePanel({ receipt, today }: { receipt: Receipt; today: Date }) {
+  const chase = refundChase(receipt, today);
+  const letter = refundLetter(receipt, today);
+  if (!chase || !letter) return null;
+  return (
+    <section
+      aria-labelledby="refund-late"
+      data-refund-chase
+      style={{ background: color.white, border: `1.5px solid ${color.border}`, borderRadius: radius.cardLg, marginTop: 12, padding: '15px 18px' }}
+    >
+      <h2 id="refund-late" style={{ margin: 0, fontSize: 15, fontWeight: 700, color: color.bodyStrong }}>
+        The refund is late
+      </h2>
+      <div style={{ fontSize: 13.5, lineHeight: 1.5, marginTop: 4, color: color.muted }}>{refundChaseLine(chase)}</div>
+      <Letter letter={letter} title={`Refund not received: ${receipt.item}`} receipt={receipt} />
+      <div style={{ fontSize: 12, marginTop: 10, color: color.muted }}>{LEGAL_DISCLAIMER}</div>
+    </section>
   );
 }
