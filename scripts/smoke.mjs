@@ -1437,6 +1437,53 @@ for (const cancel of [false, true]) {
   await sCtx.close();
 }
 
+/*
+ * Swapped for another. A swap had no way to be said, so it was recorded as
+ * kept or as a refund — both false, and the refund counted money that never
+ * came. The one that went back is settled with nothing recovered, the one
+ * that came home opens as a receipt of its own, and it can be taken back.
+ */
+{
+  const wCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const wp = await wCtx.newPage();
+  await wp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await wp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await wp.waitForTimeout(300);
+  await wp.evaluate(() => {
+    const iso = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    const s = JSON.parse(localStorage.getItem('kept.v1'));
+    s.receipts.push({ id: 'r_jeans', store: 'Next', item: 'Jeans, 32 waist', cat: 'clothing', amount: 4000, purchasedOn: iso(4), windowDays: 28, policy: 'p', distance: false, status: 'active' });
+    localStorage.setItem('kept.v1', JSON.stringify(s));
+  });
+  await wp.reload({ waitUntil: 'networkidle' });
+  await wp.waitForTimeout(300);
+  const stored = () => wp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.filter((r) => r.id === 'r_jeans' || r.swappedFrom === 'r_jeans'));
+  await wp.getByRole('button', { name: /^Next, Jeans/ }).first().click({ timeout: 3000 }).catch(() => {});
+  await wp.waitForTimeout(300);
+  const seen = {};
+  seen.tapped = await wp.getByRole('button', { name: 'Swapped it for another' }).click({ timeout: 3000 }).then(() => true, () => false);
+  await wp.waitForTimeout(300);
+  seen.swapInOpen = /keeps that receipt’s dates/.test((await wp.locator('[data-swap-in]').innerText().catch(() => '')) ?? '');
+  const after = await stored();
+  const orig = after.find((r) => r.id === 'r_jeans');
+  const swapIn = after.find((r) => r.swappedFrom === 'r_jeans');
+  seen.settled = orig?.status === 'returned' && orig?.exchanged === true;
+  seen.copied = !!swapIn && swapIn.status === 'active' && swapIn.purchasedOn === orig?.purchasedOn;
+  await wp.getByRole('button', { name: 'Back', exact: true }).click({ timeout: 3000 }).catch(() => {});
+  await wp.waitForTimeout(300);
+  seen.rowSays = (await wp.getByRole('button', { name: /^Next, Jeans, 32 waist, swapped for another$/ }).count()) === 1;
+  await wp.getByRole('button', { name: /swapped for another$/ }).first().click({ timeout: 3000 }).catch(() => {});
+  await wp.waitForTimeout(300);
+  await wp.getByRole('button', { name: 'Not swapped after all' }).click({ timeout: 3000 }).catch(() => {});
+  await wp.waitForTimeout(300);
+  const undone = await stored();
+  seen.undone = undone.length === 1 && undone[0].status === 'active' && undone[0].exchanged === undefined;
+  const ok = Object.values(seen).every(Boolean);
+  results['a swap settles the one that went back with nothing recovered, opens the one that came home, and can be taken back'] = ok;
+  if (!ok) problems.push(`swap: ${JSON.stringify({ ...seen, after, undone })}`);
+  await wCtx.close();
+}
+
 // The tab bar floats over every screen; its buttons must stay clickable.
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(400);

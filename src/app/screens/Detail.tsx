@@ -28,6 +28,9 @@ interface Props {
   onEdit: () => void;
   onReturn: () => void;
   onUnreturn: () => void;
+  /** Swapped for another: settle this one and open the one that came home. */
+  onExchange: () => void;
+  onUnexchange: () => void;
   onKeep: () => void;
   onUnkeep: () => void;
   onSend: () => void;
@@ -44,7 +47,7 @@ interface Props {
 
 const cardLabel = { fontSize: 11, fontWeight: 700, letterSpacing: '1.4px', color: color.muted } as const;
 
-export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onSetCredit, onArrived, onFaultSent, onFaultUnsent, onDelete }: Props) {
+export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, onUnreturn, onExchange, onUnexchange, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onSetCredit, onArrived, onFaultSent, onFaultUnsent, onDelete }: Props) {
   const [legalOpen, setLegalOpen] = useState(true);
   const d = derive(receipt, today);
   const u = urgency(d.daysLeft, urgentDays);
@@ -380,17 +383,25 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               the same sentence whether the refund landed last week or last
               year, and it is the only fact a returned receipt carries that is
               not already on the row. */}
-          <RefundPanel receipt={receipt} returnedText={returnedText} onSetRefund={onSetRefund} />
-          <CreditPanel receipt={receipt} onSetCredit={onSetCredit} />
+          {receipt.exchanged ? (
+            <div data-swapped style={{ marginTop: 16, padding: 15, textAlign: 'center', background: color.yellowLight, border: `1.5px solid ${color.ink}`, borderRadius: 16, fontWeight: 700 }}>
+              Swapped for another{returnedText ? ` on ${returnedText}` : ''} ✓
+            </div>
+          ) : (
+            <>
+              <RefundPanel receipt={receipt} returnedText={returnedText} onSetRefund={onSetRefund} />
+              <CreditPanel receipt={receipt} onSetCredit={onSetCredit} />
+            </>
+          )}
           <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
             <Pressable
               className="k-row-white"
-              onClick={onUnreturn}
+              onClick={receipt.exchanged ? onUnexchange : onUnreturn}
               style={{ flex: 1, padding: 15, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
             >
               {/* Posted first, so what is being taken back is the money:
                   the parcel went, and it goes back to waiting for a refund. */}
-              {receipt.sentOn ? 'The refund hasn’t come' : 'Not actually returned'}
+              {receipt.exchanged ? 'Not swapped after all' : receipt.sentOn ? 'The refund hasn’t come' : 'Not actually returned'}
             </Pressable>
           </div>
         </>
@@ -451,7 +462,24 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
           </div>
         </>
       ) : (
-        <ActiveActions distance={receipt.distance} onReturn={onReturn} onSend={onSend} onKeep={onKeep} />
+        <>
+          {/* The receipt a swap produced says where its dates came from:
+              the original's, which is the earlier clock, and not a guess at
+              what the shop's swap did to its window. */}
+          {receipt.swappedFrom && (
+            <div data-swap-in style={{ marginTop: 14, fontSize: 13.5, lineHeight: 1.5, color: color.body }}>
+              Swapped for the one you bought on {fmtDateLong(fromISODate(receipt.purchasedOn))}, so it keeps that receipt’s
+              dates. If the shop gave you a new receipt, change them with Edit.
+            </div>
+          )}
+          <ActiveActions distance={receipt.distance} onReturn={onReturn} onSend={onSend} onKeep={onKeep} />
+          <Pressable
+            onClick={onExchange}
+            style={{ display: 'flex', width: 'auto', minHeight: 44, alignItems: 'center', justifyContent: 'center', margin: '6px auto 0', padding: '0 16px', fontWeight: 600, fontSize: 14, textDecoration: 'underline' }}
+          >
+            Swapped it for another
+          </Pressable>
+        </>
       )}
       {/* Last, and quiet. It sat beside the primary action as a pill of its
           own, on every receipt: the one irreversible-looking choice here drawn

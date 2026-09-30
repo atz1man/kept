@@ -101,6 +101,8 @@ export type Action =
   | { type: 'return'; id: string }
   | { type: 'delete'; id: string }
   | { type: 'unreturn'; id: string }
+  | { type: 'exchange'; id: string; newId: string }
+  | { type: 'unexchange'; id: string }
   | { type: 'undo-delete' }
   | { type: 'dismiss-undo' }
   | { type: 'wipe' }
@@ -245,6 +247,40 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         selId: null,
       };
     }
+    case 'exchange': {
+      /*
+       * Swapped for another. The one that went back is settled as returned
+       * with nothing recovered; the one that came home is a receipt of its
+       * own, opened straight away. It keeps the original's dates — the
+       * earlier clock, so any reminder comes early rather than late — and the
+       * screen says to change them if the shop gave a new receipt. What a
+       * shop's swap does to its window is the shop's policy, and not guessed.
+       */
+      const r = state.receipts.find((x) => x.id === action.id);
+      if (!r || r.status !== 'active' || state.receipts.some((x) => x.id === action.newId)) return state;
+      const { returnedOn: _r, keptOn: _k, sentOn: _s, refunded: _f, credit: _c, returnRef: _t, faultClaim: _fc, cancelledOn: _cn, ...rest } = r as Receipt & { cancelledOn?: string };
+      const swapIn: Receipt = { ...rest, id: action.newId, status: 'active', swappedFrom: r.id };
+      return {
+        ...state,
+        receipts: [
+          ...state.receipts.map((x) => (x.id === r.id ? { ...x, status: 'returned' as const, returnedOn: toISODate(today), exchanged: true as const } : x)),
+          swapIn,
+        ],
+        screen: 'detail',
+        selId: swapIn.id,
+        justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null,
+      };
+    }
+    case 'unexchange':
+      // Not swapped after all: the original back in hand, and the receipt the
+      // swap produced gone with it — it described an item that never came.
+      if (!state.receipts.some((r) => r.id === action.id && r.exchanged)) return state;
+      return {
+        ...state,
+        receipts: state.receipts
+          .filter((r) => r.swappedFrom !== action.id)
+          .map((r) => (r.id === action.id ? { ...r, status: 'active' as const, returnedOn: undefined, exchanged: undefined } : r)),
+      };
     case 'unreturn':
       /*
        * The swipe is a one-finger gesture on a row you might have meant to
@@ -264,8 +300,8 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
           r.id !== action.id || r.status !== 'returned'
             ? r
             : r.sentOn
-              ? { ...r, status: 'sent' as const, returnedOn: undefined, refunded: undefined, credit: undefined }
-              : { ...r, status: 'active' as const, returnedOn: undefined, refunded: undefined, returnRef: undefined, credit: undefined },
+              ? { ...r, status: 'sent' as const, returnedOn: undefined, refunded: undefined, credit: undefined, exchanged: undefined }
+              : { ...r, status: 'active' as const, returnedOn: undefined, refunded: undefined, returnRef: undefined, credit: undefined, exchanged: undefined },
         ),
       };
     case 'keep':
