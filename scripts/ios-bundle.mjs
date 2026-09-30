@@ -489,9 +489,10 @@ if (!/Deadline alerts/.test(settingsText)) {
     }
 
     /*
-     * Kept, with a guarantee: the return reminders go, and one reminder is
-     * lodged a month before cover ends — through the real plugin, at 9am on
-     * that morning, which a unit test of `planAlerts` cannot show.
+     * Kept, with a guarantee: the return reminders go, and two stay, each
+     * through the real plugin at 9am on its morning, which a unit test of
+     * `planAlerts` cannot show — the 30 days to reject a fault, three days
+     * before they end, and the guarantee, a month before cover ends.
      */
     await ap.getByRole('button', { name: 'Edit', exact: true }).click();
     await ap.locator('#e-warranty').fill('12');
@@ -502,10 +503,12 @@ if (!/Deadline alerts/.test(settingsText)) {
     const keptNotes = await ap.evaluate(() => window.__keptNotes().pending);
     const coverEnds = new Date(bought.getFullYear() + 1, bought.getMonth(), bought.getDate());
     const noticeDay = new Date(coverEnds.getFullYear(), coverEnds.getMonth(), coverEnds.getDate() - 30, 9, 0, 0, 0);
-    const onlyWarranty = keptNotes.length === 1 && String(keptNotes[0].extra?.key).endsWith(':warranty');
-    if (!onlyWarranty || new Date(keptNotes[0].schedule?.at).getTime() !== noticeDay.getTime()) {
+    const rejectDay = new Date(bought.getFullYear(), bought.getMonth(), bought.getDate() + 30 - 3, 9, 0, 0, 0);
+    const got = keptNotes.map((n) => [String(n.extra?.key).split(':').pop(), new Date(n.schedule?.at).getTime()]);
+    const expected = [['reject', rejectDay.getTime()], ['warranty', noticeDay.getTime()]];
+    if (JSON.stringify(got) !== JSON.stringify(expected)) {
       failures.push({
-        what: 'a kept purchase with a guarantee did not leave exactly one reminder, a month before cover ends',
+        what: 'a kept purchase with a guarantee did not leave exactly its two reminders: the right to reject, then the guarantee',
         saw: JSON.stringify(keptNotes.map((n) => ({ key: n.extra?.key, at: n.schedule?.at }))).slice(0, 300),
       });
     }
