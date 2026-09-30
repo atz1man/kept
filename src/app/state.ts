@@ -6,7 +6,8 @@ import { cleanupPhotos } from '../lib/photos';
 import { onNotificationTap, syncScheduled } from './schedule-native';
 import { currentDay, daysBetween, fromISODate, startOfDay, toISODate } from '../lib/dates';
 import { sharedTextFrom, strippedShareUrl } from '../lib/share';
-import { countsAsMoney, derive, makeReceiptId } from '../lib/receipts';
+import { awaitingArrival, countsAsMoney, derive, makeReceiptId, refundOf } from '../lib/receipts';
+import { windowStartFor } from '../lib/draft';
 import { readReturnRef } from '../lib/refund-chase';
 import { freshState, load, onExternalChange, save, type KeptState, type Settings } from '../lib/storage';
 import { quotaFull as quotaFullFor } from '../lib/quota';
@@ -58,7 +59,11 @@ export interface AppState extends KeptState {
    * claim about the product, put in the user's mouth, to be sent to their
    * friends.
    */
-  celebrating: { amount: number; store: string; inTime: boolean; warned: boolean } | null;
+  /*
+   * `id` and `cost` so the figure can be corrected where it is celebrated: a
+   * £30 refund on a £60 order was shown, and shared, as "£60 back".
+   */
+  celebrating: { id: string; amount: number; cost: number; store: string; inTime: boolean; warned: boolean } | null;
   /**
    * What happened when the win was shared. Not a boolean, because "the copy
    * failed" and "it has not been tried" are different things to say — and the
@@ -103,6 +108,7 @@ export type Action =
   | { type: 'set-credit'; id: string; credit: { expires?: string } | null }
   | { type: 'unsend'; id: string }
   | { type: 'set-return-ref'; id: string; ref: string | null }
+  | { type: 'arrived'; id: string }
   | { type: 'unkeep'; id: string }
   | { type: 'keep-closed'; ids: string[] }
   | { type: 'undo-keep' }
@@ -206,7 +212,9 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         ...undo,
         screen: 'celebrate',
         celebrating: {
+          id: r.id,
           amount: r.amount,
+          cost: r.amount,
           store: r.store,
           // Judged on the day it went back, where that was recorded: posted on
           // day 27 and refunded on day 35 is a return made in time.
@@ -249,22 +257,33 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
           r.id === action.id && r.status === 'kept' ? { ...r, status: 'active' as const, keptOn: undefined } : r,
         ),
       };
-    case 'set-refund':
+    case 'set-refund': {
       /*
        * Less than was paid, recorded after the fact: the refund arrives, and
        * it is £30 of the £60. Only on a refund, never more than the price,
        * and the whole price (or null) clears it back to the one-tap case.
        */
+      const receipts = state.receipts.map((r) => {
+        if (r.id !== action.id || r.status !== 'returned') return r;
+        const p = action.pence;
+        if (p === null || p === r.amount) return { ...r, refunded: undefined };
+        if (!Number.isInteger(p) || p < 0 || p > r.amount) return r;
+        return { ...r, refunded: p };
+      });
+      const changed = receipts.find((r) => r.id === action.id);
+      // The celebration of this very refund follows it, and a line already
+      // shared about the old figure is not a line shared about this one.
+      const celebrating =
+        state.celebrating && changed && state.celebrating.id === action.id && refundOf(changed) !== state.celebrating.amount
+          ? { ...state.celebrating, amount: refundOf(changed) }
+          : state.celebrating;
       return {
         ...state,
-        receipts: state.receipts.map((r) => {
-          if (r.id !== action.id || r.status !== 'returned') return r;
-          const p = action.pence;
-          if (p === null || p === r.amount) return { ...r, refunded: undefined };
-          if (!Number.isInteger(p) || p < 0 || p > r.amount) return r;
-          return { ...r, refunded: p };
-        }),
+        receipts,
+        celebrating,
+        ...(celebrating !== state.celebrating ? { shared: 'no' as const } : {}),
       };
+    }
     case 'set-credit': {
       /*
        * Store credit instead of money, and the day it runs out where the note
@@ -426,6 +445,24 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       // every later visit to Add re-read it and offered it again — two rows,
       // the money counted twice. Leaving Add WITHOUT saving keeps it.
       return { ...state, receipts: [...state.receipts, action.receipt], screen: 'home', sharedText: null };
+    case 'arrived': {
+      /*
+       * "It arrived today" — the one tap that turns a floor into a date. The
+       * arrival starts both statutory clocks, and the shop's own for a shop
+       * that counts from delivery; `windowStartFor` is the same rule an edit
+       * saves by, so the two ways of saying it cannot disagree. Routed through
+       * `update` so a moved deadline forgets what was said about the old one.
+       */
+      const r = state.receipts.find((x) => x.id === action.id);
+      if (!r || !awaitingArrival(r, today)) return state;
+      const arrivedOn = toISODate(today);
+      const receipt: Receipt = {
+        ...r,
+        arrivedOn,
+        windowStartsOn: windowStartFor(r.store, { dispatchedOn: r.windowStartsOn, arrivedOn, distance: r.distance }),
+      };
+      return reducer(state, { type: 'update', receipt }, today);
+    }
     case 'update': {
       /*
        * An edit that moves the deadline makes what was already said about the

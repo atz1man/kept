@@ -164,6 +164,14 @@ await page.reload({ waitUntil: 'networkidle' });
 await page.waitForTimeout(600);
 await sweep('home');
 
+// An online order not yet known to have arrived: "Has it arrived?" and its
+// two buttons exist only on such a receipt.
+await page.getByRole('button', { name: /on its way/ }).first().click();
+await page.waitForTimeout(400);
+await sweep('receipt detail · on its way');
+await page.getByRole('button', { name: 'Back', exact: true }).click();
+await page.waitForTimeout(300);
+
 await page.getByRole('button', { name: /Currys, JBL/ }).click();
 await page.waitForTimeout(400);
 await sweep('receipt detail');
@@ -250,6 +258,17 @@ await page.waitForTimeout(400);
 await page.getByRole('button', { name: 'Got my money back' }).click();
 await page.waitForTimeout(500);
 await sweep('celebrate');
+// Less than the price, said where it is celebrated: the form and its refusal,
+// then the card with "of the £… it cost" on the dark ground.
+await page.getByRole('button', { name: /^Not the full/ }).click();
+await page.waitForTimeout(200);
+await page.getByLabel('How much came back?').fill('99999');
+await page.waitForTimeout(200);
+await sweep('celebrate · refund amount');
+await page.getByLabel('How much came back?').fill('1');
+await page.getByRole('button', { name: 'Save', exact: true }).click();
+await page.waitForTimeout(300);
+await sweep('celebrate · less than the price');
 await page.getByRole('button', { name: 'Back to receipts' }).click();
 await page.waitForTimeout(300);
 
