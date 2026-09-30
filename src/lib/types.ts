@@ -79,6 +79,13 @@ export interface Receipt {
   /** ISO date the refund landed — set when the receipt is marked returned. */
   returnedOn?: string;
   /**
+   * How much actually came back, in pence, when it was less than was paid:
+   * one of two sizes sent back, a partial refund, a deduction for a missing
+   * box. Absent means the whole price, which is the one-tap case. It used to
+   * be the only case, so a £30 refund on a £60 order counted £60 as kept back.
+   */
+  refunded?: number;
+  /**
    * The day the person decided to keep it. Keeping is the commonest end to a
    * purchase and had no way to be said: the only exits were "returned" and
    * Delete, so a kept coat went on raising return reminders, then sat at the

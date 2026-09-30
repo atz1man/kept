@@ -133,6 +133,12 @@ export function readReceipt(raw: unknown, fromOutside = false): Receipt | null {
   // change what the app tells someone they are owed.
   if (typeof r.amount !== 'number' || !Number.isInteger(r.amount) || r.amount < 0) return null;
   if (fromOutside && r.amount > MAX_AMOUNT_PENCE) return null;
+  // A refund recorded as less than was paid: a whole number of pence, not
+  // more than the price. Anything else is dropped and the whole price stands.
+  const refunded =
+    typeof r.refunded === 'number' && Number.isInteger(r.refunded) && r.refunded >= 0 && r.refunded <= (r.amount as number)
+      ? r.refunded
+      : undefined;
   const distance = readDistance(r);
   if (distance === null) return null;
   if (!STATUSES.includes(r.status as ReceiptStatus)) return null;
@@ -168,6 +174,7 @@ export function readReceipt(raw: unknown, fromOutside = false): Receipt | null {
     ...(isStr(r.gotcha) ? { gotcha: fromOutside ? trim(r.gotcha, MAX_NOTE) : r.gotcha } : {}),
     status: r.status as ReceiptStatus,
     ...(r.returnedOn !== undefined ? { returnedOn: r.returnedOn as string } : {}),
+    ...(refunded !== undefined ? { refunded } : {}),
     ...(r.keptOn !== undefined ? { keptOn: r.keptOn as string } : {}),
     ...(r.sentOn !== undefined ? { sentOn: r.sentOn as string } : {}),
     // Carried through the round trip, because it decides whether the receipt

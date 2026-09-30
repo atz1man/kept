@@ -459,3 +459,15 @@ describe('a receipt sent back, in a backup', () => {
     expect(receipts[0].sentOn).toBe('2026-08-30');
   });
 });
+
+describe('a partial refund, in a backup', () => {
+  it('is carried when it is a whole number of pence no more than the price', () => {
+    expect(readReceipt({ ...good, status: 'returned', returnedOn: '2026-09-01', refunded: 1500 })?.refunded).toBe(1500);
+  });
+  it('is dropped, and the receipt kept, when it is more than the price or not a number', () => {
+    const tooMuch = readReceipt({ ...good, status: 'returned', returnedOn: '2026-09-01', refunded: good.amount + 1 });
+    expect(tooMuch).not.toBeNull();
+    expect(tooMuch?.refunded).toBeUndefined();
+    expect(readReceipt({ ...good, refunded: 'lots' })?.refunded).toBeUndefined();
+  });
+});

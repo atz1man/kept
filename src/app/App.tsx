@@ -383,6 +383,7 @@ export function App() {
           onUnkeep={() => dispatch({ type: 'unkeep', id: selected.id })}
           onSend={() => dispatch({ type: 'send', id: selected.id })}
           onUnsend={() => dispatch({ type: 'unsend', id: selected.id })}
+          onSetRefund={(pence) => dispatch({ type: 'set-refund', id: selected.id, pence })}
           onDelete={() => dispatch({ type: 'delete', id: selected.id })}
         />
       )}
