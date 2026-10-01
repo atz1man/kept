@@ -606,8 +606,22 @@ function pickItem(text: string, store: StorePolicy | null): string | null {
   return null;
 }
 
-export function parseReceiptText(text: string, today: Date = new Date()): ParseOutcome {
-  if (!text.trim()) return { ok: false, reason: 'empty' };
+/*
+ * "GBP 59.99" and "45.99 GBP", as a retailer that sells in several currencies
+ * writes its prices, read as the £ figures they are. Every reader below looks
+ * for a £, so a total written this way came back as no price at all. Turned
+ * into a £ here, once, so it meets exactly the rules a £ figure does: a GBP
+ * subtotal is passed over for the GBP total the same way.
+ */
+function gbpAsPounds(text: string): string {
+  return text
+    .replace(/\bGBP\s?(?=\d)/gi, '£')
+    .replace(/(\d(?:[\d,]*\d)?(?:\.\d{1,2})?)\s?GBP\b/gi, '£$1');
+}
+
+export function parseReceiptText(raw: string, today: Date = new Date()): ParseOutcome {
+  if (!raw.trim()) return { ok: false, reason: 'empty' };
+  const text = gbpAsPounds(raw);
 
   const policy = pickStore(text);
   const amount = pickAmount(text);
