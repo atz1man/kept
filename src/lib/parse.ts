@@ -182,13 +182,18 @@ function datesIn(text: string, today: Date): DateHit[] {
     push(resolveYear(m[3], mon, Number(m[2]), today), mon, Number(m[2]), m.index ?? 0, m[0].length);
   }
   // "25/08/2026" — day first. This is a UK app; 05/08 is 5 August, never 8 May.
-  for (const m of text.matchAll(/\b(\d{1,2})\/(\d{1,2})\/(\d{2,4})\b/g)) {
-    const y = Number(m[3]);
-    push(y < 100 ? 2000 + y : y, Number(m[2]) - 1, Number(m[1]), m.index ?? 0, m[0].length);
+  // Written with dots or dashes too ("23.09.2026", H&M's and Zara's emails),
+  // the same separator both times, so a price like 12.50 is never a date.
+  // Only the slash was read, and a dotted order date fell back to today: a
+  // deadline later than the real one, in the direction that costs money.
+  for (const m of text.matchAll(/\b(\d{1,2})([/.-])(\d{1,2})\2(\d{2,4})\b/g)) {
+    const y = Number(m[4]);
+    push(y < 100 ? 2000 + y : y, Number(m[3]) - 1, Number(m[1]), m.index ?? 0, m[0].length);
   }
-  // ISO
-  for (const m of text.matchAll(/\b(\d{4})-(\d{2})-(\d{2})\b/g)) {
-    push(Number(m[1]), Number(m[2]) - 1, Number(m[3]), m.index ?? 0, m[0].length);
+  // Year first: ISO, and "2026/09/20" or "2026.09.20". Nobody writes the year
+  // and then the day, so this form is never ambiguous.
+  for (const m of text.matchAll(/\b(\d{4})([/.-])(\d{1,2})\2(\d{1,2})\b/g)) {
+    push(Number(m[1]), Number(m[3]) - 1, Number(m[4]), m.index ?? 0, m[0].length);
   }
   return found;
 }
@@ -482,10 +487,29 @@ const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 function mentions(text: string, alias: string, commonWord: boolean): boolean {
   const a = escape(alias);
   if (!commonWord) return new RegExp(`\\b${a}\\b`, 'i').test(text);
-  return new RegExp(
-    `(?:\\b${STORE_CUE}\\s+${a}\\b|\\b${a}\\s+${STORE_CUE}\\b|\\b${a}\\.(?:com|co\\.uk))`,
-    'i',
-  ).test(text);
+  return (
+    new RegExp(
+      `(?:\\b${STORE_CUE}\\s+${a}\\b|\\b${a}\\s+(?:${STORE_CUE}|store)\\b|\\b${a}\\.(?:com|co\\.uk))`,
+      'i',
+    ).test(text) || isHeading(text, alias)
+  );
+}
+
+/*
+ * The shop's name as a whole line at the top of the paste: the logo's text,
+ * which is what an order email opens with when it is copied. "NEXT" alone on
+ * the first line is the shop in a way that "Next day delivery" is not — the
+ * whole line, and only near the top, where a heading sits.
+ */
+const HEADING_LINES = 3;
+
+function isHeading(text: string, alias: string): boolean {
+  return text
+    .split('\n')
+    .map((l) => l.trim().toLowerCase())
+    .filter((l) => l.length > 0)
+    .slice(0, HEADING_LINES)
+    .includes(alias.toLowerCase());
 }
 
 function pickStore(text: string): StorePolicy | null {
