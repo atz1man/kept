@@ -694,6 +694,15 @@ describe('what an order email actually looks like', () => {
     expect(parse('Garden centre\nPlants\nCompost\nThanks\nnext\nTotal £55.00').store).toBeNull();
   });
 
+  it('reads a price written GBP, before or after the figure', () => {
+    // Every reader looked for a £, so these came back with no price at all.
+    expect(money(parse('Decathlon order\nTent GBP 59.99\nSubtotal GBP 59.99\nDelivery GBP 3.99\nTotal GBP 63.98').amount!)).toBe('£63.98');
+    expect(money(parse('Zara order\nCoat 45.99 GBP\nTotal 45.99 GBP').amount!)).toBe('£45.99');
+    expect(money(parse('Apple order\nTotal: GBP1,049.00').amount!)).toBe('£1,049.00');
+    // And the item is named without the currency left on it.
+    expect(parse('Decathlon order\nTent 2 person GBP 59.99\nTotal GBP 59.99').item).toBe('Tent 2 person');
+  });
+
   it('still reads a total that mentions VAT in passing', () => {
     expect(money(parse('Currys\nTotal (inc. VAT) £204.99').amount!)).toBe('£204.99');
   });
