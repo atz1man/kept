@@ -703,6 +703,18 @@ describe('what an order email actually looks like', () => {
     expect(parse('Decathlon order\nTent 2 person GBP 59.99\nTotal GBP 59.99').item).toBe('Tent 2 person');
   });
 
+  it('reads a long run of digits or commas in a moment, not seconds', () => {
+    // The GBP rule could start a match at every digit and scan to the end of
+    // the run from each: 100,000 digits took ten seconds, on the main thread.
+    // Linear, it is a few milliseconds; the bound is two hundred times that,
+    // so it fails on the slow version and never on a slow machine.
+    for (const run of ['1'.repeat(100_000), '1,'.repeat(60_000) + '0']) {
+      const started = performance.now();
+      parse(`Argos order\n${run}\nTotal £20.00`);
+      expect(performance.now() - started).toBeLessThan(2000);
+    }
+  });
+
   it('still reads a total that mentions VAT in passing', () => {
     expect(money(parse('Currys\nTotal (inc. VAT) £204.99').amount!)).toBe('£204.99');
   });
