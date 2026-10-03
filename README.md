@@ -2431,23 +2431,40 @@ before launch — the app's core claim is that these are right.
 `npm run check:retailers` does the reading: each shop's own returns page
 (`store/retailer-sources.json`), in a browser with a UK locale, every sentence
 about returns that states a period quoted into `store/retailer-check/<date>.md`
-with its URL. It needs a connection that reaches the shops — the cloud sandbox
-this was built in refuses them — and it never edits the table, because "30
-days" beside "for Members" is not the window a person gets. The report is the
-evidence the table changes from; `test/retailer-check.test.ts` holds the parts
-that decide what it says.
+with its URL. It reads the page's whole text, collapsed answers included —
+M&S states its window inside a closed FAQ, and the first version of the reader,
+taking only what was on screen, reported "no window found" on a page that said
+it twice. It never edits the table, because "30 days" beside "for Members" is
+not the window a person gets. The report is the evidence the table changes
+from; `test/retailer-check.test.ts` holds the parts that decide what it says.
 
-Beyond the twenty shops in the table, `store/retailer-candidates.json` lists
-seventy-six more UK retailers waiting to be read: supermarkets, department
-stores, fashion, electronics, home and DIY, beauty, books, outdoor. Listing a
-shop there claims nothing about its window. `npm run check:candidates` opens
-each homepage, follows the shop's own Returns or Refunds links (staying on its
-own site, at most two clicks deep, because a returns page is found rather than
-guessed), and writes every sentence that states a period to
-`store/retailer-check/<date>-candidates.md`, with a count of which periods
-appear most. A shop moves into `stores.ts` by hand, from those quotes, with its
-returns page added to `retailer-sources.json` in the same change. Marketplaces
-are left out on purpose: on eBay, Etsy or Vinted the window is the seller's.
+The first full run was on 3 October 2026 (`store/retailer-check/2026-10-03.md`).
+Of the forty-one shops in the table, twenty-seven were read and confirmed from
+their own pages. That run moved two of the original twenty: M&S and Wickes
+count an online order from the day it arrives, and M&S gives sale items 14 days.
+Fourteen still need a person in an ordinary browser: Amazon, Argos, ASOS,
+Boots, Currys, Decathlon, H&M, John Lewis, Next, Sainsbury's, Sports Direct,
+Tesco, Uniqlo and Zara. Some of those pages refuse an automated browser outright
+and some have moved; the script reports each one rather than working its way
+round a block. `TABLE_CHECKED_ON` stays unset until those fourteen are done.
+
+Twenty-one of the forty-one came in on that run from
+`store/retailer-candidates.json`, which lists UK retailers waiting to be read:
+supermarkets, department stores, fashion, electronics, home and DIY, beauty,
+books, outdoor. Listing a shop there claims nothing about its window.
+`npm run check:candidates` opens each homepage, follows the shop's own Returns
+or Refunds links (staying on its own site, at most two clicks deep, because a
+returns page is found rather than guessed), and writes every sentence that
+states a period to `store/retailer-check/<date>-candidates.md`. A shop moves into
+`stores.ts` by hand, from those quotes, with its returns page added to
+`retailer-sources.json` in the same change. Two were read and held back because
+the table cannot say what they do: Liberty gives a different window online and
+in store, and Dyson a different one for different products. One window per shop,
+plus an online clock, is what a row holds. Brands that other shops also sell
+(Nike, Clarks, AllSaints, White Stuff, Monsoon, Habitat, Go Outdoors) are marked
+`commonWord`, so a JD order for Nike trainers is not read as a Nike order: the
+window is the seller's. Marketplaces are left out for the same reason; on eBay,
+Etsy or Vinted the window is the seller's.
 
 **The iOS privacy manifest is written, and so are the four project edits that
 make it more than a file.** It is the one place the App Store reads this app's

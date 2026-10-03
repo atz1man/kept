@@ -141,6 +141,11 @@ describe('naming a shop that is not there', () => {
     ['an item that is also a shop', 'Your Vinted order · walking boots · Total £40.00 · 20 Aug 2026'],
     ['a shop’s name inside a longer word', 'Your Etsy order · pineapple print tea towel · Total £12.00 · 20 Aug 2026'],
     ['an ordinary use of the word', 'Your Depop order · Nike Air Max, next size up · Total £55.00 · 20 Aug 2026'],
+    // Brands with their own row that other shops also sell: the window is
+    // the seller's, so a JD order for Nike trainers is not a Nike order.
+    ['a brand another shop sells', 'JD\nOrder confirmed\n24/09/2026\nNike Tech Fleece hoodie £100.00\nTotal £100.00'],
+    ['another brand another shop sells', 'Your Very order\n24 September 2026\nClarks Un Rio sandals £65.00\nTotal £65.00'],
+    ['a third brand another shop sells', 'Zalando\nOrder 24.09.2026\nAllSaints leather jacket £299.00\nTotal £299.00'],
   ])('does not invent a retailer from %s', (_label, text) => {
     expect(store(text)).toBeNull();
   });
@@ -181,7 +186,11 @@ describe('where each entry says its clock starts', () => {
   });
 
   it('never says "from delivery" while counting from the till', () => {
-    const wrong = STORE_POLICIES.filter((p) => saysDelivery(p) && p.clockStart !== 'delivery').map((p) => p.name);
+    // An online clock is a clock the app runs: M&S counts an order from the
+    // day it arrives and a shop purchase from the till, and says both.
+    const wrong = STORE_POLICIES.filter(
+      (p) => saysDelivery(p) && p.clockStart !== 'delivery' && p.onlineClockStart !== 'delivery',
+    ).map((p) => p.name);
     expect(wrong).toEqual([]);
   });
 
@@ -196,6 +205,16 @@ describe('where each entry says its clock starts', () => {
     const silent = STORE_POLICIES.filter(
       (p) => (p.clockStart === 'delivery' && !saysDelivery(p)) || (p.clockStart === 'dispatch' && !saysDispatch(p)),
     ).map((p) => p.name);
+    expect(silent).toEqual([]);
+  });
+
+  it('never runs an online clock the policy sentence does not name', () => {
+    // The online clock lengthens a window, so it is the one most worth being
+    // able to read at a counter: the sentence itself, not only the trap, has
+    // to say an order counts from delivery.
+    const online = STORE_POLICIES.filter((p) => p.onlineClockStart === 'delivery');
+    expect(online.length).toBeGreaterThan(0);
+    const silent = online.filter((p) => !/from delivery/i.test(p.policy)).map((p) => p.name);
     expect(silent).toEqual([]);
   });
 });
