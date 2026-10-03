@@ -43,14 +43,6 @@
       ],
       "cat": "clothing"
     },
-    "Liberty": {
-      "home": "https://www.libertylondon.com/uk/",
-      "aliases": [
-        "liberty london",
-        "libertylondon"
-      ],
-      "cat": "clothing"
-    },
     "House of Fraser": {
       "home": "https://www.houseoffraser.co.uk/",
       "returns": [
@@ -70,18 +62,6 @@
       ],
       "aliases": [
         "primark"
-      ],
-      "cat": "clothing"
-    },
-    "New Look": {
-      "home": "https://www.newlook.com/uk",
-      "returns": [
-        "https://help-uk.newlook.com/hc/en-gb/articles/360015244592-What-is-your-returns-policy",
-        "https://help-uk.newlook.com/hc/en-gb/articles/14434647950237-What-is-your-in-store-returns-policy"
-      ],
-      "aliases": [
-        "new look",
-        "newlook"
       ],
       "cat": "clothing"
     },
@@ -737,19 +717,6 @@
       ],
       "cat": "other"
     },
-    "Snow+Rock": {
-      "home": "https://www.snowandrock.com/",
-      "returns": [
-        "https://help.snowandrock.com/hc/en-gb/articles/12594771378450-Returns-Policy",
-        "https://help.snowandrock.com/hc/en-gb/articles/360001576380-Our-refund-policy"
-      ],
-      "aliases": [
-        "snow+rock",
-        "snow and rock",
-        "snowandrock"
-      ],
-      "cat": "clothing"
-    },
     "Rohan": {
       "home": "https://www.rohan.co.uk/",
       "returns": [
@@ -1144,19 +1111,6 @@
         "harveynichols"
       ],
       "cat": "clothing"
-    },
-    "Fortnum & Mason": {
-      "home": "https://www.fortnumandmason.com/",
-      "returns": [
-        "https://support.fortnumandmason.com/hc/en-gb/articles/360002788698-How-do-I-return-an-item",
-        "https://www.fortnumandmason.com/terms-and-conditions"
-      ],
-      "aliases": [
-        "fortnum & mason",
-        "fortnum and mason",
-        "fortnums"
-      ],
-      "cat": "kitchen"
     },
     "Sosandar": {
       "home": "https://www.sosandar.com/",

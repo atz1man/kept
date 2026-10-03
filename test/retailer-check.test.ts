@@ -17,7 +17,10 @@ describe('what the check reads the table as', () => {
     // The script reads stores.ts as text; if that parse drifted, it would
     // compare the retailers' pages against the wrong numbers.
     const parsed = readTable(readFileSync(join(ROOT, 'src/lib/stores.ts'), 'utf8'));
-    expect(parsed).toEqual(STORE_POLICIES.map((s) => ({ name: s.name, windowDays: s.windowDays, clockStart: s.clockStart })));
+    expect(parsed).toEqual(STORE_POLICIES.map((s) => ({
+      name: s.name, windowDays: s.windowDays, clockStart: s.clockStart,
+      ...('onlineWindowDays' in s ? { onlineWindowDays: s.onlineWindowDays } : {}),
+    })));
   });
 
   it('has a source for every shop, and none for a shop the table does not have', () => {
@@ -72,6 +75,9 @@ describe('what the report calls a shop', () => {
   it('mentioned only when the table’s number is on the page', () => {
     expect(verdict(30, one('Return within 30 days of purchase.'))).toBe('mentioned');
     expect(verdict(14, one('Return within 30 days of delivery.'))).toBe('differs');
+    // Two windows, and the page has to name both.
+    expect(verdict([30, 14], one('30 days in store, or 14 days from delivery online.'))).toBe('mentioned');
+    expect(verdict([30, 14], one('Return within 30 days of purchase.'))).toBe('differs');
   });
 
   it('never passes a page it could not read, or one that said nothing', () => {

@@ -25,6 +25,7 @@ describe('the returns page for each shop', () => {
       const own: Record<string, string> = { 'M&S': 'marksandspencer', 'B&Q': 'diy', 'H&M': 'hm', 'Sainsbury’s': 'sainsburys', 'B&M': 'bmstores', 'Holland & Barrett': 'hollandandbarrett',
         Seasalt: 'seasaltcornwall', Jigsaw: 'jigsaw-online', 'Ellis Brigham': 'ellis-brigham', 'Mamas & Papas': 'mamasandpapas',
         Selco: 'selcobw', "Levi's": 'levi', 'Microsoft Store': 'microsoft', Coast: 'coastfashion', Toast: 'toa',
+        Liberty: 'libertylondon', 'Snow+Rock': 'snowandrock', 'Fortnum & Mason': 'fortnumandmason',
       };
       const expected = own[shop.name] ?? shop.name.toLowerCase().replace(/[^a-z]/g, '');
       expect(url.hostname.split('.')).toContain(expected);

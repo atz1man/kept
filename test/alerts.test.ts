@@ -178,6 +178,16 @@ describe('a window Kept has not checked is not stated as the shop\'s', () => {
     expect(dueAlerts([typed], TODAY, URGENT, none)[0].title).toBe('The saved window has passed');
   });
 
+  it('checks the window for the way it was bought, where the shop has two', () => {
+    // Liberty: 14 days in store, 30 online. The 30 is a window Kept has read
+    // off Liberty's page, but not for something bought at the counter.
+    const liberty = (windowDays: number, distance: boolean) =>
+      closing(-1, windowDays, { store: 'Liberty', distance, policy: 'Liberty · 14 days from purchase in store; 30 days from delivery for an online order.' });
+    expect(dueAlerts([liberty(30, true)], TODAY, URGENT, none)[0].title).toBe('That window has closed');
+    expect(dueAlerts([liberty(14, false)], TODAY, URGENT, none)[0].title).toBe('That window has closed');
+    expect(dueAlerts([liberty(30, false)], TODAY, URGENT, none)[0].title).toBe('The saved window has passed');
+  });
+
   it('keeps the shop\'s own words for a window it has checked, or a cited policy change', () => {
     expect(dueAlerts([closingIn(-1)], TODAY, URGENT, none)[0].title).toBe('That window has closed');
     expect(dueAlerts([closingIn(2)], TODAY, URGENT, none)[0].body).not.toMatch(/hasn’t checked/);

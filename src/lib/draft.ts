@@ -427,8 +427,10 @@ export function applyDraft(original: Receipt, valid: ValidDraft): Receipt {
     // was bought under, and rewriting it to the table's CURRENT wording just
     // because someone opened the edit screen and pressed save is the same
     // silent rewriting that policy-feed.ts refuses to do to a deadline.
-    ...(storeChanged || valid.windowDays !== original.windowDays
-      ? { policy: policyFor(store, valid.windowDays) }
+    // And when how it was bought changes: a shop with an online window of its
+    // own may now be quoting the other channel's number.
+    ...(storeChanged || valid.windowDays !== original.windowDays || valid.distance !== original.distance
+      ? { policy: policyFor(store, valid.windowDays, undefined, valid.distance) }
       : {}),
     /*
      * The gotcha follows the shop. The window start does NOT need clearing

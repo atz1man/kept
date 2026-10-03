@@ -51,6 +51,17 @@ export interface StorePolicy {
    * and the shop runs one clock.
    */
   onlineClockStart?: 'purchase' | 'dispatch' | 'delivery';
+  /**
+   * The window for an ONLINE order, when the shop gives a different number of
+   * days online than in store — Liberty, New Look, Fortnum & Mason.
+   *
+   * One length per shop held those shops out of the table altogether: their
+   * pages were read and quoted, and a row could say only one of the two
+   * numbers. Set ONLY from the retailer's own page, like `onlineClockStart`,
+   * and only where it differs from `windowDays`; the policy sentence names
+   * both (test/stores.test.ts).
+   */
+  onlineWindowDays?: number;
   gotcha?: string;
   /**
    * True when this shop's name is also an ordinary word a receipt might use
@@ -524,6 +535,33 @@ export const STORE_POLICIES: readonly StorePolicy[] = [
     policy: 'Toast · 28 days for full-price items (sale items 14): from purchase in store, from delivery online.',
     gotcha: 'Sale items get 14 days, not 28; bought in store, they come back as an exchange or a gift card. An online order counts the 28 days from the day it arrives. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be.',
   },
+  /*
+   * Added 3 October 2026 once a row could hold an online window of its own
+   * (`onlineWindowDays`): these four give a different number of days online
+   * than in store, and were read and held for want of it. Quotes in
+   * store/retailer-check/2026-10-03-candidates.md (Liberty),
+   * 2026-10-03-candidates-2.md (New Look) and 2026-10-03-candidates-3.md.
+   */
+  {
+    name: 'Liberty', commonWord: true, aliases: ['liberty london', 'libertylondon', 'liberty'], windowDays: 14, clockStart: 'purchase', onlineWindowDays: 30, onlineClockStart: 'delivery', cat: 'clothing',
+    policy: 'Liberty · 14 days from purchase in store; 30 days from delivery for an online order.',
+    gotcha: 'Bought in the store, it is 14 days, not 30. An online order counts the 30 days from the day it arrives. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'New Look', aliases: ['new look', 'newlook'], windowDays: 28, clockStart: 'purchase', onlineWindowDays: 14, onlineClockStart: 'delivery', cat: 'clothing',
+    policy: 'New Look · 28 days from purchase in store with a receipt; online, tell them within 14 days from delivery, then 14 more to send it back.',
+    gotcha: 'Online it is 14 days, not 28, counted from the day it arrives. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be. Sale items bought in store get 14 days, for an exchange only.',
+  },
+  {
+    name: 'Snow+Rock', aliases: ['snow+rock', 'snow and rock', 'snowandrock'], windowDays: 30, clockStart: 'purchase', onlineWindowDays: 14, onlineClockStart: 'delivery', cat: 'clothing',
+    policy: 'Snow+Rock · 30 days from purchase for full-priced products (100 for Explore More members, sale 14); online orders not collected in store, 14 days from delivery.',
+    gotcha: 'Sale, clearance and outlet items get 14 days, and an online order delivered to you gets 14 from the day it arrives. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be. Explore More members get 100 days on full-priced products bought in store.',
+  },
+  {
+    name: 'Fortnum & Mason', aliases: ['fortnum & mason', 'fortnum and mason', 'fortnums'], windowDays: 30, clockStart: 'purchase', onlineWindowDays: 14, onlineClockStart: 'delivery', cat: 'kitchen',
+    policy: 'Fortnum & Mason · 30 days from purchase in store, with your receipt; an online order, 14 days from delivery.',
+    gotcha: 'Online it is the 14-day cooling-off period, not 30, counted from the day it arrives. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be.',
+  },
 ] as const;
 
 /** How many retailers the marketing copy may honestly claim. */
@@ -623,9 +661,9 @@ for (const s of STORE_POLICIES) for (const a of s.aliases) BY_ALIAS.set(a, s);
  */
 const FROM_A_POLICY_CHANGE = 'from a policy change on';
 
-export function policyFor(store: string, windowDays: number, changedOn?: string): string {
+export function policyFor(store: string, windowDays: number, changedOn: string | undefined, distance: boolean): string {
   const known = findStore(store);
-  if (known && known.windowDays === windowDays) return known.policy;
+  if (known && windowFor(known, distance) === windowDays) return known.policy;
   if (changedOn) {
     return `${store} · ${windowDays}-day return window, ${FROM_A_POLICY_CHANGE} ${fmtDateLong(fromISODate(changedOn))}.`;
   }
@@ -642,10 +680,22 @@ export function policyFor(store: string, windowDays: number, changedOn?: string)
  * reminder that says "Today is the last day" about one is stating a guess as
  * fact in the one place a person acts on without opening the app.
  */
-export function windowChecked(r: { store: string; windowDays: number; policy: string }): boolean {
+export function windowChecked(r: { store: string; windowDays: number; policy: string; distance: boolean }): boolean {
   const known = findStore(r.store);
   if (!known) return false;
-  return known.windowDays === r.windowDays || r.policy.includes(FROM_A_POLICY_CHANGE);
+  // The window for the way it was bought: Liberty's in-store number on an
+  // online order is a number Kept has checked, but not for that order.
+  return windowFor(known, r.distance) === r.windowDays || r.policy.includes(FROM_A_POLICY_CHANGE);
+}
+
+/**
+ * The window a purchase from this shop gets: the online one for an order
+ * placed online, when the shop has one; otherwise the shop's window. The
+ * twin of `clockFor`, read by the Add screen and by every check of whether a
+ * saved window is the shop's.
+ */
+export function windowFor(policy: Pick<StorePolicy, 'windowDays' | 'onlineWindowDays'>, distance: boolean): number {
+  return distance ? (policy.onlineWindowDays ?? policy.windowDays) : policy.windowDays;
 }
 
 /**
