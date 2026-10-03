@@ -86,7 +86,7 @@ export function Celebrate({ amount, cost, store, inTime, recovered, shared, line
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <Pressable
-          className="k-cta-yellow"
+          className="k-primary"
           onClick={onShare}
           style={{ padding: 13, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 15, boxShadow: shadow.raised }}
         >

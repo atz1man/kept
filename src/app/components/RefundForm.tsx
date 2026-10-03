@@ -58,7 +58,7 @@ export function RefundForm({ id, cost, current, onSet, onClose }: {
       )}
       <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
         <Pressable
-          className="k-cta-yellow"
+          className="k-primary"
           onClick={save}
           disabled={!read || !read.ok || !!error}
           style={{ flex: 1, padding: 12, textAlign: 'center', background: color.accent, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 14, color: color.white }}
@@ -66,7 +66,7 @@ export function RefundForm({ id, cost, current, onSet, onClose }: {
           Save
         </Pressable>
         <Pressable
-          className="k-row-white"
+          className="k-row-white k-secondary"
           onClick={() => {
             onSet(null);
             onClose();

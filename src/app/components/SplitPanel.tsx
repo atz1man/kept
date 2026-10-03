@@ -43,7 +43,7 @@ export function SplitPanel({ receipt, onSplit }: { receipt: Receipt; onSplit: (i
       </Field>
       <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
         <Pressable
-          className="k-cta-yellow"
+          className="k-primary"
           onClick={() => {
             setTried(true);
             if (read.ok) onSplit(read.item, read.pence);
@@ -52,7 +52,7 @@ export function SplitPanel({ receipt, onSplit }: { receipt: Receipt; onSplit: (i
         >
           Split it out
         </Pressable>
-        <Pressable
+        <Pressable className="k-secondary"
           onClick={() => setOpen(false)}
           style={{ flex: '1 1 120px', padding: 12, textAlign: 'center', background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
         >

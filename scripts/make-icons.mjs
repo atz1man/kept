@@ -27,7 +27,7 @@ const svg = readFileSync(new URL('../public/icons/icon.svg', import.meta.url), '
 // The maskable variant: platforms crop up to 20% off every edge, so the mark
 // is inset to survive a circular or squircle mask on any launcher.
 const maskable = svg
-  .replace('<rect width="512" height="512" rx="112"', '<rect width="512" height="512" rx="0"')
+  .replaceAll('<rect width="512" height="512" rx="112"', '<rect width="512" height="512" rx="0"')
   .replace('translate(0 0) scale(1)', 'translate(51.2 51.2) scale(0.8)');
 
 // A replace that matches nothing returns the source unchanged, and the
@@ -36,7 +36,9 @@ const maskable = svg
 if (!maskable.includes('scale(0.8)') || maskable.includes('rx="112"')) throw new Error('the maskable variant did not take — icon.svg changed shape');
 
 // Square corners and a ground that reaches every edge: iOS masks it itself.
-const iosIcon = svg.replace('<rect width="512" height="512" rx="112"', '<rect width="512" height="512" rx="0"');
+// Every layer of the tile, the gradient and its top light alike: squaring only
+// the first left the light's rounded corners showing as darker wedges.
+const iosIcon = svg.replaceAll('<rect width="512" height="512" rx="112"', '<rect width="512" height="512" rx="0"');
 
 /*
  * The launch screen is the CANVAS, not the icon's green, because

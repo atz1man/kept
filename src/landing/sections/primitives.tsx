@@ -42,7 +42,7 @@ export function SectionTitle({ children, maxWidth = 620 }: { children: ReactNode
 export function OpenAppButton({ large }: { large?: boolean }) {
   return (
     <a
-      className="k-cta-yellow"
+      className="k-primary"
       href="/app/"
       style={{
         display: 'inline-flex', alignItems: 'center', gap: 12, background: color.accent, color: color.white,

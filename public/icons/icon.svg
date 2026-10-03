@@ -1,8 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#1F6B4E"/>
-  <g transform="translate(0 0) scale(1)">
-    <circle cx="256" cy="256" r="132" fill="none" stroke="#FFFFFF" stroke-opacity="0.24" stroke-width="37"/>
-    <circle cx="256" cy="256" r="132" fill="none" stroke="#FFFFFF" stroke-width="37" stroke-linecap="round" stroke-dasharray="829.4" stroke-dashoffset="207.3" transform="rotate(-90 256 256)"/>
-    <path d="M196 262l42 40 82-90" fill="none" stroke="#FFFFFF" stroke-width="37" stroke-linecap="round" stroke-linejoin="round"/>
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#25805E"/>
+      <stop offset="1" stop-color="#17573F"/>
+    </linearGradient>
+    <linearGradient id="light" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.16"/>
+      <stop offset="0.45" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#tile)"/>
+  <rect width="512" height="512" rx="112" fill="url(#light)"/>
+  <g transform="translate(0 0) scale(1)" fill="none" stroke="#FFFFFF" stroke-width="54" stroke-linecap="round">
+    <path d="M182 118V394"/>
+    <path d="M326 146L210 256"/>
+    <path d="M210 256A150 150 0 0 1 338 390"/>
   </g>
 </svg>

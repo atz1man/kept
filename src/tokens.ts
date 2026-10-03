@@ -28,6 +28,8 @@ export const color = {
   /** The one accent: the button to press, the current tab, the live dot. 6.4:1 under white text. */
   accent: '#1F6B4E',
   accentHover: '#185A41',
+  /** The top of the logo tile's gradient; it runs down to accentHover. */
+  accentTile: '#25805E',
   /** A tint of it for selected states and quiet highlights; never text on its own. */
   accentSoft: '#E2F0E8',
   accentSoftHover: '#D3E8DC',

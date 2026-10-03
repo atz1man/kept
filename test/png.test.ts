@@ -21,7 +21,6 @@ import { decodePng, pixelAt, writeOpaquePng } from '../scripts/png.mjs';
  * decoder's own output.
  */
 const WEB_ICON = join(__dirname, '..', 'public', 'icons', 'icon-512.png');
-const GROUND = [31, 107, 78];
 const MARK = [255, 255, 255];
 const near = (got: number[], want: number[]) => want.every((v, i) => Math.abs(got[i] - v) <= 2);
 
@@ -47,7 +46,7 @@ describe('reading a PNG somebody else encoded', () => {
     for (const [x, y] of [[256, 0], [256, 511], [0, 256], [511, 256]]) {
       const px = pixelAt(icon, x, y);
       expect(px[3], `edge ${x},${y} alpha`).toBe(255);
-      expect(near(px, GROUND), `edge ${x},${y} was ${px}`).toBe(true);
+      expect(px[1] - px[0] > 40 && px[1] - px[2] > 15, `edge ${x},${y} was ${px}, not the tile's green`).toBe(true);
     }
   });
 

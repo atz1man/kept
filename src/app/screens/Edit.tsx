@@ -282,7 +282,7 @@ export function Edit({ receipt, today, onSave, onCancel }: Props) {
       )}
 
       <Pressable
-        className="k-cta-yellow"
+        className="k-primary"
         onClick={save}
         style={{ marginTop: 16, padding: 13, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 15, boxShadow: shadow.raised }}
       >

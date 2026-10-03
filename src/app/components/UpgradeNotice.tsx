@@ -70,7 +70,7 @@ export function UpgradeNotice({ onUnlock, onCancel }: { onUnlock: () => void; on
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginTop: 18 }}>
           <Pressable
-            className="k-cta-yellow"
+            className="k-primary"
             onClick={onUnlock}
             style={{ padding: 13, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 15 }}
           >

@@ -247,7 +247,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               href={returnsPage.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="k-cta-yellow"
+              className="k-primary"
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 12,
                 minHeight: 46, boxSizing: 'border-box', padding: '10px 16px', borderRadius: radius.control, background: color.accent, color: color.white,
@@ -292,14 +292,14 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
                 <Pressable
-                  className="k-cta-yellow"
+                  className="k-primary"
                   onClick={onArrived}
                   style={{ flex: '1 1 auto', width: 'auto', padding: 12, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
                 >
                   It arrived today
                 </Pressable>
                 <Pressable
-                  className="k-row-white"
+                  className="k-row-white k-secondary"
                   onClick={onEdit}
                   style={{ flex: '1 1 auto', width: 'auto', padding: 12, textAlign: 'center', background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
                 >
@@ -356,7 +356,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               beside the return window.
             </div>
             <Pressable
-              className="k-row-white"
+              className="k-row-white k-secondary"
               onClick={onEdit}
               style={{ display: 'inline-flex', width: 'auto', marginTop: 10, padding: '10px 16px', background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13.5 }}
             >
@@ -431,7 +431,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
           )}
           <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
             <Pressable
-              className="k-row-white"
+              className="k-row-white k-secondary"
               onClick={receipt.exchanged ? onUnexchange : onUnreturn}
               style={{ flex: 1, padding: 13, textAlign: 'center', background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
             >
@@ -460,7 +460,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
           <RefundChasePanel receipt={receipt} today={today} />
           <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
             <Pressable
-              className="k-cta-yellow"
+              className="k-primary"
               onClick={onReturn}
               style={{ flex: 1, padding: 13, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 15, boxShadow: shadow.raised }}
             >
@@ -468,7 +468,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
             </Pressable>
           </div>
           <Pressable
-            className="k-row-white"
+            className="k-row-white k-secondary"
             onClick={onUnsend}
             style={{ marginTop: 10, padding: 13, textAlign: 'center', background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
           >
@@ -489,7 +489,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
           </div>
           <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
             <Pressable
-              className="k-row-white"
+              className="k-row-white k-secondary"
               onClick={onUnkeep}
               style={{ flex: 1, padding: 13, textAlign: 'center', background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
             >
@@ -655,7 +655,7 @@ function ReturnRefField({ receipt, onSetReturnRef }: { receipt: Receipt; onSetRe
       )}
       <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
         <Pressable
-          className="k-cta-yellow"
+          className="k-primary"
           onClick={save}
           disabled={!!error}
           style={{ flex: 1, padding: 12, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
@@ -663,7 +663,7 @@ function ReturnRefField({ receipt, onSetReturnRef }: { receipt: Receipt; onSetRe
           Save
         </Pressable>
         <Pressable
-          className="k-row-white"
+          className="k-row-white k-secondary"
           onClick={() => setEditing(false)}
           style={{ flex: 1, padding: 12, textAlign: 'center', background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
         >
@@ -809,15 +809,15 @@ function ActiveActions({ distance, onReturn, onSend, onKeep }: {
   return (
     <>
       <div style={{ display: 'flex', marginTop: 16 }}>
-        <Pressable className="k-cta-yellow" onClick={first.onClick} style={primary}>
+        <Pressable className="k-primary" onClick={first.onClick} style={primary}>
           {first.label}
         </Pressable>
       </div>
       <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
-        <Pressable className="k-row-white" onClick={second.onClick} style={secondary}>
+        <Pressable className="k-row-white k-secondary" onClick={second.onClick} style={secondary}>
           {second.label}
         </Pressable>
-        <Pressable className="k-row-white" onClick={onKeep} style={secondary}>
+        <Pressable className="k-row-white k-secondary" onClick={onKeep} style={secondary}>
           I’m keeping it
         </Pressable>
       </div>

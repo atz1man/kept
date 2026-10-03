@@ -386,7 +386,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       />
 
       <Pressable
-        className="k-cta-yellow"
+        className="k-primary"
         onClick={read}
         style={{ marginTop: 12, padding: 13, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 15, boxShadow: shadow.raised }}
       >
@@ -410,7 +410,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
             or unlock unlimited once, and one missed return pays for it.
           </div>
           <Pressable
-            className="k-cta-yellow"
+            className="k-primary"
             onClick={onUpgrade}
             style={{ marginTop: 12, padding: 13, textAlign: 'center', background: color.accent, color: color.white, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
           >
@@ -657,7 +657,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
           {/* Greyed for every reason it cannot save, not only the quota: a
               disabled button drawn as a live one invites the tap it ignores. */}
           <Pressable
-            className={cannotSave ? undefined : 'k-cta-yellow'}
+            className={cannotSave ? undefined : 'k-primary'}
             onClick={() => void save()}
             disabled={cannotSave || saving}
             style={{
@@ -707,7 +707,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
         }}
       />
       <Pressable
-        className="k-row-white"
+        className="k-row-white k-secondary"
         onClick={() => {
           // The camera itself in the iOS app, never the library; a file
           // picker (or the phone's camera) on the web.
@@ -750,7 +750,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       {/* No email and no paper — a market stall, a receipt that went in the
           bin, an order the inbox never kept. The same card, blank. */}
       <Pressable
-        className="k-row-white"
+        className="k-row-white k-secondary"
         onClick={typeItIn}
         style={{ marginTop: 12, padding: 13, textAlign: 'center', background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 15 }}
       >

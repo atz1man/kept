@@ -1211,7 +1211,7 @@ for (const cancel of [false, true]) {
     await ap.getByRole('button', { name: row }).first().click();
     await ap.waitForTimeout(300);
     const out = await ap.evaluate(() => {
-      const buttons = [...document.querySelectorAll('main button')].map((b) => ({ text: b.textContent.trim(), primary: b.classList.contains('k-cta-yellow') }));
+      const buttons = [...document.querySelectorAll('main button')].map((b) => ({ text: b.textContent.trim(), primary: b.classList.contains('k-primary') }));
       return { primary: buttons.filter((b) => b.primary).map((b) => b.text), last: buttons.at(-1)?.text };
     });
     await ap.getByRole('button', { name: 'Back', exact: true }).click();

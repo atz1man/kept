@@ -77,7 +77,7 @@ export function Letter({ letter, title, receipt }: { letter: string; title: stri
 
       <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
         <Pressable
-          className="k-cta-yellow"
+          className="k-primary"
           onClick={() => void copy()}
           style={{ ...button, background: color.accent, border: 0, color: color.white }}
         >

@@ -181,18 +181,18 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
         )}
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
           <Pressable
-            className="k-soft"
+            className="k-row-white k-secondary"
             onClick={() => void exportNow()}
-            style={{ flex: 1, padding: 12, textAlign: 'center', background: color.surfaceAlt, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
+            style={{ flex: 1, padding: 12, textAlign: 'center', background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
           >
             Export a backup
           </Pressable>
           {/* Export without restore is a dead end. With no account, this file is
               the only way anything moves to a new phone. */}
           <Pressable
-            className="k-soft"
+            className="k-row-white k-secondary"
             onClick={() => fileInput.current?.click()}
-            style={{ flex: 1, padding: 12, textAlign: 'center', background: color.surfaceAlt, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
+            style={{ flex: 1, padding: 12, textAlign: 'center', background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
           >
             Restore
           </Pressable>
@@ -229,9 +229,9 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
               An earlier launch found receipts it couldn’t read, and kept them aside rather than lose them.
             </div>
             <Pressable
-              className="k-soft"
+              className="k-row-white k-secondary"
               onClick={() => void saveSetAside()}
-              style={{ marginTop: 8, padding: '10px 14px', minHeight: 44, background: color.surfaceAlt, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
+              style={{ marginTop: 8, padding: '10px 14px', minHeight: 44, background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
             >
               Save them as a file
             </Pressable>
@@ -272,7 +272,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
 
           {/* One price, from the same module as the landing page — see lib/pricing.ts. */}
           <Pressable
-            className="k-cta-yellow"
+            className="k-primary"
             onClick={onUpgrade}
             style={{ marginTop: 16, padding: 14, minHeight: 44, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 15 }}
           >
@@ -369,7 +369,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
           <p style={{ fontSize: 13, color: color.muted, lineHeight: 1.55, marginTop: 6, marginBottom: 0 }}>
             The receipts marked sample show what kept does. Removing them leaves your own receipts exactly as they are.
           </p>
-          <Pressable
+          <Pressable className="k-secondary"
             onClick={onClearSamples}
             style={{ marginTop: 12, padding: 12, textAlign: 'center', background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
           >
@@ -388,9 +388,9 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
         {confirmingWipe ? (
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <Pressable
-              className="k-soft"
+              className="k-row-white k-secondary"
               onClick={() => setConfirmingWipe(false)}
-              style={{ flex: 1, padding: 12, textAlign: 'center', background: color.surfaceAlt, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
+              style={{ flex: 1, padding: 12, textAlign: 'center', background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
             >
               Keep them
             </Pressable>
