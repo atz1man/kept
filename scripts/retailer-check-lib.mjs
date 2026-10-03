@@ -14,9 +14,11 @@ import { readFileSync } from 'node:fs';
 /** Name, window and clock start of every row, read from stores.ts as text. */
 export function readTable(storesSource) {
   const rows = [];
-  const re = /name: '([^']+)'[^\n]*?windowDays: (\d+), clockStart: '(\w+)'/g;
+  // A name may carry an escaped quote — Levi\'s, Lands\' End — so the name
+  // runs to the first UNescaped quote, and the escapes come off after.
+  const re = /name: '((?:[^'\\]|\\.)+)'[^\n]*?windowDays: (\d+), clockStart: '(\w+)'/g;
   let m;
-  while ((m = re.exec(storesSource))) rows.push({ name: m[1], windowDays: Number(m[2]), clockStart: m[3] });
+  while ((m = re.exec(storesSource))) rows.push({ name: m[1].replace(/\\(.)/g, '$1'), windowDays: Number(m[2]), clockStart: m[3] });
   return rows;
 }
 
@@ -110,6 +112,18 @@ export function siteOf(host) {
   return labels.slice(ukSecond ? -3 : -2).join('.');
 }
 
+/**
+ * The host a page ended up on when a redirect took it off the shop's own
+ * site, or null when it stayed. Only the shop's own pages are evidence of its
+ * window: Joules' returns URL now redirects to a help centre on zendesk.com,
+ * and its 28 days were quoted from there into the table before anything
+ * looked at where the page had actually landed.
+ */
+export function leftTheSite(requested, landed) {
+  const host = new URL(landed).hostname;
+  return siteOf(host) === siteOf(new URL(requested).hostname) ? null : host;
+}
+
 const RETURNS_LINK = /\breturns?\b|\brefunds?\b/i;
 
 /**
@@ -142,6 +156,24 @@ export function returnsLinks(anchors, pageUrl, max = 3) {
     scored.push({ href: key, score: byText ? 0 : 1 });
   }
   return scored.sort((a, b) => a.score - b.score).slice(0, max).map((s) => s.href);
+}
+
+/**
+ * What a candidate's reading came to, for the report's status column.
+ *
+ * `home` is the homepage read, or null when the shop's own returns page was
+ * listed and said something, so the homepage was not needed. `pages` is every
+ * page read, the homepage included. A listed returns page that states a period
+ * makes the shop read even when its homepage refuses an automated browser:
+ * the policy is on the policy page, and reading the page that holds it is not
+ * working round the one that does not.
+ */
+export function candidateStatus(home, pages) {
+  const readable = pages.filter((p) => !p.unreadable);
+  if (readable.some((p) => p.sentences.length)) return 'read';
+  if (!readable.length) return `unreadable: ${[...new Set(pages.map((p) => p.unreadable))].join('; ')}`;
+  const policyPages = readable.filter((p) => p !== home);
+  return policyPages.length ? 'no window found' : 'no returns link found';
 }
 
 /**

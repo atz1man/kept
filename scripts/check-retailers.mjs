@@ -22,7 +22,7 @@
 import { chromium } from 'playwright';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { channelIn, clockIn, looksBlocked, proposal, readSources, readTable, returnsLinks, verdict, windowSentences } from './retailer-check-lib.mjs';
+import { candidateStatus, channelIn, leftTheSite, clockIn, looksBlocked, proposal, readSources, readTable, returnsLinks, verdict, windowSentences } from './retailer-check-lib.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const EXEC = process.env.CHROMIUM_PATH;
@@ -86,6 +86,10 @@ async function read(url) {
     const title = await page.title().catch(() => '');
     if (looksBlocked(status, text)) return { url, status, title, unreadable: 'blocked by the site', sentences: [], links: [] };
     if (status >= 400) return { url, status, title, unreadable: `HTTP ${status}`, sentences: [], links: [] };
+    // A redirect off the shop's site lands on somebody else's page, which says
+    // nothing about the shop's window however its title reads.
+    const away = leftTheSite(url, page.url());
+    if (away) return { url, status, title, finalUrl: page.url(), unreadable: `left the shop's site for ${away}`, sentences: [], links: [] };
     const links = await page.evaluate(() =>
       [...document.querySelectorAll('a[href]')].map((a) => ({ text: (a.innerText || a.getAttribute('aria-label') || '').trim().slice(0, 120), href: a.href })),
     );
@@ -100,29 +104,40 @@ async function read(url) {
 /*
  * --candidates: shops NOT in the table. There is no number to compare with,
  * so nothing passes or fails; the report proposes, with the quotes, and a
- * person writes the row. Each homepage is opened and the shop's own Returns or
- * Refunds links are followed, one hop further if the first pages state no
- * period, because a candidate's returns page is found rather than guessed.
+ * person writes the row. A candidate's `returns` pages, when it lists them,
+ * are read first: on the shop's own site (the test holds them to it), and the
+ * only way to reach the policy of a shop whose homepage refuses an automated
+ * browser while its help pages do not. Otherwise the homepage is opened and the
+ * shop's own Returns or Refunds links are followed, one hop further if the
+ * first pages state no period.
  */
 if (candidatesMode) {
   const all = JSON.parse(readFileSync(CANDIDATES, 'utf8')).candidates;
   const names = only.length ? Object.keys(all).filter((n) => only.includes(n)) : Object.keys(all);
   const found = await eachInParallel(names, async (name) => {
-    const home = await read(all[name].home);
-    const pages = [home];
-    if (!home.unreadable) {
-      let next = returnsLinks(home.links, home.finalUrl ?? home.url);
-      for (let hop = 0; hop < 2 && next.length; hop++) {
-        const read1 = [];
-        for (const u of next) read1.push(await read(u));
-        pages.push(...read1);
-        if (read1.some((p) => p.sentences.length)) break;
-        next = read1.flatMap((p) => (p.unreadable ? [] : returnsLinks(p.links, p.finalUrl ?? p.url))).filter((u) => !pages.some((p) => (p.finalUrl ?? p.url) === u)).slice(0, 3);
+    // A returns page listed for the shop is read first; when it states a
+    // period the homepage is not needed. Otherwise the page is found from the
+    // homepage, as before, and both are reported.
+    const pages = [];
+    for (const u of all[name].returns ?? []) pages.push(await read(u));
+    let home = null;
+    if (!pages.some((p) => p.sentences.length)) {
+      home = await read(all[name].home);
+      pages.unshift(home);
+      if (!home.unreadable) {
+        let next = returnsLinks(home.links, home.finalUrl ?? home.url).filter((u) => !pages.some((p) => (p.finalUrl ?? p.url) === u));
+        for (let hop = 0; hop < 2 && next.length; hop++) {
+          const read1 = [];
+          for (const u of next) read1.push(await read(u));
+          pages.push(...read1);
+          if (read1.some((p) => p.sentences.length)) break;
+          next = read1.flatMap((p) => (p.unreadable ? [] : returnsLinks(p.links, p.finalUrl ?? p.url))).filter((u) => !pages.some((p) => (p.finalUrl ?? p.url) === u)).slice(0, 3);
+        }
       }
     }
     const sentencesFound = [...new Set(pages.flatMap((p) => p.sentences))];
     const sum = proposal(sentencesFound);
-    const status = home.unreadable ? `unreadable: ${home.unreadable}` : pages.length === 1 ? 'no returns link found' : sentencesFound.length ? 'read' : 'no window found';
+    const status = candidateStatus(home, pages);
     console.log(`${sentencesFound.length ? '•' : '✗'} ${name.padEnd(20)} ${status}${sum.periods.length ? ` — ${sum.periods.map((p) => `${p.days}d×${p.times}`).join(', ')}` : ''}`);
     return { name, home: all[name].home, pages, sentencesFound, sum, status };
   });
@@ -130,7 +145,7 @@ if (candidatesMode) {
   const md = [
     `# Candidate retailers, read from their own sites — ${today}`,
     '',
-    'Written by `npm run check:retailers -- --candidates`. Each homepage was opened and the shop\'s own Returns/Refunds links followed. ' +
+    'Written by `npm run check:retailers -- --candidates`. Each shop\'s listed returns page was read; where none was listed, or it stated no period, the homepage was opened and the shop\'s own Returns/Refunds links followed. ' +
       'The periods column counts how often each number appears in a sentence about returns: a summary to read the quotes against, never a value to copy. ' +
       'A shop goes into `stores.ts` by hand, from the quotes, with its returns page added to `retailer-sources.json` in the same change.',
     '',

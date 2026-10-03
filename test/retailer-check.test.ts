@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { STORE_POLICIES } from '../src/lib/stores';
 // @ts-expect-error - a small JS helper, run as `npm run check:retailers`
-import { channelIn, clockIn, daysIn, looksBlocked, proposal, readSources, readTable, returnsLinks, siteOf, verdict, windowSentences } from '../scripts/retailer-check-lib.mjs';
+import { candidateStatus, channelIn, leftTheSite, clockIn, daysIn, looksBlocked, proposal, readSources, readTable, returnsLinks, siteOf, verdict, windowSentences } from '../scripts/retailer-check-lib.mjs';
 
 /**
  * `npm run check:retailers` reads each retailer's own returns page (APN-16).
@@ -97,7 +97,7 @@ describe('which purchase a quoted sentence is about', () => {
 });
 
 describe('the candidate retailers waiting to be read', () => {
-  type Candidate = { home: string; aliases: string[]; cat?: string; commonWord?: boolean };
+  type Candidate = { home: string; returns?: string[]; aliases: string[]; cat?: string; commonWord?: boolean };
   const candidates = JSON.parse(readFileSync(join(ROOT, 'store/retailer-candidates.json'), 'utf8')).candidates as Record<string, Candidate>;
   const tableAliases = STORE_POLICIES.flatMap((s) => s.aliases);
 
@@ -122,6 +122,60 @@ describe('the candidate retailers waiting to be read', () => {
 
   it('start from the shop\'s own https homepage', () => {
     for (const [name, c] of Object.entries(candidates)) expect(new URL(c.home).protocol, name).toBe('https:');
+  });
+
+  it('list returns pages only on the shop\'s own site', () => {
+    // A listed page is read in place of finding one from the homepage, so it
+    // is held to the rule a found one is: https, and the shop's own site. A
+    // consumer blog quoting "30 days" is not the shop saying it.
+    const listed = Object.entries(candidates).filter(([, c]) => c.returns?.length);
+    expect(listed.length).toBeGreaterThan(0);
+    for (const [name, c] of listed) {
+      for (const page of c.returns!) {
+        const u = new URL(page);
+        expect(u.protocol, `${name}: ${page}`).toBe('https:');
+        expect(siteOf(u.hostname), `${name}: ${page}`).toBe(siteOf(new URL(c.home).hostname));
+      }
+    }
+  });
+});
+
+describe('where a page landed', () => {
+  it('is the shop\'s site through its own subdomains and redirects', () => {
+    expect(leftTheSite('https://www.next.co.uk/returns', 'https://zendesk.next.co.uk/hc/en-gb/articles/1')).toBeNull();
+    expect(leftTheSite('https://www.ikea.com/gb/en/', 'https://ikea.com/gb/en/returns')).toBeNull();
+  });
+
+  it('names the host when a redirect took the page somewhere else', () => {
+    // The real case: Joules' own returns URL now lands on a zendesk.com help centre.
+    expect(leftTheSite('https://www.joules.com/faq/faqReturnsAndRefunds', 'https://joulesuk.zendesk.com/hc/en-gb/sections/1-Returns')).toBe('joulesuk.zendesk.com');
+    expect(leftTheSite('https://www.next.co.uk/', 'https://nextdoor.co.uk/')).toBe('nextdoor.co.uk');
+  });
+});
+
+describe('what a candidate\'s reading came to', () => {
+  const page = (sentences: string[], unreadable?: string) => ({ sentences, unreadable });
+
+  it('is read when any page it reached states a period, even past a refusing homepage', () => {
+    // The listed help page answered, the homepage was not needed.
+    expect(candidateStatus(null, [page(['Return within 28 days.'])])).toBe('read');
+    const blocked = page([], 'blocked by the site');
+    expect(candidateStatus(blocked, [blocked, page(['Return within 28 days.'])])).toBe('read');
+  });
+
+  it('says which step failed when nothing states a period', () => {
+    const home = page([]);
+    expect(candidateStatus(home, [home])).toBe('no returns link found');
+    expect(candidateStatus(home, [home, page([])])).toBe('no window found');
+    // A listed page that loaded but said nothing, behind a homepage that refused.
+    const blocked = page([], 'blocked by the site');
+    expect(candidateStatus(blocked, [blocked, page([])])).toBe('no window found');
+  });
+
+  it('is unreadable only when no page could be read, naming each refusal once', () => {
+    const blocked = page([], 'blocked by the site');
+    expect(candidateStatus(blocked, [blocked])).toBe('unreadable: blocked by the site');
+    expect(candidateStatus(blocked, [page([], 'HTTP 404'), blocked, page([], 'HTTP 404')])).toBe('unreadable: HTTP 404; blocked by the site');
   });
 });
 
