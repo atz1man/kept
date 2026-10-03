@@ -715,6 +715,25 @@ describe('what an order email actually looks like', () => {
     }
   });
 
+  describe('"delivered today", read against the email, never the paste', () => {
+    const order = (header: string, line: string) =>
+      `${header}Your Amazon.co.uk package\nOrdered on 14 August 2026\n${line}\nOrder Total: £25.99`;
+
+    it('takes "today" and "yesterday" from the email\'s own Date: or Sent: line', () => {
+      expect(parse(order('From: Amazon.co.uk <a@amazon.co.uk>\nSubject: Delivered\nDate: 20 August 2026 at 14:03:11 BST\n\n', 'Delivered today')).arrivedOn).toBe('2026-08-20');
+      expect(parse(order('---------- Forwarded message ---------\nFrom: Amazon.co.uk\nDate: Thu, 20 Aug 2026 at 10:12\n\n', 'Your package was delivered yesterday')).arrivedOn).toBe('2026-08-19');
+      expect(parse(order('From: Amazon.co.uk\nSent: 20 August 2026 18:44\nTo: Sam\n\n', 'Delivered today')).arrivedOn).toBe('2026-08-20');
+    });
+
+    it('reads nothing without the email\'s header: the day of pasting is not the day it came', () => {
+      // Pasted on the 28th, an email saying "today" about the 20th would have
+      // moved the deadline eight days later than the real one.
+      expect(parse(order('', 'Delivered today')).arrivedOn).toBeNull();
+      // An order email's own "Date:" line is the ORDER, not the email.
+      expect(parse(order('Date: 22/08/2026\n', 'Delivered today')).arrivedOn).toBeNull();
+    });
+  });
+
   it('still reads a total that mentions VAT in passing', () => {
     expect(money(parse('Currys\nTotal (inc. VAT) £204.99').amount!)).toBe('£204.99');
   });
