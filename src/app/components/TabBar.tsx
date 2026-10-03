@@ -13,7 +13,7 @@ interface Props {
 /**
  * Which tab you are on, said twice.
  *
- * It was the pale fill alone: `yellowLight` against the bar's near-cream
+ * It was the pale fill alone: the tint against the bar
  * measures **1.28:1**, where WCAG 2.1 SC 1.4.11 asks 3:1 of a state
  * indicator — and this is the app's only navigation. It also disappeared
  * entirely under forced colours, where a background is replaced by the
@@ -35,9 +35,12 @@ const tab = (active: boolean) => ({
   flexDirection: 'column' as const,
   alignItems: 'center',
   gap: 2,
-  borderRadius: 999,
-  background: active ? color.yellowLight : 'transparent',
-  ...(active ? { border: `1.5px solid ${color.ink}` } : {}),
+  borderRadius: 12,
+  background: active ? color.accentSoft : 'transparent',
+  color: active ? color.accentInk : color.muted,
+  // The accent border carries the state at 5.9:1 against the bar; the tint
+  // alone does not (tokens.test.ts says which).
+  ...(active ? { border: `1.5px solid ${color.accent}` } : {}),
   width: 'auto',
   position: 'relative' as const,
   // Allowed to shrink. A flex item will not go below its content width
@@ -60,8 +63,8 @@ const tab = (active: boolean) => ({
  * resort — and a truncated label you can still tap beats a tab off the screen.
  */
 const label = {
-  fontSize: 10,
-  fontWeight: 700,
+  fontSize: 10.5,
+  fontWeight: 600,
   maxWidth: '100%',
   overflow: 'hidden',
   textOverflow: 'ellipsis' as const,
@@ -77,35 +80,33 @@ export function TabBar({ screen, alert, onGo }: Props) {
     <nav
       aria-label="Main"
       style={{
+        /*
+         * Docked to the bottom edge, full width, the way a phone's own apps
+         * do it. It used to float as a pill 24px above the edge with a hard
+         * ink shadow, which read as a toy and also sat on top of whatever
+         * was last on the screen. The home indicator owns roughly the bottom
+         * 34px of an iPhone, so the bar's own padding grows by that inset.
+         */
         position: 'absolute',
-        // The home indicator owns roughly the bottom 34px of an iPhone, and
-        // this is the app's ONLY navigation. `UpgradeNotice` already sits at
-        // `84px + inset` — a sum that only clears the bar if the bar moves up
-        // by the inset too, which it did not. So on any device with an
-        // indicator the tab bar sat partly underneath it while the notice
-        // floated a full inset too high. Zero everywhere else, so the web is
-        // pixel-identical.
-        bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
-        left: '50%',
-        transform: 'translateX(-50%)',
+        bottom: 0,
+        left: 0,
+        right: 0,
         display: 'flex',
         alignItems: 'center',
-        gap: 2,
-        padding: 6,
-        // Never wider than the screen it floats over, whatever the text size.
-        maxWidth: 'calc(100% - 16px)',
+        justifyContent: 'space-around',
+        gap: 4,
+        padding: '6px 10px calc(6px + env(safe-area-inset-bottom, 0px))',
         boxSizing: 'border-box',
-        borderRadius: 999,
-        background: 'rgba(253,250,241,0.88)',
+        background: 'rgba(255,255,255,0.94)',
         backdropFilter: 'blur(16px) saturate(160%)',
         WebkitBackdropFilter: 'blur(16px) saturate(160%)',
-        border: `1.5px solid ${color.ink}`,
-        boxShadow: shadow.tab,
+        borderTop: `1px solid ${color.border}`,
+        boxShadow: shadow.bar,
         zIndex: 30,
       }}
     >
       <Pressable className={onReceipts ? 'k-tab k-tab-on' : 'k-tab'} style={tab(onReceipts)} aria-current={onReceipts ? 'page' : undefined} onClick={() => onGo('home')}>
-        <ReceiptGlyph />
+        <ReceiptGlyph stroke={onReceipts ? color.accentInk : color.muted} />
         <span style={label}>Receipts</span>
       </Pressable>
 
@@ -129,7 +130,7 @@ export function TabBar({ screen, alert, onGo }: Props) {
             style={{ position: 'absolute', top: 4, right: 8, width: 7, height: 7, borderRadius: 999, background: color.danger, border: `1px solid ${color.danger}` }}
           />
         )}
-        <BellGlyph />
+        <BellGlyph stroke={screen === 'watch' ? color.accentInk : color.muted} />
         <span style={label}>Watch</span>
       </Pressable>
 
@@ -138,16 +139,16 @@ export function TabBar({ screen, alert, onGo }: Props) {
         aria-label="Add a receipt"
         onClick={() => onGo('add')}
         style={{
-          width: 46, height: 46, borderRadius: 999, background: color.yellow,
-          border: `1.5px solid ${color.ink}`, display: 'flex', alignItems: 'center',
-          justifyContent: 'center', margin: '0 4px', flexShrink: 0,
+          width: 44, height: 44, borderRadius: 999, background: color.accent,
+          border: 0, display: 'flex', alignItems: 'center',
+          justifyContent: 'center', margin: '0 6px', flexShrink: 0,
         }}
       >
         <PlusGlyph />
       </Pressable>
 
       <Pressable className={screen === 'settings' ? 'k-tab k-tab-on' : 'k-tab'} style={tab(screen === 'settings')} aria-current={screen === 'settings' ? 'page' : undefined} onClick={() => onGo('settings')}>
-        <GearGlyph />
+        <GearGlyph stroke={screen === 'settings' ? color.accentInk : color.muted} />
         <span style={label}>Settings</span>
       </Pressable>
     </nav>

@@ -157,7 +157,7 @@ await shoot('paste-an-order-email');
   await sp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
   await sp.getByRole('button', { name: 'Add a receipt' }).click();
   await sp.getByRole('button', { name: /Scan a paper receipt/ }).click();
-  const read = await sp.getByText('READ FROM YOUR PHOTO').waitFor({ timeout: 90_000 }).then(() => true).catch(() => false);
+  const read = await sp.getByText('Read from your photo', { exact: true }).waitFor({ timeout: 90_000 }).then(() => true).catch(() => false);
   if (!read) {
     console.error('✗ the scan never produced a card, so there is no scan screenshot to take');
     await browser.close();
@@ -165,7 +165,7 @@ await shoot('paste-an-order-email');
     process.exit(1);
   }
   // The card, not the paste box above it: that is the moment before Save.
-  await sp.getByText('READ FROM YOUR PHOTO').scrollIntoViewIfNeeded();
+  await sp.getByText('Read from your photo', { exact: true }).scrollIntoViewIfNeeded();
   await sp.evaluate(() => window.scrollBy(0, -24));
   await sp.waitForTimeout(400);
   const path = `${OUT}/${String(shots.length + 1).padStart(2, '0')}-scan-a-till-receipt.png`;

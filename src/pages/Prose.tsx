@@ -8,7 +8,7 @@ import { color, font } from '../tokens';
  */
 export function ProsePage({ title, lede, children }: { title: string; lede: ReactNode; children: ReactNode }) {
   return (
-    <main style={{ background: color.cream, color: color.ink, fontFamily: font.ui, minHeight: '100vh' }}>
+    <main style={{ background: color.canvas, color: color.ink, fontFamily: font.ui, minHeight: '100vh' }}>
       <div style={{ maxWidth: 680, margin: '0 auto', padding: '44px 20px 80px' }}>
         <a href="/" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, fontFamily: font.display, fontWeight: 700, fontSize: 18, color: color.ink, textDecoration: 'none' }}>
           ← kept.

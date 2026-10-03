@@ -59,7 +59,7 @@ interface Props {
   splitFromReceipt: Receipt | null;
 }
 
-const cardLabel = { fontSize: 11, fontWeight: 700, letterSpacing: '1.4px', color: color.muted } as const;
+const cardLabel = { fontSize: 13, fontWeight: 600, color: color.muted } as const;
 
 export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onSetCredit, onCreditSpent, onArrived, onFaultSent, onFaultUnsent, onCancelSent, onCancelUnsent, onExchange, onUnexchange, onDelete, onSplit, onUnsplit, splitFromReceipt }: Props) {
   const [legalOpen, setLegalOpen] = useState(true);
@@ -89,9 +89,11 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
    */
   const settled = receipt.status !== 'active';
   const ringOffset = settled ? '0' : (RING_CIRCUMFERENCE * (1 - remaining)).toFixed(1);
+  // On the white card now: red when it is close or gone, the accent when it
+  // is coming up, ink otherwise; grey once settled.
   const ringColor = settled
-    ? color.faint
-    : d.expired ? color.onInkDanger : u.level === 'critical' ? color.onInkDanger : u.level === 'soon' ? color.yellow : color.cream;
+    ? color.muted
+    : d.expired ? color.danger : u.level === 'critical' ? color.danger : u.level === 'soon' ? color.accent : color.ink;
 
   const dispatchDiffers = receipt.windowStartsOn && receipt.windowStartsOn !== receipt.purchasedOn;
   // The table, not the receipt: which clock a shop runs is not something a
@@ -125,7 +127,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
           onClick={onBack}
           style={{
             display: 'inline-flex', width: 'auto', alignItems: 'center', gap: 6, padding: '9px 15px 9px 11px',
-            background: color.white, border: `1.5px solid ${color.ink}`, borderRadius: 999,
+            background: color.white, border: `1px solid ${color.border}`, borderRadius: 999,
             fontSize: 13, fontWeight: 700,
           }}
         >
@@ -145,7 +147,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
         </Pressable>
       </div>
 
-      <div style={{ background: color.ink, color: color.cream, borderRadius: radius.hero, padding: '22px 20px', boxShadow: shadow.lift }}>
+      <div style={{ background: color.white, color: color.ink, borderRadius: radius.hero, padding: '20px 20px', border: `1px solid ${color.borderHair}`, boxShadow: shadow.raisedLg }}>
         {/*
           * The amount gets its own line rather than the name getting none.
           *
@@ -166,14 +168,14 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ minWidth: 0, flex: '1 1 60%' }}>
             <h1 tabIndex={-1} style={{ fontSize: 21, fontWeight: 700, margin: 0 }}>{receipt.store}</h1>
-            <div style={{ fontSize: 13, color: color.faint, marginTop: 3 }}>{receipt.item}</div>
+            <div style={{ fontSize: 14, color: color.muted, marginTop: 3 }}>{receipt.item}</div>
             {receipt.orderRef && (
-              <div style={{ fontSize: 12, color: color.faint, marginTop: 3, fontFamily: font.figures, userSelect: 'text', overflowWrap: 'anywhere' }}>
+              <div style={{ fontSize: 12.5, color: color.muted, marginTop: 3, fontFamily: font.figures, userSelect: 'text', overflowWrap: 'anywhere' }}>
                 Order {receipt.orderRef}
               </div>
             )}
           </div>
-          <div style={{ fontFamily: font.figures, fontSize: 26, fontWeight: 700, color: color.yellow }}>
+          <div style={{ fontFamily: font.figures, fontSize: 26, fontWeight: 700, color: color.ink }}>
             {money(receipt.amount)}
           </div>
         </div>
@@ -181,7 +183,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginTop: 20 }}>
           <div style={{ position: 'relative', width: 92, height: 92, flexShrink: 0 }}>
             <svg width="92" height="92" viewBox="0 0 92 92" style={{ transform: 'rotate(-90deg)' }} aria-hidden="true">
-              <circle cx="46" cy="46" r="40" fill="none" stroke={color.onInkBorder} strokeWidth="7" />
+              <circle cx="46" cy="46" r="40" fill="none" stroke={color.surfaceAlt} strokeWidth="7" />
               <circle
                 cx="46" cy="46" r="40" fill="none" stroke={ringColor} strokeWidth="7" strokeLinecap="round"
                 strokeDasharray={RING_CIRCUMFERENCE} strokeDashoffset={ringOffset}
@@ -194,17 +196,17 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               <div style={{ fontFamily: font.figures, fontSize: settled || d.expired ? 15 : 22, fontWeight: 700, lineHeight: 1, color: ringColor }}>
                 {receipt.status === 'returned' ? 'back' : receipt.status === 'kept' ? 'kept' : receipt.status === 'sent' ? 'sent' : d.expired ? 'closed' : d.daysLeft}
               </div>
-              {!settled && !d.expired && <div style={{ fontSize: 10, color: color.faint, marginTop: 2 }}>days left</div>}
+              {!settled && !d.expired && <div style={{ fontSize: 11, color: color.muted, marginTop: 2 }}>days left</div>}
             </div>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 11, letterSpacing: '1.6px', color: color.faint, fontWeight: 600 }}>
-              {settled ? 'THE WINDOW RAN TO' : d.expired ? 'WINDOW CLOSED' : 'RETURN BY'}
+            <div style={{ fontSize: 13, color: color.muted, fontWeight: 600 }}>
+              {settled ? 'The window ran to' : d.expired ? 'Window closed' : 'Return by'}
             </div>
             <div style={{ fontFamily: font.figures, fontSize: 24, fontWeight: 700, marginTop: 4 }}>
               {deadlineText}
             </div>
-            <div style={{ fontSize: 12, color: color.faint, marginTop: 6 }}>
+            <div style={{ fontSize: 13, color: color.muted, marginTop: 6 }}>
               {settled ? `${receipt.windowDays}-day window · bought ${boughtText}` : `${d.daysUsed} of ${receipt.windowDays} days used · bought ${boughtText}`}
             </div>
           </div>
@@ -213,7 +215,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
             with IKEA's year, the first thing to go is the 30-day right to
             reject, and nothing said so. */}
         {firstClock && (
-          <div style={{ fontSize: 13, lineHeight: 1.45, color: color.onInkBody, marginTop: 14, paddingTop: 12, borderTop: `1px dashed ${color.onInkDash}` }}>
+          <div style={{ fontSize: 13.5, lineHeight: 1.45, color: color.body, marginTop: 14, paddingTop: 12, borderTop: `1px solid ${color.borderHair}` }}>
             {firstToCloseLine(firstClock)}
           </div>
         )}
@@ -223,7 +225,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
         <div style={{ padding: '16px 18px 14px' }}>
           <ReceiptPhoto receiptId={receipt.id} />
 
-          <div style={cardLabel}>STORE POLICY</div>
+          <div style={cardLabel}>Store policy</div>
           <div style={{ fontSize: 14, marginTop: 5, lineHeight: 1.5, color: color.bodyStrong }}>{receipt.policy}</div>
           {/* Where that sentence came from, said under it: read off the shop's
               own page on a day, or not yet. The words a person repeats at a
@@ -245,15 +247,15 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               href={returnsPage.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="k-ink"
+              className="k-cta-yellow"
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 12,
-                minHeight: 44, padding: '10px 16px', borderRadius: 999, background: color.ink, color: color.cream,
+                minHeight: 44, padding: '10px 16px', borderRadius: 12, background: color.accent, color: color.white,
                 textDecoration: 'none', fontSize: 14, fontWeight: 700,
               }}
             >
               <span>Start your return</span>
-              <span style={{ fontSize: 12.5, fontWeight: 600, color: color.faint }}>{returnsPage.host}<span aria-hidden="true"> ↗</span></span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: color.accentSoft }}>{returnsPage.host}<span aria-hidden="true"> ↗</span></span>
             </a>
           )}
           {dispatchDiffers && (
@@ -281,7 +283,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               plausibly still be coming. The order email is when most people
               add a receipt, and it arrives before the parcel does. */}
           {awaitingArrival(receipt, today) && (
-            <div data-arrival style={{ marginTop: 12, padding: 14, background: color.creamAlt, border: `1.5px solid ${color.borderHair}`, borderRadius: 14 }}>
+            <div data-arrival style={{ marginTop: 12, padding: 14, background: color.surfaceAlt, border: `1.5px solid ${color.borderHair}`, borderRadius: 14 }}>
               <div style={{ fontWeight: 700, fontSize: 14.5 }}>Has it arrived?</div>
               <div style={{ fontSize: 13, lineHeight: 1.5, marginTop: 3, color: color.body }}>
                 {clockStart === 'delivery'
@@ -292,7 +294,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
                 <Pressable
                   className="k-cta-yellow"
                   onClick={onArrived}
-                  style={{ flex: '1 1 auto', width: 'auto', padding: 12, textAlign: 'center', background: color.yellow, border: `1.5px solid ${color.ink}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+                  style={{ flex: '1 1 auto', width: 'auto', padding: 12, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
                 >
                   It arrived today
                 </Pressable>
@@ -319,8 +321,8 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
             aria-expanded={legalOpen}
             style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', minWidth: 0 }}
           >
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1.4px', color: color.amber }}>
-              {rights.length > 1 ? 'YOUR LEGAL RIGHTS' : 'YOUR LEGAL RIGHT'}
+            <span style={{ fontSize: 13, fontWeight: 600, color: color.accentInk }}>
+              {rights.length > 1 ? 'Your legal rights' : 'Your legal right'}
             </span>
             {/* One chip per right. A distance purchase carries two, and which
                 statute each comes from is the part someone repeats at a
@@ -328,7 +330,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
             {rights.map((right) => (
               <span
                 key={right.chip}
-                style={{ fontSize: 10, fontWeight: 700, background: color.yellowLight, padding: '2px 8px', borderRadius: 999 }}
+                style={{ fontSize: 10, fontWeight: 700, background: color.accentSoft, padding: '2px 8px', borderRadius: 999 }}
               >
                 {right.chip}
               </span>
@@ -348,7 +350,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
 
         {asksForGuarantee(receipt) && (
           <div style={{ borderTop: `1.5px solid ${color.borderHair}`, padding: '15px 18px' }}>
-            <div style={cardLabel}>WARRANTY</div>
+            <div style={cardLabel}>Warranty</div>
             <div style={{ fontSize: 14, marginTop: 5, lineHeight: 1.5, color: color.bodyStrong }}>
               None recorded. Most electricals and furniture come with one — add its length and Kept counts it down
               beside the return window.
@@ -366,7 +368,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
         {receipt.warranty && (
           <div style={{ borderTop: `1.5px solid ${color.borderHair}`, padding: '15px 18px' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
-              <div style={cardLabel}>WARRANTY</div>
+              <div style={cardLabel}>Warranty</div>
               {/* The clock, not a sentence about one. The question a warranty
                   has to answer is "is the repair free today?", and prose could
                   not answer it. */}
@@ -374,7 +376,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
                 <div
                   style={{
                     fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999,
-                    background: d.warranty.expired ? color.creamAlt : color.yellowLight,
+                    background: d.warranty.expired ? color.surfaceAlt : color.accentSoft,
                     color: d.warranty.expired ? color.body : color.ink,
                   }}
                 >
@@ -402,7 +404,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
       {(receipt.status === 'active' || receipt.status === 'kept') && <FaultPanel receipt={receipt} today={today} onSent={onFaultSent} onUnsent={onFaultUnsent} />}
 
       {receipt.gotcha && (
-        <div style={{ display: 'flex', gap: 10, background: color.yellowLight, border: `1.5px solid ${color.ink}`, borderRadius: 16, padding: '14px 16px', marginTop: 12 }}>
+        <div style={{ display: 'flex', gap: 10, background: color.accentSoft, border: `1px solid ${color.border}`, borderRadius: 16, padding: '14px 16px', marginTop: 12 }}>
           <Warning />
           <div style={{ fontSize: 13, lineHeight: 1.5 }}>
             <strong>Gotcha:</strong> {receipt.gotcha}
@@ -418,7 +420,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               year, and it is the only fact a returned receipt carries that is
               not already on the row. */}
           {receipt.exchanged ? (
-            <div data-swapped style={{ marginTop: 16, padding: 15, textAlign: 'center', background: color.yellowLight, border: `1.5px solid ${color.ink}`, borderRadius: 16, fontWeight: 700 }}>
+            <div data-swapped style={{ marginTop: 16, padding: 15, textAlign: 'center', background: color.accentSoft, border: `1px solid ${color.border}`, borderRadius: 16, fontWeight: 700 }}>
               Swapped for another{returnedText ? ` on ${returnedText}` : ''} ✓
             </div>
           ) : (
@@ -460,7 +462,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
             <Pressable
               className="k-cta-yellow"
               onClick={onReturn}
-              style={{ flex: 1, padding: 16, textAlign: 'center', background: color.yellow, border: `1.5px solid ${color.ink}`, borderRadius: 999, fontWeight: 700, fontSize: 15, boxShadow: shadow.hard }}
+              style={{ flex: 1, padding: 16, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: 999, fontWeight: 700, fontSize: 15, boxShadow: shadow.raised }}
             >
               Got my money back
             </Pressable>
@@ -477,7 +479,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
         <>
           {/* Settled without a refund. The reminders stop; the rights set out
               above do not, which is the reason to keep the receipt at all. */}
-          <div style={{ marginTop: 16, padding: 15, background: color.creamAlt, border: `1.5px solid ${color.border}`, borderRadius: 16 }}>
+          <div style={{ marginTop: 16, padding: 15, background: color.surfaceAlt, border: `1.5px solid ${color.border}`, borderRadius: 16 }}>
             <div style={{ fontWeight: 700 }}>
               Keeping it{receipt.keptOn ? ` · since ${fmtDateLong(fromISODate(receipt.keptOn))}` : ''}
             </div>
@@ -565,7 +567,7 @@ function RefundPanel({ receipt, returnedText, onSetRefund }: {
   const [editing, setEditing] = useState(false);
   const got = refundOf(receipt);
   return (
-    <div style={{ marginTop: 16, padding: 15, textAlign: 'center', background: color.yellowLight, border: `1.5px solid ${color.ink}`, borderRadius: 16 }}>
+    <div style={{ marginTop: 16, padding: 15, textAlign: 'center', background: color.accentSoft, border: `1px solid ${color.border}`, borderRadius: 16 }}>
       <div style={{ fontWeight: 700 }}>
         {receipt.credit ? `Store credit · ${money(got)} at ${receipt.store}` : `Money back · ${money(got)} recovered`}
         {returnedText ? ` on ${returnedText}` : ''} ✓
@@ -656,7 +658,7 @@ function ReturnRefField({ receipt, onSetReturnRef }: { receipt: Receipt; onSetRe
           className="k-cta-yellow"
           onClick={save}
           disabled={!!error}
-          style={{ flex: 1, padding: 12, textAlign: 'center', background: color.yellow, border: `1.5px solid ${color.ink}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+          style={{ flex: 1, padding: 12, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
         >
           Save
         </Pressable>
@@ -799,7 +801,7 @@ function ActiveActions({ distance, onReturn, onSend, onKeep }: {
   onSend: () => void;
   onKeep: () => void;
 }) {
-  const primary = { flex: 1, padding: 16, textAlign: 'center', background: color.yellow, border: `1.5px solid ${color.ink}`, borderRadius: 999, fontWeight: 700, fontSize: 15, boxShadow: shadow.hard } as const;
+  const primary = { flex: 1, padding: 16, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: 999, fontWeight: 700, fontSize: 15, boxShadow: shadow.raised } as const;
   const secondary = { flex: '1 1 140px', padding: 15, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 } as const;
   const sent = { label: 'I’ve sent it back', onClick: onSend };
   const back = { label: 'Got my money back', onClick: onReturn };

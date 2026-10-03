@@ -29,7 +29,7 @@ const CACHE = 'kept-__BUILD_ID__';
  * hard-coded list would poison the cache. They are picked up at runtime
  * instead, on the first online load.
  */
-const SHELL = ['/app/', '/manifest.webmanifest', '/icons/icon.svg', '/fonts/space-grotesk.woff2', '/fonts/instrument-sans.woff2'];
+const SHELL = ['/app/', '/manifest.webmanifest', '/icons/icon.svg', '/fonts/instrument-sans.woff2'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

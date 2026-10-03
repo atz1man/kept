@@ -70,7 +70,7 @@ export class Recovery extends Component<{ children: ReactNode }, State> {
       <main
         style={{
           minHeight: '100dvh', display: 'flex', flexDirection: 'column', justifyContent: 'center',
-          gap: 14, padding: '28px 22px', background: color.cream, color: color.ink,
+          gap: 14, padding: '28px 22px', background: color.canvas, color: color.ink,
           fontFamily: font.ui,
         }}
       >
@@ -85,8 +85,8 @@ export class Recovery extends Component<{ children: ReactNode }, State> {
           type="button"
           onClick={() => void this.rescue()}
           style={{
-            padding: '14px 18px', borderRadius: radius.pill, border: `1.5px solid ${color.ink}`,
-            background: color.yellow, color: color.ink, fontWeight: 700, fontSize: 14.5, cursor: 'pointer',
+            padding: '14px 18px', borderRadius: radius.pill, border: 0,
+            background: color.accent, color: color.white, fontWeight: 700, fontSize: 14.5, cursor: 'pointer',
           }}
         >
           Save my receipts to a file
@@ -118,7 +118,7 @@ export class Recovery extends Component<{ children: ReactNode }, State> {
           type="button"
           onClick={() => window.location.reload()}
           style={{
-            padding: '13px 18px', borderRadius: radius.pill, border: `1.5px solid ${color.ink}`,
+            padding: '13px 18px', borderRadius: radius.pill, border: `1px solid ${color.border}`,
             background: color.white, color: color.ink, fontWeight: 700, fontSize: 14, cursor: 'pointer',
           }}
         >

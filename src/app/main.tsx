@@ -20,7 +20,7 @@ function Shell() {
     <div
       style={{
         minHeight: '100dvh',
-        background: `radial-gradient(900px 700px at 50% -10%, ${color.creamWarm}, ${color.creamDeep} 70%)`,
+        background: `radial-gradient(900px 700px at 50% -10%, ${color.surfaceHover}, ${color.surfaceDeep} 70%)`,
         display: 'flex',
         justifyContent: 'center',
       }}
@@ -32,7 +32,7 @@ function Shell() {
           height: '100dvh',
           position: 'relative',
           overflow: 'hidden',
-          boxShadow: '0 0 0 1px rgba(23,20,16,0.08)',
+          boxShadow: '0 0 0 1px rgba(20,22,26,0.08)',
         }}
       >
         <Recovery>

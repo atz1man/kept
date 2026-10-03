@@ -22,8 +22,8 @@ export function HowBought({ id, value, onChange }: { id: string; value: boolean;
 
   return (
     <div style={{ marginTop: 14 }}>
-      <div id={`${id}-label`} style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.6px', color: color.muted, marginBottom: 6 }}>
-        WHERE DID YOU BUY IT?
+      <div id={`${id}-label`} style={{ fontSize: 13, fontWeight: 600, color: color.bodyStrong, marginBottom: 6 }}>
+        Where did you buy it?
       </div>
       <div role="radiogroup" aria-labelledby={`${id}-label`} style={{ display: 'flex', gap: 8, minWidth: 0 }}>
         {options.map((option) => {
@@ -40,7 +40,7 @@ export function HowBought({ id, value, onChange }: { id: string; value: boolean;
                 padding: '11px 10px',
                 borderRadius: radius.card,
                 border: `1.5px solid ${selected ? color.ink : color.border}`,
-                background: selected ? color.yellowLight : color.white,
+                background: selected ? color.accentSoft : color.white,
                 fontSize: 14,
                 fontWeight: 700,
                 color: color.ink,

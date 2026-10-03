@@ -23,8 +23,8 @@ export function SaveFailedBanner({ onExport }: { onExport: () => void }) {
         alignItems: 'flex-start',
         gap: 10,
         background: color.ink,
-        color: color.cream,
-        border: `1.5px solid ${color.ink}`,
+        color: color.canvas,
+        border: `1px solid ${color.border}`,
         borderRadius: 16,
         boxShadow: shadow.lift,
       }}
@@ -40,8 +40,8 @@ export function SaveFailedBanner({ onExport }: { onExport: () => void }) {
           className="k-cta-yellow"
           onClick={onExport}
           style={{
-            width: 'auto', marginTop: 10, padding: '9px 16px', background: color.yellow,
-            color: color.ink, borderRadius: 999, fontWeight: 700, fontSize: 13,
+            width: 'auto', marginTop: 10, padding: '9px 16px', background: color.accent, color: color.white,
+            borderRadius: 999, fontWeight: 700, fontSize: 13,
           }}
         >
           Export a backup

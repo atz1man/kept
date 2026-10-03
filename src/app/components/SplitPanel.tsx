@@ -48,7 +48,7 @@ export function SplitPanel({ receipt, onSplit }: { receipt: Receipt; onSplit: (i
             setTried(true);
             if (read.ok) onSplit(read.item, read.pence);
           }}
-          style={{ flex: '1 1 120px', padding: 12, textAlign: 'center', background: color.yellow, border: `1.5px solid ${color.ink}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+          style={{ flex: '1 1 120px', padding: 12, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
         >
           Split it out
         </Pressable>

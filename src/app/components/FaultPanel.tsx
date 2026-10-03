@@ -54,7 +54,7 @@ export function FaultPanel({ receipt, today, onSent, onUnsent }: {
           {/* Once it has gone: when, and the reply the letter itself asked for.
               The fortnight is the letter's ask, not the law's. */}
           {claim && (
-            <div data-fault-sent style={{ marginTop: 12, padding: 12, background: color.creamAlt, border: `1.5px solid ${color.borderHair}`, borderRadius: 12, fontSize: 13.5, lineHeight: 1.5, color: color.body }}>
+            <div data-fault-sent style={{ marginTop: 12, padding: 12, background: color.surfaceAlt, border: `1.5px solid ${color.borderHair}`, borderRadius: 12, fontSize: 13.5, lineHeight: 1.5, color: color.body }}>
               Sent on {fmtDateLong(fromISODate(claim.sentOn))}, asking {receipt.store} to reply by{' '}
               {fmtDateLong(addDays(fromISODate(claim.sentOn), REPLY_DAYS))}.
               {daysBetween(fromISODate(claim.sentOn), today) >= REPLY_DAYS &&

@@ -16,22 +16,22 @@ const frame = { width: '100%', height: '100%', viewBox: '0 0 400 220', preserveA
 export function HaulArt() {
   return (
     <svg {...frame} role="img" aria-label="Five shopping bags, each with its own return clock already running">
-      <rect width="400" height="220" fill={color.creamAlt} />
+      <rect width="400" height="220" fill={color.surfaceAlt} />
       {[
         { x: 34, w: 62, h: 78, fill: color.white },
-        { x: 110, w: 74, h: 96, fill: color.yellowLight },
+        { x: 110, w: 74, h: 96, fill: color.accentSoft },
         { x: 198, w: 58, h: 70, fill: color.white },
-        { x: 268, w: 80, h: 104, fill: color.yellow },
+        { x: 268, w: 80, h: 104, fill: color.accent },
       ].map((b, i) => (
         <g key={i} transform={`translate(${b.x} ${190 - b.h})`}>
-          <rect width={b.w} height={b.h} rx="4" fill={b.fill} stroke={color.ink} strokeWidth="1.8" />
-          <path d={`M${b.w * 0.3} 0 v-12 a${b.w * 0.2} 12 0 0 1 ${b.w * 0.4} 0 v12`} fill="none" stroke={color.ink} strokeWidth="1.8" />
+          <rect width={b.w} height={b.h} rx="4" fill={b.fill} stroke={color.ink} strokeWidth="1.1" />
+          <path d={`M${b.w * 0.3} 0 v-12 a${b.w * 0.2} 12 0 0 1 ${b.w * 0.4} 0 v12`} fill="none" stroke={color.ink} strokeWidth="1.1" />
           <path d={`M10 ${b.h * 0.45} h${b.w - 20}`} stroke={color.ink} strokeWidth="1.4" opacity="0.3" />
         </g>
       ))}
       {[70, 150, 230, 312].map((cx, i) => (
         <g key={cx} transform={`translate(${cx} 42)`}>
-          <circle r="14" fill={color.cream} stroke={color.ink} strokeWidth="1.6" />
+          <circle r="14" fill={color.canvas} stroke={color.ink} strokeWidth="1.1" />
           <path d="M0 -8V1l6 4" fill="none" stroke={i === 3 ? color.danger : color.ink} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </g>
       ))}
@@ -43,7 +43,7 @@ export function HaulArt() {
 export function LostReceiptsArt() {
   return (
     <svg {...frame} role="img" aria-label="A scattered pile of crumpled receipts">
-      <rect width="400" height="220" fill={color.ink} />
+      <rect width="400" height="220" fill={color.surfaceAlt} />
       {[
         { x: 26, y: 26, r: -22, o: 0.9 }, { x: 118, y: 12, r: 11, o: 0.55 },
         { x: 210, y: 34, r: -8, o: 0.75 }, { x: 300, y: 18, r: 17, o: 0.4 },
@@ -51,8 +51,8 @@ export function LostReceiptsArt() {
         { x: 246, y: 118, r: 6, o: 0.45 }, { x: 330, y: 132, r: -12, o: 0.7 },
       ].map((t, i) => (
         <g key={i} transform={`translate(${t.x} ${t.y}) rotate(${t.r}) scale(1.7)`} opacity={t.o}>
-          <path d={TICKET} fill="none" stroke={color.yellow} strokeWidth="1.3" />
-          <path d="M9 13h22M9 20h22M9 27h13" stroke={color.yellow} strokeWidth="1.2" strokeLinecap="round" opacity="0.6" />
+          <path d={TICKET} fill={color.white} stroke={color.muted} strokeWidth="0.9" />
+          <path d="M9 13h22M9 20h22M9 27h13" stroke={color.muted} strokeWidth="0.9" strokeLinecap="round" opacity="0.6" />
         </g>
       ))}
     </svg>
@@ -63,8 +63,8 @@ export function LostReceiptsArt() {
 export function FinePrintArt() {
   return (
     <svg {...frame} role="img" aria-label="A page of return-policy fine print, with one clause circled">
-      <rect width="400" height="220" fill={color.creamAlt} />
-      <rect x="58" y="16" width="284" height="200" rx="6" fill={color.white} stroke={color.ink} strokeWidth="1.8" />
+      <rect width="400" height="220" fill={color.surfaceAlt} />
+      <rect x="58" y="16" width="284" height="200" rx="6" fill={color.white} stroke={color.ink} strokeWidth="1.1" />
       {Array.from({ length: 16 }, (_, i) => (
         <rect
           key={i}
@@ -81,7 +81,7 @@ export function FinePrintArt() {
       <g transform="translate(292 156)">
         <circle r="30" fill="none" stroke={color.ink} strokeWidth="3.4" />
         <path d="M21 21l16 16" stroke={color.ink} strokeWidth="4" strokeLinecap="round" />
-        <circle r="30" fill={color.yellow} opacity="0.18" />
+        <circle r="30" fill={color.accent} opacity="0.18" />
       </g>
     </svg>
   );

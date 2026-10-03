@@ -67,7 +67,15 @@ describe('the bottom edge of an iPhone', () => {
 
   it.each(bottomAnchors().map((a) => [a.file, a.value] as const))(
     '%s anchors at %s, which accounts for the home indicator',
-    (_file, value) => {
+    (file, value) => {
+      // Docked flush to the edge is fine — that is how a phone's own tab bar
+      // sits — provided the element pads itself by the inset, so its content
+      // still clears the indicator. Floating above the edge has to add it.
+      if (value.trim() === '0') {
+        const text = readFileSync(join(ROOT, file), 'utf8');
+        expect(text, `${file} sits at 0 and must pad by the inset`).toMatch(/padding(?:Bottom)?:[^\n]*env\(safe-area-inset-bottom/);
+        return;
+      }
       expect(value).toMatch(/env\(safe-area-inset-bottom/);
     },
   );

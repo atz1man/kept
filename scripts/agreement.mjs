@@ -70,7 +70,7 @@ await page.waitForTimeout(500);
  * "89.002 days", and a greedy \d+ happily takes "002".
  */
 const readHero = () => page.evaluate(() => {
-  const label = [...document.querySelectorAll('span')].find((s) => s.textContent.trim() === 'NEXT WINDOW TO CLOSE');
+  const label = [...document.querySelectorAll('span')].find((s) => s.textContent.trim() === 'Next to close');
   const card = label?.closest('button');
   if (!card) return null;
   const spans = [...card.querySelectorAll('span')];
@@ -102,7 +102,7 @@ await page.waitForTimeout(400);
 const detail = await page.evaluate(() => {
   const svg = document.querySelector('svg[viewBox="0 0 92 92"]');
   const face = svg?.nextElementSibling;
-  const label = [...document.querySelectorAll('div')].find((d) => d.textContent.trim() === 'RETURN BY');
+  const label = [...document.querySelectorAll('div')].find((d) => d.textContent.trim() === 'Return by');
   return {
     days: face?.firstElementChild?.textContent?.trim() ?? null,
     returnBy: label?.nextElementSibling?.textContent?.trim() ?? null,
@@ -126,7 +126,7 @@ for (const shop of [/Zara, Wool-blend/, /Currys, JBL/]) {
   await page.getByRole('button', { name: shop }).click();
   await page.waitForTimeout(400);
   const returnBy = await page.evaluate(() => {
-    const label = [...document.querySelectorAll('div')].find((d) => d.textContent.trim() === 'RETURN BY');
+    const label = [...document.querySelectorAll('div')].find((d) => d.textContent.trim() === 'Return by');
     return label?.nextElementSibling?.textContent?.trim() ?? null;
   });
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
@@ -255,8 +255,8 @@ agree('receipts counted, by the meter and on the list', (meter.match(/^(\d+)/) ?
 const inApp = await page.evaluate(() => {
   const tiers = [...document.querySelectorAll('button')]
     .map((b) => b.textContent ?? '')
-    .filter((t) => /^£[\d.]+(monthly|yearly|lifetime)/.test(t.replace(/BEST VALUE/, '').trim()))
-    .map((t) => t.replace(/BEST VALUE/, '').trim());
+    .filter((t) => /^£[\d.]+(monthly|yearly|lifetime)/.test(t.replace(/Best value/, '').trim()))
+    .map((t) => t.replace(/Best value/, '').trim());
   const free = ([...document.querySelectorAll('span')]
     .map((s) => s.textContent ?? '')
     .find((t) => /of \d+ free receipts/.test(t)) ?? '').match(/of (\d+) free/)?.[1];
@@ -312,7 +312,7 @@ if (!TAGLINE) {
   disagreements.push({ what: 'lib/brand.ts no longer exports a TAGLINE this check can read', saw: [] });
 } else {
   for (const [where, text] of [['Settings', inApp.text], ['the landing page', onPage.text]]) {
-    if (!text.includes(TAGLINE.toLowerCase())) {
+    if (!text.toLowerCase().includes(TAGLINE.toLowerCase())) {
       disagreements.push({ what: `${where} does not say the tagline lib/brand.ts owns`, saw: [TAGLINE, where] });
     }
   }

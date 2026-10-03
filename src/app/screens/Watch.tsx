@@ -20,7 +20,7 @@ interface Props {
  * item is a headline for one person and an alarm for another, and only the
  * device knows which.
  */
-const sectionLabel = { fontSize: 11, fontWeight: 700, letterSpacing: '1.4px', color: color.muted, margin: '20px 4px 10px' } as const;
+const sectionLabel = { fontSize: 13, fontWeight: 600, color: color.muted, margin: '20px 4px 10px' } as const;
 
 /** "currys.co.uk" from the full address — the part a person recognises. */
 function hostOf(url: string): string {
@@ -52,7 +52,7 @@ export function Watch({ updates, receipts, today, watching, onOpen }: Props) {
       style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px' }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 2px 4px' }}>
-        <span className="k-pulse" style={{ width: 8, height: 8, borderRadius: 999, background: color.yellow }} />
+        <span className="k-pulse" style={{ width: 8, height: 8, borderRadius: 999, background: color.accent }} />
         <h1 tabIndex={-1} style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Watch</h1>
       </div>
 
@@ -61,7 +61,7 @@ export function Watch({ updates, receipts, today, watching, onOpen }: Props) {
           side, so "what do I have to do this month?" meant opening each one.
           And it is this tab's first content from day one: the policy feed
           below is samples until a real change is published. */}
-      <h2 style={sectionLabel}>COMING UP</h2>
+      <h2 style={sectionLabel}>Coming up</h2>
       {ahead.length === 0 ? (
         <p style={{ fontSize: 13.5, color: color.muted, margin: '0 2px', lineHeight: 1.5 }}>
           Nothing dated in the next {COMING_UP_DAYS} days.
@@ -100,7 +100,7 @@ export function Watch({ updates, receipts, today, watching, onOpen }: Props) {
         </ul>
       )}
 
-      <h2 style={sectionLabel}>POLICY CHANGES</h2>
+      <h2 style={sectionLabel}>Policy changes</h2>
       <p style={{ fontSize: 13, color: color.muted, padding: '0 2px 12px', margin: 0 }}>
         Shops rewrite the rules quietly. You hear about it first — and every receipt you hold is checked against
         the change.
@@ -122,7 +122,7 @@ export function Watch({ updates, receipts, today, watching, onOpen }: Props) {
                 {/* A sample carries no date. "2d ago" on an invented change is
                     the freshness claim that made it read as news; the sample
                     receipts say "sample" where it can be seen, and so do these. */}
-                <span style={{ fontSize: 10.5, fontWeight: 700, background: color.yellowLight, padding: '3px 9px', borderRadius: 999, whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: 10.5, fontWeight: 700, background: color.accentSoft, padding: '3px 9px', borderRadius: 999, whiteSpace: 'nowrap' }}>
                   {u.demo ? 'sample' : relativeAgo(fromISODate(u.changedOn), today)}
                 </span>
               </div>
@@ -142,7 +142,7 @@ export function Watch({ updates, receipts, today, watching, onOpen }: Props) {
               )}
               {affectsYou && (
                 <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1.5px dashed ${color.border}` }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.8px', color: color.amber }}>AFFECTS YOUR RECEIPTS</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: color.accentInk }}>Affects your receipts</div>
                   {/* Per receipt, not one line for the shop: what a change means
                       depends on the terms each purchase was made under. */}
                   {impacts.map((i) => (

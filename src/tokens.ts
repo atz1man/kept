@@ -4,57 +4,58 @@
  * literals live in a component file.
  */
 export const color = {
-  ink: '#171410',
+  /*
+   * Quiet utility. The first palette was cream paper, mustard fills and hard
+   * ink offsets — warm, and read as a toy by the people this app is for: an
+   * adult with £89 at stake wants a tool that looks like the bank app beside
+   * it. Near-white, near-black, one deep green for the thing to press, and
+   * red only when a deadline is close. Every pair below is measured by
+   * scripts/contrast.mjs and test/tokens.test.ts, not trusted.
+   */
+  ink: '#14161A',
   inkHover: '#000000',
 
-  cream: '#FDFAF1',
-  creamAlt: '#F3EFE3',
-  creamWarm: '#FFFBEE',
-  /** The deeper cream: the hero gradient's outer stop, and the soft hover. */
-  creamDeep: '#EDE8D8',
+  /** The page. Warm off-white, so white cards read as cards on it. */
+  canvas: '#F6F6F3',
+  /** Inputs, secondary buttons, quiet panels. 5.3:1 for `muted` on it. */
+  surfaceAlt: '#EEEEEA',
+  /** Row and button hover. */
+  surfaceHover: '#FAFAF8',
+  /** The deepest neutral: pressed states, the soft hover. */
+  surfaceDeep: '#E4E4DE',
   white: '#ffffff',
 
-  yellow: '#F2B90D',
-  yellowHover: '#E5AC00',
-  yellowLight: '#FBDD6E',
-  yellowLightHover: '#F8D24A',
-  /**
-   * Amber carries almost every small label in the product, and the handoff's
-   * #B98A00 measured 3.0:1 on cream and 2.7:1 on the secondary surface —
-   * below WCAG AA wherever it was actually used. Darkened until it clears
-   * 4.5:1 on all three light grounds (5.08 cream / 5.30 white / 4.61
-   * creamAlt). The brand's energy lives in the yellow FILLS, which are
-   * unchanged; this is the ink that has to be read.
-   */
-  amber: '#896600',
+  /** The one accent: the button to press, the current tab, the live dot. 6.4:1 under white text. */
+  accent: '#1F6B4E',
+  accentHover: '#185A41',
+  /** A tint of it for selected states and quiet highlights; never text on its own. */
+  accentSoft: '#E2F0E8',
+  accentSoftHover: '#D3E8DC',
+  /** The accent as small text: labels, links. 6.7:1 or better on every light ground. */
+  accentInk: '#1A5C43',
 
-  /** Nudged from the handoff's #7A7261, which fell to 4.14:1 on creamAlt. */
-  muted: '#746C5C',
-  /**
-   * Only legible on the INK surfaces (6.1:1 there). It measures under 3:1 on
-   * cream, so anything reading on a light ground uses `muted` instead — see
-   * scripts/contrast.mjs, which fails the build if that slips.
-   */
-  faint: '#9C9484',
-  fainter: '#B4AC9C',
-  body: '#4C463A',
-  bodyStrong: '#2E2A22',
-  onInkBody: '#D6CFC0',
-  /** Lifted from the handoff's #6B6455, which measured 3.13:1 on ink. */
-  onInkFaint: '#857E6F',
+  /** Secondary text. 4.9:1 on the deepest neutral, 6.2:1 on white. */
+  muted: '#5E6168',
+  /** Only legible on the INK surfaces (6.7:1 there). Under 3:1 on light grounds. */
+  faint: '#9A9DA3',
+  fainter: '#B4B7BC',
+  body: '#3B3E44',
+  bodyStrong: '#25282D',
+  onInkBody: '#D5D7DB',
+  onInkFaint: '#8B8E95',
 
-  danger: '#C13A27',
-  dangerDot: '#D8422E',
-  dangerChipBg: 'rgba(216,66,46,0.12)',
-  onInkDanger: '#FF9A76',
+  danger: '#B42318',
+  dangerDot: '#D92D20',
+  dangerChipBg: 'rgba(217,45,32,0.10)',
+  onInkDanger: '#FF9C8F',
 
-  border: 'rgba(23,20,16,0.12)',
-  borderHair: 'rgba(23,20,16,0.08)',
-  borderSoft: 'rgba(23,20,16,0.15)',
+  border: 'rgba(20,22,26,0.12)',
+  borderHair: 'rgba(20,22,26,0.07)',
+  borderSoft: 'rgba(20,22,26,0.15)',
   onInkBorder: 'rgba(255,255,255,0.12)',
   onInkBorderStrong: 'rgba(255,255,255,0.18)',
   onInkDash: 'rgba(255,255,255,0.16)',
-  rail: 'rgba(23,20,16,0.14)',
+  rail: 'rgba(20,22,26,0.14)',
 } as const;
 
 /**
@@ -76,38 +77,37 @@ export const color = {
  * missing, and a heading does not.
  */
 export const font = {
-  /** Headings and the wordmark. */
-  display: "'Space Grotesk', ui-sans-serif, system-ui, sans-serif",
-  /** Money, day counts, dates — anything whose digits should stay aligned. */
-  figures: "'Space Grotesk', ui-monospace, SFMono-Regular, monospace",
+  /** Headings and the wordmark: the same family as the text, at a heavier weight — no display face. */
+  display: "'Instrument Sans', system-ui, -apple-system, sans-serif",
+  /** Money, day counts, dates — set with tabular figures (see styles.css). */
+  figures: "'Instrument Sans', ui-sans-serif, system-ui, sans-serif",
   /** Body text and controls. */
   ui: "'Instrument Sans', system-ui, -apple-system, sans-serif",
 } as const;
 
 export const shadow = {
-  /** The signature hard offset — buttons and emphasised cards. */
-  hard: `3px 3px 0 ${color.ink}`,
-  hardLg: `4px 4px 0 ${color.ink}`,
-  /** Yellow offset, used under ink surfaces. */
-  yellow: `4px 4px 0 ${color.yellow}`,
-  yellowLg: `5px 5px 0 ${color.yellow}`,
-  yellowXl: `6px 6px 0 ${color.yellow}`,
-  /** The soft lift under the ink hero card. */
-  lift: '0 12px 32px rgba(23,20,16,0.22)',
-  tab: '4px 4px 0 rgba(23,20,16,0.9)',
+  /*
+   * Soft elevation only. The hard ink offsets were the loudest part of the
+   * old look; a card now sits on the page the way a card does in a bank app.
+   */
+  /** Buttons and emphasised cards. */
+  raised: '0 1px 2px rgba(20,22,26,0.06), 0 2px 8px rgba(20,22,26,0.06)',
+  raisedLg: '0 2px 4px rgba(20,22,26,0.06), 0 8px 24px rgba(20,22,26,0.08)',
+  /** The hero card and floating toasts. */
+  lift: '0 8px 28px rgba(20,22,26,0.12)',
+  /** The tab bar, from above. */
+  bar: '0 -1px 0 rgba(20,22,26,0.08)',
 } as const;
 
 export const radius = {
-  card: 18,
-  cardLg: 20,
-  hero: 24,
-  heroLg: 28,
+  card: 14,
+  cardLg: 16,
+  hero: 18,
+  heroLg: 20,
   pill: 999,
 } as const;
 
-/** The paper grain: 1px dots on a 5px grid, at 2.8% ink. */
+/** The page ground. Named for the paper grain it used to carry; now plain. */
 export const paperGrain = {
-  backgroundColor: color.cream,
-  backgroundImage: 'radial-gradient(rgba(23,20,16,0.028) 1px, transparent 1px)',
-  backgroundSize: '5px 5px',
+  backgroundColor: color.canvas,
 } as const;

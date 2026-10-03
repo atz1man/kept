@@ -56,8 +56,8 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
         aria-hidden="true"
         style={{
           position: 'absolute', inset: 0, display: 'flex', alignItems: 'center',
-          justifyContent: 'flex-end', paddingRight: 20, background: color.yellowLight,
-          border: `1.5px solid ${color.ink}`, borderRadius: radius.card,
+          justifyContent: 'flex-end', paddingRight: 20, background: color.accentSoft,
+          border: `1px solid ${color.border}`, borderRadius: radius.card,
         }}
       >
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700 }}>
@@ -107,10 +107,12 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
         aria-label={`${receipt.store}, ${receipt.item}${receipt.demo ? ' (sample)' : ''}${onItsWay ? ' (on its way)' : ''}, ${money(receipt.amount)}, ${urgency.label}`}
         style={{
           display: 'flex', alignItems: 'center', gap: 13, padding: 15,
-          background: emphasised ? color.white : color.cream,
-          border: `1.5px solid ${emphasised ? color.ink : color.border}`,
+          // Every row is a white card now; the urgent one is lifted rather
+          // than outlined in ink — its red chip already says why.
+          background: color.white,
+          border: `1px solid ${emphasised ? color.borderSoft : color.borderHair}`,
           borderRadius: radius.card,
-          boxShadow: emphasised ? shadow.hard : undefined,
+          boxShadow: emphasised ? shadow.raised : undefined,
           position: 'relative',
           transform: `translateX(${dx}px)`,
           transition: dragging ? 'none' : 'transform .25s ease',
@@ -119,7 +121,7 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
       >
         <div
           style={{
-            width: 40, height: 40, borderRadius: 12, background: color.creamAlt,
+            width: 40, height: 40, borderRadius: 12, background: color.surfaceAlt,
             border: `1px solid ${color.borderHair}`, display: 'flex', alignItems: 'center',
             justifyContent: 'center', flexShrink: 0,
           }}
@@ -147,8 +149,8 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
               {receipt.store}
             </span>
             {policyChanged && (
-              <span style={{ fontSize: 9.5, fontWeight: 700, background: color.yellowLight, padding: '2px 7px', borderRadius: 999, letterSpacing: '0.3px', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                POLICY CHANGED
+              <span style={{ fontSize: 9.5, fontWeight: 700, background: color.accentSoft, padding: '2px 7px', borderRadius: 999, letterSpacing: '0.3px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                Policy changed
               </span>
             )}
 

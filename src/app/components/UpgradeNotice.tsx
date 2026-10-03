@@ -42,7 +42,7 @@ export function UpgradeNotice({ period, onUnlock, onCancel }: { period: Period; 
     <div
       style={{
         position: 'fixed', inset: 0, zIndex: 60, display: 'flex', alignItems: 'flex-end',
-        justifyContent: 'center', background: 'rgba(23,20,16,0.55)', padding: 16,
+        justifyContent: 'center', background: 'rgba(20,22,26,0.55)', padding: 16,
       }}
       onClick={onCancel}
     >
@@ -54,8 +54,8 @@ export function UpgradeNotice({ period, onUnlock, onCancel }: { period: Period; 
         className="k-fade"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: color.white, borderRadius: radius.heroLg, border: `1.5px solid ${color.ink}`,
-          boxShadow: shadow.hardLg, padding: '22px 20px 20px', width: '100%', maxWidth: 420,
+          background: color.white, borderRadius: radius.heroLg, border: `1px solid ${color.border}`,
+          boxShadow: shadow.raisedLg, padding: '22px 20px 20px', width: '100%', maxWidth: 420,
           marginBottom: 'calc(84px + env(safe-area-inset-bottom, 0px))',
         }}
       >
@@ -73,7 +73,7 @@ export function UpgradeNotice({ period, onUnlock, onCancel }: { period: Period; 
           <Pressable
             className="k-cta-yellow"
             onClick={onUnlock}
-            style={{ padding: 14, textAlign: 'center', background: color.yellow, color: color.ink, border: `1.5px solid ${color.ink}`, borderRadius: radius.pill, fontWeight: 700, fontSize: 15 }}
+            style={{ padding: 14, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.pill, fontWeight: 700, fontSize: 15 }}
           >
             Unlock everything, free
           </Pressable>

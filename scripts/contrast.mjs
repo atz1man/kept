@@ -499,8 +499,8 @@ await sweepInto(lp, 'rights');
  * all following the OS. Chromium happened to render them light; that was luck
  * rather than a decision, and it is the sort of thing that differs by engine.
  *
- * This app has one palette by design — the whole aesthetic is printed paper —
- * so the check is simply that a dark-mode device gets the same page, measured
+ * This app has one palette by design — a light page, near-black text — so
+ * the check is simply that a dark-mode device gets the same page, measured
  * rather than declared.
  */
 {
@@ -514,15 +514,15 @@ await sweepInto(lp, 'rights');
     body: getComputedStyle(document.body).backgroundColor,
     text: getComputedStyle(document.body).color,
   }));
-  const CREAM = 'rgb(253, 250, 241)';
-  const INK = 'rgb(23, 20, 16)';
+  const CANVAS = 'rgb(246, 246, 243)';
+  const INK = 'rgb(20, 22, 26)';
   if (seen.scheme !== 'light') {
     deviceProblems.push(`the root declares colour-scheme "${seen.scheme}", so the native date pickers, scrollbars and overscroll follow the OS instead of the app`);
   }
-  if (seen.canvas !== CREAM) {
-    deviceProblems.push(`the canvas behind the app computes to ${seen.canvas}, not the paper — a rubber-band scroll past the top shows through to it`);
+  if (seen.canvas !== CANVAS) {
+    deviceProblems.push(`the canvas behind the app computes to ${seen.canvas}, not the app's own ground — a rubber-band scroll past the top shows through to it`);
   }
-  if (seen.body !== CREAM) deviceProblems.push(`body is ${seen.body}, not the paper`);
+  if (seen.body !== CANVAS) deviceProblems.push(`body is ${seen.body}, not the app's own ground`);
   if (seen.text !== INK) deviceProblems.push(`body text is ${seen.text}, not the ink it is on a light device`);
   await darkCtx.close();
 }

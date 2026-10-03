@@ -63,7 +63,7 @@ describe('type is set from the tokens', () => {
  *
  * The header of `tokens.ts` says so — "no raw hex literals live in a
  * component file" — and two had escaped it. The stylesheet's `a:hover` was
- * still `#B98A00`, which is the exact value `color.amber` was darkened away
+ * still `#B98A00`, which is the exact value `color.accentInk` was darkened away
  * from for measuring 3.00:1 on cream: below AA, on a state the contrast sweep
  * cannot see because it only exists under the pointer. And a `#EDE8D8` sat in
  * the hero gradient beside a token, and again in a hover rule, belonging to
@@ -112,7 +112,7 @@ describe('colour is set from the tokens', () => {
      * cream and white — a scrim at 0.55, a hairline at 0.06 — and naming each
      * step in the palette would be a token per shadow. What must not appear
      * is a colour nobody chose: a hand-mixed grey, or the #B98A00 that
-     * `color.amber` was darkened away from for measuring 3.00:1 on cream and
+     * `color.accentInk` was darkened away from for measuring 3.00:1 on cream and
      * which the stylesheet went on using for `a:hover`, a state the contrast
      * sweep cannot see because it only exists under the pointer.
      */
@@ -138,15 +138,18 @@ describe('the focus ring is visible on every ground', () => {
    * grounds and yellow carries the ink surfaces. The rule is that at least
    * one part clears 3:1 on every surface the app paints on.
    */
-  const RING = [color.yellow, color.ink];
+  // Green carries the light grounds and white carries the ink surfaces — the
+  // toasts and the photo viewer — and the accent fills, where green alone
+  // measures 1:1 and 2.8:1.
+  const RING = [color.accent, color.white];
   const GROUNDS: Record<string, string> = {
-    cream: color.cream,
+    canvas: color.canvas,
     white: color.white,
-    creamAlt: color.creamAlt,
-    creamDeep: color.creamDeep,
+    surfaceAlt: color.surfaceAlt,
+    surfaceDeep: color.surfaceDeep,
     ink: color.ink,
-    yellow: color.yellow,
-    yellowLight: color.yellowLight,
+    accent: color.accent,
+    accentSoft: color.accentSoft,
   };
 
   it('checks every ground the app paints on', () => {
@@ -179,16 +182,16 @@ describe('the current tab is visible as a state, not just a tint', () => {
    * state indicator — and this is the app's only navigation. The border
    * carries it now; the fill stays, because two signals are the point.
    */
-  const BAR = color.cream; // the tab bar is cream at 0.88 over the page's cream
+  const BAR = color.white; // the tab bar is white at 0.94 over the page
 
   it('is not carried by the fill, which never cleared the bar', () => {
     // Stated rather than assumed: if the fill were enough there would be no
     // reason for the border, and this file should not claim there is.
-    expect(contrast(color.yellowLight, BAR)).toBeLessThan(AA_LARGE);
+    expect(contrast(color.accentSoft, BAR)).toBeLessThan(AA_LARGE);
   });
 
   it('is carried by the border', () => {
-    expect(contrast(color.ink, BAR)).toBeGreaterThanOrEqual(AA_LARGE);
+    expect(contrast(color.accent, BAR)).toBeGreaterThanOrEqual(AA_LARGE);
   });
 
   it('shows the watch alert in something that clears the bar too', () => {

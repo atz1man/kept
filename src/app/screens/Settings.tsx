@@ -146,7 +146,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
 
       <section style={{ background: color.white, border: `1.5px solid ${color.border}`, borderRadius: radius.cardLg, padding: 18 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ width: 7, height: 7, borderRadius: 999, background: color.yellow }} />
+          <span style={{ width: 7, height: 7, borderRadius: 999, background: color.accent }} />
           <span style={{ fontWeight: 700, fontSize: 15 }}>Private by design</span>
         </div>
         <p style={{ fontSize: 13, color: color.muted, lineHeight: 1.55, marginTop: 6, marginBottom: 0 }}>
@@ -183,7 +183,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
           <Pressable
             className="k-soft"
             onClick={() => void exportNow()}
-            style={{ flex: 1, padding: 12, textAlign: 'center', background: color.creamAlt, borderRadius: 999, fontWeight: 700, fontSize: 13 }}
+            style={{ flex: 1, padding: 12, textAlign: 'center', background: color.surfaceAlt, borderRadius: 999, fontWeight: 700, fontSize: 13 }}
           >
             Export a backup
           </Pressable>
@@ -192,7 +192,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
           <Pressable
             className="k-soft"
             onClick={() => fileInput.current?.click()}
-            style={{ flex: 1, padding: 12, textAlign: 'center', background: color.creamAlt, borderRadius: 999, fontWeight: 700, fontSize: 13 }}
+            style={{ flex: 1, padding: 12, textAlign: 'center', background: color.surfaceAlt, borderRadius: 999, fontWeight: 700, fontSize: 13 }}
           >
             Restore
           </Pressable>
@@ -222,7 +222,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
           <div
             style={{
               marginTop: 10, padding: '10px 13px', borderRadius: 14, fontSize: 12.5, lineHeight: 1.5,
-              background: 'rgba(216,66,46,0.10)', color: color.ink,
+              background: 'rgba(217,45,32,0.10)', color: color.ink,
             }}
           >
             <div style={{ fontWeight: 700 }}>
@@ -231,7 +231,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
             <Pressable
               className="k-soft"
               onClick={() => void saveSetAside()}
-              style={{ marginTop: 8, padding: '10px 14px', minHeight: 44, background: color.creamAlt, borderRadius: 999, fontWeight: 700, fontSize: 13 }}
+              style={{ marginTop: 8, padding: '10px 14px', minHeight: 44, background: color.surfaceAlt, borderRadius: 999, fontWeight: 700, fontSize: 13 }}
             >
               Save them as a file
             </Pressable>
@@ -242,7 +242,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
             role="status"
             style={{
               marginTop: 10, padding: '10px 13px', borderRadius: 14, fontSize: 12.5, fontWeight: 600, lineHeight: 1.5,
-              background: backupNote.tone === 'ok' ? color.yellowLight : 'rgba(216,66,46,0.10)',
+              background: backupNote.tone === 'ok' ? color.accentSoft : 'rgba(217,45,32,0.10)',
               color: backupNote.tone === 'ok' ? color.ink : color.danger,
             }}
           >
@@ -252,7 +252,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
       </section>
 
       {selling && free && (
-        <section style={{ background: color.ink, color: color.cream, borderRadius: radius.cardLg, padding: 18, marginTop: 12 }}>
+        <section style={{ background: color.ink, color: color.canvas, borderRadius: radius.cardLg, padding: 18, marginTop: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
             <span style={{ fontWeight: 700, fontSize: 15 }}>Free plan</span>
             <span style={{ fontFamily: font.figures, fontSize: 12, color: color.faint }}>
@@ -267,7 +267,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
             aria-label="Free receipts used"
             style={{ height: 6, borderRadius: 999, background: color.onInkBorder, marginTop: 10, overflow: 'hidden' }}
           >
-            <div style={{ height: '100%', background: color.yellow, borderRadius: 999, width: `${usagePct}%` }} />
+            <div style={{ height: '100%', background: color.accent, borderRadius: 999, width: `${usagePct}%` }} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 16 }}>
@@ -286,7 +286,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
           and no reason to doubt they were being billed. They are not: say so
           where the price used to be, not only in the sheet they tapped past. */}
       {selling && !free && (
-        <section style={{ background: color.ink, color: color.cream, borderRadius: radius.cardLg, padding: 18, marginTop: 12 }}>
+        <section style={{ background: color.ink, color: color.canvas, borderRadius: radius.cardLg, padding: 18, marginTop: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
             <span style={{ fontWeight: 700, fontSize: 15 }}>Unlocked</span>
             <span style={{ fontFamily: font.figures, fontSize: 12, color: color.faint }}>
@@ -367,7 +367,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
           </p>
           <Pressable
             onClick={onClearSamples}
-            style={{ marginTop: 12, padding: 12, textAlign: 'center', background: color.white, border: `1.5px solid ${color.ink}`, borderRadius: 999, fontWeight: 700, fontSize: 13 }}
+            style={{ marginTop: 12, padding: 12, textAlign: 'center', background: color.white, border: `1px solid ${color.border}`, borderRadius: 999, fontWeight: 700, fontSize: 13 }}
           >
             Remove the samples
           </Pressable>
@@ -386,7 +386,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
             <Pressable
               className="k-soft"
               onClick={() => setConfirmingWipe(false)}
-              style={{ flex: 1, padding: 12, textAlign: 'center', background: color.creamAlt, borderRadius: 999, fontWeight: 700, fontSize: 13 }}
+              style={{ flex: 1, padding: 12, textAlign: 'center', background: color.surfaceAlt, borderRadius: 999, fontWeight: 700, fontSize: 13 }}
             >
               Keep them
             </Pressable>
@@ -407,7 +407,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
             onClick={() => setConfirmingWipe(true)}
             disabled={receipts.length === 0}
             style={{
-              marginTop: 12, padding: 12, textAlign: 'center', background: color.creamAlt,
+              marginTop: 12, padding: 12, textAlign: 'center', background: color.surfaceAlt,
               borderRadius: 999, fontWeight: 700, fontSize: 13,
               color: receipts.length === 0 ? color.muted : color.danger,
               opacity: receipts.length === 0 ? 0.55 : 1,
@@ -432,7 +432,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
             step={1}
             value={settings.urgentDays}
             onChange={(e) => onChange({ urgentDays: Number(e.target.value) })}
-            style={{ flex: 1, accentColor: color.yellow }}
+            style={{ flex: 1, accentColor: color.accent }}
           />
           <span style={{ fontFamily: font.figures, fontWeight: 700, fontSize: 14, minWidth: 56, textAlign: 'right' }}>
             {settings.urgentDays} days
@@ -454,17 +454,17 @@ function Tier({ price, period, featured, onClick }: { price: string; period: str
     <Pressable
       onClick={onClick}
       style={{
-        border: `1.5px solid ${featured ? color.yellow : color.onInkBorderStrong}`,
+        border: `1.5px solid ${featured ? color.accent : color.onInkBorderStrong}`,
         borderRadius: 14, padding: '13px 8px', textAlign: 'center', position: 'relative',
-        background: featured ? 'rgba(242,185,13,0.1)' : 'transparent',
+        background: featured ? color.accentSoft : 'transparent',
       }}
     >
       {featured && (
-        <span style={{ position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)', background: color.yellow, color: color.ink, fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 999, whiteSpace: 'nowrap' }}>
-          BEST VALUE
+        <span style={{ position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)', background: color.accent, color: color.white, fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 999, whiteSpace: 'nowrap' }}>
+          Best value
         </span>
       )}
-      <div style={{ fontFamily: font.figures, fontWeight: 700, fontSize: 14, color: featured ? color.yellow : color.cream }}>{price}</div>
+      <div style={{ fontFamily: font.figures, fontWeight: 700, fontSize: 14, color: featured ? color.accent : color.canvas }}>{price}</div>
       <div style={{ fontSize: 11, color: color.faint, marginTop: 2 }}>{period}</div>
     </Pressable>
   );
@@ -501,15 +501,15 @@ function Toggle({ label, detail, value, disabled, separator = true, onChange }: 
           aria-hidden="true"
           style={{
             width: 40, height: 24, borderRadius: 999, flexShrink: 0,
-            background: value ? color.yellow : color.creamAlt,
-            border: `1.5px solid ${value ? color.ink : color.border}`,
+            background: value ? color.accent : color.surfaceDeep,
+            border: `1px solid ${value ? color.accent : color.borderSoft}`,
             display: 'flex', alignItems: 'center', padding: 2, transition: 'background .2s',
           }}
         >
           <span
             style={{
-              width: 16, height: 16, borderRadius: 999, background: value ? color.ink : color.white,
-              border: value ? undefined : `1px solid ${color.border}`,
+              width: 16, height: 16, borderRadius: 999, background: color.white,
+              boxShadow: '0 1px 2px rgba(20,22,26,0.2)',
               transform: `translateX(${value ? 16 : 0}px)`, transition: 'transform .2s',
             }}
           />

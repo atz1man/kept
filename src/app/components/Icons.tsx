@@ -6,14 +6,14 @@ import type { Category } from '../../lib/types';
 export function Logo({ size = 28, style }: { size?: number; style?: CSSProperties }) {
   return (
     <svg width={size} height={(size / 40) * 52} viewBox="0 0 40 52" style={style} aria-hidden="true">
-      <path d="M8 1H32Q39 1 39 9V44L32.7 50 26.3 44 20 50 13.7 44 7.3 50 1 44V9Q1 1 8 1Z" fill={color.ink} />
-      <text x="20" y="32" textAnchor="middle" fontFamily="Space Grotesk, sans-serif" fontSize="22" fontWeight="700" fill={color.yellow}>k</text>
+      <path d="M8 1H32Q39 1 39 9V44L32.7 50 26.3 44 20 50 13.7 44 7.3 50 1 44V9Q1 1 8 1Z" fill={color.accent} />
+      <text x="20" y="32" textAnchor="middle" fontFamily="Instrument Sans, sans-serif" fontSize="22" fontWeight="700" fill={color.white}>k</text>
     </svg>
   );
 }
 
 /** The bare ticket silhouette, no letter — for tiles that are themselves ink. */
-export function LogoMark({ size = 18, fill = color.yellow }: { size?: number; fill?: string }) {
+export function LogoMark({ size = 18, fill = color.accent }: { size?: number; fill?: string }) {
   return (
     <svg width={size} height={(size / 40) * 52} viewBox="0 0 40 52" aria-hidden="true">
       <path d="M8 1H32Q39 1 39 9V44L32.7 50 26.3 44 20 50 13.7 44 7.3 50 1 44V9Q1 1 8 1Z" fill={fill} />
@@ -25,21 +25,12 @@ export function LogoMark({ size = 18, fill = color.yellow }: { size?: number; fi
 export function LogoChecked({ size = 38 }: { size?: number }) {
   return (
     <svg width={size} height={(size / 40) * 52} viewBox="0 0 40 52" aria-hidden="true">
-      <path d="M8 1H32Q39 1 39 9V44L32.7 50 26.3 44 20 50 13.7 44 7.3 50 1 44V9Q1 1 8 1Z" fill={color.yellow} />
+      <path d="M8 1H32Q39 1 39 9V44L32.7 50 26.3 44 20 50 13.7 44 7.3 50 1 44V9Q1 1 8 1Z" fill={color.accent} />
       <path d="M12 27l6 6 10-13" fill="none" stroke={color.ink} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-/** The oversized outlined mark that watermarks the ink cards. */
-export function LogoWatermark({ width = 136, style }: { width?: number; style?: CSSProperties }) {
-  return (
-    <svg width={width} height={(width / 40) * 52} viewBox="0 0 40 52" style={style} aria-hidden="true">
-      <path d="M8 1H32Q39 1 39 9V44L32.7 50 26.3 44 20 50 13.7 44 7.3 50 1 44V9Q1 1 8 1Z" fill="none" stroke={color.yellow} strokeWidth="1.4" />
-      <path d="M9 13h22M9 20h22M9 27h13" stroke={color.yellow} strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  );
-}
 
 export function LogoDashed({ size = 72 }: { size?: number }) {
   return (
@@ -61,7 +52,7 @@ export function Wordmark({ size = 24 }: { size?: number }) {
       data-logotype
       style={{ fontFamily: font.figures, fontSize: size, fontWeight: 700, letterSpacing: '-0.5px', lineHeight: 1 }}
     >
-      kept<span style={{ color: color.yellow }}>.</span>
+      kept<span style={{ color: color.accent }}>.</span>
     </span>
   );
 }
@@ -183,10 +174,10 @@ export function GearGlyph({ size = 18, stroke: s = color.ink }: { size?: number;
   );
 }
 
-export function PlusGlyph() {
+export function PlusGlyph({ stroke: s = color.white }: { stroke?: string } = {}) {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-      <path d="M9 3v12M3 9h12" stroke={color.ink} strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M9 3v12M3 9h12" stroke={s} strokeWidth="2.2" strokeLinecap="round" />
     </svg>
   );
 }

@@ -48,8 +48,8 @@ export function UndoBar({ label, onUndo, onDismiss }: { label: string; onUndo: (
         gap: 12,
         padding: '12px 14px 12px 16px',
         background: color.ink,
-        color: color.cream,
-        border: `1.5px solid ${color.ink}`,
+        color: color.canvas,
+        border: `1px solid ${color.border}`,
         borderRadius: 16,
         boxShadow: shadow.lift,
       }}
@@ -60,7 +60,7 @@ export function UndoBar({ label, onUndo, onDismiss }: { label: string; onUndo: (
         onClick={onUndo}
         style={{
           width: 'auto', flexShrink: 0, padding: '7px 14px', borderRadius: 999,
-          background: color.yellow, color: color.ink, fontWeight: 700, fontSize: 13,
+          background: color.accent, color: color.white, fontWeight: 700, fontSize: 13,
         }}
       >
         Undo

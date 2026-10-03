@@ -69,7 +69,7 @@ export function Edit({ receipt, today, onSave, onCancel }: Props) {
         onClick={onCancel}
         style={{
           display: 'inline-flex', width: 'auto', alignItems: 'center', gap: 6, padding: '9px 15px 9px 11px',
-          background: color.white, border: `1.5px solid ${color.ink}`, borderRadius: 999,
+          background: color.white, border: `1px solid ${color.border}`, borderRadius: 999,
           fontSize: 13, fontWeight: 700, margin: '8px 0 16px',
         }}
       >
@@ -115,8 +115,8 @@ export function Edit({ receipt, today, onSave, onCancel }: Props) {
         </Field>
 
         <fieldset style={{ border: 0, padding: 0, margin: '14px 0 0' }}>
-          <legend style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.6px', color: color.muted, padding: 0, marginBottom: 6 }}>
-            CATEGORY
+          <legend style={{ fontSize: 13, fontWeight: 600, color: color.bodyStrong, padding: 0, marginBottom: 6 }}>
+            Category
           </legend>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {CATEGORIES.map(({ cat, label }) => {
@@ -129,7 +129,7 @@ export function Edit({ receipt, today, onSave, onCancel }: Props) {
                   style={{
                     width: 'auto', display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px',
                     borderRadius: 999, border: `1.5px solid ${on ? color.ink : color.border}`,
-                    background: on ? color.yellowLight : color.white, fontSize: 12.5, fontWeight: 700,
+                    background: on ? color.accentSoft : color.white, fontSize: 12.5, fontWeight: 700,
                   }}
                 >
                   <CatIcon cat={cat} />
@@ -285,7 +285,7 @@ export function Edit({ receipt, today, onSave, onCancel }: Props) {
       <Pressable
         className="k-cta-yellow"
         onClick={save}
-        style={{ marginTop: 16, padding: 16, textAlign: 'center', background: color.yellow, border: `1.5px solid ${color.ink}`, borderRadius: 999, fontWeight: 700, fontSize: 15, boxShadow: shadow.hard }}
+        style={{ marginTop: 16, padding: 16, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: 999, fontWeight: 700, fontSize: 15, boxShadow: shadow.raised }}
       >
         Save changes
       </Pressable>

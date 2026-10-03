@@ -42,7 +42,7 @@ export function CancelPanel({ receipt, today, onSent, onUnsent }: {
       {open && (
         <div data-cancel-panel>
           {by && receipt.cancelledOn ? (
-            <div data-cancel-sent style={{ marginTop: 12, padding: 12, background: color.creamAlt, border: `1.5px solid ${color.borderHair}`, borderRadius: 12, fontSize: 13.5, lineHeight: 1.5, color: color.body }}>
+            <div data-cancel-sent style={{ marginTop: 12, padding: 12, background: color.surfaceAlt, border: `1.5px solid ${color.borderHair}`, borderRadius: 12, fontSize: 13.5, lineHeight: 1.5, color: color.body }}>
               Cancelled on {fmtDateLong(fromISODate(receipt.cancelledOn))}. Send it back by {fmtDateLong(by)} — the law gives
               fourteen days from cancelling.
             </div>

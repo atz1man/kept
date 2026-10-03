@@ -14,10 +14,11 @@
  * a shop. Same rhythm, same two beats and middot; now about the thing being
  * sold. One export to revert if the brand disagrees.
  */
-export const TAGLINE = 'shop hard · return harder';
+export const TAGLINE = 'return deadlines, watched';
 
 /** The hero and the landing footer set it in caps; Settings sets it in prose. */
-export const TAGLINE_CAPS = TAGLINE.toUpperCase();
+/** The tagline as a line of its own, sentence case. */
+export const TAGLINE_LEAD = TAGLINE[0].toUpperCase() + TAGLINE.slice(1);
 
 /**
  * Where privacy questions go. Deliberately unset: it has to be an address

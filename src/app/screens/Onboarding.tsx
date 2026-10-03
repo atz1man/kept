@@ -70,13 +70,13 @@ export function Onboarding({ step, onNext, onSkip }: Props) {
         <div
           style={{
             height: 190, borderRadius: 20, overflow: 'hidden',
-            border: `1.5px solid ${color.ink}`, boxShadow: shadow.hardLg, marginBottom: 26,
+            border: `1px solid ${color.border}`, boxShadow: shadow.raisedLg, marginBottom: 26,
           }}
         >
           <StepArt step={step} />
         </div>
 
-        <h1 tabIndex={-1} style={{ fontFamily: font.display, fontSize: 30, fontWeight: 700, lineHeight: 1.05, letterSpacing: '-1.2px', margin: 0 }}>
+        <h1 tabIndex={-1} style={{ fontFamily: font.display, fontSize: 28, fontWeight: 700, lineHeight: 1.15, letterSpacing: '-0.6px', margin: 0 }}>
           {current.title}
         </h1>
         <p style={{ fontSize: 15.5, lineHeight: 1.6, color: color.body, marginTop: 14, marginBottom: 0 }}>{body}</p>
@@ -99,7 +99,7 @@ export function Onboarding({ step, onNext, onSkip }: Props) {
               key={i}
               style={{
                 width: i === step ? 22 : 8, height: 8, borderRadius: 999,
-                background: i === step ? color.yellow : 'rgba(23,20,16,0.18)', transition: 'all .25s',
+                background: i === step ? color.accent : 'rgba(20,22,26,0.18)', transition: 'all .25s',
               }}
             />
           ))}
@@ -108,8 +108,8 @@ export function Onboarding({ step, onNext, onSkip }: Props) {
           className="k-cta-yellow"
           onClick={onNext}
           style={{
-            width: 'auto', padding: '15px 30px', background: color.yellow, border: `1.5px solid ${color.ink}`,
-            borderRadius: 999, fontWeight: 700, fontSize: 15, boxShadow: shadow.hard,
+            width: 'auto', padding: '15px 30px', background: color.accent, color: color.white, border: 0,
+            borderRadius: 999, fontWeight: 700, fontSize: 15, boxShadow: shadow.raised,
           }}
         >
           {step === STEPS.length - 1 ? 'Let’s go' : 'Next'}
@@ -138,21 +138,18 @@ function StepArt({ step }: { step: number }) {
   const ticket = 'M8 1H32Q39 1 39 9V44L32.7 50 26.3 44 20 50 13.7 44 7.3 50 1 44V9Q1 1 8 1Z';
 
   if (step === 0) {
-    // A scatter of receipts — the pile, tidied.
+    // Receipts in a tidy stack: the pile, gathered.
     return (
-      <svg {...common} role="img" aria-label="A scatter of receipts, gathered">
-        <rect width="356" height="190" fill={color.creamAlt} />
+      <svg {...common} role="img" aria-label="Receipts, gathered in one place">
+        <rect width="356" height="190" fill={color.surfaceAlt} />
         {[
-          { x: 26, y: 16, r: -13, fill: color.white },
-          { x: 148, y: 12, r: 7, fill: color.yellowLight },
-          { x: 262, y: 20, r: -6, fill: color.white },
-          { x: 70, y: 100, r: 9, fill: color.white },
-          { x: 194, y: 104, r: -10, fill: color.yellow },
-          { x: 296, y: 96, r: 6, fill: color.white },
+          { x: 70, y: 52, fill: color.white },
+          { x: 138, y: 40, fill: color.white },
+          { x: 206, y: 28, fill: color.accentSoft },
         ].map((t, i) => (
-          <g key={i} transform={`translate(${t.x} ${t.y}) rotate(${t.r}) scale(1.3)`}>
-            <path d={ticket} fill={t.fill} stroke={color.ink} strokeWidth="1.6" />
-            <path d="M9 13h22M9 20h22M9 27h13" stroke={color.ink} strokeWidth="1.4" strokeLinecap="round" opacity="0.55" />
+          <g key={i} transform={`translate(${t.x} ${t.y}) scale(1.9)`}>
+            <path d={ticket} fill={t.fill} stroke={color.borderSoft} strokeWidth="0.8" />
+            <path d="M9 13h22M9 20h22M9 27h13" stroke={color.muted} strokeWidth="1" strokeLinecap="round" opacity="0.6" />
           </g>
         ))}
       </svg>
@@ -164,18 +161,18 @@ function StepArt({ step }: { step: number }) {
     // and the law's, which is the promise the screen is making.
     return (
       <svg {...common} role="img" aria-label="Two countdown clocks running side by side">
-        <rect width="356" height="190" fill={color.ink} />
+        <rect width="356" height="190" fill={color.surfaceAlt} />
         <g transform="translate(122 95)">
-          <circle r="52" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="9" />
-          <circle r="52" fill="none" stroke={color.yellow} strokeWidth="9" strokeLinecap="round"
+          <circle r="52" fill="none" stroke={color.white} strokeWidth="9" />
+          <circle r="52" fill="none" stroke={color.accent} strokeWidth="9" strokeLinecap="round"
             strokeDasharray="327" strokeDashoffset="98" transform="rotate(-90)" />
-          <path d="M0 -26V2l18 13" fill="none" stroke={color.cream} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M0 -26V2l18 13" fill="none" stroke={color.ink} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
         </g>
         <g transform="translate(244 95)">
-          <circle r="40" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="8" />
-          <circle r="40" fill="none" stroke={color.onInkDanger} strokeWidth="8" strokeLinecap="round"
+          <circle r="40" fill="none" stroke={color.white} strokeWidth="8" />
+          <circle r="40" fill="none" stroke={color.danger} strokeWidth="8" strokeLinecap="round"
             strokeDasharray="251" strokeDashoffset="176" transform="rotate(-90)" />
-          <path d="M0 -20V2l14 10" fill="none" stroke={color.cream} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M0 -20V2l14 10" fill="none" stroke={color.ink} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
         </g>
       </svg>
     );
@@ -184,17 +181,17 @@ function StepArt({ step }: { step: number }) {
   // A phone that keeps its own contents.
   return (
     <svg {...common} role="img" aria-label="A phone holding its receipts behind a lock">
-      <rect width="356" height="190" fill={color.creamAlt} />
+      <rect width="356" height="190" fill={color.surfaceAlt} />
       <rect x="134" y="20" width="88" height="152" rx="18" fill={color.ink} />
-      <rect x="141" y="27" width="74" height="138" rx="13" fill={color.cream} />
+      <rect x="141" y="27" width="74" height="138" rx="13" fill={color.canvas} />
       <g transform="translate(161 50) scale(0.85)">
-        <path d={ticket} fill={color.yellow} stroke={color.ink} strokeWidth="1.6" />
-        <path d="M9 13h22M9 20h22M9 27h13" stroke={color.ink} strokeWidth="1.4" strokeLinecap="round" opacity="0.6" />
+        <path d={ticket} fill={color.accentSoft} stroke={color.borderSoft} strokeWidth="0.8" />
+        <path d="M9 13h22M9 20h22M9 27h13" stroke={color.muted} strokeWidth="1" strokeLinecap="round" opacity="0.6" />
       </g>
       <g transform="translate(161 111)">
         <rect x="4" y="14" width="30" height="22" rx="6" fill={color.ink} />
         <path d="M11 14V9a8 8 0 0116 0v5" fill="none" stroke={color.ink} strokeWidth="4" />
-        <circle cx="19" cy="25" r="3.5" fill={color.yellow} />
+        <circle cx="19" cy="25" r="3.5" fill={color.accent} />
       </g>
       <path d="M44 62h44M44 78h28M268 108h44M282 124h28" stroke={color.fainter} strokeWidth="3" strokeLinecap="round" strokeDasharray="2 9" />
     </svg>

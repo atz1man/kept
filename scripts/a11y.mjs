@@ -494,12 +494,12 @@ for (const [label, go] of [
  * And the ring is actually painted where focus lands.
  *
  * axe does not check focus-indicator contrast (WCAG 2.1 SC 1.4.11 asks 3:1),
- * and the ring was yellow alone at 1.72:1 on the cream this app is mostly
- * made of. It is two colours now — ink for the light grounds, yellow for the
- * ink surfaces — and the ink half is a `box-shadow`, which an INLINE
- * `boxShadow` beats: the CTAs carry the signature 3px hard offset inline, so
- * the ring was absent on exactly the buttons that matter most until the rule
- * was marked important. A token-level check cannot see that; only asking the
+ * and the ring was once yellow alone at 1.72:1 on the cream the app was then
+ * made of. It is two colours: a green outline, and a white halo under it that
+ * keeps the green readable on the green buttons themselves. The halo is a
+ * `box-shadow`, which an INLINE `boxShadow` beats: the raised buttons carry a
+ * shadow inline, so the ring was absent on exactly the buttons that matter
+ * most until the rule was marked important. A token-level check cannot see that; only asking the
  * browser what it computed can.
  *
  * Tabbed, not `.focus()`: `:focus-visible` does not match a programmatic
@@ -523,14 +523,14 @@ for (let i = 0; i < 40; i += 1) {
     return {
       what: (el.textContent ?? el.tagName).trim().slice(0, 30),
       // Both halves, by the colours the tokens define.
-      hasInkRing: /rgb\(23,\s*20,\s*16\)/.test(cs.boxShadow) && /5px/.test(cs.boxShadow),
-      hasYellowOutline: /rgb\(242,\s*185,\s*13\)/.test(cs.outlineColor) && parseFloat(cs.outlineWidth) >= 2,
+      hasHalo: /rgb\(255,\s*255,\s*255\)/.test(cs.boxShadow) && /5px/.test(cs.boxShadow),
+      hasOutline: /rgb\(31,\s*107,\s*78\)/.test(cs.outlineColor) && parseFloat(cs.outlineWidth) >= 2,
     };
   });
   if (!seen) continue;
   ringsSeen += 1;
-  if (!seen.hasInkRing || !seen.hasYellowOutline) {
-    ringless.push([`focus ring on "${seen.what}"`, `ink ring ${seen.hasInkRing ? 'yes' : 'MISSING'}, yellow outline ${seen.hasYellowOutline ? 'yes' : 'MISSING'}`]);
+  if (!seen.hasHalo || !seen.hasOutline) {
+    ringless.push([`focus ring on "${seen.what}"`, `white halo ${seen.hasHalo ? 'yes' : 'MISSING'}, green outline ${seen.hasOutline ? 'yes' : 'MISSING'}`]);
   }
 }
 // A pass over nothing focusable would report a clean ring on no elements.

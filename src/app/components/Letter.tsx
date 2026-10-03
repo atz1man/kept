@@ -61,14 +61,14 @@ export function Letter({ letter, title, receipt }: { letter: string; title: stri
 
   return (
     <>
-      <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.6px', color: color.muted, marginTop: 14, marginBottom: 6 }}>
-        THE LETTER
+      <div style={{ fontSize: 13, fontWeight: 600, color: color.bodyStrong, marginTop: 14, marginBottom: 6 }}>
+        The letter
       </div>
       <div
         aria-label="The letter"
         style={{
           whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: 13.5, lineHeight: 1.5, padding: 14,
-          background: color.creamAlt, border: `1.5px solid ${color.borderHair}`, borderRadius: 12, color: color.body,
+          background: color.surfaceAlt, border: `1.5px solid ${color.borderHair}`, borderRadius: 12, color: color.body,
           userSelect: 'text',
         }}
       >
@@ -79,7 +79,7 @@ export function Letter({ letter, title, receipt }: { letter: string; title: stri
         <Pressable
           className="k-cta-yellow"
           onClick={() => void copy()}
-          style={{ ...button, background: color.yellow, border: `1.5px solid ${color.ink}`, color: color.ink }}
+          style={{ ...button, background: color.accent, border: 0, color: color.white }}
         >
           {said === 'copied' ? 'Copied ✓' : 'Copy the letter'}
         </Pressable>

@@ -61,7 +61,7 @@ export function RefundForm({ id, cost, current, onSet, onClose }: {
           className="k-cta-yellow"
           onClick={save}
           disabled={!read || !read.ok || !!error}
-          style={{ flex: 1, padding: 12, textAlign: 'center', background: color.yellow, border: `1.5px solid ${color.ink}`, borderRadius: 999, fontWeight: 700, fontSize: 14, color: color.ink }}
+          style={{ flex: 1, padding: 12, textAlign: 'center', background: color.accent, border: 0, borderRadius: 999, fontWeight: 700, fontSize: 14, color: color.white }}
         >
           Save
         </Pressable>

@@ -90,8 +90,8 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
 
   return (
     <div style={{ background: color.white, border: `1.5px solid ${color.border}`, borderRadius: radius.card, padding: 14, marginTop: 12 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.6px', color: color.muted, marginBottom: 8 }}>
-        THE PAPER RECEIPT
+      <div style={{ fontSize: 13, fontWeight: 600, color: color.bodyStrong, marginBottom: 8 }}>
+        The paper receipt
       </div>
       {data ? (
         <>
@@ -124,7 +124,7 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
             <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
               <Pressable
                 onClick={() => setViewing(true)}
-                style={{ padding: '10px 14px', borderRadius: 999, background: color.ink, color: color.cream, fontSize: 13, fontWeight: 700 }}
+                style={{ padding: '10px 14px', borderRadius: 999, background: color.ink, color: color.canvas, fontSize: 13, fontWeight: 700 }}
               >
                 Show it full screen
               </Pressable>
@@ -148,7 +148,7 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
             className="k-ink"
             disabled={busy}
             onClick={() => void take()}
-            style={{ padding: '12px 16px', borderRadius: 999, background: color.ink, color: color.cream, fontSize: 13.5, fontWeight: 700 }}
+            style={{ padding: '12px 16px', borderRadius: 999, background: color.ink, color: color.canvas, fontSize: 13.5, fontWeight: 700 }}
           >
             {busy ? 'Opening the camera…' : 'Photograph the receipt'}
           </Pressable>
@@ -202,7 +202,7 @@ function FullScreen({ data, onClose }: { data: string; onClose: () => void }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <Pressable
           onClick={onClose}
-          style={{ width: 'auto', minHeight: 44, padding: '10px 18px', borderRadius: 999, background: color.cream, color: color.ink, fontSize: 14, fontWeight: 700 }}
+          style={{ width: 'auto', minHeight: 44, padding: '10px 18px', borderRadius: 999, background: color.canvas, color: color.ink, fontSize: 14, fontWeight: 700 }}
         >
           Close
         </Pressable>

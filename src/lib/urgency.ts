@@ -40,9 +40,9 @@ export function urgency(daysLeft: number, urgentDays: number = DEFAULT_URGENT_DA
     };
   }
   if (daysLeft <= urgentDays) {
-    return { level: 'soon', bg: color.yellowLight, fg: color.ink, label: `${daysLeft} days left`, dot: color.yellow };
+    return { level: 'soon', bg: color.accentSoft, fg: color.ink, label: `${daysLeft} days left`, dot: color.accent };
   }
-  return { level: 'relaxed', bg: color.creamAlt, fg: color.body, label: `${daysLeft} days left`, dot: color.fainter };
+  return { level: 'relaxed', bg: color.surfaceAlt, fg: color.body, label: `${daysLeft} days left`, dot: color.fainter };
 }
 
 /** The hero's headline number and the word beside it. */

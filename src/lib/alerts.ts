@@ -186,7 +186,7 @@ export function copyFor(rung: AlertRung, r: Receipt, daysLeft: number, deadline:
       };
     case 'soon':
       return {
-        title: 'Go now or lose it',
+        title: 'Due soon',
         body: `${what} — ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left. ${money(r.amount)} back if it goes back.${checked ? '' : ` ${unchecked}`}`,
       };
     case 'today':

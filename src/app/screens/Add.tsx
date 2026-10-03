@@ -379,7 +379,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
         }}
         placeholder="Paste your order email here… e.g. 'Your Apple order · Total £129.00 · 25 Aug'"
         style={{
-          width: '100%', boxSizing: 'border-box', height: 120, border: '1.5px dashed rgba(23,20,16,0.3)',
+          width: '100%', boxSizing: 'border-box', height: 120, border: '1.5px dashed rgba(20,22,26,0.3)',
           borderRadius: radius.card, background: color.white, padding: 14,
           fontFamily: font.figures, fontSize: 13, color: color.ink, resize: 'none',
         }}
@@ -388,13 +388,13 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       <Pressable
         className="k-cta-yellow"
         onClick={read}
-        style={{ marginTop: 12, padding: 16, textAlign: 'center', background: color.yellow, border: `1.5px solid ${color.ink}`, borderRadius: 999, fontWeight: 700, fontSize: 15, boxShadow: shadow.hard }}
+        style={{ marginTop: 12, padding: 16, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: 999, fontWeight: 700, fontSize: 15, boxShadow: shadow.raised }}
       >
         Read it
       </Pressable>
 
       {error && (
-        <div className="k-fade" role="alert" style={{ display: 'flex', gap: 10, background: color.white, border: '1.5px solid rgba(216,66,46,0.4)', borderRadius: 16, padding: '14px 16px', marginTop: 14 }}>
+        <div className="k-fade" role="alert" style={{ display: 'flex', gap: 10, background: color.white, border: '1.5px solid rgba(217,45,32,0.4)', borderRadius: 16, padding: '14px 16px', marginTop: 14 }}>
           <Warning stroke={color.danger} />
           <div style={{ fontSize: 13, color: color.danger, lineHeight: 1.5, fontWeight: 600 }}>
             Couldn’t find a store or amount in that. Make sure the paste includes the shop’s name and a £ total — or scan the paper receipt, or type it in yourself below.
@@ -403,7 +403,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       )}
 
       {quotaFull && (
-        <div style={{ background: color.ink, color: color.cream, borderRadius: radius.cardLg, padding: 18, marginTop: 14 }}>
+        <div style={{ background: color.ink, color: color.canvas, borderRadius: radius.cardLg, padding: 18, marginTop: 14 }}>
           <div style={{ fontWeight: 700, fontSize: 15 }}>That’s your {FREE_TIER_LIMIT} free receipts</div>
           <div style={{ fontSize: 13, color: color.fainter, lineHeight: 1.55, marginTop: 6 }}>
             Kept has tracked {trackedTotal} for free. Return something you are already tracking, or mark one you are keeping, and a slot frees up —
@@ -412,7 +412,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
           <Pressable
             className="k-cta-yellow"
             onClick={onUpgrade}
-            style={{ marginTop: 12, padding: 13, textAlign: 'center', background: color.yellow, color: color.ink, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+            style={{ marginTop: 12, padding: 13, textAlign: 'center', background: color.accent, color: color.white, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
           >
             {`Go unlimited · ${FEATURED_TIER.price}${FEATURED_TIER.suffix}`}
           </Pressable>
@@ -420,13 +420,13 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       )}
 
       {parsed && (
-        <div className="k-fade" style={{ background: color.white, border: `1.5px solid ${color.ink}`, borderRadius: radius.cardLg, padding: 18, marginTop: 16, boxShadow: shadow.hard }}>
-          <div style={{ fontFamily: font.figures, fontSize: 11, letterSpacing: '1.6px', color: color.amber, fontWeight: 700 }}>
-            {typedIn ? 'TYPE IT IN' : scannedText !== null && text === scannedText ? 'READ FROM YOUR PHOTO' : 'FOUND IN YOUR PASTE'}
+        <div className="k-fade" style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, padding: 18, marginTop: 16, boxShadow: shadow.raised }}>
+          <div style={{ fontFamily: font.figures, fontSize: 11, letterSpacing: 0, color: color.accentInk, fontWeight: 700 }}>
+            {typedIn ? 'Type it in' : scannedText !== null && text === scannedText ? 'Read from your photo' : 'Found in your paste'}
           </div>
           <div style={{ marginTop: 12 }}>
-            <label htmlFor="add-item" style={{ display: 'block', fontSize: 12, fontWeight: 700, letterSpacing: '0.6px', color: color.muted, marginBottom: 6 }}>
-              WHAT IS IT?
+            <label htmlFor="add-item" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: color.bodyStrong, marginBottom: 6 }}>
+              What is it?
             </label>
             <input
               id="add-item"
@@ -442,8 +442,8 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
           </div>
           {storeTyped && (
             <div style={{ marginTop: 12 }}>
-              <label htmlFor="add-store" style={{ display: 'block', fontSize: 12, fontWeight: 700, letterSpacing: '0.6px', color: color.muted, marginBottom: 6 }}>
-                WHICH SHOP?
+              <label htmlFor="add-store" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: color.bodyStrong, marginBottom: 6 }}>
+                Which shop?
               </label>
               <input
                 id="add-store"
@@ -483,8 +483,8 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
           <HowBought id="add-how" value={distance} onChange={setDistance} />
           {distance && (
             <div style={{ marginTop: 12 }}>
-              <label htmlFor="add-arrived" style={{ display: 'block', fontSize: 12, fontWeight: 700, letterSpacing: '0.6px', color: color.muted, marginBottom: 6 }}>
-                ARRIVED ON
+              <label htmlFor="add-arrived" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: color.bodyStrong, marginBottom: 6 }}>
+                Arrived on
               </label>
               {/* No `min`. Chromium fills in the invariant parts of a narrow
                   range, so an EMPTY optional field rendered as "08/dd/2026"
@@ -662,8 +662,8 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
             disabled={cannotSave || saving}
             style={{
               marginTop: 14, padding: 14, textAlign: 'center',
-              background: cannotSave ? color.creamAlt : color.ink,
-              color: cannotSave ? color.muted : color.cream,
+              background: cannotSave ? color.surfaceAlt : color.ink,
+              color: cannotSave ? color.muted : color.canvas,
               borderRadius: 999, fontWeight: 700, fontSize: 14,
               cursor: cannotSave ? 'not-allowed' : 'pointer',
             }}
@@ -728,7 +728,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
         disabled={scanning !== null}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16,
-          background: color.white, border: `1.5px solid ${color.ink}`, borderRadius: 999,
+          background: color.white, border: `1px solid ${color.border}`, borderRadius: 999,
           fontWeight: 700, fontSize: 15, cursor: scanning !== null ? 'progress' : 'pointer',
         }}
       >
@@ -762,8 +762,8 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
           following them adds an icon that appears in no share sheet, and the
           iOS app has no share extension to appear in one either. See
           `shareRoute` for why this is copy rather than a feature test. */}
-      <div style={{ background: color.creamAlt, border: '1.5px dashed rgba(23,20,16,0.2)', borderRadius: radius.card, padding: '16px 18px', marginTop: 20 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1.4px', color: color.muted }}>{route.heading}</div>
+      <div style={{ background: color.surfaceAlt, border: '1.5px dashed rgba(20,22,26,0.2)', borderRadius: radius.card, padding: '16px 18px', marginTop: 20 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: color.muted }}>{route.heading}</div>
         <div style={{ fontSize: 12, color: color.muted, lineHeight: 1.5, marginTop: 6 }}>
           {route.body}
         </div>
@@ -789,7 +789,7 @@ function Row({ label, value, mono, accent }: { label: string; value: string; mon
         style={{
           fontWeight: 700, fontSize: 14, textAlign: 'right',
           fontFamily: mono ? font.figures : undefined,
-          color: accent ? color.amber : undefined,
+          color: accent ? color.accentInk : undefined,
         }}
       >
         {value}

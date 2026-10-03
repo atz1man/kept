@@ -1,10 +1,10 @@
-import { color, font } from '../tokens';
+import { color, font, shadow } from '../tokens';
 import { Logo, Wordmark } from '../app/components/Icons';
 import { TIERS as PRICING_TIERS, type Period } from '../lib/pricing';
 import { FREE_TIER_LIMIT } from '../lib/quota';
 import { STORE_COUNT, findStore } from '../lib/stores';
 import { COOLING_OFF_DAYS, REJECT_DAYS } from '../lib/legal';
-import { TAGLINE, TAGLINE_CAPS } from '../lib/brand';
+import { TAGLINE, TAGLINE_LEAD } from '../lib/brand';
 import { tickerLines } from './ticker';
 import { FinePrintArt, HaulArt, LostReceiptsArt } from './sections/ProblemArt';
 import { Card, Eyebrow, OpenAppButton, SectionTitle, WRAP } from './sections/primitives';
@@ -96,7 +96,7 @@ const TIERS = PRICING_TIERS.map((t) => ({ ...t, ...TIER_COPY[t.period] }));
 
 export function Landing() {
   return (
-    <div style={{ minHeight: '100vh', background: color.cream }}>
+    <div style={{ minHeight: '100vh', background: color.canvas }}>
       <header style={{ ...WRAP, padding: '20px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 10 }} aria-label="kept home">
           <Logo size={30} />
@@ -105,7 +105,7 @@ export function Landing() {
         <nav style={{ display: 'flex', alignItems: 'center', gap: 24, fontSize: 14.5, fontWeight: 600, flexWrap: 'wrap' }}>
           <a href="#how">How it works</a>
           <a href="#pricing">Pricing</a>
-          <a className="k-ink" href="/app/" style={{ display: 'flex', alignItems: 'center', gap: 8, background: color.ink, color: color.cream, padding: '10px 20px', borderRadius: 999, fontWeight: 700, fontSize: 14 }}>
+          <a className="k-cta-yellow" href="/app/" style={{ display: 'flex', alignItems: 'center', gap: 8, background: color.accent, color: color.white, padding: '10px 20px', borderRadius: 999, fontWeight: 600, fontSize: 14 }}>
             Open kept
           </a>
         </nav>
@@ -115,12 +115,12 @@ export function Landing() {
       {/* Hero */}
       <section style={{ ...WRAP, padding: '48px 28px 72px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(340px, 100%), 1fr))', gap: 56, alignItems: 'center' }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: `1.5px solid ${color.ink}`, borderRadius: 999, padding: '7px 14px', fontSize: 12, fontWeight: 700, letterSpacing: '0.5px', marginBottom: 26, flexWrap: 'wrap' }}>
-            <span style={{ width: 8, height: 8, borderRadius: 999, background: color.yellow, flexShrink: 0 }} />
-            NO ACCOUNT · NO CLOUD · NO ONE SEES YOUR RECEIPTS
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: `1px solid ${color.border}`, borderRadius: 999, padding: '7px 14px', fontSize: 13, fontWeight: 600, color: color.bodyStrong, background: color.white, marginBottom: 26, flexWrap: 'wrap' }}>
+            <span style={{ width: 8, height: 8, borderRadius: 999, background: color.accent, flexShrink: 0 }} />
+            No account · no cloud · no one sees your receipts
           </div>
-          <h1 style={{ fontFamily: font.display, fontSize: 'clamp(40px, 6vw, 64px)', fontWeight: 700, lineHeight: 1.02, letterSpacing: '-0.04em', margin: 0 }}>
-            Stop <span style={{ background: `linear-gradient(transparent 62%, ${color.yellowLight} 62%)` }}>donating money</span> to shops.
+          <h1 style={{ fontFamily: font.display, fontSize: 'clamp(38px, 5.4vw, 58px)', fontWeight: 700, lineHeight: 1.08, letterSpacing: '-0.03em', margin: 0 }}>
+            Know every return deadline before it passes.
           </h1>
           <p style={{ fontSize: 17.5, lineHeight: 1.6, color: color.body, maxWidth: 520, margin: '24px 0 0' }}>
             Kept remembers every receipt, knows each shop’s real return policy and your legal rights — and shows you what is about to run out the moment you open it.
@@ -135,16 +135,16 @@ export function Landing() {
           </div>
           {/* One source with the footer below and with Settings — see
               lib/brand.ts for what it used to say and why it does not. */}
-          <div style={{ marginTop: 22, fontFamily: font.figures, fontSize: 13, fontWeight: 600, letterSpacing: '1.5px', color: color.amber }}>
-            {TAGLINE_CAPS}
+          <div style={{ marginTop: 22, fontSize: 14, fontWeight: 600, color: color.accentInk }}>
+            {TAGLINE_LEAD}
           </div>
         </div>
 
         <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', marginBottom: 10 }}>
-            <span className="k-pulse" style={{ width: 8, height: 8, borderRadius: 999, background: color.yellow }} />
-            <span style={{ fontFamily: font.figures, fontSize: 12, fontWeight: 700, letterSpacing: '1.5px', color: color.muted }}>
-              LIVE DEMO — GO ON, TAP IT
+            <span className="k-pulse" style={{ width: 8, height: 8, borderRadius: 999, background: color.accent }} />
+            <span style={{ fontSize: 13.5, fontWeight: 600, color: color.bodyStrong }}>
+              Live demo — try it
             </span>
           </div>
           {/*
@@ -152,7 +152,7 @@ export function Landing() {
             so the demo cannot drift from the product the way a recording does.
             Onboarding is skipped for the embed via the query flag.
           */}
-          <div style={{ borderRadius: 32, overflow: 'hidden', border: `1.5px solid ${color.ink}`, boxShadow: `0 12px 32px rgba(23,20,16,0.22)`, background: color.cream, margin: '0 auto', maxWidth: 402 }}>
+          <div style={{ borderRadius: 32, overflow: 'hidden', border: `1px solid ${color.border}`, boxShadow: shadow.lift, background: color.canvas, margin: '0 auto', maxWidth: 402 }}>
             <iframe
               src="/app/?embed=1"
               title="kept — live app demo"
@@ -164,12 +164,12 @@ export function Landing() {
       </section>
 
       {/* Ticker */}
-      <div style={{ background: color.ink, padding: '14px 0', overflow: 'hidden', whiteSpace: 'nowrap' }} aria-hidden="true">
-        <div className="k-ticker" style={{ display: 'inline-flex', gap: 48, fontFamily: font.figures, fontSize: 13, fontWeight: 600, color: color.yellow }}>
+      <div style={{ background: color.white, borderTop: `1px solid ${color.borderHair}`, borderBottom: `1px solid ${color.borderHair}`, padding: '14px 0', overflow: 'hidden', whiteSpace: 'nowrap' }} aria-hidden="true">
+        <div className="k-ticker" style={{ display: 'inline-flex', gap: 48, fontSize: 13.5, fontWeight: 500, color: color.body }}>
           {[...TICKER, ...TICKER].map((line, i) => (
             <span key={i} style={{ display: 'inline-flex', gap: 48 }}>
               <span>{line}</span>
-              <span style={{ color: color.onInkFaint }}>◆</span>
+              <span style={{ color: color.muted }}>·</span>
             </span>
           ))}
         </div>
@@ -177,7 +177,7 @@ export function Landing() {
 
       {/* The problem */}
       <section style={{ ...WRAP, padding: '80px 28px 0' }}>
-        <Eyebrow>THE PROBLEM</Eyebrow>
+        <Eyebrow>The problem</Eyebrow>
         <SectionTitle>You shop in seconds. The fine print takes hours.</SectionTitle>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 18, margin: '38px 0 80px' }}>
           {PROBLEMS.map((p) => (
@@ -194,7 +194,7 @@ export function Landing() {
 
       {/* Policy watch */}
       <section style={{ ...WRAP }}>
-        <Eyebrow>POLICY WATCH</Eyebrow>
+        <Eyebrow>Policy watch</Eyebrow>
         <SectionTitle>Shops rewrite the rules quietly. kept checks your receipts when they do.</SectionTitle>
         <p style={{ fontSize: 16, color: color.muted, margin: '14px 0 0', maxWidth: 560, lineHeight: 1.6 }}>
           Retailers change return windows and never send a memo. When one does, kept’s list changes and every
@@ -206,7 +206,7 @@ export function Landing() {
             <Card key={u.store} emphasised={u.emphasised} style={{ padding: 24 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontWeight: 700, fontSize: 16 }}>{u.store}</span>
-                <span style={{ fontSize: 11, fontWeight: 700, background: color.yellowLight, padding: '4px 10px', borderRadius: 999, whiteSpace: 'nowrap' }}>{u.days} days</span>
+                <span style={{ fontSize: 11, fontWeight: 700, background: color.accentSoft, padding: '4px 10px', borderRadius: 999, whiteSpace: 'nowrap' }}>{u.days} days</span>
               </div>
               <div style={{ fontSize: 14, color: color.body, lineHeight: 1.6, marginTop: 12 }}>{u.text}</div>
             </Card>
@@ -215,18 +215,18 @@ export function Landing() {
       </section>
 
       {/* Why kept */}
-      <section id="how" style={{ background: color.ink, color: color.cream, padding: '80px 28px' }}>
+      <section id="how" style={{ background: color.white, borderTop: `1px solid ${color.borderHair}`, borderBottom: `1px solid ${color.borderHair}`, padding: '80px 28px' }}>
         <div style={{ maxWidth: 1160, margin: '0 auto' }}>
-          <Eyebrow onInk>WHY KEPT</Eyebrow>
+          <Eyebrow>Why Kept</Eyebrow>
           <SectionTitle maxWidth={640}>The shop’s clock, the law’s clock, and yours — on one screen.</SectionTitle>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 1, background: color.onInkBorder, border: `1px solid ${color.onInkBorder}`, borderRadius: 20, overflow: 'hidden', marginTop: 44 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 1, background: color.borderHair, border: `1px solid ${color.borderHair}`, borderRadius: 18, overflow: 'hidden', marginTop: 44 }}>
             {WHY.map((w) => (
-              <div key={w.n} style={{ background: color.ink, padding: '30px 28px' }}>
-                <div style={{ fontFamily: font.figures, fontSize: 22, color: color.yellow }}>{w.n}</div>
+              <div key={w.n} style={{ background: color.white, padding: '30px 28px' }}>
+                <div style={{ fontFamily: font.figures, fontSize: 15, fontWeight: 600, color: color.accentInk }}>{w.n}</div>
                 <div style={{ fontWeight: 700, fontSize: 17, marginTop: 14 }}>{w.title}</div>
-                <div style={{ fontSize: 14, lineHeight: 1.6, color: color.fainter, marginTop: 8 }}>{w.body}</div>
+                <div style={{ fontSize: 14.5, lineHeight: 1.6, color: color.body, marginTop: 8 }}>{w.body}</div>
                 {w.link && (
-                  <a href={w.link.href} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 4, fontSize: 14, fontWeight: 700, color: color.yellow }}>
+                  <a href={w.link.href} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 4, fontSize: 14, fontWeight: 600, color: color.accentInk }}>
                     {w.link.label}
                   </a>
                 )}
@@ -239,7 +239,7 @@ export function Landing() {
       {/* Pricing */}
       <section id="pricing" style={{ ...WRAP, padding: '80px 28px' }}>
         <div style={{ textAlign: 'center' }}>
-          <Eyebrow>PRICING</Eyebrow>
+          <Eyebrow>Pricing</Eyebrow>
           <h2 style={{ fontFamily: font.display, fontSize: 'clamp(30px, 4vw, 40px)', fontWeight: 700, letterSpacing: '-0.03em', margin: '14px 0 0' }}>
             Free for your first {FREE_TIER_LIMIT} receipts.
           </h2>
@@ -248,23 +248,23 @@ export function Landing() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: 20, maxWidth: 880, margin: '44px auto 0' }}>
           {TIERS.map((t) =>
             t.featured ? (
-              <div key={t.name} style={{ background: color.ink, color: color.cream, borderRadius: 22, padding: '30px 26px', position: 'relative', boxShadow: `6px 6px 0 ${color.yellow}` }}>
-                <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: color.yellow, color: color.ink, fontSize: 11, fontWeight: 700, padding: '5px 14px', borderRadius: 999, letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>
-                  BEST VALUE
+              <div key={t.name} style={{ background: color.white, borderRadius: 18, padding: '30px 26px', position: 'relative', border: `1.5px solid ${color.accent}`, boxShadow: shadow.raisedLg }}>
+                <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: color.accent, color: color.white, fontSize: 11, fontWeight: 700, padding: '5px 14px', borderRadius: 999, letterSpacing: 0, whiteSpace: 'nowrap' }}>
+                  Best value
                 </div>
-                <div style={{ fontWeight: 700, fontSize: 15, color: color.fainter }}>{t.name}</div>
-                <div style={{ fontFamily: font.figures, fontSize: 36, fontWeight: 700, marginTop: 10, color: color.yellow }}>
+                <div style={{ fontWeight: 700, fontSize: 15, color: color.muted }}>{t.name}</div>
+                <div style={{ fontFamily: font.figures, fontSize: 36, fontWeight: 700, marginTop: 10, color: color.ink }}>
                   {t.price}
-                  <span style={{ fontSize: 15, color: color.fainter, fontWeight: 500 }}>{t.suffix}</span>
+                  <span style={{ fontSize: 15, color: color.muted, fontWeight: 500 }}>{t.suffix}</span>
                 </div>
-                <div style={{ fontSize: 14, color: color.onInkBody, marginTop: 16, lineHeight: 1.9 }}>
+                <div style={{ fontSize: 14, color: color.body, marginTop: 16, lineHeight: 1.9 }}>
                   {t.lines.map((l) => (
                     <div key={l}>{l}</div>
                   ))}
                 </div>
               </div>
             ) : (
-              <div key={t.name} style={{ background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 22, padding: '30px 26px' }}>
+              <div key={t.name} style={{ background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: 18, padding: '30px 26px' }}>
                 <div style={{ fontWeight: 700, fontSize: 15, color: color.muted }}>{t.name}</div>
                 <div style={{ fontFamily: font.figures, fontSize: 36, fontWeight: 700, marginTop: 10 }}>
                   {t.price}
@@ -286,14 +286,14 @@ export function Landing() {
 
       </main>
 
-      <footer style={{ borderTop: '1.5px solid rgba(23,20,16,0.1)', padding: 28 }}>
+      <footer style={{ borderTop: '1.5px solid rgba(20,22,26,0.1)', padding: 28 }}>
         <div style={{ maxWidth: 1160, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, color: color.muted, gap: 14, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Logo size={20} />
             <Wordmark size={16} />
           </div>
-          <div style={{ fontFamily: font.figures, fontWeight: 600, color: color.amber }}>{TAGLINE}</div>
-          <div>
+          <div style={{ fontFamily: font.figures, fontWeight: 600, color: color.accentInk }}>{TAGLINE}</div>
+          <div className="k-inline-links">
             local-first receipt &amp; return tracking · <a href="#how">how it works</a> · <a href="#pricing">pricing</a> · <a href="/rights/">your rights</a> · <a href="/privacy/">privacy</a>
           </div>
         </div>

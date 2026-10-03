@@ -187,7 +187,7 @@ const detail = await page.evaluate(() => {
     // 'STORE POLICY' is the detail screen's own card label. The first version
     // of this used /RETURN BY|window/i, which the HOME screen also satisfies
     // — 'NEXT WINDOW TO CLOSE' — so it reported being somewhere it was not.
-    onDetail: /STORE POLICY/.test(document.body.innerText),
+    onDetail: /Store policy/.test(document.body.innerText),
     hasControl: !!shoot,
     // A control with no accessible name is a control a screen reader cannot
     // offer. axe checks this too, but naming it here says which one broke.
@@ -295,7 +295,7 @@ if (!/Deadline alerts/.test(settingsText)) {
   const scan = async () => {
     await np.getByRole('button', { name: 'Add a receipt' }).click();
     await np.getByRole('button', { name: /Scan a paper receipt/ }).click();
-    return np.getByText('READ FROM YOUR PHOTO').waitFor({ timeout: 90_000 }).then(() => true).catch(() => false);
+    return np.getByText('Read from your photo', { exact: true }).waitFor({ timeout: 90_000 }).then(() => true).catch(() => false);
   };
 
   // 1. Scanned and saved as it comes: the photo goes with the receipt.
@@ -518,7 +518,7 @@ if (!/Deadline alerts/.test(settingsText)) {
     await ap.evaluate((n) => window.__tapNotification(n), first);
     await ap.waitForTimeout(600);
     const opened = await ap.evaluate(() => document.body.innerText);
-    if (!/STORE POLICY/.test(opened) || !opened.includes(item)) {
+    if (!/Store policy/.test(opened) || !opened.includes(item)) {
       failures.push({ what: 'tapping a reminder did not open the receipt it was about', saw: `${item} · ${opened.slice(0, 120)}` });
     }
 
