@@ -1,4 +1,4 @@
-import { daysBetween, startOfDay, toISODate } from './dates';
+import { addDays, daysBetween, startOfDay, toISODate } from './dates';
 import { toPence, type Pence } from './money';
 import { ALIASES_BY_LENGTH, type StorePolicy } from './stores';
 
@@ -626,9 +626,46 @@ function gbpAsPounds(text: string): string {
  * of the parse. Starting only where a figure starts, each run is read once.
  */
 
+/*
+ * "Delivered today" and "Delivered yesterday", read against the day the email
+ * was SENT, never the day it is pasted: an Amazon email saying "Delivered
+ * today" pasted ten days later would otherwise move the delivery, and the
+ * deadline counted from it, ten days late. So it is read only when the paste
+ * carries the email's own header — a From: line with a Date: or Sent: line
+ * beside it, as Mail, Gmail and Outlook copy it — and left unread otherwise,
+ * when the app counts from the order date and says "at least until".
+ *
+ * The header is required as a block, not a lone "Date:" line, because an
+ * order email's own body says "Date: 16/09/2026" about the ORDER.
+ */
+const HEADER_LINES = 15;
+const HEADER_REACH = 4;
+
+function sentOn(text: string, today: Date): Date | null {
+  const lines = text.split('\n').slice(0, HEADER_LINES);
+  const from = lines.findIndex((l) => /^\s*from:/i.test(l));
+  if (from === -1) return null;
+  for (let i = Math.max(0, from - HEADER_REACH); i <= Math.min(lines.length - 1, from + HEADER_REACH); i++) {
+    if (!/^\s*(?:date|sent):/i.test(lines[i])) continue;
+    const hits = datesIn(lines[i], today);
+    // A future header is not refused here: the delivery reader refuses a
+    // delivery still to come, and one before the order, whatever wrote it.
+    return hits.length === 1 ? hits[0].date : null;
+  }
+  return null;
+}
+
+function deliveredRelative(text: string, today: Date): string {
+  const sent = sentOn(text, today);
+  if (!sent) return text;
+  return text.replace(/\b(delivered|arrived)\s+(today|yesterday)\b/gi, (_, word: string, when: string) =>
+    `${word} ${toISODate(when.toLowerCase() === 'today' ? sent : addDays(sent, -1))}`,
+  );
+}
+
 export function parseReceiptText(raw: string, today: Date = new Date()): ParseOutcome {
   if (!raw.trim()) return { ok: false, reason: 'empty' };
-  const text = gbpAsPounds(raw);
+  const text = deliveredRelative(gbpAsPounds(raw), today);
 
   const policy = pickStore(text);
   const amount = pickAmount(text);
