@@ -2437,6 +2437,18 @@ days" beside "for Members" is not the window a person gets. The report is the
 evidence the table changes from; `test/retailer-check.test.ts` holds the parts
 that decide what it says.
 
+Beyond the twenty shops in the table, `store/retailer-candidates.json` lists
+seventy-six more UK retailers waiting to be read: supermarkets, department
+stores, fashion, electronics, home and DIY, beauty, books, outdoor. Listing a
+shop there claims nothing about its window. `npm run check:candidates` opens
+each homepage, follows the shop's own Returns or Refunds links (staying on its
+own site, at most two clicks deep, because a returns page is found rather than
+guessed), and writes every sentence that states a period to
+`store/retailer-check/<date>-candidates.md`, with a count of which periods
+appear most. A shop moves into `stores.ts` by hand, from those quotes, with its
+returns page added to `retailer-sources.json` in the same change. Marketplaces
+are left out on purpose: on eBay, Etsy or Vinted the window is the seller's.
+
 **The iOS privacy manifest is written, and so are the four project edits that
 make it more than a file.** It is the one place the App Store reads this app's
 central claim mechanically, and it now says there what the Settings screen, the

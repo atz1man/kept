@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { STORE_POLICIES } from '../src/lib/stores';
 // @ts-expect-error - a small JS helper, run as `npm run check:retailers`
-import { channelIn, clockIn, daysIn, looksBlocked, readSources, readTable, verdict, windowSentences } from '../scripts/retailer-check-lib.mjs';
+import { channelIn, clockIn, daysIn, looksBlocked, proposal, readSources, readTable, returnsLinks, siteOf, verdict, windowSentences } from '../scripts/retailer-check-lib.mjs';
 
 /**
  * `npm run check:retailers` reads each retailer's own returns page (APN-16).
@@ -93,5 +93,80 @@ describe('which purchase a quoted sentence is about', () => {
     expect(channelIn('Items bought in store can be returned within 14 days.')).toBe('in store');
     expect(channelIn('Return anything within 30 days.')).toBeNull();
     expect(channelIn('Return online or in store within 30 days.')).toBeNull();
+  });
+});
+
+describe('the candidate retailers waiting to be read', () => {
+  type Candidate = { home: string; aliases: string[]; cat?: string; commonWord?: boolean };
+  const candidates = JSON.parse(readFileSync(join(ROOT, 'store/retailer-candidates.json'), 'utf8')).candidates as Record<string, Candidate>;
+  const tableAliases = STORE_POLICIES.flatMap((s) => s.aliases);
+
+  it('are shops the table does not already have', () => {
+    expect(Object.keys(candidates).length).toBeGreaterThanOrEqual(50);
+    for (const name of Object.keys(candidates)) expect(STORE_POLICIES.map((s) => s.name), name).not.toContain(name);
+  });
+
+  it('name each shop in a way no other shop is named', () => {
+    // An alias shared with a table shop would let a candidate's row, once
+    // added, take that shop's receipts — or the other way round.
+    const seen = new Map<string, string>(tableAliases.map((a) => [a, 'the table']));
+    for (const [name, c] of Object.entries(candidates)) {
+      expect(c.aliases.length, name).toBeGreaterThan(0);
+      for (const a of c.aliases) {
+        expect(a, `${name}: aliases are matched lower-case`).toBe(a.toLowerCase());
+        expect(seen.get(a), `${name}: "${a}" is already ${seen.get(a)}'s`).toBeUndefined();
+        seen.set(a, name);
+      }
+    }
+  });
+
+  it('start from the shop\'s own https homepage', () => {
+    for (const [name, c] of Object.entries(candidates)) expect(new URL(c.home).protocol, name).toBe('https:');
+  });
+});
+
+describe('finding a candidate\'s returns page from its homepage', () => {
+  const home = 'https://www.shop.co.uk/';
+
+  it('treats a shop\'s subdomains as the shop, and nothing else', () => {
+    expect(siteOf('www.next.co.uk')).toBe('next.co.uk');
+    expect(siteOf('help.next.co.uk')).toBe('next.co.uk');
+    expect(siteOf('help.asos.com')).toBe('asos.com');
+    expect(siteOf('next.co.uk')).not.toBe(siteOf('nextdoor.co.uk'));
+  });
+
+  it('follows the shop\'s own Returns links, the link text before the path', () => {
+    const links = [
+      { text: 'Delivery', href: '/help/delivery' },
+      { text: 'Help', href: '/help/returns-and-refunds' },
+      { text: 'Returns & refunds', href: '/customer-service/rr' },
+      { text: 'Returns', href: '/customer-service/rr#top' },
+    ];
+    expect(returnsLinks(links, home)).toEqual(['https://www.shop.co.uk/customer-service/rr', 'https://www.shop.co.uk/help/returns-and-refunds']);
+  });
+
+  it('never leaves the shop\'s site: another site\'s words are not the shop\'s', () => {
+    const links = [
+      { text: 'Returns', href: 'https://www.returns-portal.com/shop' },
+      { text: 'Returns', href: 'http://www.shop.co.uk/returns' },
+      { text: 'Refunds', href: 'https://help.shop.co.uk/refunds' },
+    ];
+    expect(returnsLinks(links, home)).toEqual(['https://help.shop.co.uk/refunds']);
+  });
+
+  it('follows at most three', () => {
+    const links = Array.from({ length: 6 }, (_, i) => ({ text: 'Returns', href: `/r${i}` }));
+    expect(returnsLinks(links, home)).toHaveLength(3);
+  });
+
+  it('summarises the periods named, most often first, for a person to read against the quotes', () => {
+    const p = proposal([
+      'Return within 28 days of delivery for a refund.',
+      'Changed your mind? 28 days, 28-day returns on everything.',
+      'Members can return within 60 days.',
+    ]);
+    // Counted once per sentence: a sentence repeating "28" is one statement.
+    expect(p.periods).toEqual([{ days: 28, times: 2 }, { days: 60, times: 1 }]);
+    expect(p.clocks).toEqual(['delivery']);
   });
 });

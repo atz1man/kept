@@ -27,6 +27,7 @@
     "store:screenshots": "node scripts/store-screenshots.mjs",
     "preflight": "node scripts/preflight.mjs",
     "check:retailers": "node scripts/check-retailers.mjs",
+    "check:candidates": "node scripts/check-retailers.mjs --candidates",
     "feed:add": "node scripts/feed-add.mjs"
   },
   "dependencies": {
