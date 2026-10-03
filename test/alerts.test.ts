@@ -147,6 +147,45 @@ describe('the copy people actually see', () => {
   });
 });
 
+describe('a window Kept has not checked is not stated as the shop\'s', () => {
+  // Most shops a person uses are not in the table; their windows are a guess
+  // or a number typed in, and the reminders are where they are acted on.
+  // `closingIn` dates the purchase for a 30-day window; these carry others.
+  const closing = (daysLeft: number, windowDays: number, over: Partial<Receipt> = {}) =>
+    closingIn(daysLeft, { windowDays, purchasedOn: toISODate(addDays(TODAY, -(windowDays - daysLeft))), ...over });
+  const corner = (daysLeft: number) => closing(daysLeft, 28, { store: 'Corner Shop', policy: 'Corner Shop · 28-day return window — as entered, not verified. Check the receipt.' });
+
+  it('never says a guessed window "has closed": the shop may give longer', () => {
+    const a = dueAlerts([corner(-1)], TODAY, URGENT, none)[0];
+    expect(a.title).toBe('The saved window has passed');
+    expect(a.title).not.toMatch(/has closed/);
+    expect(a.body).toMatch(/Kept hasn’t checked Corner Shop’s returns policy, so check the receipt: the shop may give longer/);
+    expect(a.body).toContain('still have rights');
+  });
+
+  it('says whose last day it is', () => {
+    const a = dueAlerts([corner(0)], TODAY, URGENT, none)[0];
+    expect(a.title).toBe('The saved window ends today');
+    expect(a.body).toMatch(/the 28 days saved for it end today\. Kept hasn’t checked Corner Shop’s returns policy/);
+  });
+
+  it('says so on the earlier rungs too', () => {
+    for (const n of [2, 7]) expect(dueAlerts([corner(n)], TODAY, URGENT, none)[0].body).toMatch(/Kept hasn’t checked Corner Shop’s returns policy, so check the receipt\.$/);
+  });
+
+  it('treats a table shop with a different window typed in as unchecked too', () => {
+    const typed = closing(-1, 45);
+    expect(dueAlerts([typed], TODAY, URGENT, none)[0].title).toBe('The saved window has passed');
+  });
+
+  it('keeps the shop\'s own words for a window it has checked, or a cited policy change', () => {
+    expect(dueAlerts([closingIn(-1)], TODAY, URGENT, none)[0].title).toBe('That window has closed');
+    expect(dueAlerts([closingIn(2)], TODAY, URGENT, none)[0].body).not.toMatch(/hasn’t checked/);
+    const changed = closing(0, 45, { policy: 'Zara · 45-day return window, from a policy change on 1 August 2026.' });
+    expect(dueAlerts([changed], TODAY, URGENT, none)[0].title).toBe('Today is the last day');
+  });
+});
+
 describe('the sent list does not grow forever', () => {
   it('forgets keys for receipts that no longer exist', () => {
     const kept = closingIn(2, { id: 'still-here' });
