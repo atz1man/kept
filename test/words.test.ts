@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { midSentence, winSentence } from '../src/lib/words';
+import { midSentence, possessive, winSentence } from '../src/lib/words';
 import { seedReceipts } from '../src/lib/seed';
 
 describe('fitting an item name into the middle of a sentence', () => {
@@ -73,3 +73,12 @@ describe('the sentence somebody sends their friends', () => {
     }
   });
 })
+
+describe('a shop name as a possessive', () => {
+  it('takes an apostrophe alone after an s, and ’s otherwise', () => {
+    expect(possessive('Boots')).toBe('Boots’');
+    expect(possessive('Currys')).toBe('Currys’');
+    expect(possessive('Tesco')).toBe('Tesco’s');
+    expect(possessive('H&M')).toBe('H&M’s');
+  });
+});

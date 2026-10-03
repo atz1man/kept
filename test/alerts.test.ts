@@ -189,8 +189,13 @@ describe('a window Kept has not checked is not stated as the shop\'s', () => {
   });
 
   it('keeps the shop\'s own words for a window it has checked, or a cited policy change', () => {
-    expect(dueAlerts([closingIn(-1)], TODAY, URGENT, none)[0].title).toBe('That window has closed');
-    expect(dueAlerts([closingIn(2)], TODAY, URGENT, none)[0].body).not.toMatch(/hasn’t checked/);
+    // Tesco's 30 days were read off Tesco's own page. Zara's were not — its
+    // pages refused every run — so its plain 30 days are worded as a guess,
+    // while a cited policy change below is the shop's word again.
+    const tesco = (n: number) => closingIn(n, { store: 'Tesco' });
+    expect(dueAlerts([tesco(-1)], TODAY, URGENT, none)[0].title).toBe('That window has closed');
+    expect(dueAlerts([tesco(2)], TODAY, URGENT, none)[0].body).not.toMatch(/hasn’t checked/);
+    expect(dueAlerts([closingIn(-1)], TODAY, URGENT, none)[0].title).toBe('The saved window has passed');
     const changed = closing(0, 45, { policy: 'Zara · 45-day return window, from a policy change on 1 August 2026.' });
     expect(dueAlerts([changed], TODAY, URGENT, none)[0].title).toBe('Today is the last day');
   });

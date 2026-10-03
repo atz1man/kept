@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { color, font, radius } from '../../tokens';
 import { isNative } from '../../lib/mirror';
-import { fmtDateLong } from '../../lib/dates';
+import { fmtDateLong, fromISODate } from '../../lib/dates';
 import { mergeBackup, parseBackup } from '../../lib/backup';
 import { backupFilename, saveJsonFile, savedWhere, type SaveOutcome } from '../../lib/save-file';
 import { alertsRow, currentNotifyState, notifyState, requestNotifyPermission, type NotifyState } from '../notify';
 import type { Receipt } from '../../lib/types';
 import { CONTACT_EMAIL, TAGLINE } from '../../lib/brand';
 import { LEGAL_DISCLAIMER } from '../../lib/legal';
-import { STORE_COUNT, tableCheck } from '../../lib/stores';
+import { checkedCount, CHECKED_ON, STORE_COUNT, tableCheck } from '../../lib/stores';
 import { discardSetAside, setAsideData, URGENT_DAYS_MAX, URGENT_DAYS_MIN, type Settings as SettingsShape } from '../../lib/storage';
 import { sellsPaidTiers, TIERS } from '../../lib/pricing';
 import { countedAgainstQuota, FREE_TIER_LIMIT } from '../../lib/quota';
@@ -35,6 +35,8 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
   // How current the retailer table is, decided in `tableCheck` so that a date
   // set once cannot go on reassuring people years later.
   const check = tableCheck(new Date());
+  const perShop = checkedCount(new Date());
+  const lastRead = Object.values(CHECKED_ON).sort().at(-1);
   const fileInput = useRef<HTMLInputElement>(null);
   // One note under both buttons, because they are one pair: a backup taken and
   // a backup put back. It said nothing at all after an export, which was
@@ -337,10 +339,14 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
               here reading the same in 2029, which is the same claim decaying
               rather than being false on the day it was written. See
               `tableCheck` in stores.ts. */}
+          {/* Until every row is checked, say how many are and which are not —
+              not "none", which stopped being true once most of the table had
+              been read off the shops' own pages (`CHECKED_ON`). */}
           {check.state === 'never' && (
             <div style={{ fontSize: 12, color: color.muted, lineHeight: 1.5, marginTop: 6 }}>
-              Kept’s own list, not yet checked against each retailer’s published terms. Always trust your receipt over
-              this.
+              {perShop.checked} checked against each shop’s own returns page
+              {lastRead ? `, most recently ${fmtDateLong(fromISODate(lastRead))}` : ''}.
+              {perShop.unchecked.length > 0 && ` Not yet checked: ${perShop.unchecked.join(', ')} — trust your receipt for those.`}
             </div>
           )}
           {check.state === 'stale' && (

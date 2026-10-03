@@ -5,6 +5,7 @@ import { money } from './money';
 import { derive, refundOf } from './receipts';
 import { windowChecked } from './stores';
 import type { Receipt } from './types';
+import { possessive } from './words';
 
 /**
  * Which deadlines deserve to interrupt someone today.
@@ -176,7 +177,7 @@ export function copyFor(rung: AlertRung, r: Receipt, daysLeft: number, deadline:
    * never say wrongly: the shop may well give longer.
    */
   const checked = windowChecked(r);
-  const unchecked = `Kept hasn’t checked ${r.store}’s returns policy, so check the receipt.`;
+  const unchecked = `Kept hasn’t checked ${possessive(r.store)} returns policy, so check the receipt.`;
   switch (rung) {
     case 'week':
       return {
@@ -200,7 +201,7 @@ export function copyFor(rung: AlertRung, r: Receipt, daysLeft: number, deadline:
           }
         : {
             title: 'The saved window has passed',
-            body: `${what} — the ${r.windowDays} days saved for it are up. Kept hasn’t checked ${r.store}’s returns policy, so check the receipt: the shop may give longer. If it turns out to be faulty, you still have rights.`,
+            body: `${what} — the ${r.windowDays} days saved for it are up. Kept hasn’t checked ${possessive(r.store)} returns policy, so check the receipt: the shop may give longer. If it turns out to be faulty, you still have rights.`,
           };
     case 'reject': {
       // `daysLeft` and `deadline` are the RIGHT's here. After it, the shop

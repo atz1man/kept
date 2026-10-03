@@ -54,3 +54,12 @@ export function winSentence(
     earned ? 'reminded me before the window shut.' : 'keeps every return deadline in one place.'
   }`;
 }
+
+/**
+ * A shop's name as a possessive: "Currys’" and "Boots’", not "Currys’s".
+ * Many UK shop names already end in s — Boots, Currys, Clarks, Matalan's
+ * neighbours — and the reminders said "Boots’s returns policy" on every one.
+ */
+export function possessive(name: string): string {
+  return /s$/i.test(name) ? `${name}’` : `${name}’s`;
+}
