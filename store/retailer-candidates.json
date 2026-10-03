@@ -227,18 +227,6 @@
       ],
       "cat": "audio"
     },
-    "GAME": {
-      "home": "https://www.game.co.uk/",
-      "returns": [
-        "https://helps.game.co.uk/en/support/solutions/articles/80000620493-game-returns-policy",
-        "https://help.game.co.uk/support/solutions/articles/80001148308-delivery-and-returns"
-      ],
-      "aliases": [
-        "game"
-      ],
-      "cat": "audio",
-      "commonWord": true
-    },
     "Smyths": {
       "home": "https://www.smythstoys.com/uk/en-gb",
       "returns": [
@@ -393,17 +381,6 @@
       "cat": "beauty",
       "commonWord": true
     },
-    "Space NK": {
-      "home": "https://www.spacenk.com/uk/",
-      "returns": [
-        "https://help.spacenk.com/hc/en-us/articles/360002297754-Returns-Policy-Store-Online"
-      ],
-      "aliases": [
-        "space nk",
-        "spacenk"
-      ],
-      "cat": "beauty"
-    },
     "Sephora": {
       "home": "https://www.sephora.co.uk/",
       "returns": [
@@ -454,17 +431,6 @@
       ],
       "cat": "clothing"
     },
-    "Cotswold Outdoor": {
-      "home": "https://www.cotswoldoutdoor.com/",
-      "returns": [
-        "https://help.cotswoldoutdoor.com/hc/en-gb/articles/4411467010834-Returns-Policy"
-      ],
-      "aliases": [
-        "cotswold outdoor",
-        "cotswoldoutdoor"
-      ],
-      "cat": "clothing"
-    },
     "Halfords": {
       "home": "https://www.halfords.com/",
       "returns": [
@@ -484,18 +450,6 @@
         "jojomamanbebe"
       ],
       "cat": "clothing"
-    },
-    "Home Bargains": {
-      "home": "https://www.homebargains.co.uk/",
-      "returns": [
-        "https://help.homebargains.co.uk/hc/en-gb/articles/205395762-How-do-I-return-an-item",
-        "https://help.homebargains.co.uk/hc/en-gb/articles/200213017-What-is-your-returns-policy-for-in-store-purchases"
-      ],
-      "aliases": [
-        "home bargains",
-        "homebargains"
-      ],
-      "cat": "other"
     },
     "Hotter": {
       "home": "https://www.hotter.com/gb/en/",
@@ -566,17 +520,6 @@
       "aliases": [
         "charles tyrwhitt",
         "charlestyrwhitt"
-      ],
-      "cat": "clothing"
-    },
-    "Bonmarché": {
-      "home": "https://www.bonmarche.co.uk/",
-      "returns": [
-        "https://www.bonmarche.co.uk/returns-and-refunds/returns-and-refunds.html"
-      ],
-      "aliases": [
-        "bonmarché",
-        "bonmarche"
       ],
       "cat": "clothing"
     },

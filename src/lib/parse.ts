@@ -486,11 +486,19 @@ const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
  */
 function mentions(text: string, alias: string, commonWord: boolean): boolean {
   const a = escape(alias);
-  if (!commonWord) return new RegExp(`\\b${a}\\b`, 'i').test(text);
+  /*
+   * The alias's own edges are letters in any alphabet, not `\b`. JavaScript's
+   * `\b` knows only ASCII word characters, so "bonmarché" could never end on
+   * one — the é and the space after it are both "non-word" — and "& other
+   * stories" could never start on one. Those shops' emails named no shop.
+   */
+  const start = '(?<![\\p{L}\\p{N}])';
+  const end = '(?![\\p{L}\\p{N}])';
+  if (!commonWord) return new RegExp(`${start}${a}${end}`, 'iu').test(text);
   return (
     new RegExp(
-      `(?:\\b${STORE_CUE}\\s+${a}\\b|\\b${a}\\s+(?:${STORE_CUE}|store)\\b|\\b${a}\\.(?:com|co\\.uk))`,
-      'i',
+      `(?:\\b${STORE_CUE}\\s+${a}${end}|${start}${a}\\s+(?:${STORE_CUE}|store)\\b|${start}${a}\\.(?:com|co\\.uk))`,
+      'iu',
     ).test(text) || isHeading(text, alias)
   );
 }

@@ -562,6 +562,33 @@ export const STORE_POLICIES: readonly StorePolicy[] = [
     policy: 'Fortnum & Mason · 30 days from purchase in store, with your receipt; an online order, 14 days from delivery.',
     gotcha: 'Online it is the 14-day cooling-off period, not 30, counted from the day it arrives. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be.',
   },
+  /*
+   * Added 3 October 2026, fourth reading: candidates whose pages answered on
+   * a later run. Quotes in store/retailer-check/2026-10-03-candidates-4.md.
+   */
+  {
+    name: 'Bonmarché', aliases: ['bonmarché', 'bonmarche'], windowDays: 28, clockStart: 'purchase', onlineClockStart: 'delivery', cat: 'clothing',
+    policy: 'Bonmarché · 28 days with tags attached (sale items 14): from purchase in store, from delivery online.',
+    gotcha: 'Sale items get 14 days from the day you bought them, not 28. An online order counts the 28 days from the day it arrives. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'Cotswold Outdoor', aliases: ['cotswold outdoor', 'cotswoldoutdoor'], windowDays: 30, clockStart: 'purchase', onlineWindowDays: 14, onlineClockStart: 'delivery', cat: 'clothing',
+    policy: 'Cotswold Outdoor · 30 days from purchase for full-priced products (100 for Explore More members, sale 14); online orders not collected in store, 14 days from delivery.',
+    gotcha: 'Sale and clearance items get 14 days, and an online order delivered to you gets 14 from the day it arrives. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be. Explore More members get 100 days on full-priced products bought in store.',
+  },
+  {
+    name: 'GAME', commonWord: true, aliases: ['game'], windowDays: 28, clockStart: 'purchase', onlineClockStart: 'delivery',
+    policy: 'GAME · 28 days: from purchase in store, for a credit note or exchange; from delivery online, by post.',
+    gotcha: 'Taken back to a store within the 28 days, you get a credit note or an exchange, not your money back. An online order counts the 28 days from the day it arrives. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'Home Bargains', aliases: ['home bargains', 'homebargains'], windowDays: 28, clockStart: 'purchase',
+    policy: 'Home Bargains · 28 days from purchase with your receipt, unused, for a full refund or exchange.',
+  },
+  {
+    name: 'Space NK', aliases: ['space nk', 'spacenk'], windowDays: 28, clockStart: 'purchase', cat: 'beauty',
+    policy: 'Space NK · 28 days from purchase with proof of purchase, sale items included.',
+  },
 ] as const;
 
 /** How many retailers the marketing copy may honestly claim. */

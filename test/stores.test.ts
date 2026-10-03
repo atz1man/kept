@@ -160,6 +160,8 @@ describe('naming a shop that is not there', () => {
     ['Apple', 'Your Apple order · AirPods · £129.00 · 20 Aug 2026'],
     ['Boots', 'Thanks for shopping at boots.com · £24.98 · 20 Aug 2026'],
     ['Next', 'Order confirmation from next.co.uk · £30.00 · 20 Aug 2026'],
+    // A name ending on a letter outside ASCII: `\b` could not see its edge.
+    ['Bonmarché', 'Your Bonmarché order · £30.00 · 20 Aug 2026'],
   ])('still recognises a real %s email', (name, text) => {
     expect(store(text)).toBe(name);
   });

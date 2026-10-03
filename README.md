@@ -2453,8 +2453,9 @@ reached six of the original twenty for the first time and corrected four:
 Sainsbury's and Uniqlo count an online order from delivery, Sports Direct gives
 a credit note rather than a refund in store, and Next an eVoucher after 28 days.
 
-The table held ninety-two shops then, and ninety-six once the online window
-let four more in. On the closing run (`2026-10-03-2.md`)
+The table held ninety-two shops then, ninety-six once the online window let
+four more in, and 101 after a fourth reading caught five pages that had
+refused earlier in the day. On the closing run (`2026-10-03-2.md`)
 eighty-two were read and confirmed from their own pages and ten were not:
 Amazon, Argos, ASOS, Boots, Currys, H&M, John Lewis and Zara have refused or
 moved on every run, and need a person in an ordinary browser. The other two,
