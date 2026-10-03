@@ -8,9 +8,9 @@ import { isNative } from '../lib/mirror';
 import { restoreFromMirror } from '../lib/storage';
 
 /**
- * On a phone the app is the whole viewport. On a desktop it renders in a
- * 402px column on the cream ground — the width the design was drawn at, and
- * the width the landing page embeds. No drawn bezel: the handoff is explicit
+ * On a phone the app is the whole viewport — every phone, the 430 and 440px
+ * Pro Max sizes included (`.k-frame` in styles.css). Past a phone it renders
+ * in a 430px column on a quiet ground. No drawn bezel: the handoff is explicit
  * that the iPhone frame is presentation for the prototype, not part of the
  * product, and a fake device chrome around a real installed app is a lie
  * about what you are using.
@@ -20,19 +20,19 @@ function Shell() {
     <div
       style={{
         minHeight: '100dvh',
-        background: `radial-gradient(900px 700px at 50% -10%, ${color.surfaceHover}, ${color.surfaceDeep} 70%)`,
+        background: color.surfaceAlt,
         display: 'flex',
         justifyContent: 'center',
       }}
     >
       <div
+        className="k-frame"
         style={{
           width: '100%',
-          maxWidth: 402,
           height: '100dvh',
           position: 'relative',
           overflow: 'hidden',
-          boxShadow: '0 0 0 1px rgba(20,22,26,0.08)',
+          background: color.canvas,
         }}
       >
         <Recovery>

@@ -89,7 +89,7 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
   };
 
   return (
-    <div style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.card, padding: 14, marginTop: 12 }}>
+    <div style={{ paddingBottom: 14, marginBottom: 14, borderBottom: `1px solid ${color.borderHair}` }}>
       <div style={{ fontSize: 13, fontWeight: 600, color: color.bodyStrong, marginBottom: 8 }}>
         The paper receipt
       </div>
@@ -124,7 +124,7 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
             <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
               <Pressable
                 onClick={() => setViewing(true)}
-                style={{ padding: '10px 14px', borderRadius: radius.control, background: color.ink, color: color.canvas, fontSize: 13, fontWeight: 600 }}
+                style={{ padding: '10px 14px', borderRadius: radius.control, background: color.white, border: `1px solid ${color.border}`, color: color.ink, fontSize: 13, fontWeight: 600 }}
               >
                 Show it full screen
               </Pressable>
@@ -148,7 +148,7 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
             className="k-ink"
             disabled={busy}
             onClick={() => void take()}
-            style={{ padding: '12px 16px', borderRadius: radius.control, background: color.ink, color: color.canvas, fontSize: 13.5, fontWeight: 600 }}
+            style={{ padding: '12px 16px', borderRadius: radius.control, background: color.white, border: `1px solid ${color.border}`, color: color.ink, fontSize: 13.5, fontWeight: 600 }}
           >
             {busy ? 'Opening the camera…' : 'Photograph the receipt'}
           </Pressable>

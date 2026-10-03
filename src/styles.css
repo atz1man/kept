@@ -56,6 +56,13 @@ a:hover { color: #1A5C43; }
 /* A link inside a line of text is told apart by more than its colour: the
    muted line and the ink link are too close to rely on hue alone (WCAG
    1.4.1, axe's link-in-text-block). */
+/* The app's column: the whole screen on any phone, a column past one. It was
+   a flat 402px cap, which left grey strips down both sides of a Pro Max. */
+.k-frame { max-width: 100%; }
+@media (min-width: 600px) {
+  .k-frame { max-width: 430px; box-shadow: 0 0 0 1px rgba(20,22,26,0.08); }
+}
+
 .k-group {
   display: flex; flex-direction: column; margin: 0; padding: 0;
   background: #ffffff; border: 1px solid rgba(20,22,26,0.09); border-radius: 14px; overflow: hidden;

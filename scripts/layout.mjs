@@ -709,6 +709,37 @@ const bigTextFailures = [];
 }
 failures.push(...bigTextFailures);
 
+/*
+ * The biggest phones get the whole screen.
+ *
+ * The app sat in a 402px column on every viewport, a cap meant for desktops.
+ * On a 430px iPhone Pro Max that left a 14px strip of grey down each side,
+ * and nothing above could see it: every width this file checks is 402 or
+ * less, where the column fills the screen anyway. It surfaced in the App
+ * Store screenshots, which are taken at 430. Up to the widest iPhone the app
+ * reaches both edges; past a phone, a column is right.
+ */
+for (const width of [430, 440]) {
+  const wide = await browser.newContext({ viewport: { width, height: 932 } });
+  const wp = await wide.newPage();
+  await wp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await wp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await wp.waitForTimeout(300);
+  const bar = await wp.evaluate(() => {
+    const nav = document.querySelector('nav[aria-label="Main"]')?.getBoundingClientRect();
+    return nav ? { left: nav.left, right: nav.right, vw: window.innerWidth } : null;
+  });
+  if (!bar) {
+    failures.push({ label: 'the full-width check', width, kind: 'found no tab bar to measure', detail: 'nothing was measured' });
+  } else if (bar.left > 0.5 || bar.right < bar.vw - 0.5) {
+    failures.push({
+      label: 'home', width, kind: 'the app stops short of the screen edges',
+      detail: `the tab bar runs ${Math.round(bar.left)}–${Math.round(bar.right)}px on a ${bar.vw}px phone`,
+    });
+  }
+  await wide.close();
+}
+
 await browser.close();
 
 // Before the verdict, not after it: this guard was written below the success
