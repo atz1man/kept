@@ -197,3 +197,85 @@ export function proposal(sentencesFound) {
   const clocks = [...new Set(sentencesFound.map(clockIn).filter(Boolean))];
   return { periods, clocks };
 }
+
+/*
+ * --- Reading a shop by hand: `npm run record:shop` ---------------------------
+ *
+ * Eight shops refuse an automated browser outright — Amazon, Argos, ASOS,
+ * Boots, Currys, H&M, John Lewis and Zara — and they are the eight most people
+ * buy from. Nothing in this repository works round a bot wall, so those eight
+ * stay "not yet checked" until a person reads the page. These two functions
+ * are what makes that a two-minute job rather than an afternoon of learning
+ * the report format: the person pastes the page's address and its sentence,
+ * and the evidence is written in the exact shape `test/verified.test.ts`
+ * accepts — or refused, saying why, before anything is written.
+ */
+
+/** The same rule `test/verified.test.ts` holds a quote to. */
+export const namesDays = (days) => new RegExp(`\\b${days}(?:[- ](?:calendar|working))?[- ]days?\\b`, 'i');
+
+/**
+ * The report section for one shop read by hand, or the reasons it is not
+ * evidence. `own` is the shop's pages from retailer-sources.json.
+ */
+export function manualRecord({ row, url, quotes, own }) {
+  const problems = [];
+  let host = null;
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    problems.push(`${url || '(nothing)'} is not a web address — paste the page's address from the browser`);
+  }
+  const sites = new Set((own ?? []).map((u) => siteOf(new URL(u).hostname)));
+  if (!sites.size) {
+    problems.push(`${row.name} has no returns page in store/retailer-sources.json — list its own page there first`);
+  } else if (host && !sites.has(siteOf(host))) {
+    problems.push(`${url} is not on ${row.name}’s own site (${[...sites].join(', ')}) — only the shop’s own page is evidence`);
+  }
+  const windows = row.onlineWindowDays ? [row.windowDays, row.onlineWindowDays] : [row.windowDays];
+  const said = quotes.map((q) => q.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  if (!said.length) {
+    problems.push('no quote — paste the sentence from the page that states the window, word for word');
+  } else {
+    for (const days of windows) {
+      if (said.some((q) => namesDays(days).test(q))) continue;
+      const named = [...new Set(said.flatMap(daysIn))];
+      problems.push(
+        named.length
+          ? `the table says ${days} days and the quote says ${named.join(', ')} — if the shop has changed its window, change stores.ts by hand from this quote first, then record it`
+          : `no quote names ${days} days — paste the sentence that states the window, with its number`,
+      );
+    }
+  }
+  if (problems.length) return { ok: false, problems };
+  const section = [
+    `## ${row.name} — read by hand; table says ${windows.join(' / ')} days from ${row.clockStart}`,
+    '',
+    `- ${url}`,
+    ...said.map((q) => `  - > ${q}`),
+    '',
+  ].join('\n');
+  return { ok: true, section };
+}
+
+const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** stores.ts with `name` dated `on` in CHECKED_ON — added, or its date moved. */
+export function withCheckedOn(source, name, on) {
+  const start = source.indexOf('export const CHECKED_ON');
+  const end = source.indexOf('\n};', start);
+  if (start === -1 || end === -1) throw new Error('CHECKED_ON was not found in stores.ts');
+  const block = source.slice(start, end);
+  // Written the way the table already writes them: Levi's in double quotes.
+  const key = name.includes("'") ? `"${name}"` : `'${name}'`;
+  const line = new RegExp(`^  (?:'${esc(name)}'|"${esc(name)}"|${esc(name)}): '\\d{4}-\\d{2}-\\d{2}',$`, 'm');
+  const next = line.test(block) ? block.replace(line, `  ${key}: '${on}',`) : `${block}\n  ${key}: '${on}',`;
+  return source.slice(0, start) + next + source.slice(end);
+}
+
+/** The names CHECKED_ON dates, read from stores.ts as text. */
+export function checkedNames(source) {
+  const start = source.indexOf('export const CHECKED_ON');
+  const block = source.slice(start, source.indexOf('\n};', start));
+  return [...block.matchAll(/^  (?:'([^']+)'|"([^"]+)"|([^\s'":]+)): '\d{4}-\d{2}-\d{2}',$/gm)].map((m) => m[1] ?? m[2] ?? m[3]);
+}
