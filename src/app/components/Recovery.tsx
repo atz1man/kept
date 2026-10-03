@@ -81,7 +81,7 @@ export class Recovery extends Component<{ children: ReactNode }, State> {
           Your receipts are still on this device and nothing has been deleted. Save a copy before anything else — kept
           keeps them here and nowhere else, so a file on your phone is the only backup there is.
         </p>
-        <button
+        <button className="k-primary"
           type="button"
           onClick={() => void this.rescue()}
           style={{
@@ -114,7 +114,7 @@ export class Recovery extends Component<{ children: ReactNode }, State> {
             There was nothing stored on this device to save.
           </p>
         )}
-        <button
+        <button className="k-secondary"
           type="button"
           onClick={() => window.location.reload()}
           style={{

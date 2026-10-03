@@ -37,7 +37,7 @@ export function SaveFailedBanner({ onExport }: { onExport: () => void }) {
           be gone.
         </div>
         <Pressable
-          className="k-cta-yellow"
+          className="k-primary"
           onClick={onExport}
           style={{
             width: 'auto', marginTop: 10, padding: '9px 16px', background: color.accent, color: color.white,

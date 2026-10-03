@@ -105,7 +105,7 @@ export function Onboarding({ step, onNext, onSkip }: Props) {
           ))}
         </div>
         <Pressable
-          className="k-cta-yellow"
+          className="k-primary"
           onClick={onNext}
           style={{
             width: 'auto', padding: '15px 30px', background: color.accent, color: color.white, border: 0,

@@ -1,39 +1,42 @@
-import type { CSSProperties } from 'react';
+import { useId, type CSSProperties } from 'react';
 import { color, font } from '../../tokens';
 import type { Category } from '../../lib/types';
 
 /*
- * The mark: a countdown ring nearly run down, with a tick inside — a deadline,
- * caught in time. Drawn on a 40-unit grid, the same geometry as
+ * The mark: a lowercase k whose leg sweeps round like a clock hand — the
+ * name, and a deadline running. Drawn on a 40-unit grid, the same geometry as
  * public/icons/icon.svg (512 units, ×12.8), so the app icon and every mark
  * inside the app are one drawing at different sizes.
  *
- * It replaced a receipt-shaped ticket with a "k" set in type, which read as a
- * toy at app-icon size and said "receipt" without saying "deadline".
+ * It replaced a tick inside a countdown ring: clear, but the tick-in-a-circle
+ * is the stock symbol of half the to-do apps on the store, which made it
+ * neither ownable nor safe to register. This one is drawn for kept.
  */
-const RING_R = 10.3;
-const RING_C = 2 * Math.PI * RING_R;
-const TICK = 'M15.3 20.5l3.3 3.1 6.4-7';
+const K_PATHS = ['M14.22 9.22V30.78', 'M25.47 11.41L16.41 20', 'M16.41 20A11.72 11.72 0 0 1 26.41 30.47'];
 
-function MarkGlyph({ ink, track, run = 0.75, weight = 2.9 }: { ink: string; track: string; run?: number; weight?: number }) {
+function KGlyph({ ink, weight = 4.2 }: { ink: string; weight?: number }) {
   return (
-    <>
-      <circle cx="20" cy="20" r={RING_R} fill="none" stroke={track} strokeWidth={weight} />
-      <circle
-        cx="20" cy="20" r={RING_R} fill="none" stroke={ink} strokeWidth={weight} strokeLinecap="round"
-        strokeDasharray={RING_C} strokeDashoffset={RING_C * (1 - run)} transform="rotate(-90 20 20)"
-      />
-      <path d={TICK} fill="none" stroke={ink} strokeWidth={weight} strokeLinecap="round" strokeLinejoin="round" />
-    </>
+    <g fill="none" stroke={ink} strokeWidth={weight} strokeLinecap="round">
+      {K_PATHS.map((d) => <path key={d} d={d} />)}
+    </g>
   );
 }
 
-/** The logo: the mark, white, on a green tile — the app icon at header size. */
+/** The logo: the k, white, on the green tile — the app icon at header size. */
 export function Logo({ size = 28, style }: { size?: number; style?: CSSProperties }) {
+  // An id per instance: the header and the landing page can show two at once,
+  // and a shared gradient id would let one tile paint with the other's.
+  const id = useId().replace(/[^a-zA-Z0-9]/g, '');
   return (
     <svg width={size} height={size} viewBox="0 0 40 40" style={style} aria-hidden="true">
-      <rect width="40" height="40" rx="9" fill={color.accent} />
-      <MarkGlyph ink={color.white} track="rgba(255,255,255,0.24)" />
+      <defs>
+        <linearGradient id={`${id}t`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={color.accentTile} />
+          <stop offset="1" stopColor={color.accentHover} />
+        </linearGradient>
+      </defs>
+      <rect width="40" height="40" rx="8.75" fill={`url(#${id}t)`} />
+      <KGlyph ink={color.white} weight={size < 32 ? 4.6 : 4.2} />
     </svg>
   );
 }
@@ -41,18 +44,18 @@ export function Logo({ size = 28, style }: { size?: number; style?: CSSPropertie
 /** The bare mark, no tile — for surfaces that are themselves the accent. */
 export function LogoMark({ size = 18, fill = color.accent }: { size?: number; fill?: string }) {
   return (
-    <svg width={size} height={size} viewBox="4 4 32 32" aria-hidden="true">
-      <MarkGlyph ink={fill} track="transparent" weight={3.4} />
+    <svg width={size} height={size} viewBox="6 5 28 30" aria-hidden="true">
+      <KGlyph ink={fill} weight={4.4} />
     </svg>
   );
 }
 
-/** The celebrate variant: the ring run all the way round — returned in time. */
+/** The celebrate variant: the mark on the soft tile — returned in time. */
 export function LogoChecked({ size = 38 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 40 40" aria-hidden="true">
-      <rect width="40" height="40" rx="9" fill={color.accentSoft} />
-      <MarkGlyph ink={color.accent} track={color.accentSoft} run={1} />
+      <rect width="40" height="40" rx="8.75" fill={color.accentSoft} />
+      <KGlyph ink={color.accent} />
     </svg>
   );
 }
@@ -61,8 +64,8 @@ export function LogoChecked({ size = 38 }: { size?: number }) {
 export function LogoDashed({ size = 72 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 40 40" style={{ margin: '0 auto 20px' }} aria-hidden="true">
-      <circle cx="20" cy="20" r={RING_R + 4} fill="none" stroke={color.borderSoft} strokeWidth="1" strokeDasharray="2.5 2.5" />
-      <MarkGlyph ink={color.fainter} track={color.surfaceAlt} run={0.3} weight={1.8} />
+      <rect x="1" y="1" width="38" height="38" rx="8.5" fill="none" stroke={color.borderSoft} strokeWidth="1" strokeDasharray="2.5 2.5" />
+      <KGlyph ink={color.fainter} weight={2.2} />
     </svg>
   );
 }

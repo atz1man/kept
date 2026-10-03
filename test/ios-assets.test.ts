@@ -23,7 +23,6 @@ const ICON = join(ASSETS, 'AppIcon.appiconset', 'AppIcon-512@2x.png');
 const SPLASHES = ['splash-2732x2732.png', 'splash-2732x2732-1.png', 'splash-2732x2732-2.png']
   .map((n) => join(ASSETS, 'Splash.imageset', n));
 
-const GROUND = [31, 107, 78];   // #1F6B4E, the icon's ground
 const CANVAS = [255, 255, 255]; // #FFFFFF, what the shell is told to paint
 const MARK = [255, 255, 255];   // #FFFFFF, the mark itself
 
@@ -31,15 +30,23 @@ const near = (got: number[], want: number[]) =>
   want.every((v, i) => Math.abs(got[i] - v) <= 2);
 
 /*
+ * The tile is a gradient from #25805E to #17573F with a soft light at the
+ * top, so no one pixel of it is #1F6B4E. What every pixel of it IS is the
+ * brand green: green well above red and blue, and neither white nor ink.
+ */
+const tileGreen = (px: number[]) => px[1] - px[0] > 40 && px[1] - px[2] > 15 && px[1] < 180 && px[1] > 60;
+
+/*
  * Looked for across a region rather than at one guessed pixel. A hardcoded
  * coordinate is a test that breaks when the mark moves a little and passes when
  * it is replaced by something else the same colour; "the mark's white appears
  * somewhere inside the artwork" is the claim actually worth making.
  */
-const hasMark = (image: { width: number; height: number }, box: [number, number, number, number], ink = MARK) => {
+const hasMark = (image: { width: number; height: number }, box: [number, number, number, number], ink: number[] | 'tile' = MARK) => {
   const [x0, y0, x1, y1] = box;
+  const is = (px: number[]) => (ink === 'tile' ? tileGreen(px) : near(px, ink));
   for (let y = y0; y < y1; y += 4) {
-    for (let x = x0; x < x1; x += 4) if (near(pixelAt(image, x, y), ink)) return true;
+    for (let x = x0; x < x1; x += 4) if (is(pixelAt(image, x, y))) return true;
   }
   return false;
 };
@@ -66,7 +73,7 @@ describe('the app icon', () => {
      */
     for (const [x, y] of [[0, 0], [1023, 0], [0, 1023], [1023, 1023]]) {
       const px = pixelAt(icon, x, y);
-      expect(near(px, GROUND), `corner ${x},${y} was ${px}`).toBe(true);
+      expect(tileGreen(px), `corner ${x},${y} was ${px}`).toBe(true);
     }
   });
 
@@ -108,11 +115,11 @@ describe('the launch screen', () => {
     // mark's own white is everywhere on it and would prove nothing.
     expect(CANVAS).toEqual(MARK);
     const s = decodePng(SPLASHES[0]);
-    expect(hasMark(s, [1110, 1110, 1622, 1622], GROUND)).toBe(true);
+    expect(hasMark(s, [1110, 1110, 1622, 1622], 'tile')).toBe(true);
     // And nothing outside where the mark belongs — the first attempt at this
     // artwork rendered it several times too large and running off the canvas,
     // which the generator reported as a success because it had drawn something.
-    expect(hasMark(s, [0, 0, 1000, 2732], GROUND)).toBe(false);
-    expect(hasMark(s, [1732, 0, 2732, 2732], GROUND)).toBe(false);
+    expect(hasMark(s, [0, 0, 1000, 2732], 'tile')).toBe(false);
+    expect(hasMark(s, [1732, 0, 2732, 2732], 'tile')).toBe(false);
   });
 });

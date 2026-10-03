@@ -109,7 +109,7 @@ export function FaultPanel({ receipt, today, onSent, onUnsent }: {
 
               <Letter letter={letter} title={`Faulty goods: ${receipt.item}`} receipt={receipt} />
               <Pressable
-                className="k-row-white"
+                className="k-row-white k-secondary"
                 onClick={() => (claim ? onUnsent() : onSent(whatsWrong))}
                 style={{ marginTop: 10, padding: 13, textAlign: 'center', borderRadius: radius.control, fontWeight: 600, fontSize: 14, background: color.white, border: `1px solid ${color.borderSoft}` }}
               >

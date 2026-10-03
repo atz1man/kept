@@ -59,7 +59,7 @@ export function CancelPanel({ receipt, today, onSent, onUnsent }: {
             )
           )}
           <Pressable
-            className="k-row-white"
+            className="k-row-white k-secondary"
             onClick={() => (by ? onUnsent() : onSent())}
             style={{ marginTop: 10, padding: 13, textAlign: 'center', borderRadius: radius.control, fontWeight: 600, fontSize: 14, background: color.white, border: `1px solid ${color.borderSoft}` }}
           >

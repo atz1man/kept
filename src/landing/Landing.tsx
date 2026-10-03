@@ -102,7 +102,7 @@ export function Landing() {
         <nav style={{ display: 'flex', alignItems: 'center', gap: 24, fontSize: 14.5, fontWeight: 600, flexWrap: 'wrap' }}>
           <a href="#how">How it works</a>
           <a href="#pricing">Pricing</a>
-          <a className="k-cta-yellow" href="/app/" style={{ display: 'flex', alignItems: 'center', gap: 8, background: color.accent, color: color.white, padding: '10px 20px', borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}>
+          <a className="k-primary" href="/app/" style={{ display: 'flex', alignItems: 'center', gap: 8, background: color.accent, color: color.white, padding: '10px 20px', borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}>
             Open kept
           </a>
         </nav>

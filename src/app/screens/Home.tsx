@@ -132,14 +132,14 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
           </p>
           <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
             <Pressable
-              className="k-cta-yellow"
+              className="k-primary"
               onClick={reminders.onYes}
               style={{ flex: '1 1 150px', padding: 13, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
             >
               Turn on reminders
             </Pressable>
             <Pressable
-              className="k-row-white"
+              className="k-row-white k-secondary"
               onClick={reminders.onNo}
               style={{ flex: '1 1 100px', padding: 13, textAlign: 'center', background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
             >
@@ -293,7 +293,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
               whatever a half-typed query happened to leave in it. */}
           {!searching && (
             <Pressable
-              className="k-row-white"
+              className="k-row-white k-secondary"
               onClick={() => onKeepClosed(closed.map((r) => r.id))}
               style={{ marginTop: 9, padding: 13, textAlign: 'center', background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
             >
@@ -556,7 +556,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
         Bought something this week? The return clock is already ticking. Add your first receipt and kept takes it from there.
       </div>
       <Pressable
-        className="k-cta-yellow"
+        className="k-primary"
         onClick={onAdd}
         style={{
           display: 'inline-block', width: 'auto', marginTop: 18, padding: '14px 28px', background: color.accent, color: color.white,

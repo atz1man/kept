@@ -56,7 +56,7 @@ export function UndoBar({ label, onUndo, onDismiss }: { label: string; onUndo: (
       className="k-fade"
     >
       <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600, minWidth: 0 }}>{label}</span>
-      <Pressable
+      <Pressable className="k-primary"
         onClick={onUndo}
         style={{
           width: 'auto', flexShrink: 0, padding: '7px 14px', borderRadius: radius.control,

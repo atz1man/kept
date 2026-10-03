@@ -114,7 +114,36 @@ a:hover { color: #1A5C43; }
   border-radius: 4px;
 }
 
-.k-cta-yellow:hover { background: #185A41 !important; }
+/*
+ * Buttons with depth. The primary is the brand green given a light source: a
+ * gradient from the tile's top green to its bottom one, a hairline highlight
+ * along the top edge, and a soft shadow in its own hue. The secondary is
+ * crisp white on a hairline with the lightest lift. Flat fills read as a
+ * template; this is the difference people describe as "polished" without
+ * being able to say why.
+ *
+ * Stated here once rather than at each of forty call sites. A disabled
+ * control is drawn flat, because depth says "press me".
+ */
+.k-primary:not(:disabled) {
+  background-image: linear-gradient(#25805E, #185A41) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 1px 2px rgba(24,90,65,0.26), 0 4px 12px rgba(24,90,65,0.16);
+  text-shadow: 0 1px 0 rgba(20,22,26,0.12);
+}
+.k-primary:not(:disabled):hover { background-image: linear-gradient(#1F6B4E, #185A41) !important; }
+.k-primary:not(:disabled):active { background-image: linear-gradient(#185A41, #185A41) !important; box-shadow: inset 0 1px 2px rgba(20,22,26,0.2); }
+.k-secondary:not(:disabled) {
+  box-shadow: 0 1px 2px rgba(20,22,26,0.06), 0 1px 0 rgba(20,22,26,0.02);
+}
+.k-secondary:not(:disabled):active { background: #EEEEEA !important; box-shadow: none; }
+/* Pressed, everything gives a little; reduced motion keeps it still. */
+.k-primary:not(:disabled):active, .k-secondary:not(:disabled):active { transform: scale(0.985); }
+@media (prefers-reduced-motion: reduce) {
+  .k-primary:active, .k-secondary:active { transform: none; }
+}
+/* The focus ring after the depth, so its white halo is not overwritten. */
+.k-primary:focus-visible, .k-secondary:focus-visible { box-shadow: 0 0 0 5px #ffffff !important; }
+
 .k-row-white:hover { background: #FAFAF8; }
 .k-row-plain:hover { background: #FAFAF8; }
 .k-banner:hover { background: #FAFAF8 !important; }

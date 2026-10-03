@@ -112,7 +112,7 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
                 >
                   Remove it for good
                 </Pressable>
-                <Pressable
+                <Pressable className="k-secondary"
                   onClick={() => setConfirming(false)}
                   style={{ padding: '10px 14px', borderRadius: radius.control, border: `1px solid ${color.border}`, background: color.white, fontSize: 13, fontWeight: 600 }}
                 >
@@ -122,13 +122,13 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
             </div>
           ) : (
             <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
-              <Pressable
+              <Pressable className="k-secondary"
                 onClick={() => setViewing(true)}
                 style={{ padding: '10px 14px', borderRadius: radius.control, background: color.white, border: `1px solid ${color.border}`, color: color.ink, fontSize: 13, fontWeight: 600 }}
               >
                 Show it full screen
               </Pressable>
-              <Pressable
+              <Pressable className="k-secondary"
                 onClick={() => setConfirming(true)}
                 style={{ padding: '10px 14px', borderRadius: radius.control, border: `1px solid ${color.border}`, background: color.white, fontSize: 13, fontWeight: 600 }}
               >
@@ -145,7 +145,7 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
             entered.
           </div>
           <Pressable
-            className="k-row-white"
+            className="k-row-white k-secondary"
             disabled={busy}
             onClick={() => void take()}
             style={{ padding: '12px 16px', borderRadius: radius.control, background: color.white, border: `1px solid ${color.border}`, color: color.ink, fontSize: 13.5, fontWeight: 600 }}
