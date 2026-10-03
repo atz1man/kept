@@ -97,3 +97,63 @@ export function verdict(tableDays, found) {
   if (all.includes(tableDays)) return 'mentioned';
   return 'differs';
 }
+
+/**
+ * The shop's own site, from a host: "www.next.co.uk" and "help.next.co.uk" are
+ * one site, "next.co.uk" vs "nextdoor.com" are not. Two labels, or three under
+ * a UK second level (co.uk, org.uk) — a returns link that leaves the shop's
+ * own site is not the shop's own words.
+ */
+export function siteOf(host) {
+  const labels = host.toLowerCase().replace(/\.$/, '').split('.');
+  const ukSecond = labels.length >= 3 && labels.at(-1) === 'uk' && /^(co|org|ltd|plc|me)$/.test(labels.at(-2));
+  return labels.slice(ukSecond ? -3 : -2).join('.');
+}
+
+const RETURNS_LINK = /\breturns?\b|\brefunds?\b/i;
+
+/**
+ * Which links on a shop's page lead to its returns terms: on the shop's own
+ * site, saying "return" or "refund" in the text or the path, at most `max`.
+ * Text matches first, because a footer link reading "Returns & refunds" is the
+ * page a person would click; a path match alone is the fallback.
+ */
+export function returnsLinks(anchors, pageUrl, max = 3) {
+  const home = siteOf(new URL(pageUrl).hostname);
+  const seen = new Set();
+  const scored = [];
+  for (const { text, href } of anchors) {
+    let u;
+    try {
+      u = new URL(href, pageUrl);
+    } catch {
+      continue;
+    }
+    // Same scheme as the page it is on: a shop's https page linking to http
+    // is not followed, and the candidates file holds every homepage to https.
+    if (u.protocol !== new URL(pageUrl).protocol || siteOf(u.hostname) !== home) continue;
+    u.hash = '';
+    const key = u.href;
+    if (seen.has(key) || key === new URL(pageUrl).href) continue;
+    const byText = RETURNS_LINK.test(text ?? '');
+    const byPath = RETURNS_LINK.test(u.pathname.replace(/[-_/]/g, ' '));
+    if (!byText && !byPath) continue;
+    seen.add(key);
+    scored.push({ href: key, score: byText ? 0 : 1 });
+  }
+  return scored.sort((a, b) => a.score - b.score).slice(0, max).map((s) => s.href);
+}
+
+/**
+ * What a candidate's pages appear to say, for a person to check against the
+ * quotes: every period named, most often first, and the clock starts named.
+ * A SUMMARY, never a value for stores.ts — "30 days" beside "for Members" is
+ * not the window a person gets, and only reading the sentence says so.
+ */
+export function proposal(sentencesFound) {
+  const counts = new Map();
+  for (const s of sentencesFound) for (const d of new Set(daysIn(s))) counts.set(d, (counts.get(d) ?? 0) + 1);
+  const periods = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0]).map(([days, times]) => ({ days, times }));
+  const clocks = [...new Set(sentencesFound.map(clockIn).filter(Boolean))];
+  return { periods, clocks };
+}

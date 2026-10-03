@@ -1,0 +1,587 @@
+{
+  "_readme": "UK retailers NOT yet in src/lib/stores.ts, waiting to be read. Inclusion here claims nothing about a shop's window: `npm run check:retailers -- --candidates` opens each homepage, follows the shop's own Returns/Refunds links, and writes the sentences that state a period to store/retailer-check/<date>-candidates.md. A shop moves into stores.ts only by hand, from those quotes, with its row and its returns page added to retailer-sources.json together. `commonWord` marks a name that is also an ordinary word, which the paste parser must not take as the shop without a cue (see pickStore). Marketplaces (eBay, Etsy, Vinted, Not On The High Street) are left out on purpose: the window is the seller's, not the site's.",
+  "candidates": {
+    "Asda": {
+      "home": "https://www.asda.com/",
+      "aliases": [
+        "asda",
+        "george at asda"
+      ],
+      "cat": "other"
+    },
+    "Morrisons": {
+      "home": "https://www.morrisons.com/",
+      "aliases": [
+        "morrisons"
+      ],
+      "cat": "other"
+    },
+    "Waitrose": {
+      "home": "https://www.waitrose.com/",
+      "aliases": [
+        "waitrose"
+      ],
+      "cat": "kitchen"
+    },
+    "Aldi": {
+      "home": "https://www.aldi.co.uk/",
+      "aliases": [
+        "aldi"
+      ],
+      "cat": "other"
+    },
+    "Lidl": {
+      "home": "https://www.lidl.co.uk/",
+      "aliases": [
+        "lidl"
+      ],
+      "cat": "other"
+    },
+    "Selfridges": {
+      "home": "https://www.selfridges.com/GB/en/",
+      "aliases": [
+        "selfridges"
+      ],
+      "cat": "clothing"
+    },
+    "Harrods": {
+      "home": "https://www.harrods.com/en-gb/",
+      "aliases": [
+        "harrods"
+      ],
+      "cat": "clothing"
+    },
+    "Fenwick": {
+      "home": "https://www.fenwick.co.uk/",
+      "aliases": [
+        "fenwick"
+      ],
+      "cat": "clothing"
+    },
+    "Liberty": {
+      "home": "https://www.libertylondon.com/uk/",
+      "aliases": [
+        "liberty london",
+        "libertylondon"
+      ],
+      "cat": "clothing"
+    },
+    "House of Fraser": {
+      "home": "https://www.houseoffraser.co.uk/",
+      "aliases": [
+        "house of fraser",
+        "houseoffraser"
+      ],
+      "cat": "clothing"
+    },
+    "Debenhams": {
+      "home": "https://www.debenhams.com/",
+      "aliases": [
+        "debenhams"
+      ],
+      "cat": "clothing"
+    },
+    "Primark": {
+      "home": "https://www.primark.com/en-gb",
+      "aliases": [
+        "primark"
+      ],
+      "cat": "clothing"
+    },
+    "New Look": {
+      "home": "https://www.newlook.com/uk",
+      "aliases": [
+        "new look",
+        "newlook"
+      ],
+      "cat": "clothing"
+    },
+    "River Island": {
+      "home": "https://www.riverisland.com/",
+      "aliases": [
+        "river island",
+        "riverisland"
+      ],
+      "cat": "clothing"
+    },
+    "TK Maxx": {
+      "home": "https://www.tkmaxx.com/uk/en/",
+      "aliases": [
+        "tk maxx",
+        "tkmaxx"
+      ],
+      "cat": "clothing"
+    },
+    "Matalan": {
+      "home": "https://www.matalan.co.uk/",
+      "aliases": [
+        "matalan"
+      ],
+      "cat": "clothing"
+    },
+    "Mango": {
+      "home": "https://shop.mango.com/gb",
+      "aliases": [
+        "mango"
+      ],
+      "cat": "clothing",
+      "commonWord": true
+    },
+    "Boohoo": {
+      "home": "https://www.boohoo.com/",
+      "aliases": [
+        "boohoo"
+      ],
+      "cat": "clothing"
+    },
+    "PrettyLittleThing": {
+      "home": "https://www.prettylittlething.com/",
+      "aliases": [
+        "prettylittlething",
+        "pretty little thing"
+      ],
+      "cat": "clothing"
+    },
+    "Shein": {
+      "home": "https://www.shein.co.uk/",
+      "aliases": [
+        "shein"
+      ],
+      "cat": "clothing"
+    },
+    "Very": {
+      "home": "https://www.very.co.uk/",
+      "aliases": [
+        "very"
+      ],
+      "cat": "other",
+      "commonWord": true
+    },
+    "JD Sports": {
+      "home": "https://www.jdsports.co.uk/",
+      "aliases": [
+        "jd sports",
+        "jdsports"
+      ],
+      "cat": "clothing"
+    },
+    "Schuh": {
+      "home": "https://www.schuh.co.uk/",
+      "aliases": [
+        "schuh"
+      ],
+      "cat": "clothing"
+    },
+    "Clarks": {
+      "home": "https://www.clarks.com/en-gb",
+      "aliases": [
+        "clarks"
+      ],
+      "cat": "clothing"
+    },
+    "FatFace": {
+      "home": "https://www.fatface.com/",
+      "aliases": [
+        "fatface",
+        "fat face"
+      ],
+      "cat": "clothing"
+    },
+    "White Stuff": {
+      "home": "https://www.whitestuff.com/",
+      "aliases": [
+        "white stuff",
+        "whitestuff"
+      ],
+      "cat": "clothing"
+    },
+    "Joules": {
+      "home": "https://www.joules.com/",
+      "aliases": [
+        "joules"
+      ],
+      "cat": "clothing",
+      "commonWord": true
+    },
+    "Superdry": {
+      "home": "https://www.superdry.com/",
+      "aliases": [
+        "superdry"
+      ],
+      "cat": "clothing"
+    },
+    "Urban Outfitters": {
+      "home": "https://www.urbanoutfitters.com/en-gb/",
+      "aliases": [
+        "urban outfitters",
+        "urbanoutfitters"
+      ],
+      "cat": "clothing"
+    },
+    "Monsoon": {
+      "home": "https://uk.monsoon.co.uk/",
+      "aliases": [
+        "monsoon"
+      ],
+      "cat": "clothing",
+      "commonWord": true
+    },
+    "Reiss": {
+      "home": "https://www.reiss.com/",
+      "aliases": [
+        "reiss"
+      ],
+      "cat": "clothing"
+    },
+    "AllSaints": {
+      "home": "https://www.allsaints.com/",
+      "aliases": [
+        "allsaints",
+        "all saints"
+      ],
+      "cat": "clothing"
+    },
+    "Office": {
+      "home": "https://www.office.co.uk/",
+      "aliases": [
+        "office"
+      ],
+      "cat": "clothing",
+      "commonWord": true
+    },
+    "Footasylum": {
+      "home": "https://www.footasylum.com/",
+      "aliases": [
+        "footasylum"
+      ],
+      "cat": "clothing"
+    },
+    "Nike": {
+      "home": "https://www.nike.com/gb/",
+      "aliases": [
+        "nike"
+      ],
+      "cat": "clothing"
+    },
+    "Adidas": {
+      "home": "https://www.adidas.co.uk/",
+      "aliases": [
+        "adidas"
+      ],
+      "cat": "clothing"
+    },
+    "Lululemon": {
+      "home": "https://www.lululemon.co.uk/",
+      "aliases": [
+        "lululemon"
+      ],
+      "cat": "clothing"
+    },
+    "AO": {
+      "home": "https://ao.com/",
+      "aliases": [
+        "ao.com",
+        "appliances online"
+      ],
+      "cat": "kitchen"
+    },
+    "Samsung": {
+      "home": "https://www.samsung.com/uk/",
+      "aliases": [
+        "samsung"
+      ],
+      "cat": "audio"
+    },
+    "Richer Sounds": {
+      "home": "https://www.richersounds.com/",
+      "aliases": [
+        "richer sounds",
+        "richersounds"
+      ],
+      "cat": "audio"
+    },
+    "CeX": {
+      "home": "https://uk.webuy.com/",
+      "aliases": [
+        "cex",
+        "webuy"
+      ],
+      "cat": "audio"
+    },
+    "GAME": {
+      "home": "https://www.game.co.uk/",
+      "aliases": [
+        "game"
+      ],
+      "cat": "audio",
+      "commonWord": true
+    },
+    "Smyths": {
+      "home": "https://www.smythstoys.com/uk/en-gb",
+      "aliases": [
+        "smyths",
+        "smyths toys"
+      ],
+      "cat": "other"
+    },
+    "The Entertainer": {
+      "home": "https://www.thetoyshop.com/",
+      "aliases": [
+        "the entertainer",
+        "thetoyshop"
+      ],
+      "cat": "other",
+      "commonWord": true
+    },
+    "Hamleys": {
+      "home": "https://www.hamleys.com/",
+      "aliases": [
+        "hamleys"
+      ],
+      "cat": "other"
+    },
+    "Dyson": {
+      "home": "https://www.dyson.co.uk/",
+      "aliases": [
+        "dyson"
+      ],
+      "cat": "kitchen"
+    },
+    "Dunelm": {
+      "home": "https://www.dunelm.com/",
+      "aliases": [
+        "dunelm"
+      ],
+      "cat": "furniture"
+    },
+    "The Range": {
+      "home": "https://www.therange.co.uk/",
+      "aliases": [
+        "the range",
+        "therange"
+      ],
+      "cat": "furniture",
+      "commonWord": true
+    },
+    "B&M": {
+      "home": "https://www.bmstores.co.uk/",
+      "aliases": [
+        "b&m",
+        "b & m",
+        "bmstores"
+      ],
+      "cat": "other"
+    },
+    "Homebase": {
+      "home": "https://www.homebase.co.uk/",
+      "aliases": [
+        "homebase"
+      ],
+      "cat": "furniture"
+    },
+    "Toolstation": {
+      "home": "https://www.toolstation.com/",
+      "aliases": [
+        "toolstation"
+      ],
+      "cat": "other"
+    },
+    "Habitat": {
+      "home": "https://www.habitat.co.uk/",
+      "aliases": [
+        "habitat"
+      ],
+      "cat": "furniture",
+      "commonWord": true
+    },
+    "DFS": {
+      "home": "https://www.dfs.co.uk/",
+      "aliases": [
+        "dfs"
+      ],
+      "cat": "furniture"
+    },
+    "Furniture Village": {
+      "home": "https://www.furniturevillage.co.uk/",
+      "aliases": [
+        "furniture village",
+        "furniturevillage"
+      ],
+      "cat": "furniture"
+    },
+    "Oak Furnitureland": {
+      "home": "https://www.oakfurnitureland.co.uk/",
+      "aliases": [
+        "oak furnitureland",
+        "oakfurnitureland",
+        "oak furniture land"
+      ],
+      "cat": "furniture"
+    },
+    "Wayfair": {
+      "home": "https://www.wayfair.co.uk/",
+      "aliases": [
+        "wayfair"
+      ],
+      "cat": "furniture"
+    },
+    "Lakeland": {
+      "home": "https://www.lakeland.co.uk/",
+      "aliases": [
+        "lakeland"
+      ],
+      "cat": "kitchen",
+      "commonWord": true
+    },
+    "Robert Dyas": {
+      "home": "https://www.robertdyas.co.uk/",
+      "aliases": [
+        "robert dyas",
+        "robertdyas"
+      ],
+      "cat": "kitchen"
+    },
+    "Hobbycraft": {
+      "home": "https://www.hobbycraft.co.uk/",
+      "aliases": [
+        "hobbycraft"
+      ],
+      "cat": "other"
+    },
+    "The Works": {
+      "home": "https://www.theworks.co.uk/",
+      "aliases": [
+        "the works",
+        "theworks"
+      ],
+      "cat": "other",
+      "commonWord": true
+    },
+    "Superdrug": {
+      "home": "https://www.superdrug.com/",
+      "aliases": [
+        "superdrug"
+      ],
+      "cat": "beauty"
+    },
+    "Lush": {
+      "home": "https://www.lush.com/uk/en",
+      "aliases": [
+        "lush"
+      ],
+      "cat": "beauty",
+      "commonWord": true
+    },
+    "The Body Shop": {
+      "home": "https://www.thebodyshop.com/en-gb/",
+      "aliases": [
+        "the body shop",
+        "thebodyshop"
+      ],
+      "cat": "beauty"
+    },
+    "Space NK": {
+      "home": "https://www.spacenk.com/uk/",
+      "aliases": [
+        "space nk",
+        "spacenk"
+      ],
+      "cat": "beauty"
+    },
+    "Lookfantastic": {
+      "home": "https://www.lookfantastic.com/",
+      "aliases": [
+        "lookfantastic",
+        "look fantastic"
+      ],
+      "cat": "beauty"
+    },
+    "Sephora": {
+      "home": "https://www.sephora.co.uk/",
+      "aliases": [
+        "sephora"
+      ],
+      "cat": "beauty"
+    },
+    "Holland & Barrett": {
+      "home": "https://www.hollandandbarrett.com/",
+      "aliases": [
+        "holland & barrett",
+        "holland and barrett",
+        "hollandandbarrett"
+      ],
+      "cat": "beauty"
+    },
+    "Waterstones": {
+      "home": "https://www.waterstones.com/",
+      "aliases": [
+        "waterstones"
+      ],
+      "cat": "other"
+    },
+    "WHSmith": {
+      "home": "https://www.whsmith.co.uk/",
+      "aliases": [
+        "whsmith",
+        "wh smith",
+        "w h smith"
+      ],
+      "cat": "other"
+    },
+    "Ryman": {
+      "home": "https://www.ryman.co.uk/",
+      "aliases": [
+        "ryman"
+      ],
+      "cat": "other"
+    },
+    "Mountain Warehouse": {
+      "home": "https://www.mountainwarehouse.com/",
+      "aliases": [
+        "mountain warehouse",
+        "mountainwarehouse"
+      ],
+      "cat": "clothing"
+    },
+    "Go Outdoors": {
+      "home": "https://www.gooutdoors.co.uk/",
+      "aliases": [
+        "go outdoors",
+        "gooutdoors"
+      ],
+      "cat": "clothing"
+    },
+    "Cotswold Outdoor": {
+      "home": "https://www.cotswoldoutdoor.com/",
+      "aliases": [
+        "cotswold outdoor",
+        "cotswoldoutdoor"
+      ],
+      "cat": "clothing"
+    },
+    "Halfords": {
+      "home": "https://www.halfords.com/",
+      "aliases": [
+        "halfords"
+      ],
+      "cat": "other"
+    },
+    "Pets at Home": {
+      "home": "https://www.petsathome.com/",
+      "aliases": [
+        "pets at home",
+        "petsathome"
+      ],
+      "cat": "other"
+    },
+    "JoJo Maman Bébé": {
+      "home": "https://www.jojomamanbebe.co.uk/",
+      "aliases": [
+        "jojo maman bebe",
+        "jojo maman bébé",
+        "jojomamanbebe"
+      ],
+      "cat": "clothing"
+    }
+  }
+}
