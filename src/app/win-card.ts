@@ -64,17 +64,18 @@ export async function renderWinCard(card: WinCard): Promise<Blob | null> {
   const pad = 96;
   const inner = WIN_CARD.width - pad * 2;
 
-  ctx.fillStyle = color.ink;
+  // The card a person posts: white, like the screen it came from.
+  ctx.fillStyle = color.white;
   ctx.fillRect(0, 0, WIN_CARD.width, WIN_CARD.height);
 
   ctx.textBaseline = 'alphabetic';
-  ctx.fillStyle = color.cream;
+  ctx.fillStyle = color.ink;
   ctx.font = `700 64px ${font.display}`;
   ctx.fillText('kept.', pad, 170);
 
-  ctx.fillStyle = color.faint;
+  ctx.fillStyle = color.muted;
   ctx.font = `600 36px ${font.figures}`;
-  ctx.fillText('M O N E Y   B A C K', pad, 430);
+  ctx.fillText('Money back', pad, 430);
 
   // The amount, as large as fits: £9.99 and £1,299.00 both fill the line.
   let size = 220;
@@ -83,10 +84,10 @@ export async function renderWinCard(card: WinCard): Promise<Blob | null> {
     size -= 8;
     ctx.font = `700 ${size}px ${font.figures}`;
   }
-  ctx.fillStyle = color.yellow;
+  ctx.fillStyle = color.accentInk;
   ctx.fillText(card.amount, pad - 6, 430 + size * 0.95);
 
-  ctx.fillStyle = color.onInkBody;
+  ctx.fillStyle = color.body;
   ctx.font = `500 46px ${font.ui}`;
   let y = 430 + size * 0.95 + 100;
   for (const line of wrap(ctx, winCardLine(card.store, card.inTime), inner)) {
@@ -95,9 +96,9 @@ export async function renderWinCard(card: WinCard): Promise<Blob | null> {
   }
 
   const rule = 1080;
-  ctx.strokeStyle = color.onInkDash;
+  ctx.strokeStyle = color.border;
   ctx.lineWidth = 3;
-  ctx.setLineDash([14, 12]);
+  ctx.setLineDash([]);
   ctx.beginPath();
   ctx.moveTo(pad, rule);
   ctx.lineTo(WIN_CARD.width - pad, rule);
@@ -105,17 +106,17 @@ export async function renderWinCard(card: WinCard): Promise<Blob | null> {
   ctx.setLineDash([]);
 
   ctx.font = `500 38px ${font.figures}`;
-  ctx.fillStyle = color.faint;
-  ctx.fillText('kept back so far', pad, rule + 80);
-  ctx.fillStyle = color.yellow;
+  ctx.fillStyle = color.muted;
+  ctx.fillText('Kept back so far', pad, rule + 80);
+  ctx.fillStyle = color.accentInk;
   ctx.font = `700 38px ${font.figures}`;
   ctx.textAlign = 'right';
   ctx.fillText(card.recovered, WIN_CARD.width - pad, rule + 80);
 
   ctx.textAlign = 'center';
-  ctx.fillStyle = color.onInkFaint;
+  ctx.fillStyle = color.muted;
   ctx.font = `500 32px ${font.figures}`;
-  ctx.fillText('kept. — stop donating money to shops', WIN_CARD.width / 2, WIN_CARD.height - 90);
+  ctx.fillText('Kept — return deadlines, watched', WIN_CARD.width / 2, WIN_CARD.height - 90);
 
   return new Promise((resolve) => canvas.toBlob((b) => resolve(b), 'image/png'));
 }

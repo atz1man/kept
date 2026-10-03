@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { color } from '../../tokens';
+import { color, radius } from '../../tokens';
 import { money } from '../../lib/money';
 import { readSplit } from '../../lib/split';
 import type { Receipt } from '../../lib/types';
@@ -30,7 +30,7 @@ export function SplitPanel({ receipt, onSplit }: { receipt: Receipt; onSplit: (i
     );
   }
   return (
-    <div data-split style={{ flexBasis: '100%', marginTop: 14, padding: 14, background: color.white, border: `1.5px solid ${color.border}`, borderRadius: 16 }}>
+    <div data-split style={{ flexBasis: '100%', marginTop: 14, padding: 14, background: color.white, border: `1px solid ${color.border}`, borderRadius: 12 }}>
       <div style={{ fontSize: 13.5, lineHeight: 1.5, color: color.body, marginBottom: 10 }}>
         Take one thing out as its own receipt, with the same shop and dates, so it can go back or stay on its own. The
         rest of the {money(receipt.amount)} stays here.
@@ -48,13 +48,13 @@ export function SplitPanel({ receipt, onSplit }: { receipt: Receipt; onSplit: (i
             setTried(true);
             if (read.ok) onSplit(read.item, read.pence);
           }}
-          style={{ flex: '1 1 120px', padding: 12, textAlign: 'center', background: color.yellow, border: `1.5px solid ${color.ink}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+          style={{ flex: '1 1 120px', padding: 12, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
         >
           Split it out
         </Pressable>
         <Pressable
           onClick={() => setOpen(false)}
-          style={{ flex: '1 1 120px', padding: 12, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+          style={{ flex: '1 1 120px', padding: 12, textAlign: 'center', background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
         >
           Cancel
         </Pressable>

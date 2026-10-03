@@ -89,16 +89,16 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
   };
 
   return (
-    <div style={{ background: color.white, border: `1.5px solid ${color.border}`, borderRadius: radius.card, padding: 14, marginTop: 12 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.6px', color: color.muted, marginBottom: 8 }}>
-        THE PAPER RECEIPT
+    <div style={{ paddingBottom: 14, marginBottom: 14, borderBottom: `1px solid ${color.borderHair}` }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: color.bodyStrong, marginBottom: 8 }}>
+        The paper receipt
       </div>
       {data ? (
         <>
           <img
             src={`data:image/jpeg;base64,${data}`}
             alt="The paper receipt for this purchase"
-            style={{ width: '100%', borderRadius: radius.card, border: `1.5px solid ${color.border}`, display: 'block' }}
+            style={{ width: '100%', borderRadius: radius.card, border: `1px solid ${color.border}`, display: 'block' }}
           />
           {confirming ? (
             <div role="group" aria-label="Remove the photo?" style={{ marginTop: 10 }}>
@@ -108,13 +108,13 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
               <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
                 <Pressable
                   onClick={() => void remove()}
-                  style={{ padding: '10px 14px', borderRadius: 999, background: color.danger, color: color.white, fontSize: 13, fontWeight: 700 }}
+                  style={{ padding: '10px 14px', borderRadius: radius.control, background: color.danger, color: color.white, fontSize: 13, fontWeight: 600 }}
                 >
                   Remove it for good
                 </Pressable>
                 <Pressable
                   onClick={() => setConfirming(false)}
-                  style={{ padding: '10px 14px', borderRadius: 999, border: `1.5px solid ${color.border}`, background: color.white, fontSize: 13, fontWeight: 700 }}
+                  style={{ padding: '10px 14px', borderRadius: radius.control, border: `1px solid ${color.border}`, background: color.white, fontSize: 13, fontWeight: 600 }}
                 >
                   Keep it
                 </Pressable>
@@ -124,13 +124,13 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
             <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
               <Pressable
                 onClick={() => setViewing(true)}
-                style={{ padding: '10px 14px', borderRadius: 999, background: color.ink, color: color.cream, fontSize: 13, fontWeight: 700 }}
+                style={{ padding: '10px 14px', borderRadius: radius.control, background: color.white, border: `1px solid ${color.border}`, color: color.ink, fontSize: 13, fontWeight: 600 }}
               >
                 Show it full screen
               </Pressable>
               <Pressable
                 onClick={() => setConfirming(true)}
-                style={{ padding: '10px 14px', borderRadius: 999, border: `1.5px solid ${color.border}`, background: color.white, fontSize: 13, fontWeight: 700 }}
+                style={{ padding: '10px 14px', borderRadius: radius.control, border: `1px solid ${color.border}`, background: color.white, fontSize: 13, fontWeight: 600 }}
               >
                 Remove the photo
               </Pressable>
@@ -145,10 +145,10 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
             entered.
           </div>
           <Pressable
-            className="k-ink"
+            className="k-row-white"
             disabled={busy}
             onClick={() => void take()}
-            style={{ padding: '12px 16px', borderRadius: 999, background: color.ink, color: color.cream, fontSize: 13.5, fontWeight: 700 }}
+            style={{ padding: '12px 16px', borderRadius: radius.control, background: color.white, border: `1px solid ${color.border}`, color: color.ink, fontSize: 13.5, fontWeight: 600 }}
           >
             {busy ? 'Opening the camera…' : 'Photograph the receipt'}
           </Pressable>
@@ -202,7 +202,7 @@ function FullScreen({ data, onClose }: { data: string; onClose: () => void }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <Pressable
           onClick={onClose}
-          style={{ width: 'auto', minHeight: 44, padding: '10px 18px', borderRadius: 999, background: color.cream, color: color.ink, fontSize: 14, fontWeight: 700 }}
+          style={{ width: 'auto', minHeight: 44, padding: '10px 18px', borderRadius: radius.control, background: color.canvas, color: color.ink, fontSize: 14, fontWeight: 600 }}
         >
           Close
         </Pressable>

@@ -1,12 +1,12 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { color, font } from '../../tokens';
+import { color, font, shadow } from '../../tokens';
 import { LogoMark } from '../../app/components/Icons';
 
 export const WRAP: CSSProperties = { maxWidth: 1160, margin: '0 auto', padding: '0 28px' };
 
 export function Eyebrow({ children, onInk }: { children: ReactNode; onInk?: boolean }) {
   return (
-    <div style={{ fontFamily: font.figures, fontSize: 12, letterSpacing: '2.5px', color: onInk ? color.yellow : color.amber, fontWeight: 600 }}>
+    <div style={{ fontSize: 13, color: onInk ? color.accentSoft : color.accentInk, fontWeight: 600 }}>
       {children}
     </div>
   );
@@ -14,7 +14,7 @@ export function Eyebrow({ children, onInk }: { children: ReactNode; onInk?: bool
 
 export function SectionTitle({ children, maxWidth = 620 }: { children: ReactNode; maxWidth?: number }) {
   return (
-    <h2 style={{ fontFamily: font.display, fontSize: 'clamp(30px, 4vw, 40px)', fontWeight: 700, letterSpacing: '-0.03em', margin: '14px 0 0', maxWidth, lineHeight: 1.1 }}>
+    <h2 style={{ fontFamily: font.display, fontSize: 'clamp(30px, 4vw, 40px)', fontWeight: 600, letterSpacing: '-0.03em', margin: '14px 0 0', maxWidth, lineHeight: 1.1 }}>
       {children}
     </h2>
   );
@@ -42,19 +42,19 @@ export function SectionTitle({ children, maxWidth = 620 }: { children: ReactNode
 export function OpenAppButton({ large }: { large?: boolean }) {
   return (
     <a
-      className="k-ink"
+      className="k-cta-yellow"
       href="/app/"
       style={{
-        display: 'inline-flex', alignItems: 'center', gap: 12, background: color.ink, color: color.cream,
-        padding: large ? '15px 30px' : '14px 26px', borderRadius: 16, boxShadow: `4px 4px 0 ${color.yellow}`,
+        display: 'inline-flex', alignItems: 'center', gap: 12, background: color.accent, color: color.white,
+        padding: large ? '15px 30px' : '14px 26px', borderRadius: 12, boxShadow: shadow.raised,
       }}
     >
-      <LogoMark size={22} />
+      <LogoMark size={22} fill={color.white} />
       <span>
-        <span style={{ display: 'block', fontSize: 10, fontWeight: 600, letterSpacing: '0.5px', opacity: 0.8 }}>
-          NOTHING TO INSTALL
+        <span style={{ display: 'block', fontSize: 10, fontWeight: 600, letterSpacing: 0, opacity: 0.8 }}>
+          Nothing to install
         </span>
-        <span style={{ display: 'block', fontSize: 17, fontWeight: 700, lineHeight: 1.1 }}>Open kept</span>
+        <span style={{ display: 'block', fontSize: 17, fontWeight: 600, lineHeight: 1.1 }}>Open kept</span>
       </span>
     </a>
   );
@@ -65,9 +65,9 @@ export function Card({ children, emphasised = true, style }: { children: ReactNo
     <div
       style={{
         background: color.white,
-        border: `1.5px solid ${emphasised ? color.ink : color.borderSoft}`,
-        borderRadius: 20,
-        boxShadow: emphasised ? `4px 4px 0 ${color.ink}` : undefined,
+        border: `1px solid ${emphasised ? color.borderSoft : color.borderHair}`,
+        borderRadius: 14,
+        boxShadow: emphasised ? shadow.raised : undefined,
         ...style,
       }}
     >

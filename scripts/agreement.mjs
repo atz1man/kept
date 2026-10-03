@@ -70,7 +70,7 @@ await page.waitForTimeout(500);
  * "89.002 days", and a greedy \d+ happily takes "002".
  */
 const readHero = () => page.evaluate(() => {
-  const label = [...document.querySelectorAll('span')].find((s) => s.textContent.trim() === 'NEXT WINDOW TO CLOSE');
+  const label = [...document.querySelectorAll('span')].find((s) => s.textContent.trim() === 'Next to close');
   const card = label?.closest('button');
   if (!card) return null;
   const spans = [...card.querySelectorAll('span')];
@@ -102,7 +102,7 @@ await page.waitForTimeout(400);
 const detail = await page.evaluate(() => {
   const svg = document.querySelector('svg[viewBox="0 0 92 92"]');
   const face = svg?.nextElementSibling;
-  const label = [...document.querySelectorAll('div')].find((d) => d.textContent.trim() === 'RETURN BY');
+  const label = [...document.querySelectorAll('div')].find((d) => d.textContent.trim() === 'Return by');
   return {
     days: face?.firstElementChild?.textContent?.trim() ?? null,
     returnBy: label?.nextElementSibling?.textContent?.trim() ?? null,
@@ -126,7 +126,7 @@ for (const shop of [/Zara, Wool-blend/, /Currys, JBL/]) {
   await page.getByRole('button', { name: shop }).click();
   await page.waitForTimeout(400);
   const returnBy = await page.evaluate(() => {
-    const label = [...document.querySelectorAll('div')].find((d) => d.textContent.trim() === 'RETURN BY');
+    const label = [...document.querySelectorAll('div')].find((d) => d.textContent.trim() === 'Return by');
     return label?.nextElementSibling?.textContent?.trim() ?? null;
   });
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
@@ -253,10 +253,9 @@ agree('receipts counted, by the meter and on the list', (meter.match(/^(\d+)/) ?
  * product is not a cosmetic drift.
  */
 const inApp = await page.evaluate(() => {
-  const tiers = [...document.querySelectorAll('button')]
-    .map((b) => b.textContent ?? '')
-    .filter((t) => /^£[\d.]+(monthly|yearly|lifetime)/.test(t.replace(/BEST VALUE/, '').trim()))
-    .map((t) => t.replace(/BEST VALUE/, '').trim());
+  const tiers = [...document.querySelectorAll('main button')]
+    .map((b) => (b.textContent ?? '').trim())
+    .filter((t) => /^Unlock unlimited · £\d+\.\d{2}/.test(t));
   const free = ([...document.querySelectorAll('span')]
     .map((s) => s.textContent ?? '')
     .find((t) => /of \d+ free receipts/.test(t)) ?? '').match(/of (\d+) free/)?.[1];
@@ -286,11 +285,11 @@ await landing.close();
 // empty strings, which is the shape of a sweep that reports success for a
 // question it never asked.
 if (!onPage.found) disagreements.push({ what: 'the landing page has no #pricing section to read', saw: [] });
-// Both sides going empty would "agree" on nothing at all. There are three
-// tiers; anything else means a selector stopped matching, not that the prices
-// match.
+// Both sides going empty would "agree" on nothing at all. There is one price,
+// paid once; anything else means a selector stopped matching, or a second
+// price crept in, not that the prices match.
 for (const [where, found] of [['Settings', inApp.prices], ['the pricing cards', onPage.prices]]) {
-  if (found.length !== 3) disagreements.push({ what: `three prices were not found in ${where}`, saw: found });
+  if (found.length !== 1) disagreements.push({ what: `exactly one price was not found in ${where}`, saw: found });
 }
 agree('the free tier’s size, in the marketing copy and on the meter', onPage.free, inApp.free);
 /*
@@ -312,7 +311,7 @@ if (!TAGLINE) {
   disagreements.push({ what: 'lib/brand.ts no longer exports a TAGLINE this check can read', saw: [] });
 } else {
   for (const [where, text] of [['Settings', inApp.text], ['the landing page', onPage.text]]) {
-    if (!text.includes(TAGLINE.toLowerCase())) {
+    if (!text.toLowerCase().includes(TAGLINE.toLowerCase())) {
       disagreements.push({ what: `${where} does not say the tagline lib/brand.ts owns`, saw: [TAGLINE, where] });
     }
   }

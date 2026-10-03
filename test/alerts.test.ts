@@ -127,7 +127,7 @@ describe('restraint', () => {
 describe('the copy people actually see', () => {
   it('names the shop, the item and the money', () => {
     const a = dueAlerts([closingIn(2)], TODAY, URGENT, none)[0];
-    expect(a.title).toBe('Go now or lose it');
+    expect(a.title).toBe('Due soon');
     expect(a.body).toContain('Zara · Wool coat');
     expect(a.body).toContain('£34.99');
     expect(a.body).toContain('2 days left');

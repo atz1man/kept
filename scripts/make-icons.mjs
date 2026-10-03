@@ -28,15 +28,20 @@ const svg = readFileSync(new URL('../public/icons/icon.svg', import.meta.url), '
 // is inset to survive a circular or squircle mask on any launcher.
 const maskable = svg
   .replace('<rect width="512" height="512" rx="112"', '<rect width="512" height="512" rx="0"')
-  .replace('translate(146 92) scale(5.55)', 'translate(176 130) scale(4.2)');
+  .replace('translate(0 0) scale(1)', 'translate(51.2 51.2) scale(0.8)');
+
+// A replace that matches nothing returns the source unchanged, and the
+// generator would then write a "maskable" icon with its mark at full size,
+// cropped by every round launcher. Refused instead.
+if (!maskable.includes('scale(0.8)') || maskable.includes('rx="112"')) throw new Error('the maskable variant did not take — icon.svg changed shape');
 
 // Square corners and a ground that reaches every edge: iOS masks it itself.
 const iosIcon = svg.replace('<rect width="512" height="512" rx="112"', '<rect width="512" height="512" rx="0"');
 
 /*
- * The launch screen is CREAM, not ink, because capacitor.config.ts already
- * commits the shell to #FDFAF1 — the ground the app itself draws. A launch
- * screen in the icon's ink would put a dark flash between the system's
+ * The launch screen is the CANVAS, not the icon's green, because
+ * capacitor.config.ts already commits the shell to #FFFFFF — the ground the
+ * app itself draws. A launch screen in the icon's green would put a flash between the system's
  * background and the first paint, which is the exact seam that setting exists
  * to remove.
  */
@@ -50,7 +55,7 @@ const inner = svg.slice(svg.indexOf('>', svg.indexOf('<svg')) + 1, svg.lastIndex
  */
 const MARK = 512;
 const splash = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2732 2732">`
-  + `<rect width="2732" height="2732" fill="#FDFAF1"/>`
+  + `<rect width="2732" height="2732" fill="#FFFFFF"/>`
   + `<g transform="translate(${(2732 - MARK) / 2} ${(2732 - MARK) / 2})">${inner}</g>`
   + `</svg>`;
 
@@ -86,19 +91,19 @@ const shoot = async (source, size, background) => {
 
 const ICON = new URL('../ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png', import.meta.url);
 const TMP = new URL('../ios/App/App/Assets.xcassets/AppIcon.appiconset/.tmp.png', import.meta.url);
-writeFileSync(TMP, await shoot(iosIcon, 1024, '#171410'));
-writeOpaquePng(ICON, decodePng(TMP), [23, 20, 16]);
+writeFileSync(TMP, await shoot(iosIcon, 1024, '#1F6B4E'));
+writeOpaquePng(ICON, decodePng(TMP), [31, 107, 78]);
 rmSync(TMP);
 console.log(`AppIcon-512@2x.png 1024x1024 ${readFileSync(ICON).length}b, no alpha`);
 
-writeFileSync(TMP, await shoot(splash, 2732, '#FDFAF1'));
+writeFileSync(TMP, await shoot(splash, 2732, '#FFFFFF'));
 const splashImage = decodePng(TMP);
 rmSync(TMP);
 for (const name of ['splash-2732x2732.png', 'splash-2732x2732-1.png', 'splash-2732x2732-2.png']) {
   // All three entries in the imageset point at the same artwork, which is what
   // the template does: one square, scaled to fill whatever the device is.
   const out = new URL(`../ios/App/App/Assets.xcassets/Splash.imageset/${name}`, import.meta.url);
-  writeOpaquePng(out, splashImage, [253, 250, 241]);
+  writeOpaquePng(out, splashImage, [255, 255, 255]);
   console.log(`${name} 2732x2732 ${readFileSync(out).length}b`);
 }
 

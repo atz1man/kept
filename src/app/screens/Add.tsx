@@ -8,7 +8,7 @@ import { arrivalProblem, MAX_WINDOW_DAYS, purchaseProblem, readAmount, windowSta
 import { makeReceiptId } from '../../lib/receipts';
 import { findStore, policyFor, windowFor } from '../../lib/stores';
 import { windowInForceFor } from '../../lib/policy-feed';
-import { FEATURED_TIER } from '../../lib/pricing';
+import { UNLOCK } from '../../lib/pricing';
 import { FREE_TIER_LIMIT } from '../../lib/quota';
 import { isNative } from '../../lib/mirror';
 import { savePhoto, scannedPhotoToKeep } from '../../lib/photos';
@@ -361,7 +361,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
 
   return (
     <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px' }}>
-      <h1 tabIndex={-1} style={{ fontSize: 24, fontWeight: 700, padding: '10px 2px 4px', margin: 0 }}>Add a receipt</h1>
+      <h1 tabIndex={-1} style={{ fontSize: 24, fontWeight: 600, padding: '10px 2px 4px', margin: 0 }}>Add a receipt</h1>
       <p style={{ fontSize: 13, color: color.muted, padding: '0 2px 14px', margin: 0 }}>
         Paste an order email — kept reads the store, total and date.
       </p>
@@ -379,8 +379,8 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
         }}
         placeholder="Paste your order email here… e.g. 'Your Apple order · Total £129.00 · 25 Aug'"
         style={{
-          width: '100%', boxSizing: 'border-box', height: 120, border: '1.5px dashed rgba(23,20,16,0.3)',
-          borderRadius: radius.card, background: color.white, padding: 14,
+          width: '100%', boxSizing: 'border-box', height: 120, border: `1px solid ${color.border}`,
+          borderRadius: radius.control, background: color.white, padding: 14,
           fontFamily: font.figures, fontSize: 13, color: color.ink, resize: 'none',
         }}
       />
@@ -388,13 +388,13 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       <Pressable
         className="k-cta-yellow"
         onClick={read}
-        style={{ marginTop: 12, padding: 16, textAlign: 'center', background: color.yellow, border: `1.5px solid ${color.ink}`, borderRadius: 999, fontWeight: 700, fontSize: 15, boxShadow: shadow.hard }}
+        style={{ marginTop: 12, padding: 13, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 15, boxShadow: shadow.raised }}
       >
         Read it
       </Pressable>
 
       {error && (
-        <div className="k-fade" role="alert" style={{ display: 'flex', gap: 10, background: color.white, border: '1.5px solid rgba(216,66,46,0.4)', borderRadius: 16, padding: '14px 16px', marginTop: 14 }}>
+        <div className="k-fade" role="alert" style={{ display: 'flex', gap: 10, background: color.white, border: '1px solid rgba(217,45,32,0.4)', borderRadius: 12, padding: '14px 16px', marginTop: 14 }}>
           <Warning stroke={color.danger} />
           <div style={{ fontSize: 13, color: color.danger, lineHeight: 1.5, fontWeight: 600 }}>
             Couldn’t find a store or amount in that. Make sure the paste includes the shop’s name and a £ total — or scan the paper receipt, or type it in yourself below.
@@ -403,30 +403,30 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       )}
 
       {quotaFull && (
-        <div style={{ background: color.ink, color: color.cream, borderRadius: radius.cardLg, padding: 18, marginTop: 14 }}>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>That’s your {FREE_TIER_LIMIT} free receipts</div>
-          <div style={{ fontSize: 13, color: color.fainter, lineHeight: 1.55, marginTop: 6 }}>
+        <div style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, padding: 18, marginTop: 14, boxShadow: shadow.raised }}>
+          <div style={{ fontWeight: 600, fontSize: 15 }}>That’s your {FREE_TIER_LIMIT} free receipts</div>
+          <div style={{ fontSize: 13, color: color.body, lineHeight: 1.55, marginTop: 6 }}>
             Kept has tracked {trackedTotal} for free. Return something you are already tracking, or mark one you are keeping, and a slot frees up —
-            or go unlimited, and one missed return pays for the year.
+            or unlock unlimited once, and one missed return pays for it.
           </div>
           <Pressable
             className="k-cta-yellow"
             onClick={onUpgrade}
-            style={{ marginTop: 12, padding: 13, textAlign: 'center', background: color.yellow, color: color.ink, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+            style={{ marginTop: 12, padding: 13, textAlign: 'center', background: color.accent, color: color.white, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
           >
-            {`Go unlimited · ${FEATURED_TIER.price}${FEATURED_TIER.suffix}`}
+            {`Unlock unlimited · ${UNLOCK.price}${UNLOCK.suffix}`}
           </Pressable>
         </div>
       )}
 
       {parsed && (
-        <div className="k-fade" style={{ background: color.white, border: `1.5px solid ${color.ink}`, borderRadius: radius.cardLg, padding: 18, marginTop: 16, boxShadow: shadow.hard }}>
-          <div style={{ fontFamily: font.figures, fontSize: 11, letterSpacing: '1.6px', color: color.amber, fontWeight: 700 }}>
-            {typedIn ? 'TYPE IT IN' : scannedText !== null && text === scannedText ? 'READ FROM YOUR PHOTO' : 'FOUND IN YOUR PASTE'}
+        <div className="k-fade" style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, padding: 18, marginTop: 16, boxShadow: shadow.raised }}>
+          <div style={{ fontFamily: font.figures, fontSize: 11, letterSpacing: 0, color: color.accentInk, fontWeight: 600 }}>
+            {typedIn ? 'Type it in' : scannedText !== null && text === scannedText ? 'Read from your photo' : 'Found in your paste'}
           </div>
           <div style={{ marginTop: 12 }}>
-            <label htmlFor="add-item" style={{ display: 'block', fontSize: 12, fontWeight: 700, letterSpacing: '0.6px', color: color.muted, marginBottom: 6 }}>
-              WHAT IS IT?
+            <label htmlFor="add-item" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: color.bodyStrong, marginBottom: 6 }}>
+              What is it?
             </label>
             <input
               id="add-item"
@@ -434,16 +434,16 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
               onChange={(e) => setItem(e.target.value)}
               placeholder="Running shoes"
               style={{
-                width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 14,
-                border: `1.5px solid ${color.border}`, background: color.white,
+                width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: radius.control,
+                border: `1px solid ${color.border}`, background: color.white,
                 fontFamily: font.ui, fontSize: 14.5, color: color.ink,
               }}
             />
           </div>
           {storeTyped && (
             <div style={{ marginTop: 12 }}>
-              <label htmlFor="add-store" style={{ display: 'block', fontSize: 12, fontWeight: 700, letterSpacing: '0.6px', color: color.muted, marginBottom: 6 }}>
-                WHICH SHOP?
+              <label htmlFor="add-store" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: color.bodyStrong, marginBottom: 6 }}>
+                Which shop?
               </label>
               <input
                 id="add-store"
@@ -451,8 +451,8 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
                 onChange={(e) => setStoreName(e.target.value)}
                 placeholder="Vinted"
                 style={{
-                  width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 14,
-                  border: `1.5px solid ${color.border}`, background: color.white,
+                  width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: radius.control,
+                  border: `1px solid ${color.border}`, background: color.white,
                   fontFamily: font.ui, fontSize: 14.5, color: color.ink,
                 }}
               />
@@ -483,8 +483,8 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
           <HowBought id="add-how" value={distance} onChange={setDistance} />
           {distance && (
             <div style={{ marginTop: 12 }}>
-              <label htmlFor="add-arrived" style={{ display: 'block', fontSize: 12, fontWeight: 700, letterSpacing: '0.6px', color: color.muted, marginBottom: 6 }}>
-                ARRIVED ON
+              <label htmlFor="add-arrived" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: color.bodyStrong, marginBottom: 6 }}>
+                Arrived on
               </label>
               {/* No `min`. Chromium fills in the invariant parts of a narrow
                   range, so an EMPTY optional field rendered as "08/dd/2026"
@@ -503,8 +503,8 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
                 aria-describedby="add-arrived-note"
                 onChange={(e) => setArrivedOn(e.target.value)}
                 style={{
-                  width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 14,
-                  border: `1.5px solid ${arrivalError ? color.danger : color.border}`, background: color.white,
+                  width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: radius.control,
+                  border: `1px solid ${arrivalError ? color.danger : color.border}`, background: color.white,
                   fontFamily: font.figures, fontSize: 14.5, color: color.ink,
                 }}
               />
@@ -523,7 +523,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
           {!typedIn && !correcting && <Row label="Store" value={effectiveStore || 'Not recognised'} mono={false} />}
           {totalTyped ? (
             <div style={{ margin: '4px 0 10px' }}>
-              <label htmlFor="add-total" style={{ display: 'block', fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>
+              <label htmlFor="add-total" style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>
                 {typedIn || correcting ? 'Total' : 'Total — the email didn’t say'}
               </label>
               <input
@@ -535,8 +535,8 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
                 aria-describedby={totalError ? 'add-total-note' : undefined}
                 onChange={(e) => setTotalText(e.target.value)}
                 style={{
-                  width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 14,
-                  border: `1.5px solid ${totalError ? color.danger : color.border}`, background: color.white,
+                  width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: radius.control,
+                  border: `1px solid ${totalError ? color.danger : color.border}`, background: color.white,
                   fontFamily: font.figures, fontSize: 14.5, color: color.ink,
                 }}
               />
@@ -553,7 +553,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
             <Row label="Bought" value={fmtDate(fromISODate(parsed.purchasedOn))} mono />
           ) : (
             <div style={{ margin: '4px 0 10px' }}>
-              <label htmlFor="add-bought" style={{ display: 'block', fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>
+              <label htmlFor="add-bought" style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>
                 {typedIn || correcting
                   ? 'Bought on'
                   : `Bought on — ${scannedText !== null && text === scannedText ? 'not on the photo' : 'the email didn’t say'}`}
@@ -567,8 +567,8 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
                 aria-describedby="add-bought-note"
                 onChange={(e) => setBoughtOn(e.target.value)}
                 style={{
-                  width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 14,
-                  border: `1.5px solid ${boughtError ? color.danger : color.border}`, background: color.white,
+                  width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: radius.control,
+                  border: `1px solid ${boughtError ? color.danger : color.border}`, background: color.white,
                   fontFamily: font.figures, fontSize: 14.5, color: color.ink,
                 }}
               />
@@ -588,7 +588,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
           {parsed.orderRef && <Row label="Order number" value={parsed.orderRef} mono />}
           {windowTyped ? (
             <div style={{ margin: '4px 0 10px' }}>
-              <label htmlFor="add-window" style={{ display: 'block', fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>
+              <label htmlFor="add-window" style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>
                 Return window, in days
               </label>
               <input
@@ -602,8 +602,8 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
                   setWindowEdited(true);
                 }}
                 style={{
-                  width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 14,
-                  border: `1.5px solid ${windowError ? color.danger : color.border}`, background: color.white,
+                  width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: radius.control,
+                  border: `1px solid ${windowError ? color.danger : color.border}`, background: color.white,
                   fontFamily: font.figures, fontSize: 14.5, color: color.ink,
                 }}
               />
@@ -632,7 +632,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
           {!typedIn && !correcting && (
             <Pressable
               onClick={startCorrecting}
-              style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', marginTop: 4, fontSize: 13, fontWeight: 600, textDecoration: 'underline' }}
+              style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', marginTop: 4, fontSize: 13.5, fontWeight: 500, color: color.accentInk }}
             >
               Something wrong? Correct it
             </Pressable>
@@ -644,7 +644,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
                 checked={keepPhoto && scanShot.text === text}
                 disabled={scanShot.text !== text}
                 onChange={(e) => setKeepPhoto(e.target.checked)}
-                style={{ width: 22, height: 22, accentColor: color.ink, margin: 0 }}
+                style={{ width: 22, height: 22, accentColor: color.accent, margin: 0 }}
               />
               {scanShot.text === text
                 ? 'Keep the photo as proof of purchase'
@@ -657,19 +657,19 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
           {/* Greyed for every reason it cannot save, not only the quota: a
               disabled button drawn as a live one invites the tap it ignores. */}
           <Pressable
-            className={cannotSave ? undefined : 'k-ink'}
+            className={cannotSave ? undefined : 'k-cta-yellow'}
             onClick={() => void save()}
             disabled={cannotSave || saving}
             style={{
-              marginTop: 14, padding: 14, textAlign: 'center',
-              background: cannotSave ? color.creamAlt : color.ink,
-              color: cannotSave ? color.muted : color.cream,
-              borderRadius: 999, fontWeight: 700, fontSize: 14,
+              marginTop: 14, padding: 13, textAlign: 'center',
+              background: cannotSave ? color.surfaceAlt : color.accent,
+              color: cannotSave ? color.muted : color.white, border: 0,
+              borderRadius: radius.control, fontWeight: 600, fontSize: 14,
               cursor: cannotSave ? 'not-allowed' : 'pointer',
             }}
           >
             {quotaFull
-              ? 'Go unlimited to save this'
+              ? 'Unlock unlimited to save this'
               : arrivalError
                 ? 'Fix the arrival date'
                 : typedIn && needsStore
@@ -728,8 +728,8 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
         disabled={scanning !== null}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16,
-          background: color.white, border: `1.5px solid ${color.ink}`, borderRadius: 999,
-          fontWeight: 700, fontSize: 15, cursor: scanning !== null ? 'progress' : 'pointer',
+          background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.control,
+          fontWeight: 600, fontSize: 15, cursor: scanning !== null ? 'progress' : 'pointer',
         }}
       >
         <CameraGlyph />
@@ -752,7 +752,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       <Pressable
         className="k-row-white"
         onClick={typeItIn}
-        style={{ marginTop: 12, padding: 16, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 15 }}
+        style={{ marginTop: 12, padding: 13, textAlign: 'center', background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 15 }}
       >
         Type it in yourself
       </Pressable>
@@ -762,8 +762,8 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
           following them adds an icon that appears in no share sheet, and the
           iOS app has no share extension to appear in one either. See
           `shareRoute` for why this is copy rather than a feature test. */}
-      <div style={{ background: color.creamAlt, border: '1.5px dashed rgba(23,20,16,0.2)', borderRadius: radius.card, padding: '16px 18px', marginTop: 20 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1.4px', color: color.muted }}>{route.heading}</div>
+      <div style={{ background: color.surfaceAlt, border: `1px solid ${color.borderHair}`, borderRadius: radius.card, padding: '16px 18px', marginTop: 20 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: color.muted }}>{route.heading}</div>
         <div style={{ fontSize: 12, color: color.muted, lineHeight: 1.5, marginTop: 6 }}>
           {route.body}
         </div>
@@ -787,9 +787,9 @@ function Row({ label, value, mono, accent }: { label: string; value: string; mon
       <span style={{ color: color.muted, fontSize: 13 }}>{label}</span>
       <span
         style={{
-          fontWeight: 700, fontSize: 14, textAlign: 'right',
+          fontWeight: 600, fontSize: 14, textAlign: 'right',
           fontFamily: mono ? font.figures : undefined,
-          color: accent ? color.amber : undefined,
+          color: accent ? color.accentInk : undefined,
         }}
       >
         {value}
@@ -803,9 +803,9 @@ function Step({ icon, label, dark }: { icon: React.ReactNode; label: string; dar
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, flex: 1, minWidth: 0 }}>
       <div
         style={{
-          width: 40, height: 40, borderRadius: 12,
+          width: 40, height: 40, borderRadius: 10,
           background: dark ? color.ink : color.white,
-          border: dark ? undefined : `1.5px solid ${color.borderSoft}`,
+          border: dark ? undefined : `1px solid ${color.borderSoft}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}
       >

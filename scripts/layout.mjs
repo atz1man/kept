@@ -229,24 +229,24 @@ async function sweep(width, seedState, label, steps, { blockFonts = false, expec
      * silently does nothing is worse than no seed, and until now the FONT
      * dimension had no such check.
      *
-     * It is not hypothetical. The service worker precaches both typefaces in
+     * It is not hypothetical. The service worker precaches the typeface in
      * SHELL, and it calls skipWaiting, so it controls the page from the first
      * load — a cached font answered from the worker is a font this route never
-     * sees. It is intercepted today, measured: `Space Grotesk:error` blocked
-     * against `Space Grotesk:loaded` allowed. What has no guarantee is that it
+     * sees. It is intercepted today, measured: `Instrument Sans:error` blocked
+     * against `Instrument Sans:loaded` allowed. What has no guarantee is that it
      * stays intercepted, and the failure would be silent — the widest state
      * this app ships in, reported as swept and never entered.
      *
      * The same reliance bit `feed:wiring`, in the other direction: a request
      * the WORKER made, sometimes routed and sometimes not.
      */
-    const fellBack = await page.evaluate(() => !document.fonts.check('16px "Space Grotesk"'));
+    const fellBack = await page.evaluate(() => !document.fonts.check('16px "Instrument Sans"'));
     if (!fellBack) {
       failures.push({
         label,
         width,
         kind: 'the webfont block did not take',
-        detail: 'Space Grotesk still loaded, so this pass swept the ordinary state twice',
+        detail: 'Instrument Sans still loaded, so this pass swept the ordinary state twice',
       });
     }
   }
@@ -282,6 +282,13 @@ async function squeezedText(page, root) {
         const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join(' ').trim();
         const words = own.split(/\s+/).filter(Boolean);
         if (words.length < 2) continue;
+        // SVG text never wraps: a <text> run is laid out on one line at its
+        // own width, so "narrower than its longest word" cannot happen to it.
+        // Measured, it came out 1px short of the probe — 73 against 74 for
+        // "Returns" in a landing illustration — from glyph metrics, not from
+        // any squeezing, which is a false alarm this rule has no business
+        // raising.
+        if (el instanceof SVGElement) continue;
         const cs = getComputedStyle(el);
         if (cs.display === 'none' || cs.visibility === 'hidden') continue;
         if (cs.textOverflow === 'ellipsis') continue;
@@ -708,6 +715,37 @@ const bigTextFailures = [];
   await big.close();
 }
 failures.push(...bigTextFailures);
+
+/*
+ * The biggest phones get the whole screen.
+ *
+ * The app sat in a 402px column on every viewport, a cap meant for desktops.
+ * On a 430px iPhone Pro Max that left a 14px strip of grey down each side,
+ * and nothing above could see it: every width this file checks is 402 or
+ * less, where the column fills the screen anyway. It surfaced in the App
+ * Store screenshots, which are taken at 430. Up to the widest iPhone the app
+ * reaches both edges; past a phone, a column is right.
+ */
+for (const width of [430, 440]) {
+  const wide = await browser.newContext({ viewport: { width, height: 932 } });
+  const wp = await wide.newPage();
+  await wp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await wp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await wp.waitForTimeout(300);
+  const bar = await wp.evaluate(() => {
+    const nav = document.querySelector('nav[aria-label="Main"]')?.getBoundingClientRect();
+    return nav ? { left: nav.left, right: nav.right, vw: window.innerWidth } : null;
+  });
+  if (!bar) {
+    failures.push({ label: 'the full-width check', width, kind: 'found no tab bar to measure', detail: 'nothing was measured' });
+  } else if (bar.left > 0.5 || bar.right < bar.vw - 0.5) {
+    failures.push({
+      label: 'home', width, kind: 'the app stops short of the screen edges',
+      detail: `the tab bar runs ${Math.round(bar.left)}–${Math.round(bar.right)}px on a ${bar.vw}px phone`,
+    });
+  }
+  await wide.close();
+}
 
 await browser.close();
 

@@ -21,8 +21,8 @@ import { decodePng, pixelAt, writeOpaquePng } from '../scripts/png.mjs';
  * decoder's own output.
  */
 const WEB_ICON = join(__dirname, '..', 'public', 'icons', 'icon-512.png');
-const INK = [23, 20, 16];
-const YELLOW = [242, 185, 13];
+const GROUND = [31, 107, 78];
+const MARK = [255, 255, 255];
 const near = (got: number[], want: number[]) => want.every((v, i) => Math.abs(got[i] - v) <= 2);
 
 describe('reading a PNG somebody else encoded', () => {
@@ -34,9 +34,9 @@ describe('reading a PNG somebody else encoded', () => {
 
   it('finds the rounded-rectangle the source SVG describes', () => {
     /*
-     * icon.svg is `<rect width=512 height=512 rx=112 fill=#171410>` on a
+     * icon.svg is `<rect width=512 height=512 rx=112 fill=#1F6B4E>` on a
      * transparent ground. So every CORNER is outside the curve and must be
-     * transparent, and every EDGE MIDPOINT is inside it and must be opaque ink.
+     * transparent, and every EDGE MIDPOINT is inside it and must be opaque green.
      * Garbage from a mis-unfiltered scanline satisfies neither, and — unlike a
      * single spot check — it cannot satisfy them by luck either, because the
      * two sets have to come out opposite.
@@ -47,15 +47,15 @@ describe('reading a PNG somebody else encoded', () => {
     for (const [x, y] of [[256, 0], [256, 511], [0, 256], [511, 256]]) {
       const px = pixelAt(icon, x, y);
       expect(px[3], `edge ${x},${y} alpha`).toBe(255);
-      expect(near(px, INK), `edge ${x},${y} was ${px}`).toBe(true);
+      expect(near(px, GROUND), `edge ${x},${y} was ${px}`).toBe(true);
     }
   });
 
   it('reads the mark inside it', () => {
-    // The receipt shape is #F2B90D and sits in the middle third.
+    // The receipt shape is white and sits in the middle third.
     let found = false;
     for (let y = 170; y < 340 && !found; y += 3) {
-      for (let x = 170; x < 340; x += 3) if (near(pixelAt(icon, x, y), YELLOW)) { found = true; break; }
+      for (let x = 170; x < 340; x += 3) if (near(pixelAt(icon, x, y), MARK)) { found = true; break; }
     }
     expect(found).toBe(true);
   });

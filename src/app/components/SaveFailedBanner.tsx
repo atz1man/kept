@@ -1,4 +1,4 @@
-import { color, shadow } from '../../tokens';
+import { color, shadow, radius } from '../../tokens';
 import { Warning } from './Icons';
 import { Pressable } from './Pressable';
 
@@ -23,15 +23,15 @@ export function SaveFailedBanner({ onExport }: { onExport: () => void }) {
         alignItems: 'flex-start',
         gap: 10,
         background: color.ink,
-        color: color.cream,
-        border: `1.5px solid ${color.ink}`,
-        borderRadius: 16,
+        color: color.canvas,
+        border: `1px solid ${color.border}`,
+        borderRadius: 12,
         boxShadow: shadow.lift,
       }}
     >
       <Warning stroke={color.onInkDanger} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 700, fontSize: 13.5 }}>This device isn’t saving</div>
+        <div style={{ fontWeight: 600, fontSize: 13.5 }}>This device isn’t saving</div>
         <div style={{ fontSize: 12.5, color: color.onInkBody, lineHeight: 1.5, marginTop: 3 }}>
           Storage is full or blocked. What you see is safe until you close the app — export a backup now, or it will
           be gone.
@@ -40,8 +40,8 @@ export function SaveFailedBanner({ onExport }: { onExport: () => void }) {
           className="k-cta-yellow"
           onClick={onExport}
           style={{
-            width: 'auto', marginTop: 10, padding: '9px 16px', background: color.yellow,
-            color: color.ink, borderRadius: 999, fontWeight: 700, fontSize: 13,
+            width: 'auto', marginTop: 10, padding: '9px 16px', background: color.accent, color: color.white,
+            borderRadius: radius.control, fontWeight: 600, fontSize: 13,
           }}
         >
           Export a backup

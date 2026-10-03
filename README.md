@@ -348,7 +348,7 @@ src/lib/          the decision logic — pure, tested, no React
   split.ts        one thing out of a basket, as a receipt of its own on the same clocks
   persist.ts      asking the browser to keep the library, on the web
   quota.ts        what the free tier counts, and when it is full
-  pricing.ts      the tiers, and what a tap on one is allowed to claim
+  pricing.ts      the one price, and what a tap on it is allowed to claim
   storage.ts      localStorage persistence, and the shape a stored state is
   backup.ts       reading a backup file back in, and merging it by id
   save-file.ts    where a backup actually lands — Files on iOS, a download on the web
@@ -1381,8 +1381,8 @@ is scoped to the `#pricing` section rather than the whole page: reading every
 £ amount in `document.innerText` picked up the £1.95 Zara postal fee quoted in
 the policy-watch card, which is the same self-inflicted disagreement again. A
 selector that matched nothing would let both halves "agree" over empty
-strings, so the suite also requires that it found a pricing section and three
-prices in each place.
+strings, so the suite also requires that it found a pricing section and the
+one price in each place.
 
 ### The same date, twice, a year apart
 
@@ -1407,15 +1407,15 @@ were proved by putting `fmtDateNear` back and watching each name the defect.
 
 ### A price you tap is not a price you paid
 
-Tapping a tier in Settings dispatched `plan: 'pro'` on the spot. No card box,
-no confirmation, no word either way — press "£39.99 lifetime" and the paywall
+Tapping a price in Settings dispatched `plan: 'pro'` on the spot. No card box,
+no confirmation, no word either way — press the price and the paywall
 simply vanishes. The only reading available to someone doing that is that they
-have just been charged £39.99. Payments are not built (see *Not built yet*),
+have just been charged it. Payments are not built (see *Not built yet*),
 so nothing was, and an app that displays a price, takes a tap, and then behaves
 as though money changed hands is making a claim about somebody's bank account.
 
 A tap now opens a sheet that leads with the thing that costs money to get
-wrong — nothing charged, no card taken, nothing to cancel — names the tier
+wrong — nothing charged, no card taken, nothing to cancel — names the price
 that was pressed, and then offers the unlock, which is real and free. Unlocking
 used to remove the plan block and put nothing in its place, so the app went
 quiet about it; where the prices were there is now a standing "Unlocked ·
@@ -2329,7 +2329,7 @@ screen, and an unticked second scan that leaves nothing on the disk.
   cancels what is waiting, that a first purchase asks for permission exactly
   once, and that a refusal lodges nothing while Settings says where to
   change it. Each of those has a broken version it names.
-- **Payments.** The pricing tiers unlock the local plan flag and say plainly
+- **Payments.** The one-off unlock (£4.99, once) sets the local plan flag and says plainly
   that nothing was charged. No card, no billing, nothing to cancel.
 - **Signing the policy feed.** The feed is fetched from the app's own origin,
   validated entry by entry and merged (`lib/policy-feed.ts`), and the download

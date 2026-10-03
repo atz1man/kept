@@ -10,7 +10,7 @@ import { CONTACT_EMAIL, TAGLINE } from '../../lib/brand';
 import { LEGAL_DISCLAIMER } from '../../lib/legal';
 import { checkedCount, CHECKED_ON, STORE_COUNT, tableCheck } from '../../lib/stores';
 import { discardSetAside, setAsideData, URGENT_DAYS_MAX, URGENT_DAYS_MIN, type Settings as SettingsShape } from '../../lib/storage';
-import { sellsPaidTiers, TIERS } from '../../lib/pricing';
+import { sellsPaidTiers, UNLOCK } from '../../lib/pricing';
 import { countedAgainstQuota, FREE_TIER_LIMIT } from '../../lib/quota';
 import { Pressable } from '../components/Pressable';
 
@@ -21,7 +21,7 @@ interface Props {
   onRestore: (receipts: Receipt[]) => void;
   onWipe: () => void;
   onClearSamples: () => void;
-  onUpgrade: (plan: 'monthly' | 'yearly' | 'lifetime') => void;
+  onUpgrade: () => void;
   onChange: (patch: Partial<SettingsShape>) => void;
 }
 
@@ -142,12 +142,12 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
 
   return (
     <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px' }}>
-      <h1 tabIndex={-1} style={{ fontSize: 24, fontWeight: 700, padding: '10px 2px 14px', margin: 0 }}>Settings</h1>
+      <h1 tabIndex={-1} style={{ fontSize: 24, fontWeight: 600, padding: '10px 2px 14px', margin: 0 }}>Settings</h1>
 
-      <section style={{ background: color.white, border: `1.5px solid ${color.border}`, borderRadius: radius.cardLg, padding: 18 }}>
+      <section style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, padding: 18 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ width: 7, height: 7, borderRadius: 999, background: color.yellow }} />
-          <span style={{ fontWeight: 700, fontSize: 15 }}>Private by design</span>
+          <span style={{ width: 7, height: 7, borderRadius: 999, background: color.accent }} />
+          <span style={{ fontWeight: 600, fontSize: 15 }}>Private by design</span>
         </div>
         <p style={{ fontSize: 13, color: color.muted, lineHeight: 1.55, marginTop: 6, marginBottom: 0 }}>
           {/* "No server" was the loose word: this app is served from one, and
@@ -183,7 +183,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
           <Pressable
             className="k-soft"
             onClick={() => void exportNow()}
-            style={{ flex: 1, padding: 12, textAlign: 'center', background: color.creamAlt, borderRadius: 999, fontWeight: 700, fontSize: 13 }}
+            style={{ flex: 1, padding: 12, textAlign: 'center', background: color.surfaceAlt, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
           >
             Export a backup
           </Pressable>
@@ -192,7 +192,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
           <Pressable
             className="k-soft"
             onClick={() => fileInput.current?.click()}
-            style={{ flex: 1, padding: 12, textAlign: 'center', background: color.creamAlt, borderRadius: 999, fontWeight: 700, fontSize: 13 }}
+            style={{ flex: 1, padding: 12, textAlign: 'center', background: color.surfaceAlt, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
           >
             Restore
           </Pressable>
@@ -221,17 +221,17 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
         {setAside && (
           <div
             style={{
-              marginTop: 10, padding: '10px 13px', borderRadius: 14, fontSize: 12.5, lineHeight: 1.5,
-              background: 'rgba(216,66,46,0.10)', color: color.ink,
+              marginTop: 10, padding: '10px 13px', borderRadius: 12, fontSize: 12.5, lineHeight: 1.5,
+              background: 'rgba(217,45,32,0.10)', color: color.ink,
             }}
           >
-            <div style={{ fontWeight: 700 }}>
+            <div style={{ fontWeight: 600 }}>
               An earlier launch found receipts it couldn’t read, and kept them aside rather than lose them.
             </div>
             <Pressable
               className="k-soft"
               onClick={() => void saveSetAside()}
-              style={{ marginTop: 8, padding: '10px 14px', minHeight: 44, background: color.creamAlt, borderRadius: 999, fontWeight: 700, fontSize: 13 }}
+              style={{ marginTop: 8, padding: '10px 14px', minHeight: 44, background: color.surfaceAlt, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
             >
               Save them as a file
             </Pressable>
@@ -241,8 +241,8 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
           <div
             role="status"
             style={{
-              marginTop: 10, padding: '10px 13px', borderRadius: 14, fontSize: 12.5, fontWeight: 600, lineHeight: 1.5,
-              background: backupNote.tone === 'ok' ? color.yellowLight : 'rgba(216,66,46,0.10)',
+              marginTop: 10, padding: '10px 13px', borderRadius: 12, fontSize: 12.5, fontWeight: 600, lineHeight: 1.5,
+              background: backupNote.tone === 'ok' ? color.accentSoft : 'rgba(217,45,32,0.10)',
               color: backupNote.tone === 'ok' ? color.ink : color.danger,
             }}
           >
@@ -252,10 +252,10 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
       </section>
 
       {selling && free && (
-        <section style={{ background: color.ink, color: color.cream, borderRadius: radius.cardLg, padding: 18, marginTop: 12 }}>
+        <section style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, padding: 18, marginTop: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
-            <span style={{ fontWeight: 700, fontSize: 15 }}>Free plan</span>
-            <span style={{ fontFamily: font.figures, fontSize: 12, color: color.faint }}>
+            <span style={{ fontWeight: 600, fontSize: 15 }}>Free plan</span>
+            <span style={{ fontFamily: font.figures, fontSize: 12, color: color.muted }}>
               {used} of {FREE_TIER_LIMIT} free receipts
             </span>
           </div>
@@ -265,18 +265,22 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
             aria-valuemin={0}
             aria-valuemax={FREE_TIER_LIMIT}
             aria-label="Free receipts used"
-            style={{ height: 6, borderRadius: 999, background: color.onInkBorder, marginTop: 10, overflow: 'hidden' }}
+            style={{ height: 6, borderRadius: 999, background: color.surfaceDeep, marginTop: 10, overflow: 'hidden' }}
           >
-            <div style={{ height: '100%', background: color.yellow, borderRadius: 999, width: `${usagePct}%` }} />
+            <div style={{ height: '100%', background: color.accent, borderRadius: 999, width: `${usagePct}%` }} />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 16 }}>
-            {/* One source with the landing page's cards — see lib/pricing.ts. */}
-            {TIERS.map((t) => (
-              <Tier key={t.period} price={t.price} period={t.period} featured={t.featured} onClick={() => onUpgrade(t.period)} />
-            ))}
+          {/* One price, from the same module as the landing page — see lib/pricing.ts. */}
+          <Pressable
+            className="k-cta-yellow"
+            onClick={onUpgrade}
+            style={{ marginTop: 16, padding: 14, minHeight: 44, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 15 }}
+          >
+            {`Unlock unlimited · ${UNLOCK.price}${UNLOCK.suffix}`}
+          </Pressable>
+          <div style={{ fontSize: 12, color: color.muted, textAlign: 'center', marginTop: 10 }}>
+            One payment. No subscription, nothing to cancel.
           </div>
-          <div style={{ fontSize: 11, color: color.faint, textAlign: 'center', marginTop: 10 }}>One missed return pays for it.</div>
         </section>
       )}
 
@@ -286,24 +290,24 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
           and no reason to doubt they were being billed. They are not: say so
           where the price used to be, not only in the sheet they tapped past. */}
       {selling && !free && (
-        <section style={{ background: color.ink, color: color.cream, borderRadius: radius.cardLg, padding: 18, marginTop: 12 }}>
+        <section style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, padding: 18, marginTop: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
-            <span style={{ fontWeight: 700, fontSize: 15 }}>Unlocked</span>
-            <span style={{ fontFamily: font.figures, fontSize: 12, color: color.faint }}>
+            <span style={{ fontWeight: 600, fontSize: 15 }}>Unlocked</span>
+            <span style={{ fontFamily: font.figures, fontSize: 12, color: color.muted }}>
               {used} receipts · no limit
             </span>
           </div>
-          <div style={{ fontSize: 13, color: color.fainter, lineHeight: 1.55, marginTop: 8 }}>
+          <div style={{ fontSize: 13, color: color.body, lineHeight: 1.55, marginTop: 8 }}>
             Nothing was charged and no card was taken — kept cannot accept payments yet. There is no subscription
             here to cancel.
           </div>
         </section>
       )}
 
-      <section style={{ background: color.white, border: `1.5px solid ${color.border}`, borderRadius: radius.cardLg, marginTop: 12, overflow: 'hidden' }}>
+      <section style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, marginTop: 12, overflow: 'hidden' }}>
         {/* The row and its caveat share one block, so the separator falls below
             both rather than striking through the explanation. */}
-        <div style={{ borderBottom: `1.5px solid ${color.borderHair}` }}>
+        <div style={{ borderBottom: `1px solid ${color.borderHair}` }}>
           <Toggle
             label="Deadline alerts"
             value={alerts.on}
@@ -360,22 +364,22 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
       {/* The samples, on their own: Erase everything was the only way to be
           rid of all of them, and it takes the real receipts too. */}
       {receipts.some((r) => r.demo) && (
-        <section style={{ background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: radius.cardLg, marginTop: 12, padding: 18 }}>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>Sample receipts</div>
+        <section style={{ background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.cardLg, marginTop: 12, padding: 18 }}>
+          <div style={{ fontWeight: 600, fontSize: 15 }}>Sample receipts</div>
           <p style={{ fontSize: 13, color: color.muted, lineHeight: 1.55, marginTop: 6, marginBottom: 0 }}>
             The receipts marked sample show what kept does. Removing them leaves your own receipts exactly as they are.
           </p>
           <Pressable
             onClick={onClearSamples}
-            style={{ marginTop: 12, padding: 12, textAlign: 'center', background: color.white, border: `1.5px solid ${color.ink}`, borderRadius: 999, fontWeight: 700, fontSize: 13 }}
+            style={{ marginTop: 12, padding: 12, textAlign: 'center', background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
           >
             Remove the samples
           </Pressable>
         </section>
       )}
 
-      <section style={{ background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: radius.cardLg, marginTop: 12, padding: 18 }}>
-        <div style={{ fontWeight: 700, fontSize: 15 }}>Erase everything</div>
+      <section style={{ background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.cardLg, marginTop: 12, padding: 18 }}>
+        <div style={{ fontWeight: 600, fontSize: 15 }}>Erase everything</div>
         <p style={{ fontSize: 13, color: color.muted, lineHeight: 1.55, marginTop: 6, marginBottom: 0 }}>
           {confirmingWipe
             ? `This removes all ${receipts.length} ${receipts.length === 1 ? 'receipt' : 'receipts'} from this device. There is no undo — export a backup first if you might want them.`
@@ -386,7 +390,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
             <Pressable
               className="k-soft"
               onClick={() => setConfirmingWipe(false)}
-              style={{ flex: 1, padding: 12, textAlign: 'center', background: color.creamAlt, borderRadius: 999, fontWeight: 700, fontSize: 13 }}
+              style={{ flex: 1, padding: 12, textAlign: 'center', background: color.surfaceAlt, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
             >
               Keep them
             </Pressable>
@@ -396,7 +400,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
                 setBackupNote(null);
                 onWipe();
               }}
-              style={{ flex: 1, padding: 12, textAlign: 'center', background: color.danger, color: color.white, borderRadius: 999, fontWeight: 700, fontSize: 13 }}
+              style={{ flex: 1, padding: 12, textAlign: 'center', background: color.danger, color: color.white, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
             >
               Erase everything
             </Pressable>
@@ -407,8 +411,8 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
             onClick={() => setConfirmingWipe(true)}
             disabled={receipts.length === 0}
             style={{
-              marginTop: 12, padding: 12, textAlign: 'center', background: color.creamAlt,
-              borderRadius: 999, fontWeight: 700, fontSize: 13,
+              marginTop: 12, padding: 12, textAlign: 'center', background: color.surfaceAlt,
+              borderRadius: radius.control, fontWeight: 600, fontSize: 13,
               color: receipts.length === 0 ? color.muted : color.danger,
               opacity: receipts.length === 0 ? 0.55 : 1,
               cursor: receipts.length === 0 ? 'not-allowed' : 'pointer',
@@ -419,7 +423,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
         )}
       </section>
 
-      <section style={{ background: color.white, border: `1.5px solid ${color.border}`, borderRadius: radius.cardLg, marginTop: 12, padding: '15px 18px' }}>
+      <section style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, marginTop: 12, padding: '15px 18px' }}>
         <label htmlFor="urgent" style={{ fontSize: 14, fontWeight: 600, display: 'block' }}>
           Call it urgent under
         </label>
@@ -432,9 +436,9 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
             step={1}
             value={settings.urgentDays}
             onChange={(e) => onChange({ urgentDays: Number(e.target.value) })}
-            style={{ flex: 1, accentColor: color.yellow }}
+            style={{ flex: 1, accentColor: color.accent }}
           />
-          <span style={{ fontFamily: font.figures, fontWeight: 700, fontSize: 14, minWidth: 56, textAlign: 'right' }}>
+          <span style={{ fontFamily: font.figures, fontWeight: 600, fontSize: 14, minWidth: 56, textAlign: 'right' }}>
             {settings.urgentDays} days
           </span>
         </div>
@@ -446,27 +450,6 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
         {LEGAL_DISCLAIMER}
       </p>
     </div>
-  );
-}
-
-function Tier({ price, period, featured, onClick }: { price: string; period: string; featured?: boolean; onClick: () => void }) {
-  return (
-    <Pressable
-      onClick={onClick}
-      style={{
-        border: `1.5px solid ${featured ? color.yellow : color.onInkBorderStrong}`,
-        borderRadius: 14, padding: '13px 8px', textAlign: 'center', position: 'relative',
-        background: featured ? 'rgba(242,185,13,0.1)' : 'transparent',
-      }}
-    >
-      {featured && (
-        <span style={{ position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)', background: color.yellow, color: color.ink, fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 999, whiteSpace: 'nowrap' }}>
-          BEST VALUE
-        </span>
-      )}
-      <div style={{ fontFamily: font.figures, fontWeight: 700, fontSize: 14, color: featured ? color.yellow : color.cream }}>{price}</div>
-      <div style={{ fontSize: 11, color: color.faint, marginTop: 2 }}>{period}</div>
-    </Pressable>
   );
 }
 
@@ -487,7 +470,7 @@ function Toggle({ label, detail, value, disabled, separator = true, onChange }: 
       style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
         padding: '15px 18px',
-        borderBottom: separator ? `1.5px solid ${color.borderHair}` : undefined,
+        borderBottom: separator ? `1px solid ${color.borderHair}` : undefined,
         opacity: disabled ? 0.55 : 1, cursor: disabled ? 'not-allowed' : 'pointer',
       }}
     >
@@ -501,15 +484,15 @@ function Toggle({ label, detail, value, disabled, separator = true, onChange }: 
           aria-hidden="true"
           style={{
             width: 40, height: 24, borderRadius: 999, flexShrink: 0,
-            background: value ? color.yellow : color.creamAlt,
-            border: `1.5px solid ${value ? color.ink : color.border}`,
+            background: value ? color.accent : color.surfaceDeep,
+            border: `1px solid ${value ? color.accent : color.borderSoft}`,
             display: 'flex', alignItems: 'center', padding: 2, transition: 'background .2s',
           }}
         >
           <span
             style={{
-              width: 16, height: 16, borderRadius: 999, background: value ? color.ink : color.white,
-              border: value ? undefined : `1px solid ${color.border}`,
+              width: 16, height: 16, borderRadius: 999, background: color.white,
+              boxShadow: '0 1px 2px rgba(20,22,26,0.2)',
               transform: `translateX(${value ? 16 : 0}px)`, transition: 'transform .2s',
             }}
           />

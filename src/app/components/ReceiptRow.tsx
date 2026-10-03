@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { color, font, radius, shadow } from '../../tokens';
+import { color, font } from '../../tokens';
 import { money } from '../../lib/money';
 import type { Receipt } from '../../lib/types';
 import type { Urgency } from '../../lib/urgency';
@@ -15,7 +15,7 @@ const TAP_SLOP_PX = 8;
 interface Props {
   receipt: Receipt;
   urgency: Urgency;
-  /** Urgent rows get the ink border and hard shadow; later rows sit quieter. */
+  /** Which hover the row takes: the urgent sections' rows, or the quieter ones. */
   emphasised: boolean;
   /** True when a watched policy change touches this receipt's retailer. */
   policyChanged: boolean;
@@ -47,7 +47,7 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
   };
 
   return (
-    <li style={{ position: 'relative', listStyle: 'none' }}>
+    <li style={{ position: 'relative', listStyle: 'none', overflow: 'hidden' }}>
       {/* The backing revealed by the swipe. Hidden from assistive tech: it is
           the visual result of a gesture, not a second control — the keyboard
           route to the same outcome is the first button on the detail screen:
@@ -56,11 +56,10 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
         aria-hidden="true"
         style={{
           position: 'absolute', inset: 0, display: 'flex', alignItems: 'center',
-          justifyContent: 'flex-end', paddingRight: 20, background: color.yellowLight,
-          border: `1.5px solid ${color.ink}`, borderRadius: radius.card,
+          justifyContent: 'flex-end', paddingRight: 20, background: color.accentSoft,
         }}
       >
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600 }}>
           <Tick size={14} />
           {receipt.distance ? 'Sent back' : 'Returned'}
         </span>
@@ -106,11 +105,13 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
         // would say it.
         aria-label={`${receipt.store}, ${receipt.item}${receipt.demo ? ' (sample)' : ''}${onItsWay ? ' (on its way)' : ''}, ${money(receipt.amount)}, ${urgency.label}`}
         style={{
-          display: 'flex', alignItems: 'center', gap: 13, padding: 15,
-          background: emphasised ? color.white : color.cream,
-          border: `1.5px solid ${emphasised ? color.ink : color.border}`,
-          borderRadius: radius.card,
-          boxShadow: emphasised ? shadow.hard : undefined,
+          display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px',
+          // A row in a grouped list (`.k-group`), not a card of its own: the
+          // list is the card, rows are divided by a hairline, and urgency is
+          // said in the red of the countdown rather than by lifting the row.
+          background: color.white,
+          border: 0,
+          borderRadius: 0,
           position: 'relative',
           transform: `translateX(${dx}px)`,
           transition: dragging ? 'none' : 'transform .25s ease',
@@ -119,8 +120,8 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
       >
         <div
           style={{
-            width: 40, height: 40, borderRadius: 12, background: color.creamAlt,
-            border: `1px solid ${color.borderHair}`, display: 'flex', alignItems: 'center',
+            width: 36, height: 36, borderRadius: 9, background: color.surfaceAlt,
+            display: 'flex', alignItems: 'center',
             justifyContent: 'center', flexShrink: 0,
           }}
         >
@@ -143,12 +144,12 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
                 still being clipped to one. */}
             {/* data-name is read by the layout sweep, which measures whether
                 anything beside this has squeezed it past reading. */}
-            <span data-name style={{ fontWeight: 700, fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: MIN_NAME_PX }}>
+            <span data-name style={{ fontWeight: 600, fontSize: 15, letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: MIN_NAME_PX }}>
               {receipt.store}
             </span>
             {policyChanged && (
-              <span style={{ fontSize: 9.5, fontWeight: 700, background: color.yellowLight, padding: '2px 7px', borderRadius: 999, letterSpacing: '0.3px', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                POLICY CHANGED
+              <span style={{ fontSize: 10.5, fontWeight: 550, color: color.accentInk, background: color.accentSoft, padding: '1px 6px', borderRadius: 4, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                Policy changed
               </span>
             )}
 
@@ -169,7 +170,7 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
               truncates from the tail, so at 320px every row read "Kenwood
               kMix stan…" and the marker vanished on exactly the phone with
               the least room to explain itself. */}
-          <div style={{ fontSize: 12, color: color.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div style={{ fontSize: 13, color: color.muted, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {receipt.demo && <span>sample · </span>}
             {/* Before the item for the same reason as "sample": this line
                 truncates from the tail. Until it arrives, the count beside it
@@ -180,8 +181,11 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
         </div>
 
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
-          <div style={{ fontFamily: font.figures, fontSize: 15, fontWeight: 700 }}>{money(receipt.amount)}</div>
-          <div style={{ display: 'inline-block', marginTop: 4, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999, background: urgency.bg, color: urgency.fg }}>
+          <div style={{ fontFamily: font.figures, fontSize: 15, fontWeight: 550 }}>{money(receipt.amount)}</div>
+          {/* Said in colour and in words, not in a pill: red and "2 days
+              left" when it is close, the accent when it is coming up, grey
+              when there is time. */}
+          <div style={{ marginTop: 2, fontSize: 12.5, fontWeight: urgency.level === 'critical' || urgency.level === 'expired' ? 600 : 500, color: urgency.fg }}>
             {urgency.label}
           </div>
         </div>

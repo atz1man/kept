@@ -18,8 +18,8 @@ export function Field({
   const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
   return (
     <div style={{ marginTop: 14 }}>
-      <label htmlFor={id} style={{ display: 'block', fontSize: 12, fontWeight: 700, letterSpacing: '0.6px', color: color.muted, marginBottom: 6 }}>
-        {label.toUpperCase()}
+      <label htmlFor={id} style={{ display: 'block', fontSize: 13, fontWeight: 600, color: color.bodyStrong, marginBottom: 6 }}>
+        {label}
       </label>
       {children({ id, 'aria-invalid': !!error, 'aria-describedby': describedBy })}
       {error && (
@@ -41,8 +41,8 @@ export function inputStyle(invalid: boolean) {
     width: '100%',
     boxSizing: 'border-box' as const,
     padding: '13px 14px',
-    borderRadius: radius.card,
-    border: `1.5px solid ${invalid ? color.danger : color.border}`,
+    borderRadius: radius.control,
+    border: `1px solid ${invalid ? color.danger : color.border}`,
     background: color.white,
     fontFamily: font.ui,
     fontSize: 15,

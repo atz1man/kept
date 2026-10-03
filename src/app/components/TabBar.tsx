@@ -11,39 +11,40 @@ interface Props {
 }
 
 /**
- * Which tab you are on, said twice.
+ * Which tab you are on, said twice: the colour, and a short bar above it.
  *
- * It was the pale fill alone: `yellowLight` against the bar's near-cream
- * measures **1.28:1**, where WCAG 2.1 SC 1.4.11 asks 3:1 of a state
- * indicator — and this is the app's only navigation. It also disappeared
- * entirely under forced colours, where a background is replaced by the
- * system's and a border is not, so a Windows high-contrast user had four
- * identical tabs.
- *
- * The border carries it now (17.6:1, and it survives forced colours) and the
- * fill stays, because two signals are the point.
- *
- * NO border on the inactive ones, not a transparent one — measured: under
- * forced colours a transparent border is forced to a system colour like any
- * other, so all four tabs came back outlined and the fix made the state less
- * visible than it started. The 1.5px is paid back in padding instead, so the
- * box is the same size either way and nothing shifts as you move between
- * tabs.
+ * It was once a pale fill alone, which measured 1.28:1 against the bar where
+ * WCAG 2.1 SC 1.4.11 asks 3:1 of a state indicator, and which vanished under
+ * forced colours (a background is replaced by the system's; a border is not).
+ * Then an outlined pill, which carried the state but read as a toy. Now the
+ * way a phone's own apps do it: the current tab's icon and label in the
+ * accent, and a 2px accent bar over it — a BORDER, so it survives forced
+ * colours, and only rendered on the current tab, because a transparent border
+ * is forced to a system colour like any other.
  */
 const tab = (active: boolean) => ({
   display: 'flex',
   flexDirection: 'column' as const,
   alignItems: 'center',
-  gap: 2,
-  borderRadius: 999,
-  background: active ? color.yellowLight : 'transparent',
-  ...(active ? { border: `1.5px solid ${color.ink}` } : {}),
-  width: 'auto',
+  gap: 3,
+  flex: 1,
+  background: 'transparent',
+  color: active ? color.accentInk : color.muted,
   position: 'relative' as const,
   // Allowed to shrink. A flex item will not go below its content width
   // without this, which is how the bar came to be wider than the phone.
   minWidth: 0,
+  borderRadius: 10,
 });
+
+/** The current tab's bar: a border on an otherwise empty box. */
+const Indicator = () => (
+  <span
+    aria-hidden="true"
+    data-tab-indicator
+    style={{ position: 'absolute', top: -7, left: '50%', transform: 'translateX(-50%)', width: 24, height: 0, borderTop: `2px solid ${color.accent}`, borderRadius: 2 }}
+  />
+);
 
 /*
  * The label truncates rather than the bar leaving the screen.
@@ -59,14 +60,15 @@ const tab = (active: boolean) => ({
  * The accessible name is unaffected, so "Setti…" is only ever a visual last
  * resort — and a truncated label you can still tap beats a tab off the screen.
  */
-const label = {
-  fontSize: 10,
-  fontWeight: 700,
+const label = (active: boolean) => ({
+  fontSize: 10.5,
+  fontWeight: active ? 600 : 500,
+  letterSpacing: '0.01em',
   maxWidth: '100%',
   overflow: 'hidden',
   textOverflow: 'ellipsis' as const,
   whiteSpace: 'nowrap' as const,
-};
+});
 
 export function TabBar({ screen, alert, onGo }: Props) {
   // The detail screen is reached from the receipts list, so the list stays lit
@@ -77,36 +79,35 @@ export function TabBar({ screen, alert, onGo }: Props) {
     <nav
       aria-label="Main"
       style={{
+        /*
+         * Docked to the bottom edge, full width, the way a phone's own apps
+         * do it. It used to float as a pill 24px above the edge with a hard
+         * ink shadow, which read as a toy and also sat on top of whatever
+         * was last on the screen. The home indicator owns roughly the bottom
+         * 34px of an iPhone, so the bar's own padding grows by that inset.
+         */
         position: 'absolute',
-        // The home indicator owns roughly the bottom 34px of an iPhone, and
-        // this is the app's ONLY navigation. `UpgradeNotice` already sits at
-        // `84px + inset` — a sum that only clears the bar if the bar moves up
-        // by the inset too, which it did not. So on any device with an
-        // indicator the tab bar sat partly underneath it while the notice
-        // floated a full inset too high. Zero everywhere else, so the web is
-        // pixel-identical.
-        bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
-        left: '50%',
-        transform: 'translateX(-50%)',
+        bottom: 0,
+        left: 0,
+        right: 0,
         display: 'flex',
         alignItems: 'center',
-        gap: 2,
-        padding: 6,
-        // Never wider than the screen it floats over, whatever the text size.
-        maxWidth: 'calc(100% - 16px)',
+        justifyContent: 'space-around',
+        gap: 0,
+        padding: '6px 8px calc(4px + env(safe-area-inset-bottom, 0px))',
         boxSizing: 'border-box',
-        borderRadius: 999,
-        background: 'rgba(253,250,241,0.88)',
+        background: 'rgba(255,255,255,0.94)',
         backdropFilter: 'blur(16px) saturate(160%)',
         WebkitBackdropFilter: 'blur(16px) saturate(160%)',
-        border: `1.5px solid ${color.ink}`,
-        boxShadow: shadow.tab,
+        borderTop: `1px solid ${color.border}`,
+        boxShadow: shadow.bar,
         zIndex: 30,
       }}
     >
       <Pressable className={onReceipts ? 'k-tab k-tab-on' : 'k-tab'} style={tab(onReceipts)} aria-current={onReceipts ? 'page' : undefined} onClick={() => onGo('home')}>
-        <ReceiptGlyph />
-        <span style={label}>Receipts</span>
+        {onReceipts && <Indicator />}
+        <ReceiptGlyph size={22} stroke={onReceipts ? color.accentInk : color.muted} />
+        <span style={label(onReceipts)}>Receipts</span>
       </Pressable>
 
       <Pressable
@@ -126,29 +127,33 @@ export function TabBar({ screen, alert, onGo }: Props) {
             /* Bordered as well as filled: under forced colours a background is
                replaced by the system's and the dot vanished, taking the one
                signal that a policy change touches a receipt you hold. */
-            style={{ position: 'absolute', top: 4, right: 8, width: 7, height: 7, borderRadius: 999, background: color.danger, border: `1px solid ${color.danger}` }}
+            style={{ position: 'absolute', top: 2, left: 'calc(50% + 6px)', width: 7, height: 7, borderRadius: 999, background: color.danger, border: `1px solid ${color.danger}` }}
           />
         )}
-        <BellGlyph />
-        <span style={label}>Watch</span>
+        {screen === 'watch' && <Indicator />}
+        <BellGlyph size={22} stroke={screen === 'watch' ? color.accentInk : color.muted} />
+        <span style={label(screen === 'watch')}>Watch</span>
       </Pressable>
 
+      {/* Adding is a tab like the others, not a floating disc: the bright
+          round button was the loudest thing on every screen, and the add
+          screen is somewhere you go, like the rest. */}
       <Pressable
-        className="k-cta-yellow"
+        className={screen === 'add' ? 'k-tab k-tab-on' : 'k-tab'}
+        style={tab(screen === 'add')}
         aria-label="Add a receipt"
+        aria-current={screen === 'add' ? 'page' : undefined}
         onClick={() => onGo('add')}
-        style={{
-          width: 46, height: 46, borderRadius: 999, background: color.yellow,
-          border: `1.5px solid ${color.ink}`, display: 'flex', alignItems: 'center',
-          justifyContent: 'center', margin: '0 4px', flexShrink: 0,
-        }}
       >
-        <PlusGlyph />
+        {screen === 'add' && <Indicator />}
+        <PlusGlyph stroke={screen === 'add' ? color.accentInk : color.muted} size={22} />
+        <span style={label(screen === 'add')}>Add</span>
       </Pressable>
 
       <Pressable className={screen === 'settings' ? 'k-tab k-tab-on' : 'k-tab'} style={tab(screen === 'settings')} aria-current={screen === 'settings' ? 'page' : undefined} onClick={() => onGo('settings')}>
-        <GearGlyph />
-        <span style={label}>Settings</span>
+        {screen === 'settings' && <Indicator />}
+        <GearGlyph size={22} stroke={screen === 'settings' ? color.accentInk : color.muted} />
+        <span style={label(screen === 'settings')}>Settings</span>
       </Pressable>
     </nav>
   );

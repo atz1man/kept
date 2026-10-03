@@ -13,7 +13,6 @@ import { winSentence } from '../lib/words';
 import { exportBackup, wipe } from '../lib/storage';
 import { keepStorage } from '../lib/persist';
 import { backupFilename, saveJsonFile } from '../lib/save-file';
-import { FEATURED_TIER } from '../lib/pricing';
 import { SaveFailedBanner } from './components/SaveFailedBanner';
 import { TabBar } from './components/TabBar';
 import { UndoBar } from './components/UndoBar';
@@ -483,7 +482,7 @@ export function App() {
           trackedTotal={money(sumPence(state.receipts.filter(countsAsMoney(state.receipts)).map((r) => r.amount)))}
           updates={state.updates}
           onSave={(receipt) => dispatch({ type: 'add', receipt })}
-          onUpgrade={() => dispatch({ type: 'upgrade-ask', period: FEATURED_TIER.period })}
+          onUpgrade={() => dispatch({ type: 'upgrade-ask' })}
         />
       )}
 
@@ -501,7 +500,7 @@ export function App() {
             wipe();
             dispatch({ type: 'wipe' });
           }}
-          onUpgrade={(period) => dispatch({ type: 'upgrade-ask', period })}
+          onUpgrade={() => dispatch({ type: 'upgrade-ask' })}
           onChange={(patch) => dispatch({ type: 'settings', patch })}
         />
       )}
@@ -577,7 +576,6 @@ export function App() {
 
       {state.upgrading && (
         <UpgradeNotice
-          period={state.upgrading}
           onUnlock={() => dispatch({ type: 'settings', patch: { plan: 'pro' } })}
           onCancel={() => dispatch({ type: 'upgrade-cancel' })}
         />

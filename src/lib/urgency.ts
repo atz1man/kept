@@ -35,14 +35,14 @@ export function urgency(daysLeft: number, urgentDays: number = DEFAULT_URGENT_DA
       level: 'critical',
       bg: color.dangerChipBg,
       fg: color.danger,
-      label: daysLeft === 0 ? 'today ⚠' : `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} ⚠`,
+      label: daysLeft === 0 ? 'today' : `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left`,
       dot: color.dangerDot,
     };
   }
   if (daysLeft <= urgentDays) {
-    return { level: 'soon', bg: color.yellowLight, fg: color.ink, label: `${daysLeft} days left`, dot: color.yellow };
+    return { level: 'soon', bg: color.accentSoft, fg: color.accentInk, label: `${daysLeft} days left`, dot: color.accent };
   }
-  return { level: 'relaxed', bg: color.creamAlt, fg: color.body, label: `${daysLeft} days left`, dot: color.fainter };
+  return { level: 'relaxed', bg: color.surfaceAlt, fg: color.muted, label: `${daysLeft} days left`, dot: color.fainter };
 }
 
 /** The hero's headline number and the word beside it. */

@@ -24,7 +24,7 @@ const config: CapacitorConfig = {
     // The app draws its own cream ground; a white flash between the launch
     // screen and the first paint is the kind of seam the design has no
     // patience for elsewhere.
-    backgroundColor: '#FDFAF1',
+    backgroundColor: '#FFFFFF',
     /*
      * Left ON, which is Capacitor's default — but as a decision now, because
      * the comment that used to sit here argued for the opposite of what the

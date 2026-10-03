@@ -236,7 +236,7 @@ for (let dx = 0; dx <= 110; dx += 22) {
 await page.mouse.up();
 await page.waitForTimeout(600);
 
-results['swipe marks the receipt returned'] = await page.getByText('MONEY BACK').isVisible();
+results['swipe marks the receipt returned'] = await page.getByText('Money back', { exact: true }).isVisible();
 
 /*
  * Sharing the win, both ways it can go.
@@ -271,7 +271,7 @@ for (const [label, refuse] of [['confirms a copy that happened', false], ['does 
   await sharePage.waitForTimeout(300);
   await sharePage.getByRole('button', { name: 'Got my money back' }).click();
   await sharePage.waitForTimeout(700);
-  await sharePage.getByRole('button', { name: 'Share the win' }).click();
+  await sharePage.getByRole('button', { name: 'Share', exact: true }).click();
   await sharePage.waitForTimeout(600);
   const said = await sharePage.locator('main').innerText();
   const claimsCopied = /Copied — paste it anywhere/.test(said);
@@ -334,7 +334,7 @@ for (const [label, refuse] of [['confirms a copy that happened', false], ['does 
         const h = heads.find((x) => x.textContent.includes(label));
         return h ? h.nextElementSibling?.textContent ?? '' : '';
       };
-      return { keeping: under('KEEPING IT'), closed: under('WINDOW CLOSED'), urgent: under('GO NOW'), later: under('CHILL') };
+      return { keeping: under('Keeping'), closed: under('Window closed'), urgent: under('Due soon'), later: under('Later') };
     });
     results['a kept receipt leaves the deadlines, loses its returns link, and says so'] =
       /Keeping it · since/.test(detailSays) && linkGone && /Currys/.test(filed.keeping) &&
@@ -387,7 +387,7 @@ for (const cancel of [false, true]) {
   await sp.waitForTimeout(300);
   await sp.getByRole('button', { name: 'Got my money back' }).click();
   await sp.waitForTimeout(700);
-  await sp.getByRole('button', { name: 'Share the win' }).click();
+  await sp.getByRole('button', { name: 'Share', exact: true }).click();
   await sp.waitForTimeout(1500);
   const sheet = await sp.evaluate(() => window.__sheet);
   const copied = await sp.evaluate(() => window.__copied);
@@ -401,7 +401,7 @@ for (const cancel of [false, true]) {
     if (!results['the win is shared as a picture of the card, with its sentence']) problems.push(`share sheet: ${JSON.stringify({ sheet, copied })}`);
   } else {
     results['a cancelled share claims nothing and copies nothing'] =
-      !!sheet && !/Shared ✓|Copied — paste it anywhere/.test(said) && /Share the win/.test(said) && copied === null;
+      !!sheet && !/Shared ✓|Copied — paste it anywhere/.test(said) && /^Share$/m.test(said) && copied === null;
     if (!results['a cancelled share claims nothing and copies nothing']) problems.push(`cancelled share: ${JSON.stringify({ said: said.slice(0, 80), copied })}`);
   }
   await sheetCtx.close();
@@ -437,7 +437,7 @@ for (const cancel of [false, true]) {
     results['keeping the closed windows can be undone'] = false;
     results['a settled receipt stops counting down'] = false;
     results['a kept row says how long its guarantee runs'] = false;
-    problems.push(`backlog: no “I’m keeping all 2” under WINDOW CLOSED (${shutStores.join(', ')})`);
+    problems.push(`backlog: no “I’m keeping all 2” under “Window closed” (${shutStores.join(', ')})`);
   } else {
     await keepAll.click();
     await bp.waitForTimeout(400);
@@ -446,20 +446,20 @@ for (const cancel of [false, true]) {
       const under = (label) => heads.find((x) => x.textContent.includes(label))?.nextElementSibling?.textContent ?? '';
       return {
         text: document.querySelector('main').innerText,
-        keeping: under('KEEPING IT'),
-        closedHead: heads.some((h) => h.textContent.includes('WINDOW CLOSED')),
+        keeping: under('Keeping'),
+        closedHead: heads.some((h) => h.textContent.includes('Window closed')),
         bar: [...document.querySelectorAll('[role="status"]')].map((x) => x.textContent).join(' | '),
       };
     });
     results['closed windows can be kept in one tap, and the hero moves on'] =
-      /WINDOW ALREADY CLOSED/.test(heroBefore) && !after.closedHead &&
-      !/WINDOW ALREADY CLOSED/.test(after.text) && /NEXT WINDOW TO CLOSE/.test(after.text) &&
+      /Window closed/.test(heroBefore) && !after.closedHead &&
+      !/Window closed/.test(after.text) && /Next to close/.test(after.text) &&
       shutStores.every((store) => after.keeping.includes(store)) && /Moved 2 to Keeping it/.test(after.bar);
     if (!results['closed windows can be kept in one tap, and the hero moves on']) problems.push(`backlog kept: ${JSON.stringify({ closedHead: after.closedHead, keeping: after.keeping.slice(0, 80), bar: after.bar })}`);
     // Both were bought in January 2025 here. The mixer's 12-month guarantee
     // has ended and its row says so; the headphones' 24 months run into 2027.
     const rows = await bp.evaluate(() => {
-      const h = [...document.querySelectorAll('h2')].find((x) => x.textContent.includes('KEEPING IT'));
+      const h = [...document.querySelectorAll('h2')].find((x) => x.textContent.includes('Keeping'));
       return [...(h?.nextElementSibling?.querySelectorAll('li') ?? [])].map((li) => li.textContent);
     });
     const rowFor = (store) => rows.find((t) => t.startsWith(store)) ?? '';
@@ -473,7 +473,7 @@ for (const cancel of [false, true]) {
     await bp.waitForTimeout(400);
     const detail = await bp.locator('main').innerText();
     results['a settled receipt stops counting down'] =
-      /THE WINDOW RAN TO/.test(detail) && !/RETURN BY|WINDOW CLOSED|days left/.test(detail) && /Keeping it · since/.test(detail);
+      /The window ran to/.test(detail) && !/Return by|Window closed|days left/.test(detail) && /Keeping it · since/.test(detail);
     if (!results['a settled receipt stops counting down']) problems.push(`settled detail: ${detail.slice(0, 200)}`);
     await bp.getByRole('button', { name: 'Back', exact: true }).click();
     await bp.waitForTimeout(300);
@@ -494,7 +494,7 @@ for (const cancel of [false, true]) {
     await bp.getByRole('button', { name: 'Undo' }).click();
     await bp.waitForTimeout(300);
     const undone = await stored();
-    const closedBack = await bp.getByRole('heading', { name: /WINDOW CLOSED/ }).count();
+    const closedBack = await bp.getByRole('heading', { name: /Window closed/ }).count();
     results['keeping the closed windows can be undone'] =
       beforeUndo.every((st) => st === 'kept') && undone.every((st) => st === 'active') && closedBack === 1;
     if (!results['keeping the closed windows can be undone']) problems.push(`backlog undo: ${JSON.stringify({ beforeUndo, undone, closedBack })}`);
@@ -572,18 +572,18 @@ for (const cancel of [false, true]) {
   await up.waitForTimeout(300);
   await up.getByRole('button', { name: 'Got my money back' }).click();
   await up.waitForTimeout(400);
-  const celebrated = /MONEY BACK/.test(await up.locator('main').innerText());
+  const celebrated = /^Money back$/m.test(await up.locator('main').innerText());
   const undo = up.getByRole('button', { name: 'Undo' });
   const offered = (await undo.count()) === 1 && /Marked JBL Tune 770NC headphones returned/.test(await up.locator('[role="status"]').allInnerTexts().then((t) => t.join(' ')));
   if (offered) await undo.click();
   await up.waitForTimeout(400);
   const home = await up.evaluate(() => {
-    const h = [...document.querySelectorAll('h2')].find((x) => x.textContent.includes('GO NOW'));
+    const h = [...document.querySelectorAll('h2')].find((x) => x.textContent.includes('Due soon'));
     return { goNow: h?.nextElementSibling?.textContent ?? '', text: document.querySelector('main').innerText };
   });
   const stored = await up.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => /JBL/.test(r.item)));
   results['a return can be undone from the bar, straight off the celebration'] =
-    celebrated && offered && /Currys/.test(home.goNow) && !/MONEY BACK/.test(home.text) &&
+    celebrated && offered && /Currys/.test(home.goNow) && !/^Money back$/m.test(home.text) &&
     stored?.status === 'active' && stored?.returnedOn === undefined;
   if (!results['a return can be undone from the bar, straight off the celebration']) problems.push(`undo return: ${JSON.stringify({ celebrated, offered, goNow: home.goNow.slice(0, 60), status: stored?.status })}`);
   await undoCtx.close();
@@ -777,7 +777,7 @@ for (const cancel of [false, true]) {
     await send.click();
     await sp.waitForTimeout(300);
     const detail = await sp.locator('main').innerText();
-    seen.detail = /Sent back · /.test(detail) && /Waiting for the refund\. If it has not arrived by .+, chase it/.test(detail) && !/RETURN BY|^days left$/m.test(detail);
+    seen.detail = /Sent back · /.test(detail) && /Waiting for the refund\. If it has not arrived by .+, chase it/.test(detail) && !/Return by|^days left$/m.test(detail);
     // (The ring's own "days left" line; the legal panel may rightly count
     // down the 30-day right to reject on the same screen.)
     await sp.getByRole('button', { name: 'Back', exact: true }).click();
@@ -785,7 +785,7 @@ for (const cancel of [false, true]) {
     seen.filed = await sp.evaluate(() => {
       const heads = [...document.querySelectorAll('h2')];
       const under = (label) => heads.find((x) => x.textContent.includes(label))?.nextElementSibling?.textContent ?? '';
-      return /Currys/.test(under('SENT BACK')) && !/JBL/.test(under('GO NOW') + under('CHILL') + under('WINDOW CLOSED'));
+      return /Currys/.test(under('Sent back')) && !/JBL/.test(under('Due soon') + under('Later') + under('Window closed'));
     });
     await sp.getByRole('button', { name: /Currys, JBL.*waiting for the refund/ }).click();
     await sp.waitForTimeout(300);
@@ -1084,7 +1084,7 @@ for (const cancel of [false, true]) {
   if (seen.typeOffered) {
     await typeIt.click();
     await tp.waitForTimeout(200);
-    seen.blank = /TYPE IT IN/.test(await tp.locator('main').innerText()) &&
+    seen.blank = /^Type it in$/m.test(await tp.locator('main').innerText()) &&
       (await tp.getByRole('button', { name: 'Add the shop to save' }).isDisabled());
     await tp.locator('#add-item').fill('Face cream');
     await tp.locator('#add-store').fill('boots');
@@ -1182,8 +1182,8 @@ for (const cancel of [false, true]) {
     await wp.getByRole('button', { name: 'Save', exact: true }).click();
     await wp.waitForTimeout(300);
     const card = await wp.locator('main').innerText();
-    seen.card = /MONEY BACK\s*£30\.00/.test(card) && /of the £89\.00 it cost/.test(card);
-    await wp.getByRole('button', { name: 'Share the win' }).click();
+    seen.card = /Money back\s*£30\.00/.test(card) && /of the £89\.00 it cost/.test(card);
+    await wp.getByRole('button', { name: 'Share', exact: true }).click();
     await wp.waitForTimeout(300);
     const copied = await wp.evaluate(() => window.__copied ?? '');
     seen.shared = /£30\.00/.test(copied) && !/£89\.00/.test(copied);
@@ -1454,7 +1454,7 @@ for (const cancel of [false, true]) {
     const opened = (await rp.getByRole('heading', { level: 1, name: store }).count()) === 1;
     await rp.getByRole('button', { name: 'Back', exact: true }).click({ timeout: 3000 }).catch(() => {});
     await rp.waitForTimeout(300);
-    return { opened, rights: /YOUR LEGAL RIGHT/.test(text), cancel: /cancel for any reason/i.test(text) };
+    return { opened, rights: /^Your legal rights?$/m.test(text), cancel: /cancel for any reason/i.test(text) };
   };
   const seen = { back: await rightsOn(/^ASOS, Jacket/, 'ASOS'), sent: await rightsOn(/^Boohoo, Scarf/, 'Boohoo'), kept: await rightsOn(/^Next, Jumper/, 'Next') };
   const ok = seen.back.opened && !seen.back.rights && !seen.back.cancel &&
@@ -1600,7 +1600,7 @@ for (const cancel of [false, true]) {
   await sp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
   await sp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
   await sp.waitForTimeout(300);
-  const hero = () => sp.getByRole('button', { name: /NEXT WINDOW TO CLOSE|WINDOW ALREADY CLOSED/ }).first().innerText().catch(() => '');
+  const hero = () => sp.getByRole('button', { name: /Next to close|Window closed/ }).first().innerText().catch(() => '');
   const zara = async () => (await sp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => r.id === 'seed_zara')));
   const tap = (name) => sp.getByRole('button', { name }).first().click({ timeout: 3000 }).then(() => true, () => false);
   const seen = {};
@@ -1623,6 +1623,11 @@ for (const cancel of [false, true]) {
   // Swipe the online order.
   const swipe = async () => {
     const row = sp.getByRole('button', { name: /^Zara, Wool-blend/ }).first();
+    // Into the middle of the list first, as a thumb would: the tab bar is
+    // docked across the full width now, so a row left half under it takes
+    // the press on the bar instead.
+    await row.evaluate((el) => el.scrollIntoView({ block: 'center' })).catch(() => {});
+    await sp.waitForTimeout(150);
     const box = await row.boundingBox();
     if (!box) return;
     const y = box.y + box.height / 2;
@@ -1635,7 +1640,7 @@ for (const cancel of [false, true]) {
   await swipe();
   let z = await zara();
   const bar = (await sp.locator('[role="status"]').allInnerTexts()).join(' ');
-  seen.swipeSends = z?.status === 'sent' && z?.sentOn === today && !/MONEY BACK/.test(await sp.locator('main').innerText());
+  seen.swipeSends = z?.status === 'sent' && z?.sentOn === today && !/^Money back$/m.test(await sp.locator('main').innerText());
   seen.offeredBack = /Marked Wool-blend overcoat sent back/.test(bar);
   await tap('Undo');
   await sp.waitForTimeout(400);
@@ -1932,7 +1937,7 @@ results['onboarding is not shown again'] = !(await page
   .getByRole('button', { name: 'Skip' })
   .isVisible()
   .catch(() => false));
-results['the return survives a reload'] = await page.getByText('MONEY BACK ✓').isVisible();
+results['the return survives a reload'] = await page.getByText('Money back ✓').isVisible();
 // A returned receipt has to stay reachable: the swipe is a one-finger gesture
 // on a row you might have meant to open, so it will fire by accident.
 await page.getByRole('button', { name: /Currys, JBL.*returned/ }).click();
@@ -1995,7 +2000,7 @@ results['a deleted receipt can be undone'] =
 await page.getByRole('button', { name: /IKEA, MALM/ }).click();
 await page.waitForTimeout(300);
 const ikea = await page.evaluate(() => {
-  const label = [...document.querySelectorAll('div')].find((d) => d.textContent.trim() === 'RETURN BY');
+  const label = [...document.querySelectorAll('div')].find((d) => d.textContent.trim() === 'Return by');
   const deadline = label?.nextElementSibling?.textContent?.trim() ?? null;
   const bought = document.body.innerText.match(/bought ([^\n·]+)/)?.[1]?.trim() ?? null;
   return { deadline, bought };
@@ -2014,7 +2019,7 @@ await page.waitForTimeout(300);
 // the same date — they disagreed by two days, because the preview counted
 // from the purchase date and the receipt counted from dispatch.
 const detailDeadline = await page.evaluate(() => {
-  const label = [...document.querySelectorAll('div')].find((d) => d.textContent.trim() === 'RETURN BY');
+  const label = [...document.querySelectorAll('div')].find((d) => d.textContent.trim() === 'Return by');
   return label?.nextElementSibling?.textContent?.trim() ?? null;
 });
 
@@ -2041,7 +2046,7 @@ const detailDeadline = await page.evaluate(() => {
  * receipt would tell someone the shop will still take it back. The visible
  * ring on this screen was held; the legal reasoning under it was not.
  */
-const legalToggle = page.locator('[aria-expanded]').filter({ hasText: /YOUR LEGAL RIGHT/ });
+const legalToggle = page.locator('[aria-expanded]').filter({ hasText: /Your legal rights?/ });
 const legalText = async () => (await page.locator('main').textContent().catch(() => '')) ?? '';
 const rightsWhileOpen = await legalText();
 results['a lapsed cooling-off says the shop’s own window is still open, when it is'] =
@@ -2193,7 +2198,7 @@ await page.goto(shareUrl, { waitUntil: 'networkidle' });
 await page.waitForTimeout(700);
 results['a shared order lands on Add, already read'] =
   (await page.getByRole('heading', { name: 'Add a receipt' }).isVisible()) &&
-  (await page.getByText('FOUND IN YOUR PASTE').isVisible());
+  (await page.getByText('Found in your paste').isVisible());
 // The payload must not linger in the address bar, or a reload re-adds it.
 results['the shared payload is stripped from the URL'] = !/[?&]text=/.test(page.url());
 
@@ -2270,7 +2275,7 @@ results['the sample policy changes are labelled, and held once each'] =
 }
 
 results['a policy change is checked against the receipts held'] =
-  (await page.getByText('AFFECTS YOUR RECEIPTS').first().isVisible()) &&
+  (await page.getByText('Affects your receipts', { exact: true }).first().isVisible()) &&
   (await page.getByText(/deadline unchanged/).first().isVisible()) &&
   (await page.getByText(/drop off in store to keep it free/).first().isVisible());
 
@@ -2391,7 +2396,8 @@ results['a delivery date in the paste is read, not asked for'] =
   const lastDay = await ring(/ASOS, Running shoes/);
   const longGone = await ring(/Argos, Toaster/);
   results['the ring still shows something on the last day'] =
-    lastDay.drawn > 1 && lastDay.numberColour === 'rgb(255, 154, 118)' &&
+    // The danger red, #B42318: the number sits on a white card now, not ink.
+    lastDay.drawn > 1 && lastDay.numberColour === 'rgb(180, 35, 24)' &&
     // And nothing once the window has actually gone, rather than sweeping backwards.
     longGone.drawn <= 0;
   await lastCtx.close();
@@ -2478,12 +2484,12 @@ results['a delivery date in the paste is read, not asked for'] =
   const shown = await backlogPage.locator('main').innerText();
   results['an expired receipt is not sold as a window still to close'] =
     /the window closed on your Towels/.test(shown) &&
-    /WINDOW ALREADY CLOSED/.test(shown) &&
-    !/NEXT WINDOW TO CLOSE/.test(shown) &&
+    /Window closed/.test(shown) &&
+    !/Next to close/.test(shown) &&
     // And no promise of money back by a date five months gone.
     !/£193\.25 back if it goes back/.test(shown) &&
     // Nor filed under the one thing that cannot be done about it.
-    /WINDOW CLOSED · CHECK YOUR RIGHTS/.test(shown);
+    /Window closed · check your rights/.test(shown);
 
   /*
    * And the third statement on the same card: its footer.
@@ -2882,7 +2888,7 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
   await scanPage.getByRole('button', { name: 'Add a receipt' }).click();
   await scanPage.waitForTimeout(300);
   await scanPage.setInputFiles('#add-photo', { name: 'receipt.png', mimeType: 'image/png', buffer: photo });
-  const found = await scanPage.getByText('READ FROM YOUR PHOTO').waitFor({ timeout: 90_000 }).then(() => true).catch(() => false);
+  const found = await scanPage.getByText('Read from your photo', { exact: true }).waitFor({ timeout: 90_000 }).then(() => true).catch(() => false);
   const card = found ? await scanPage.locator('main').innerText() : '';
   const item = found ? await scanPage.inputValue('#add-item').catch(() => '') : '';
   results['a photographed receipt is read on the device'] =
@@ -2899,8 +2905,8 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
     await scanPage.locator('#paste').fill(`${await scanPage.inputValue('#paste')}\nThanks`);
     await scanPage.getByRole('button', { name: 'Read it' }).click();
     results['an edited scan is a paste again'] =
-      (await scanPage.getByText('FOUND IN YOUR PASTE').isVisible().catch(() => false)) &&
-      !(await scanPage.getByText('READ FROM YOUR PHOTO').isVisible().catch(() => false));
+      (await scanPage.getByText('Found in your paste').isVisible().catch(() => false)) &&
+      !(await scanPage.getByText('Read from your photo', { exact: true }).isVisible().catch(() => false));
   }
 
   /*
@@ -2929,7 +2935,7 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
   await scanPage.getByRole('button', { name: 'Add a receipt' }).click();
   await scanPage.waitForTimeout(300);
   await scanPage.setInputFiles('#add-photo', { name: 'shaded.png', mimeType: 'image/png', buffer: shaded });
-  const shadeFound = await scanPage.getByText('READ FROM YOUR PHOTO').waitFor({ timeout: 120_000 }).then(() => true).catch(() => false);
+  const shadeFound = await scanPage.getByText('Read from your photo', { exact: true }).waitFor({ timeout: 120_000 }).then(() => true).catch(() => false);
   const shadeCard = shadeFound ? await scanPage.locator('main').innerText() : '';
   results['a receipt half in shadow is read too'] =
     shadeFound && /Boots/.test(shadeCard) && /£42\.97/.test(shadeCard) && /21 Sep/.test(shadeCard);
@@ -2953,7 +2959,7 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
   await scanPage.waitForTimeout(300);
   await scanPage.setInputFiles('#add-photo', { name: 'offline.png', mimeType: 'image/png', buffer: photo }).catch(() => {});
   const offlineOutcome = await Promise.race([
-    scanPage.getByText('READ FROM YOUR PHOTO').waitFor({ timeout: 90_000 }).then(() => 'read'),
+    scanPage.getByText('Read from your photo', { exact: true }).waitFor({ timeout: 90_000 }).then(() => 'read'),
     scanPage.getByText(/needs a connection/).waitFor({ timeout: 90_000 }).then(() => 'connection'),
     scanPage.getByText(/flat, straight and in good light/).waitFor({ timeout: 90_000 }).then(() => 'photo'),
   ]).catch(() => 'nothing');
@@ -2976,7 +2982,7 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
   const stillOnline = await scanPage.evaluate(() => navigator.onLine);
   await scanPage.setInputFiles('#add-photo', { name: 'unreachable.png', mimeType: 'image/png', buffer: photo }).catch(() => {});
   const unreachableOutcome = await Promise.race([
-    scanPage.getByText('READ FROM YOUR PHOTO').waitFor({ timeout: 90_000 }).then(() => 'read'),
+    scanPage.getByText('Read from your photo', { exact: true }).waitFor({ timeout: 90_000 }).then(() => 'read'),
     scanPage.getByText(/needs a connection/).waitFor({ timeout: 90_000 }).then(() => 'connection'),
     scanPage.getByText(/flat, straight and in good light/).waitFor({ timeout: 90_000 }).then(() => 'photo'),
   ]).catch(() => 'nothing');
@@ -3106,7 +3112,7 @@ await page.waitForTimeout(300);
 await page.fill('#paste', 'Your Apple order · Total £129.00 · 25 Aug');
 await page.getByRole('button', { name: 'Read it' }).click();
 await page.waitForTimeout(400);
-const cappedSave = page.getByRole('button', { name: /Go unlimited to save this/ });
+const cappedSave = page.getByRole('button', { name: /Unlock unlimited to save this/ });
 const beforeBlocked = await page.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.length);
 await cappedSave.click({ force: true }).catch(() => {});
 await page.waitForTimeout(300);
@@ -3118,22 +3124,26 @@ results['a full free tier actually refuses the save'] =
  * Tapping a price must not behave as though money changed hands.
  *
  * It did: the tier tiles dispatched plan:'pro' on the spot, so someone who
- * pressed "£39.99 lifetime" watched the paywall vanish with no card box, no
+ * pressed the price watched the paywall vanish with no card box, no
  * confirmation and no word either way. The only reading available to them was
- * that they had just been charged £39.99. Payments are not built, so nothing
+ * that they had just been charged it. Payments are not built, so nothing
  * was — which is exactly the thing the screen has to say.
  */
 const planOf = () => page.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).settings.plan);
 await page.getByRole('button', { name: 'Settings', exact: true }).click();
 await page.waitForTimeout(400);
-await page.getByRole('button', { name: /£39\.99/ }).click();
+const priceButton = page.getByRole('button', { name: /^Unlock unlimited · £\d+\.\d{2}/ });
+const pressed = ((await priceButton.innerText().catch(() => '')).match(/£\d+\.\d{2}/) ?? [])[0];
+await priceButton.click();
 await page.waitForTimeout(400);
 const notice = page.getByRole('dialog');
 const noticeSaid = (await notice.innerText().catch(() => '')) || '';
+// The sheet names the price that was pressed, read off the button rather than
+// written here, so a change of price is not a change to this check.
 results['tapping a price does not pretend to charge for it'] =
   (await planOf()) === 'free' &&
   /charge/i.test(noticeSaid) &&
-  /£39\.99/.test(noticeSaid);
+  !!pressed && noticeSaid.includes(pressed);
 // And it must be leaveable without buying anything. The clicks below are
 // guarded because the failure this section exists to catch removes the sheet
 // entirely: an unguarded click would kill the harness before it printed a
@@ -3143,7 +3153,7 @@ await page.waitForTimeout(400);
 results['the notice can be dismissed, and nothing is unlocked'] =
   (await planOf()) === 'free' && (await page.getByRole('dialog').count()) === 0;
 // The unlock itself is real, and the screen keeps saying it was free.
-await page.getByRole('button', { name: /£16\.99/ }).click({ timeout: 2000 }).catch(() => {});
+await priceButton.click({ timeout: 2000 }).catch(() => {});
 await page.waitForTimeout(300);
 await page.getByRole('button', { name: 'Unlock everything, free' }).click({ timeout: 2000 }).catch(() => {});
 await page.waitForTimeout(500);
@@ -3187,7 +3197,7 @@ if (demoBox) {
   await landing.mouse.up();
   await landing.waitForTimeout(700);
 }
-results['the landing demo works'] = await demo.getByText('MONEY BACK').isVisible().catch(() => false);
+results['the landing demo works'] = await demo.getByText('Money back', { exact: true }).isVisible().catch(() => false);
 /*
  * The marketing page has to be able to reach the product.
  *
@@ -3330,7 +3340,7 @@ results['the manifest is installable and declares the share target'] =
   await clockPage.waitForTimeout(400);
   const heroDays = () =>
     clockPage.evaluate(() => {
-      const label = [...document.querySelectorAll('span')].find((s) => s.textContent.trim() === 'NEXT WINDOW TO CLOSE');
+      const label = [...document.querySelectorAll('span')].find((s) => s.textContent.trim() === 'Next to close');
       const spans = [...(label?.closest('button')?.querySelectorAll('span') ?? [])];
       return spans.find((s) => /^\d+$|^Today$|^Gone$/.test(s.textContent.trim()))?.textContent.trim() ?? null;
     });
@@ -3356,7 +3366,7 @@ await page.evaluate(() => {
 await page.reload({ waitUntil: 'networkidle' });
 await page.waitForTimeout(900);
 results['a corrupt stored receipt does not blank the app'] =
-  (await page.getByText('RETURN DEADLINES, WATCHED').isVisible().catch(() => false)) &&
+  (await page.getByText('Return deadlines, watched', { exact: true }).isVisible().catch(() => false)) &&
   (await page.evaluate(() => document.body.innerText.length)) > 100;
 
 // Last, because it takes everything with it: erase must clear the disk, not

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { color, font, radius, shadow } from '../../tokens';
 import { winCardLine } from '../win-card';
 import { money, type Pence } from '../../lib/money';
-import { LogoChecked, LogoWatermark } from '../components/Icons';
+import { LogoChecked } from '../components/Icons';
 import { Pressable } from '../components/Pressable';
 import { RefundForm } from '../components/RefundForm';
 
@@ -47,27 +47,23 @@ export function Celebrate({ amount, cost, store, inTime, recovered, shared, line
     // and never shrinks below its content.
     <div className="k-fade" style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', padding: `6px 20px ${undoShowing ? 196 : 104}px` }}>
       <div style={{ flex: '1 0 auto', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-        <div style={{ background: color.ink, color: color.cream, borderRadius: radius.heroLg, padding: '30px 26px', boxShadow: shadow.yellowXl, position: 'relative', overflow: 'hidden' }}>
-          <LogoWatermark style={{ position: 'absolute', top: -28, right: -34, transform: 'rotate(12deg)', opacity: 0.14 }} />
+        <div style={{ background: color.white, color: color.ink, borderRadius: radius.heroLg, padding: '28px 24px', border: `1px solid ${color.borderHair}`, boxShadow: shadow.raisedLg, position: 'relative', overflow: 'hidden' }}>
           <LogoChecked />
-          <h1 tabIndex={-1} style={{ fontFamily: font.figures, fontSize: 12, letterSpacing: '2px', color: color.faint, fontWeight: 600, margin: '14px 0 0' }}>
-            MONEY BACK
+          <h1 tabIndex={-1} style={{ fontSize: 14, color: color.muted, fontWeight: 600, margin: '14px 0 0' }}>
+            Money back
           </h1>
-          <div style={{ fontFamily: font.figures, fontSize: 56, fontWeight: 700, letterSpacing: '-2.5px', color: color.yellow, marginTop: 4 }}>
+          <div style={{ fontFamily: font.figures, fontSize: 52, fontWeight: 600, letterSpacing: '-2px', color: color.accentInk, marginTop: 4 }}>
             {money(amount)}
           </div>
           {amount !== cost && (
-            <div style={{ fontFamily: font.figures, fontSize: 13, color: color.faint, marginTop: 2 }}>of the {money(cost)} it cost</div>
+            <div style={{ fontFamily: font.figures, fontSize: 13.5, color: color.muted, marginTop: 2 }}>of the {money(cost)} it cost</div>
           )}
-          <div style={{ fontSize: 15, color: color.onInkBody, marginTop: 8 }}>
+          <div style={{ fontSize: 15, color: color.body, marginTop: 8 }}>
             {winCardLine(store, inTime)}
           </div>
-          <div style={{ borderTop: `1.5px dashed ${color.onInkDash}`, marginTop: 20, paddingTop: 14, display: 'flex', justifyContent: 'space-between', fontFamily: font.figures, fontSize: 12.5 }}>
-            <span style={{ color: color.faint }}>kept back so far</span>
-            <span style={{ color: color.yellow, fontWeight: 600 }}>{money(recovered)}</span>
-          </div>
-          <div style={{ fontFamily: font.figures, fontSize: 11, color: color.onInkFaint, marginTop: 14, textAlign: 'center', letterSpacing: '1px' }}>
-            kept. — stop donating money to shops
+          <div style={{ borderTop: `1px solid ${color.borderHair}`, marginTop: 20, paddingTop: 14, display: 'flex', justifyContent: 'space-between', fontFamily: font.figures, fontSize: 13 }}>
+            <span style={{ color: color.muted }}>Kept back so far</span>
+            <span style={{ color: color.accentInk, fontWeight: 600 }}>{money(recovered)}</span>
           </div>
         </div>
         {/* Before the share, not after it: the figure on the card is the one
@@ -92,7 +88,7 @@ export function Celebrate({ amount, cost, store, inTime, recovered, shared, line
         <Pressable
           className="k-cta-yellow"
           onClick={onShare}
-          style={{ padding: 16, textAlign: 'center', background: color.yellow, border: `1.5px solid ${color.ink}`, borderRadius: 999, fontWeight: 700, fontSize: 15, boxShadow: shadow.hard }}
+          style={{ padding: 13, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 15, boxShadow: shadow.raised }}
         >
           {shared === 'shared'
             ? 'Shared ✓'
@@ -100,7 +96,7 @@ export function Celebrate({ amount, cost, store, inTime, recovered, shared, line
               ? 'Copied — paste it anywhere ✓'
               : shared === 'failed'
                 ? 'Copy it from here'
-                : 'Share the win'}
+                : 'Share'}
         </Pressable>
         {/* A refused clipboard used to render as "Copied ✓". It fails on any
             insecure origin and wherever the permission is denied, and the
@@ -110,14 +106,14 @@ export function Celebrate({ amount, cost, store, inTime, recovered, shared, line
           <p
             role="status"
             style={{
-              margin: 0, padding: '12px 14px', background: color.white, border: `1.5px solid ${color.border}`,
-              borderRadius: 14, fontSize: 13.5, lineHeight: 1.5, color: color.bodyStrong, userSelect: 'all',
+              margin: 0, padding: '12px 14px', background: color.white, border: `1px solid ${color.border}`,
+              borderRadius: 12, fontSize: 13.5, lineHeight: 1.5, color: color.bodyStrong, userSelect: 'all',
             }}
           >
             {line}
           </p>
         )}
-        <Pressable onClick={onDone} style={{ padding: 14, textAlign: 'center', fontWeight: 700, fontSize: 14, color: color.muted }}>
+        <Pressable onClick={onDone} style={{ padding: 13, textAlign: 'center', fontWeight: 600, fontSize: 14, color: color.muted }}>
           Back to receipts
         </Pressable>
       </div>
