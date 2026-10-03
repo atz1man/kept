@@ -282,6 +282,13 @@ async function squeezedText(page, root) {
         const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join(' ').trim();
         const words = own.split(/\s+/).filter(Boolean);
         if (words.length < 2) continue;
+        // SVG text never wraps: a <text> run is laid out on one line at its
+        // own width, so "narrower than its longest word" cannot happen to it.
+        // Measured, it came out 1px short of the probe — 73 against 74 for
+        // "Returns" in a landing illustration — from glyph metrics, not from
+        // any squeezing, which is a false alarm this rule has no business
+        // raising.
+        if (el instanceof SVGElement) continue;
         const cs = getComputedStyle(el);
         if (cs.display === 'none' || cs.visibility === 'hidden') continue;
         if (cs.textOverflow === 'ellipsis') continue;
