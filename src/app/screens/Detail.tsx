@@ -121,33 +121,33 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
 
   return (
     <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, margin: '8px 0 16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, margin: '4px -2px 10px' }}>
+        {/* Text controls, the way a phone's own navigation bar draws them:
+            boxed buttons up here were two more cards on a screen of cards. */}
         <Pressable
-          className="k-row-white"
           onClick={onBack}
           style={{
-            display: 'inline-flex', width: 'auto', alignItems: 'center', gap: 6, padding: '9px 15px 9px 11px',
-            background: color.white, border: `1px solid ${color.border}`, borderRadius: 999,
-            fontSize: 13, fontWeight: 700,
+            display: 'inline-flex', width: 'auto', alignItems: 'center', gap: 6, minHeight: 44, padding: '0 8px 0 2px',
+            background: 'transparent', borderRadius: radius.control, color: color.accentInk,
+            fontSize: 15, fontWeight: 500,
           }}
         >
-          <ChevronLeft />
+          <ChevronLeft stroke={color.accentInk} />
           Back
         </Pressable>
         <Pressable
-          className="k-row-white"
           onClick={onEdit}
           style={{
-            display: 'inline-flex', width: 'auto', alignItems: 'center', gap: 6, padding: '9px 16px',
-            background: color.white, border: `1.5px solid ${color.border}`, borderRadius: 999,
-            fontSize: 13, fontWeight: 700,
+            display: 'inline-flex', width: 'auto', alignItems: 'center', gap: 6, minHeight: 44, padding: '0 2px 0 8px',
+            background: 'transparent', borderRadius: radius.control, color: color.accentInk,
+            fontSize: 15, fontWeight: 500,
           }}
         >
           Edit
         </Pressable>
       </div>
 
-      <div style={{ background: color.white, color: color.ink, borderRadius: radius.hero, padding: '20px 20px', border: `1px solid ${color.borderHair}`, boxShadow: shadow.raisedLg }}>
+      <div style={{ background: color.white, color: color.ink, borderRadius: radius.hero, padding: '18px 18px', border: `1px solid ${color.borderHair}`, boxShadow: shadow.raised }}>
         {/*
           * The amount gets its own line rather than the name getting none.
           *
@@ -167,7 +167,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
           */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ minWidth: 0, flex: '1 1 60%' }}>
-            <h1 tabIndex={-1} style={{ fontSize: 21, fontWeight: 700, margin: 0 }}>{receipt.store}</h1>
+            <h1 tabIndex={-1} style={{ fontSize: 21, fontWeight: 600, margin: 0 }}>{receipt.store}</h1>
             <div style={{ fontSize: 14, color: color.muted, marginTop: 3 }}>{receipt.item}</div>
             {receipt.orderRef && (
               <div style={{ fontSize: 12.5, color: color.muted, marginTop: 3, fontFamily: font.figures, userSelect: 'text', overflowWrap: 'anywhere' }}>
@@ -175,7 +175,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               </div>
             )}
           </div>
-          <div style={{ fontFamily: font.figures, fontSize: 26, fontWeight: 700, color: color.ink }}>
+          <div style={{ fontFamily: font.figures, fontSize: 26, fontWeight: 600, color: color.ink }}>
             {money(receipt.amount)}
           </div>
         </div>
@@ -183,9 +183,9 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginTop: 20 }}>
           <div style={{ position: 'relative', width: 92, height: 92, flexShrink: 0 }}>
             <svg width="92" height="92" viewBox="0 0 92 92" style={{ transform: 'rotate(-90deg)' }} aria-hidden="true">
-              <circle cx="46" cy="46" r="40" fill="none" stroke={color.surfaceAlt} strokeWidth="7" />
+              <circle cx="46" cy="46" r="40" fill="none" stroke={color.surfaceAlt} strokeWidth="5" />
               <circle
-                cx="46" cy="46" r="40" fill="none" stroke={ringColor} strokeWidth="7" strokeLinecap="round"
+                cx="46" cy="46" r="40" fill="none" stroke={ringColor} strokeWidth="5" strokeLinecap="round"
                 strokeDasharray={RING_CIRCUMFERENCE} strokeDashoffset={ringOffset}
               />
             </svg>
@@ -193,7 +193,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               {/* Coloured like the count on the home hero, which has always
                   done this. Here the ring's stroke was the only urgency
                   signal on the screen, and on the last day it was a hairline. */}
-              <div style={{ fontFamily: font.figures, fontSize: settled || d.expired ? 15 : 22, fontWeight: 700, lineHeight: 1, color: ringColor }}>
+              <div style={{ fontFamily: font.figures, fontSize: settled || d.expired ? 15 : 22, fontWeight: 600, lineHeight: 1, color: ringColor }}>
                 {receipt.status === 'returned' ? 'back' : receipt.status === 'kept' ? 'kept' : receipt.status === 'sent' ? 'sent' : d.expired ? 'closed' : d.daysLeft}
               </div>
               {!settled && !d.expired && <div style={{ fontSize: 11, color: color.muted, marginTop: 2 }}>days left</div>}
@@ -203,7 +203,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
             <div style={{ fontSize: 13, color: color.muted, fontWeight: 600 }}>
               {settled ? 'The window ran to' : d.expired ? 'Window closed' : 'Return by'}
             </div>
-            <div style={{ fontFamily: font.figures, fontSize: 24, fontWeight: 700, marginTop: 4 }}>
+            <div style={{ fontFamily: font.figures, fontSize: 24, fontWeight: 600, marginTop: 4 }}>
               {deadlineText}
             </div>
             <div style={{ fontSize: 13, color: color.muted, marginTop: 6 }}>
@@ -221,7 +221,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
         )}
       </div>
 
-      <div style={{ background: color.white, border: `1.5px solid ${color.border}`, borderRadius: radius.cardLg, marginTop: 12 }}>
+      <div style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, marginTop: 12 }}>
         <div style={{ padding: '16px 18px 14px' }}>
           <ReceiptPhoto receiptId={receipt.id} />
 
@@ -250,12 +250,12 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               className="k-cta-yellow"
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 12,
-                minHeight: 44, padding: '10px 16px', borderRadius: 12, background: color.accent, color: color.white,
-                textDecoration: 'none', fontSize: 14, fontWeight: 700,
+                minHeight: 46, boxSizing: 'border-box', padding: '10px 16px', borderRadius: radius.control, background: color.accent, color: color.white,
+                textDecoration: 'none', fontSize: 14, fontWeight: 600,
               }}
             >
               <span>Start your return</span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: color.accentSoft }}>{returnsPage.host}<span aria-hidden="true"> ↗</span></span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: color.accentSoft }}>{returnsPage.host}<span aria-hidden="true"> ↗</span></span>
             </a>
           )}
           {dispatchDiffers && (
@@ -283,8 +283,8 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               plausibly still be coming. The order email is when most people
               add a receipt, and it arrives before the parcel does. */}
           {awaitingArrival(receipt, today) && (
-            <div data-arrival style={{ marginTop: 12, padding: 14, background: color.surfaceAlt, border: `1.5px solid ${color.borderHair}`, borderRadius: 14 }}>
-              <div style={{ fontWeight: 700, fontSize: 14.5 }}>Has it arrived?</div>
+            <div data-arrival style={{ marginTop: 12, padding: 14, background: color.surfaceAlt, border: `1px solid ${color.borderHair}`, borderRadius: 12 }}>
+              <div style={{ fontWeight: 600, fontSize: 14.5 }}>Has it arrived?</div>
               <div style={{ fontSize: 13, lineHeight: 1.5, marginTop: 3, color: color.body }}>
                 {clockStart === 'delivery'
                   ? `${receipt.store}’s window and your legal rights both start the day it arrives, not the day you ordered.`
@@ -294,14 +294,14 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
                 <Pressable
                   className="k-cta-yellow"
                   onClick={onArrived}
-                  style={{ flex: '1 1 auto', width: 'auto', padding: 12, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+                  style={{ flex: '1 1 auto', width: 'auto', padding: 12, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
                 >
                   It arrived today
                 </Pressable>
                 <Pressable
                   className="k-row-white"
                   onClick={onEdit}
-                  style={{ flex: '1 1 auto', width: 'auto', padding: 12, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+                  style={{ flex: '1 1 auto', width: 'auto', padding: 12, textAlign: 'center', background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
                 >
                   It came earlier
                 </Pressable>
@@ -315,7 +315,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
             already used, and one on its way back likewise: what is left for
             those is the refund, set out below. A kept one keeps its rights. */}
         {(receipt.status === 'active' || receipt.status === 'kept') && (
-        <div style={{ borderTop: `1.5px solid ${color.borderHair}`, padding: '15px 18px' }}>
+        <div style={{ borderTop: `1px solid ${color.borderHair}`, padding: '15px 18px' }}>
           <Pressable
             onClick={() => setLegalOpen((v) => !v)}
             aria-expanded={legalOpen}
@@ -330,7 +330,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
             {rights.map((right) => (
               <span
                 key={right.chip}
-                style={{ fontSize: 10, fontWeight: 700, background: color.accentSoft, padding: '2px 8px', borderRadius: 999 }}
+                style={{ fontSize: 10, fontWeight: 600, background: color.accentSoft, padding: '2px 8px', borderRadius: radius.chip }}
               >
                 {right.chip}
               </span>
@@ -349,7 +349,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
         )}
 
         {asksForGuarantee(receipt) && (
-          <div style={{ borderTop: `1.5px solid ${color.borderHair}`, padding: '15px 18px' }}>
+          <div style={{ borderTop: `1px solid ${color.borderHair}`, padding: '15px 18px' }}>
             <div style={cardLabel}>Warranty</div>
             <div style={{ fontSize: 14, marginTop: 5, lineHeight: 1.5, color: color.bodyStrong }}>
               None recorded. Most electricals and furniture come with one — add its length and Kept counts it down
@@ -358,7 +358,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
             <Pressable
               className="k-row-white"
               onClick={onEdit}
-              style={{ display: 'inline-flex', width: 'auto', marginTop: 10, padding: '10px 16px', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 13.5 }}
+              style={{ display: 'inline-flex', width: 'auto', marginTop: 10, padding: '10px 16px', background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13.5 }}
             >
               Add its guarantee
             </Pressable>
@@ -366,7 +366,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
         )}
 
         {receipt.warranty && (
-          <div style={{ borderTop: `1.5px solid ${color.borderHair}`, padding: '15px 18px' }}>
+          <div style={{ borderTop: `1px solid ${color.borderHair}`, padding: '15px 18px' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
               <div style={cardLabel}>Warranty</div>
               {/* The clock, not a sentence about one. The question a warranty
@@ -375,7 +375,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               {d.warranty && d.warranty.months > 0 && (
                 <div
                   style={{
-                    fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999,
+                    fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: radius.chip,
                     background: d.warranty.expired ? color.surfaceAlt : color.accentSoft,
                     color: d.warranty.expired ? color.body : color.ink,
                   }}
@@ -404,7 +404,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
       {(receipt.status === 'active' || receipt.status === 'kept') && <FaultPanel receipt={receipt} today={today} onSent={onFaultSent} onUnsent={onFaultUnsent} />}
 
       {receipt.gotcha && (
-        <div style={{ display: 'flex', gap: 10, background: color.accentSoft, border: `1px solid ${color.border}`, borderRadius: 16, padding: '14px 16px', marginTop: 12 }}>
+        <div style={{ display: 'flex', gap: 10, background: color.accentSoft, border: `1px solid ${color.border}`, borderRadius: 12, padding: '14px 16px', marginTop: 12 }}>
           <Warning />
           <div style={{ fontSize: 13, lineHeight: 1.5 }}>
             <strong>Gotcha:</strong> {receipt.gotcha}
@@ -420,7 +420,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
               year, and it is the only fact a returned receipt carries that is
               not already on the row. */}
           {receipt.exchanged ? (
-            <div data-swapped style={{ marginTop: 16, padding: 15, textAlign: 'center', background: color.accentSoft, border: `1px solid ${color.border}`, borderRadius: 16, fontWeight: 700 }}>
+            <div data-swapped style={{ marginTop: 16, padding: 13, textAlign: 'center', background: color.accentSoft, border: `1px solid ${color.border}`, borderRadius: 12, fontWeight: 600 }}>
               Swapped for another{returnedText ? ` on ${returnedText}` : ''} ✓
             </div>
           ) : (
@@ -433,7 +433,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
             <Pressable
               className="k-row-white"
               onClick={receipt.exchanged ? onUnexchange : onUnreturn}
-              style={{ flex: 1, padding: 15, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+              style={{ flex: 1, padding: 13, textAlign: 'center', background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
             >
               {/* Posted first, so what is being taken back is the money:
                   the parcel went, and it goes back to waiting for a refund. */}
@@ -446,8 +446,8 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
           {/* Gone back, money still to come. The day it went is the one that
               decides whether it was in time, so it is said; and the day worth
               chasing from, so that is said too. */}
-          <div style={{ marginTop: 16, padding: 15, background: color.white, border: `1.5px solid ${color.border}`, borderRadius: 16 }}>
-            <div style={{ fontWeight: 700 }}>
+          <div style={{ marginTop: 16, padding: 15, background: color.white, border: `1px solid ${color.border}`, borderRadius: 12 }}>
+            <div style={{ fontWeight: 600 }}>
               Sent back{receipt.sentOn ? ` · ${fmtDateLong(fromISODate(receipt.sentOn))}` : ''}
             </div>
             <div style={{ fontSize: 13, color: color.muted, lineHeight: 1.5, marginTop: 4 }}>
@@ -462,7 +462,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
             <Pressable
               className="k-cta-yellow"
               onClick={onReturn}
-              style={{ flex: 1, padding: 16, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: 999, fontWeight: 700, fontSize: 15, boxShadow: shadow.raised }}
+              style={{ flex: 1, padding: 13, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 15, boxShadow: shadow.raised }}
             >
               Got my money back
             </Pressable>
@@ -470,7 +470,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
           <Pressable
             className="k-row-white"
             onClick={onUnsend}
-            style={{ marginTop: 10, padding: 15, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+            style={{ marginTop: 10, padding: 13, textAlign: 'center', background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
           >
             Not sent after all
           </Pressable>
@@ -479,8 +479,8 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
         <>
           {/* Settled without a refund. The reminders stop; the rights set out
               above do not, which is the reason to keep the receipt at all. */}
-          <div style={{ marginTop: 16, padding: 15, background: color.surfaceAlt, border: `1.5px solid ${color.border}`, borderRadius: 16 }}>
-            <div style={{ fontWeight: 700 }}>
+          <div style={{ marginTop: 16, padding: 15, background: color.surfaceAlt, border: `1px solid ${color.border}`, borderRadius: 12 }}>
+            <div style={{ fontWeight: 600 }}>
               Keeping it{receipt.keptOn ? ` · since ${fmtDateLong(fromISODate(receipt.keptOn))}` : ''}
             </div>
             <div style={{ fontSize: 13, color: color.muted, lineHeight: 1.5, marginTop: 4 }}>
@@ -491,7 +491,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
             <Pressable
               className="k-row-white"
               onClick={onUnkeep}
-              style={{ flex: 1, padding: 15, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+              style={{ flex: 1, padding: 13, textAlign: 'center', background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
             >
               Not keeping it after all
             </Pressable>
@@ -528,7 +528,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
           Split out of the {splitFromReceipt.store} receipt for {splitFromReceipt.item}.{' '}
           <Pressable
             onClick={onUnsplit}
-            style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', fontSize: 13.5, fontWeight: 700, textDecoration: 'underline' }}
+            style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', fontSize: 13.5, fontWeight: 600, textDecoration: 'underline' }}
           >
             Not split after all
           </Pressable>
@@ -567,8 +567,8 @@ function RefundPanel({ receipt, returnedText, onSetRefund }: {
   const [editing, setEditing] = useState(false);
   const got = refundOf(receipt);
   return (
-    <div style={{ marginTop: 16, padding: 15, textAlign: 'center', background: color.accentSoft, border: `1px solid ${color.border}`, borderRadius: 16 }}>
-      <div style={{ fontWeight: 700 }}>
+    <div style={{ marginTop: 16, padding: 13, textAlign: 'center', background: color.accentSoft, border: `1px solid ${color.border}`, borderRadius: 12 }}>
+      <div style={{ fontWeight: 600 }}>
         {receipt.credit ? `Store credit · ${money(got)} at ${receipt.store}` : `Money back · ${money(got)} recovered`}
         {returnedText ? ` on ${returnedText}` : ''} ✓
       </div>
@@ -627,7 +627,7 @@ function ReturnRefField({ receipt, onSetReturnRef }: { receipt: Receipt; onSetRe
   }
   return (
     <div style={{ marginTop: 10 }}>
-      <label htmlFor="return-ref" style={{ display: 'block', fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>
+      <label htmlFor="return-ref" style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>
         Tracking or proof-of-postage number
       </label>
       <input
@@ -643,8 +643,8 @@ function ReturnRefField({ receipt, onSetReturnRef }: { receipt: Receipt; onSetRe
           if (e.key === 'Enter') save();
         }}
         style={{
-          width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 14,
-          border: `1.5px solid ${error ? color.danger : color.border}`, background: color.white,
+          width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: radius.control,
+          border: `1px solid ${error ? color.danger : color.border}`, background: color.white,
           fontFamily: font.figures, fontSize: 14.5, color: color.ink,
         }}
       />
@@ -658,14 +658,14 @@ function ReturnRefField({ receipt, onSetReturnRef }: { receipt: Receipt; onSetRe
           className="k-cta-yellow"
           onClick={save}
           disabled={!!error}
-          style={{ flex: 1, padding: 12, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+          style={{ flex: 1, padding: 12, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
         >
           Save
         </Pressable>
         <Pressable
           className="k-row-white"
           onClick={() => setEditing(false)}
-          style={{ flex: 1, padding: 12, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
+          style={{ flex: 1, padding: 12, textAlign: 'center', background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
         >
           Cancel
         </Pressable>
@@ -686,9 +686,9 @@ function RefundChasePanel({ receipt, today }: { receipt: Receipt; today: Date })
     <section
       aria-labelledby="refund-late"
       data-refund-chase
-      style={{ background: color.white, border: `1.5px solid ${color.border}`, borderRadius: radius.cardLg, marginTop: 12, padding: '15px 18px' }}
+      style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, marginTop: 12, padding: '15px 18px' }}
     >
-      <h2 id="refund-late" style={{ margin: 0, fontSize: 15, fontWeight: 700, color: color.bodyStrong }}>
+      <h2 id="refund-late" style={{ margin: 0, fontSize: 15, fontWeight: 600, color: color.bodyStrong }}>
         The refund is late
       </h2>
       <div style={{ fontSize: 13.5, lineHeight: 1.5, marginTop: 4, color: color.muted }}>{refundChaseLine(chase)}</div>
@@ -714,8 +714,8 @@ function CreditPanel({ receipt, onSetCredit, onCreditSpent }: {
   if (receipt.credit?.spentOn) {
     // Spent: nothing left to remind about, and the record says so.
     return (
-      <div data-credit-spent style={{ marginTop: 10, padding: 14, background: color.white, border: `1.5px solid ${color.border}`, borderRadius: 16 }}>
-        <div style={{ fontSize: 14, fontWeight: 700 }}>Store credit · spent {fmtDateLong(fromISODate(receipt.credit.spentOn))}</div>
+      <div data-credit-spent style={{ marginTop: 10, padding: 14, background: color.white, border: `1px solid ${color.border}`, borderRadius: 12 }}>
+        <div style={{ fontSize: 14, fontWeight: 600 }}>Store credit · spent {fmtDateLong(fromISODate(receipt.credit.spentOn))}</div>
         <Pressable
           onClick={() => onCreditSpent(false)}
           style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', marginTop: 2, fontSize: 13, fontWeight: 600, textDecoration: 'underline' }}
@@ -739,8 +739,8 @@ function CreditPanel({ receipt, onSetCredit, onCreditSpent }: {
   const error =
     text && given && daysBetween(fromISODate(given), fromISODate(text)) < 0 ? 'It cannot run out before it was given' : undefined;
   return (
-    <div data-credit style={{ marginTop: 10, padding: 14, background: color.white, border: `1.5px solid ${color.border}`, borderRadius: 16 }}>
-      <label htmlFor="credit-expires" style={{ display: 'block', fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>
+    <div data-credit style={{ marginTop: 10, padding: 14, background: color.white, border: `1px solid ${color.border}`, borderRadius: 12 }}>
+      <label htmlFor="credit-expires" style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>
         When does the credit run out?
       </label>
       <input
@@ -756,8 +756,8 @@ function CreditPanel({ receipt, onSetCredit, onCreditSpent }: {
           if (!bad) onSetCredit(v ? { expires: v } : {});
         }}
         style={{
-          width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 14,
-          border: `1.5px solid ${error ? color.danger : color.border}`, background: color.white,
+          width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: radius.control,
+          border: `1px solid ${error ? color.danger : color.border}`, background: color.white,
           fontFamily: font.figures, fontSize: 14.5, color: color.ink,
         }}
       />
@@ -773,7 +773,7 @@ function CreditPanel({ receipt, onSetCredit, onCreditSpent }: {
       <div style={{ display: 'flex', flexWrap: 'wrap', columnGap: 16, marginTop: 4 }}>
         <Pressable
           onClick={() => onCreditSpent(true)}
-          style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', fontSize: 13, fontWeight: 700, textDecoration: 'underline' }}
+          style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', fontSize: 13, fontWeight: 600, textDecoration: 'underline' }}
         >
           I’ve spent it
         </Pressable>
@@ -801,8 +801,8 @@ function ActiveActions({ distance, onReturn, onSend, onKeep }: {
   onSend: () => void;
   onKeep: () => void;
 }) {
-  const primary = { flex: 1, padding: 16, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: 999, fontWeight: 700, fontSize: 15, boxShadow: shadow.raised } as const;
-  const secondary = { flex: '1 1 140px', padding: 15, textAlign: 'center', background: color.white, border: `1.5px solid ${color.borderSoft}`, borderRadius: 999, fontWeight: 700, fontSize: 14 } as const;
+  const primary = { flex: 1, padding: 13, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 15, boxShadow: shadow.raised } as const;
+  const secondary = { flex: '1 1 140px', padding: 13, textAlign: 'center', background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 } as const;
   const sent = { label: 'I’ve sent it back', onClick: onSend };
   const back = { label: 'Got my money back', onClick: onReturn };
   const [first, second] = distance ? [sent, back] : [back, sent];

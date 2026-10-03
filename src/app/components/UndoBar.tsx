@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { color, shadow } from '../../tokens';
+import { color, shadow, radius } from '../../tokens';
 import { Pressable } from './Pressable';
 
 /** Long enough to notice and reach, short enough not to linger. */
@@ -50,7 +50,7 @@ export function UndoBar({ label, onUndo, onDismiss }: { label: string; onUndo: (
         background: color.ink,
         color: color.canvas,
         border: `1px solid ${color.border}`,
-        borderRadius: 16,
+        borderRadius: 12,
         boxShadow: shadow.lift,
       }}
       className="k-fade"
@@ -59,8 +59,8 @@ export function UndoBar({ label, onUndo, onDismiss }: { label: string; onUndo: (
       <Pressable
         onClick={onUndo}
         style={{
-          width: 'auto', flexShrink: 0, padding: '7px 14px', borderRadius: 999,
-          background: color.accent, color: color.white, fontWeight: 700, fontSize: 13,
+          width: 'auto', flexShrink: 0, padding: '7px 14px', borderRadius: radius.control,
+          background: color.accent, color: color.white, fontWeight: 600, fontSize: 13,
         }}
       >
         Undo

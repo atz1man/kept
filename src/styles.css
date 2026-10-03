@@ -56,6 +56,15 @@ a:hover { color: #1A5C43; }
 /* A link inside a line of text is told apart by more than its colour: the
    muted line and the ink link are too close to rely on hue alone (WCAG
    1.4.1, axe's link-in-text-block). */
+.k-group {
+  display: flex; flex-direction: column; margin: 0; padding: 0;
+  background: #ffffff; border: 1px solid rgba(20,22,26,0.07); border-radius: 14px; overflow: hidden;
+}
+.k-group > li + li { border-top: 1px solid rgba(20,22,26,0.07); }
+/* A grouped list, the way a phone's own settings and wallets draw one: one
+   card, rows divided by a hairline. Each receipt used to be a card of its
+   own, and a screen of separate rounded boxes is most of what read as toy. */
+
 .k-inline-links a { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
 
 /*
@@ -100,8 +109,8 @@ a:hover { color: #1A5C43; }
 
 .k-cta-yellow:hover { background: #185A41 !important; }
 .k-row-white:hover { background: #FAFAF8; }
-.k-row-plain:hover { border-color: #14161A; }
-.k-banner:hover { background: #D3E8DC !important; }
+.k-row-plain:hover { background: #FAFAF8; }
+.k-banner:hover { background: #FAFAF8 !important; }
 .k-soft:hover { background: #E4E4DE !important; }
 .k-ink:hover { background: #000 !important; }
 
@@ -161,13 +170,7 @@ textarea:focus { outline: 2px solid #1F6B4E; box-shadow: 0 0 0 4px #ffffff !impo
  * "Set…". Giving the padding back buys about 16px of label per tab, which is
  * the difference between a word you can read and a letter you cannot.
  */
-.k-tab { padding: 9.5px 15.5px; }
-.k-tab.k-tab-on { padding: 8px 14px; }
-
-@media (max-width: 380px) {
-  .k-tab { padding: 9.5px 5.5px; }
-  .k-tab.k-tab-on { padding: 8px 4px; }
-}
+.k-tab { padding: 7px 4px 5px; }
 
 /* The scrolling policy headline bar on the landing page. */
 .k-ticker { animation: ticker 28s linear infinite; }

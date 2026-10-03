@@ -16,12 +16,12 @@ describe('the default urgent threshold', () => {
 
 describe('urgency ladder', () => {
   it('calls the last day "today"', () => {
-    expect(urgency(0).label).toBe('today ⚠');
+    expect(urgency(0).label).toBe('today');
     expect(urgency(0).level).toBe('critical');
   });
 
   it('uses the singular for one day', () => {
-    expect(urgency(1).label).toBe('1 day ⚠');
+    expect(urgency(1).label).toBe('1 day left');
   });
 
   it('is critical up to and including 3 days', () => {

@@ -177,20 +177,20 @@ describe('the focus ring is visible on every ground', () => {
 
 describe('the current tab is visible as a state, not just a tint', () => {
   /*
-   * Which tab you are on was the pale fill alone: `yellowLight` against the
-   * bar's near-cream measures 1.28:1, where WCAG 2.1 SC 1.4.11 asks 3:1 of a
-   * state indicator — and this is the app's only navigation. The border
-   * carries it now; the fill stays, because two signals are the point.
+   * Which tab you are on was once a pale fill alone: it measured 1.28:1 against
+   * the bar, where WCAG 2.1 SC 1.4.11 asks 3:1 of a state indicator — and this
+   * is the app's only navigation. It is the accent now, twice: the icon and
+   * label, and a 2px bar over the tab, drawn as a border so it survives
+   * forced colours.
    */
   const BAR = color.white; // the tab bar is white at 0.94 over the page
 
-  it('is not carried by the fill, which never cleared the bar', () => {
-    // Stated rather than assumed: if the fill were enough there would be no
-    // reason for the border, and this file should not claim there is.
+  it('is not carried by a pale tint, which never clears the bar', () => {
+    // Why the indicator is the accent itself and not the soft accent behind it.
     expect(contrast(color.accentSoft, BAR)).toBeLessThan(AA_LARGE);
   });
 
-  it('is carried by the border', () => {
+  it('is carried by the accent bar and the accent label', () => {
     expect(contrast(color.accent, BAR)).toBeGreaterThanOrEqual(AA_LARGE);
   });
 

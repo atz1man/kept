@@ -65,24 +65,23 @@ export function Edit({ receipt, today, onSave, onCancel }: Props) {
   return (
     <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px' }}>
       <Pressable
-        className="k-row-white"
         onClick={onCancel}
         style={{
-          display: 'inline-flex', width: 'auto', alignItems: 'center', gap: 6, padding: '9px 15px 9px 11px',
-          background: color.white, border: `1px solid ${color.border}`, borderRadius: 999,
-          fontSize: 13, fontWeight: 700, margin: '8px 0 16px',
+          display: 'inline-flex', width: 'auto', alignItems: 'center', gap: 6, minHeight: 44, padding: '0 8px 0 0',
+          background: 'transparent', borderRadius: radius.control, color: color.accentInk,
+          fontSize: 15, fontWeight: 500, margin: '4px 0 6px',
         }}
       >
-        <ChevronLeft />
+        <ChevronLeft stroke={color.accentInk} />
         Cancel
       </Pressable>
 
-      <h1 tabIndex={-1} style={{ fontSize: 24, fontWeight: 700, padding: '0 2px 4px', margin: 0 }}>Edit receipt</h1>
+      <h1 tabIndex={-1} style={{ fontSize: 24, fontWeight: 600, padding: '0 2px 4px', margin: 0 }}>Edit receipt</h1>
       <p style={{ fontSize: 13, color: color.muted, padding: '0 2px 6px', margin: 0 }}>
         Fix anything the paste got wrong — or give it a name you will recognise later.
       </p>
 
-      <div style={{ background: color.white, border: `1.5px solid ${color.border}`, borderRadius: radius.cardLg, padding: '4px 18px 20px', marginTop: 12 }}>
+      <div style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, padding: '4px 18px 20px', marginTop: 12 }}>
         <Field id="e-store" label="Shop" error={errors.store} hint="A shop we know brings its policy and window with it.">
           {(p) => (
             <>
@@ -128,8 +127,8 @@ export function Edit({ receipt, today, onSave, onCancel }: Props) {
                   aria-pressed={on}
                   style={{
                     width: 'auto', display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px',
-                    borderRadius: 999, border: `1.5px solid ${on ? color.ink : color.border}`,
-                    background: on ? color.accentSoft : color.white, fontSize: 12.5, fontWeight: 700,
+                    borderRadius: radius.control, border: `1.5px solid ${on ? color.accent : color.border}`,
+                    background: on ? color.accentSoft : color.white, fontSize: 12.5, fontWeight: 600,
                   }}
                 >
                   <CatIcon cat={cat} />
@@ -285,7 +284,7 @@ export function Edit({ receipt, today, onSave, onCancel }: Props) {
       <Pressable
         className="k-cta-yellow"
         onClick={save}
-        style={{ marginTop: 16, padding: 16, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: 999, fontWeight: 700, fontSize: 15, boxShadow: shadow.raised }}
+        style={{ marginTop: 16, padding: 13, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 15, boxShadow: shadow.raised }}
       >
         Save changes
       </Pressable>

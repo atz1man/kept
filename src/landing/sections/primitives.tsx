@@ -14,7 +14,7 @@ export function Eyebrow({ children, onInk }: { children: ReactNode; onInk?: bool
 
 export function SectionTitle({ children, maxWidth = 620 }: { children: ReactNode; maxWidth?: number }) {
   return (
-    <h2 style={{ fontFamily: font.display, fontSize: 'clamp(30px, 4vw, 40px)', fontWeight: 700, letterSpacing: '-0.03em', margin: '14px 0 0', maxWidth, lineHeight: 1.1 }}>
+    <h2 style={{ fontFamily: font.display, fontSize: 'clamp(30px, 4vw, 40px)', fontWeight: 600, letterSpacing: '-0.03em', margin: '14px 0 0', maxWidth, lineHeight: 1.1 }}>
       {children}
     </h2>
   );
@@ -46,7 +46,7 @@ export function OpenAppButton({ large }: { large?: boolean }) {
       href="/app/"
       style={{
         display: 'inline-flex', alignItems: 'center', gap: 12, background: color.accent, color: color.white,
-        padding: large ? '15px 30px' : '14px 26px', borderRadius: 14, boxShadow: shadow.raised,
+        padding: large ? '15px 30px' : '14px 26px', borderRadius: 12, boxShadow: shadow.raised,
       }}
     >
       <LogoMark size={22} fill={color.white} />
@@ -54,7 +54,7 @@ export function OpenAppButton({ large }: { large?: boolean }) {
         <span style={{ display: 'block', fontSize: 10, fontWeight: 600, letterSpacing: 0, opacity: 0.8 }}>
           Nothing to install
         </span>
-        <span style={{ display: 'block', fontSize: 17, fontWeight: 700, lineHeight: 1.1 }}>Open kept</span>
+        <span style={{ display: 'block', fontSize: 17, fontWeight: 600, lineHeight: 1.1 }}>Open kept</span>
       </span>
     </a>
   );
@@ -66,7 +66,7 @@ export function Card({ children, emphasised = true, style }: { children: ReactNo
       style={{
         background: color.white,
         border: `1px solid ${emphasised ? color.borderSoft : color.borderHair}`,
-        borderRadius: 18,
+        borderRadius: 14,
         boxShadow: emphasised ? shadow.raised : undefined,
         ...style,
       }}

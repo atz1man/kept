@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { color } from '../../tokens';
+import { color, radius } from '../../tokens';
 import { photoAsFile, readPhoto } from '../../lib/photos';
 import type { Receipt } from '../../lib/types';
 import { Pressable } from './Pressable';
@@ -56,7 +56,7 @@ export function Letter({ letter, title, receipt }: { letter: string; title: stri
   };
 
   const button = {
-    flex: 1, padding: 13, textAlign: 'center', borderRadius: 999, fontWeight: 700, fontSize: 14,
+    flex: 1, padding: 13, textAlign: 'center', borderRadius: radius.control, fontWeight: 600, fontSize: 14,
   } as const;
 
   return (
@@ -68,7 +68,7 @@ export function Letter({ letter, title, receipt }: { letter: string; title: stri
         aria-label="The letter"
         style={{
           whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: 13.5, lineHeight: 1.5, padding: 14,
-          background: color.surfaceAlt, border: `1.5px solid ${color.borderHair}`, borderRadius: 12, color: color.body,
+          background: color.surfaceAlt, border: `1px solid ${color.borderHair}`, borderRadius: 10, color: color.body,
           userSelect: 'text',
         }}
       >
@@ -87,7 +87,7 @@ export function Letter({ letter, title, receipt }: { letter: string; title: stri
           <Pressable
             className="k-row-white"
             onClick={() => void share()}
-            style={{ ...button, background: color.white, border: `1.5px solid ${color.borderSoft}` }}
+            style={{ ...button, background: color.white, border: `1px solid ${color.borderSoft}` }}
           >
             {said === 'shared' ? 'Shared ✓' : 'Share'}
           </Pressable>

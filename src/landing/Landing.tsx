@@ -1,4 +1,4 @@
-import { color, font, shadow } from '../tokens';
+import { color, font, shadow, radius } from '../tokens';
 import { Logo, Wordmark } from '../app/components/Icons';
 import { UNLOCK } from '../lib/pricing';
 import { FREE_TIER_LIMIT } from '../lib/quota';
@@ -102,7 +102,7 @@ export function Landing() {
         <nav style={{ display: 'flex', alignItems: 'center', gap: 24, fontSize: 14.5, fontWeight: 600, flexWrap: 'wrap' }}>
           <a href="#how">How it works</a>
           <a href="#pricing">Pricing</a>
-          <a className="k-cta-yellow" href="/app/" style={{ display: 'flex', alignItems: 'center', gap: 8, background: color.accent, color: color.white, padding: '10px 20px', borderRadius: 999, fontWeight: 600, fontSize: 14 }}>
+          <a className="k-cta-yellow" href="/app/" style={{ display: 'flex', alignItems: 'center', gap: 8, background: color.accent, color: color.white, padding: '10px 20px', borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}>
             Open kept
           </a>
         </nav>
@@ -112,11 +112,11 @@ export function Landing() {
       {/* Hero */}
       <section style={{ ...WRAP, padding: '48px 28px 72px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(340px, 100%), 1fr))', gap: 56, alignItems: 'center' }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: `1px solid ${color.border}`, borderRadius: 999, padding: '7px 14px', fontSize: 13, fontWeight: 600, color: color.bodyStrong, background: color.white, marginBottom: 26, flexWrap: 'wrap' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: `1px solid ${color.border}`, borderRadius: radius.chip, padding: '7px 14px', fontSize: 13, fontWeight: 600, color: color.bodyStrong, background: color.white, marginBottom: 26, flexWrap: 'wrap' }}>
             <span style={{ width: 8, height: 8, borderRadius: 999, background: color.accent, flexShrink: 0 }} />
             No account · no cloud · no one sees your receipts
           </div>
-          <h1 style={{ fontFamily: font.display, fontSize: 'clamp(38px, 5.4vw, 58px)', fontWeight: 700, lineHeight: 1.08, letterSpacing: '-0.03em', margin: 0 }}>
+          <h1 style={{ fontFamily: font.display, fontSize: 'clamp(38px, 5.4vw, 58px)', fontWeight: 600, lineHeight: 1.08, letterSpacing: '-0.03em', margin: 0 }}>
             Know every return deadline before it passes.
           </h1>
           <p style={{ fontSize: 17.5, lineHeight: 1.6, color: color.body, maxWidth: 520, margin: '24px 0 0' }}>
@@ -181,7 +181,7 @@ export function Landing() {
             <Card key={p.title} style={{ overflow: 'hidden' }}>
               <div style={{ height: 220 }}>{p.art}</div>
               <div style={{ padding: '20px 22px' }}>
-                <div style={{ fontWeight: 700, fontSize: 16 }}>{p.title}</div>
+                <div style={{ fontWeight: 600, fontSize: 16 }}>{p.title}</div>
                 <div style={{ fontSize: 14, color: color.body, lineHeight: 1.6, marginTop: 6 }}>{p.body}</div>
               </div>
             </Card>
@@ -202,8 +202,8 @@ export function Landing() {
           {SMALL_PRINT.map((u) => (
             <Card key={u.store} emphasised={u.emphasised} style={{ padding: 24 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontWeight: 700, fontSize: 16 }}>{u.store}</span>
-                <span style={{ fontSize: 11, fontWeight: 700, background: color.accentSoft, padding: '4px 10px', borderRadius: 999, whiteSpace: 'nowrap' }}>{u.days} days</span>
+                <span style={{ fontWeight: 600, fontSize: 16 }}>{u.store}</span>
+                <span style={{ fontSize: 11, fontWeight: 600, background: color.accentSoft, padding: '4px 10px', borderRadius: radius.chip, whiteSpace: 'nowrap' }}>{u.days} days</span>
               </div>
               <div style={{ fontSize: 14, color: color.body, lineHeight: 1.6, marginTop: 12 }}>{u.text}</div>
             </Card>
@@ -216,11 +216,11 @@ export function Landing() {
         <div style={{ maxWidth: 1160, margin: '0 auto' }}>
           <Eyebrow>Why Kept</Eyebrow>
           <SectionTitle maxWidth={640}>The shop’s clock, the law’s clock, and yours — on one screen.</SectionTitle>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 1, background: color.borderHair, border: `1px solid ${color.borderHair}`, borderRadius: 18, overflow: 'hidden', marginTop: 44 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 1, background: color.borderHair, border: `1px solid ${color.borderHair}`, borderRadius: 14, overflow: 'hidden', marginTop: 44 }}>
             {WHY.map((w) => (
               <div key={w.n} style={{ background: color.white, padding: '30px 28px' }}>
                 <div style={{ fontFamily: font.figures, fontSize: 15, fontWeight: 600, color: color.accentInk }}>{w.n}</div>
-                <div style={{ fontWeight: 700, fontSize: 17, marginTop: 14 }}>{w.title}</div>
+                <div style={{ fontWeight: 600, fontSize: 17, marginTop: 14 }}>{w.title}</div>
                 <div style={{ fontSize: 14.5, lineHeight: 1.6, color: color.body, marginTop: 8 }}>{w.body}</div>
                 {w.link && (
                   <a href={w.link.href} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 4, fontSize: 14, fontWeight: 600, color: color.accentInk }}>
@@ -237,7 +237,7 @@ export function Landing() {
       <section id="pricing" style={{ ...WRAP, padding: '80px 28px' }}>
         <div style={{ textAlign: 'center' }}>
           <Eyebrow>Pricing</Eyebrow>
-          <h2 style={{ fontFamily: font.display, fontSize: 'clamp(30px, 4vw, 40px)', fontWeight: 700, letterSpacing: '-0.03em', margin: '14px 0 0' }}>
+          <h2 style={{ fontFamily: font.display, fontSize: 'clamp(30px, 4vw, 40px)', fontWeight: 600, letterSpacing: '-0.03em', margin: '14px 0 0' }}>
             Free for your first {FREE_TIER_LIMIT} receipts.
           </h2>
           <p style={{ fontSize: 16, color: color.muted, margin: '12px 0 0' }}>Then {UNLOCK.price}, once, for unlimited. No subscription.</p>
@@ -245,12 +245,12 @@ export function Landing() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: 20, maxWidth: 600, margin: '44px auto 0' }}>
           {PLANS.map((t) =>
             t.featured ? (
-              <div key={t.name} style={{ background: color.white, borderRadius: 18, padding: '30px 26px', position: 'relative', border: `1.5px solid ${color.accent}`, boxShadow: shadow.raisedLg }}>
-                <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: color.accent, color: color.white, fontSize: 11, fontWeight: 700, padding: '5px 14px', borderRadius: 999, letterSpacing: 0, whiteSpace: 'nowrap' }}>
+              <div key={t.name} style={{ background: color.white, borderRadius: 14, padding: '30px 26px', position: 'relative', border: `1px solid ${color.accent}`, boxShadow: shadow.raisedLg }}>
+                <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: color.accent, color: color.white, fontSize: 11, fontWeight: 600, padding: '5px 14px', borderRadius: radius.chip, letterSpacing: 0, whiteSpace: 'nowrap' }}>
                   Pay once
                 </div>
-                <div style={{ fontWeight: 700, fontSize: 15, color: color.muted }}>{t.name}</div>
-                <div style={{ fontFamily: font.figures, fontSize: 36, fontWeight: 700, marginTop: 10, color: color.ink }}>
+                <div style={{ fontWeight: 600, fontSize: 15, color: color.muted }}>{t.name}</div>
+                <div style={{ fontFamily: font.figures, fontSize: 36, fontWeight: 600, marginTop: 10, color: color.ink }}>
                   {t.price}
                   <span style={{ fontSize: 15, color: color.muted, fontWeight: 500 }}>{t.suffix}</span>
                 </div>
@@ -261,9 +261,9 @@ export function Landing() {
                 </div>
               </div>
             ) : (
-              <div key={t.name} style={{ background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: 18, padding: '30px 26px' }}>
-                <div style={{ fontWeight: 700, fontSize: 15, color: color.muted }}>{t.name}</div>
-                <div style={{ fontFamily: font.figures, fontSize: 36, fontWeight: 700, marginTop: 10 }}>
+              <div key={t.name} style={{ background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: 14, padding: '30px 26px' }}>
+                <div style={{ fontWeight: 600, fontSize: 15, color: color.muted }}>{t.name}</div>
+                <div style={{ fontFamily: font.figures, fontSize: 36, fontWeight: 600, marginTop: 10 }}>
                   {t.price}
                   <span style={{ fontSize: 15, color: color.muted, fontWeight: 500 }}>{t.suffix}</span>
                 </div>
@@ -283,7 +283,7 @@ export function Landing() {
 
       </main>
 
-      <footer style={{ borderTop: '1.5px solid rgba(20,22,26,0.1)', padding: 28 }}>
+      <footer style={{ borderTop: '1px solid rgba(20,22,26,0.1)', padding: 28 }}>
         <div style={{ maxWidth: 1160, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, color: color.muted, gap: 14, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Logo size={20} />

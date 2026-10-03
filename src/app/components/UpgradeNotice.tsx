@@ -58,7 +58,7 @@ export function UpgradeNotice({ onUnlock, onCancel }: { onUnlock: () => void; on
           marginBottom: 'calc(84px + env(safe-area-inset-bottom, 0px))',
         }}
       >
-        <h2 id="upg-title" style={{ fontFamily: font.display, fontSize: 20, fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>
+        <h2 id="upg-title" style={{ fontFamily: font.display, fontSize: 20, fontWeight: 600, margin: 0, letterSpacing: '-0.02em' }}>
           Nothing has been charged
         </h2>
         <p style={{ fontSize: 14, color: color.body, lineHeight: 1.6, margin: '10px 0 0' }}>
@@ -72,13 +72,13 @@ export function UpgradeNotice({ onUnlock, onCancel }: { onUnlock: () => void; on
           <Pressable
             className="k-cta-yellow"
             onClick={onUnlock}
-            style={{ padding: 14, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.pill, fontWeight: 700, fontSize: 15 }}
+            style={{ padding: 13, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 15 }}
           >
             Unlock everything, free
           </Pressable>
           <Pressable
             onClick={onCancel}
-            style={{ padding: 12, textAlign: 'center', background: 'transparent', color: color.muted, borderRadius: radius.pill, fontWeight: 700, fontSize: 14 }}
+            style={{ padding: 12, textAlign: 'center', background: 'transparent', color: color.muted, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
           >
             Not now
           </Pressable>

@@ -50,7 +50,7 @@ export function Wordmark({ size = 24 }: { size?: number }) {
     // instead of carrying a hand-kept allowlist that would rot.
     <span
       data-logotype
-      style={{ fontFamily: font.figures, fontSize: size, fontWeight: 700, letterSpacing: '-0.5px', lineHeight: 1 }}
+      style={{ fontFamily: font.figures, fontSize: size, fontWeight: 600, letterSpacing: '-0.5px', lineHeight: 1 }}
     >
       kept<span style={{ color: color.accent }}>.</span>
     </span>
@@ -130,10 +130,10 @@ export function ArrowRight({ stroke: s = color.ink }: { stroke?: string }) {
   );
 }
 
-export function ChevronLeft() {
+export function ChevronLeft({ stroke: s = color.ink }: { stroke?: string } = {}) {
   return (
-    <svg width="7" height="12" viewBox="0 0 7 12" aria-hidden="true">
-      <path d="M6 1L1 6l5 5" stroke={color.ink} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    <svg width="9" height="15" viewBox="0 0 7 12" aria-hidden="true">
+      <path d="M6 1L1 6l5 5" stroke={s} strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -174,10 +174,12 @@ export function GearGlyph({ size = 18, stroke: s = color.ink }: { size?: number;
   );
 }
 
-export function PlusGlyph({ stroke: s = color.white }: { stroke?: string } = {}) {
+/** A plus in an outlined rounded square — the Add tab, drawn like its neighbours. */
+export function PlusGlyph({ size = 18, stroke: s = color.ink }: { size?: number; stroke?: string } = {}) {
   return (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-      <path d="M9 3v12M3 9h12" stroke={s} strokeWidth="2.2" strokeLinecap="round" />
+    <svg width={size} height={size} viewBox="0 0 18 18" aria-hidden="true">
+      <rect x="2.5" y="2.5" width="13" height="13" rx="3.5" fill="none" stroke={s} strokeWidth="1.4" />
+      <path d="M9 6v6M6 9h6" stroke={s} strokeWidth="1.4" strokeLinecap="round" />
     </svg>
   );
 }

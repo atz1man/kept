@@ -74,7 +74,7 @@ export class Recovery extends Component<{ children: ReactNode }, State> {
           fontFamily: font.ui,
         }}
       >
-        <h1 tabIndex={-1} style={{ fontFamily: font.display, fontSize: 26, fontWeight: 700, margin: 0 }}>
+        <h1 tabIndex={-1} style={{ fontFamily: font.display, fontSize: 26, fontWeight: 600, margin: 0 }}>
           Something in kept broke
         </h1>
         <p style={{ fontSize: 14.5, lineHeight: 1.55, color: color.body, margin: 0 }}>
@@ -85,8 +85,8 @@ export class Recovery extends Component<{ children: ReactNode }, State> {
           type="button"
           onClick={() => void this.rescue()}
           style={{
-            padding: '14px 18px', borderRadius: radius.pill, border: 0,
-            background: color.accent, color: color.white, fontWeight: 700, fontSize: 14.5, cursor: 'pointer',
+            padding: '14px 18px', borderRadius: radius.control, border: 0,
+            background: color.accent, color: color.white, fontWeight: 600, fontSize: 14.5, cursor: 'pointer',
           }}
         >
           Save my receipts to a file
@@ -118,8 +118,8 @@ export class Recovery extends Component<{ children: ReactNode }, State> {
           type="button"
           onClick={() => window.location.reload()}
           style={{
-            padding: '13px 18px', borderRadius: radius.pill, border: `1px solid ${color.border}`,
-            background: color.white, color: color.ink, fontWeight: 700, fontSize: 14, cursor: 'pointer',
+            padding: '13px 18px', borderRadius: radius.control, border: `1px solid ${color.border}`,
+            background: color.white, color: color.ink, fontWeight: 600, fontSize: 14, cursor: 'pointer',
           }}
         >
           Try again

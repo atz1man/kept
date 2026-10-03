@@ -100,10 +100,15 @@ export const shadow = {
 } as const;
 
 export const radius = {
-  card: 14,
-  cardLg: 16,
-  hero: 18,
-  heroLg: 20,
+  /** Status chips and badges: squared off, not lozenges. */
+  chip: 6,
+  /** Buttons, inputs and tabs. A pill on every control read as a toy. */
+  control: 10,
+  card: 12,
+  cardLg: 14,
+  hero: 16,
+  heroLg: 16,
+  /** Only for things that are round: dots, toggles, progress bars. */
   pill: 999,
 } as const;
 

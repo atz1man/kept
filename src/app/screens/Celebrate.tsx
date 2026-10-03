@@ -52,7 +52,7 @@ export function Celebrate({ amount, cost, store, inTime, recovered, shared, line
           <h1 tabIndex={-1} style={{ fontSize: 14, color: color.muted, fontWeight: 600, margin: '14px 0 0' }}>
             Money back
           </h1>
-          <div style={{ fontFamily: font.figures, fontSize: 52, fontWeight: 700, letterSpacing: '-2px', color: color.accentInk, marginTop: 4 }}>
+          <div style={{ fontFamily: font.figures, fontSize: 52, fontWeight: 600, letterSpacing: '-2px', color: color.accentInk, marginTop: 4 }}>
             {money(amount)}
           </div>
           {amount !== cost && (
@@ -88,7 +88,7 @@ export function Celebrate({ amount, cost, store, inTime, recovered, shared, line
         <Pressable
           className="k-cta-yellow"
           onClick={onShare}
-          style={{ padding: 16, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: 999, fontWeight: 700, fontSize: 15, boxShadow: shadow.raised }}
+          style={{ padding: 13, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 15, boxShadow: shadow.raised }}
         >
           {shared === 'shared'
             ? 'Shared ✓'
@@ -106,14 +106,14 @@ export function Celebrate({ amount, cost, store, inTime, recovered, shared, line
           <p
             role="status"
             style={{
-              margin: 0, padding: '12px 14px', background: color.white, border: `1.5px solid ${color.border}`,
-              borderRadius: 14, fontSize: 13.5, lineHeight: 1.5, color: color.bodyStrong, userSelect: 'all',
+              margin: 0, padding: '12px 14px', background: color.white, border: `1px solid ${color.border}`,
+              borderRadius: 12, fontSize: 13.5, lineHeight: 1.5, color: color.bodyStrong, userSelect: 'all',
             }}
           >
             {line}
           </p>
         )}
-        <Pressable onClick={onDone} style={{ padding: 14, textAlign: 'center', fontWeight: 700, fontSize: 14, color: color.muted }}>
+        <Pressable onClick={onDone} style={{ padding: 13, textAlign: 'center', fontWeight: 600, fontSize: 14, color: color.muted }}>
           Back to receipts
         </Pressable>
       </div>

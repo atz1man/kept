@@ -27,11 +27,11 @@ export function CancelPanel({ receipt, today, onSent, onUnsent }: {
   if (!offered && !by) return null;
 
   return (
-    <div style={{ background: color.white, border: `1.5px solid ${color.border}`, borderRadius: radius.cardLg, marginTop: 12, padding: '15px 18px' }}>
+    <div style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, marginTop: 12, padding: '15px 18px' }}>
       <Pressable
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, fontWeight: 700, fontSize: 15 }}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, fontWeight: 600, fontSize: 15 }}
       >
         <span>{by ? 'Order cancelled' : 'Cancel the order in writing'}</span>
         <svg width="10" height="7" viewBox="0 0 10 7" style={{ flexShrink: 0, transform: `rotate(${open ? 180 : 0}deg)`, transition: 'transform .2s' }} aria-hidden="true">
@@ -42,7 +42,7 @@ export function CancelPanel({ receipt, today, onSent, onUnsent }: {
       {open && (
         <div data-cancel-panel>
           {by && receipt.cancelledOn ? (
-            <div data-cancel-sent style={{ marginTop: 12, padding: 12, background: color.surfaceAlt, border: `1.5px solid ${color.borderHair}`, borderRadius: 12, fontSize: 13.5, lineHeight: 1.5, color: color.body }}>
+            <div data-cancel-sent style={{ marginTop: 12, padding: 12, background: color.surfaceAlt, border: `1px solid ${color.borderHair}`, borderRadius: 10, fontSize: 13.5, lineHeight: 1.5, color: color.body }}>
               Cancelled on {fmtDateLong(fromISODate(receipt.cancelledOn))}. Send it back by {fmtDateLong(by)} — the law gives
               fourteen days from cancelling.
             </div>
@@ -61,7 +61,7 @@ export function CancelPanel({ receipt, today, onSent, onUnsent }: {
           <Pressable
             className="k-row-white"
             onClick={() => (by ? onUnsent() : onSent())}
-            style={{ marginTop: 10, padding: 13, textAlign: 'center', borderRadius: 999, fontWeight: 700, fontSize: 14, background: color.white, border: `1.5px solid ${color.borderSoft}` }}
+            style={{ marginTop: 10, padding: 13, textAlign: 'center', borderRadius: radius.control, fontWeight: 600, fontSize: 14, background: color.white, border: `1px solid ${color.borderSoft}` }}
           >
             {by ? 'Not sent after all' : 'I’ve sent the notice'}
           </Pressable>

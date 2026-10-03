@@ -1,4 +1,4 @@
-import { color, font, shadow } from '../../tokens';
+import { color, font, shadow, radius } from '../../tokens';
 import { Pressable } from '../components/Pressable';
 import { Logo, Wordmark } from '../components/Icons';
 import { isNative } from '../../lib/mirror';
@@ -61,7 +61,7 @@ export function Onboarding({ step, onNext, onSkip }: Props) {
           <Logo size={24} />
           <Wordmark size={20} />
         </div>
-        <Pressable onClick={onSkip} style={{ width: 'auto', fontSize: 13, fontWeight: 700, color: color.muted, padding: 8 }}>
+        <Pressable onClick={onSkip} style={{ width: 'auto', fontSize: 13, fontWeight: 600, color: color.muted, padding: 8 }}>
           Skip
         </Pressable>
       </div>
@@ -69,14 +69,14 @@ export function Onboarding({ step, onNext, onSkip }: Props) {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
         <div
           style={{
-            height: 190, borderRadius: 20, overflow: 'hidden',
-            border: `1px solid ${color.border}`, boxShadow: shadow.raisedLg, marginBottom: 26,
+            height: 190, borderRadius: 16, overflow: 'hidden',
+            border: `1px solid ${color.borderHair}`, marginBottom: 26,
           }}
         >
           <StepArt step={step} />
         </div>
 
-        <h1 tabIndex={-1} style={{ fontFamily: font.display, fontSize: 28, fontWeight: 700, lineHeight: 1.15, letterSpacing: '-0.6px', margin: 0 }}>
+        <h1 tabIndex={-1} style={{ fontFamily: font.display, fontSize: 28, fontWeight: 600, lineHeight: 1.15, letterSpacing: '-0.6px', margin: 0 }}>
           {current.title}
         </h1>
         <p style={{ fontSize: 15.5, lineHeight: 1.6, color: color.body, marginTop: 14, marginBottom: 0 }}>{body}</p>
@@ -109,7 +109,7 @@ export function Onboarding({ step, onNext, onSkip }: Props) {
           onClick={onNext}
           style={{
             width: 'auto', padding: '15px 30px', background: color.accent, color: color.white, border: 0,
-            borderRadius: 999, fontWeight: 700, fontSize: 15, boxShadow: shadow.raised,
+            borderRadius: radius.control, fontWeight: 600, fontSize: 15, boxShadow: shadow.raised,
           }}
         >
           {step === STEPS.length - 1 ? 'Let’s go' : 'Next'}
@@ -135,23 +135,28 @@ function StepArt({ step }: { step: number }) {
   // the drawing are cropped away — which is how the first pass lost the tops
   // of the receipts.
   const common = { width: '100%', height: '100%', viewBox: '0 0 356 190', preserveAspectRatio: 'xMidYMid slice' } as const;
-  const ticket = 'M8 1H32Q39 1 39 9V44L32.7 50 26.3 44 20 50 13.7 44 7.3 50 1 44V9Q1 1 8 1Z';
+  // Drawn as the product rather than as cartoons: miniature rows, rings and
+  // a phone in the app's own thin lines and colours. The first pass drew
+  // chunky tickets and clock hands, which read as a children's app.
+  const row = (y: number, days: string, urgent: boolean) => (
+    <g transform={`translate(60 ${y})`}>
+      <rect width="236" height="38" rx="9" fill={color.white} stroke={color.borderHair} />
+      <rect x="9" y="8" width="22" height="22" rx="6" fill={color.surfaceAlt} />
+      <rect x="40" y="11" width="58" height="6" rx="3" fill={color.ink} opacity="0.75" />
+      <rect x="40" y="22" width="92" height="5" rx="2.5" fill={color.muted} opacity="0.35" />
+      <rect x="190" y="11" width="36" height="6" rx="3" fill={color.ink} opacity="0.75" />
+      <text x="226" y="29" textAnchor="end" fontSize="8.5" fontWeight="600" fill={urgent ? color.danger : color.muted} fontFamily="Instrument Sans, sans-serif">{days}</text>
+    </g>
+  );
 
   if (step === 0) {
-    // Receipts in a tidy stack: the pile, gathered.
+    // Receipts, gathered into one list.
     return (
       <svg {...common} role="img" aria-label="Receipts, gathered in one place">
         <rect width="356" height="190" fill={color.surfaceAlt} />
-        {[
-          { x: 70, y: 52, fill: color.white },
-          { x: 138, y: 40, fill: color.white },
-          { x: 206, y: 28, fill: color.accentSoft },
-        ].map((t, i) => (
-          <g key={i} transform={`translate(${t.x} ${t.y}) scale(1.9)`}>
-            <path d={ticket} fill={t.fill} stroke={color.borderSoft} strokeWidth="0.8" />
-            <path d="M9 13h22M9 20h22M9 27h13" stroke={color.muted} strokeWidth="1" strokeLinecap="round" opacity="0.6" />
-          </g>
-        ))}
+        {row(34, '2 days left', true)}
+        {row(78, '9 days left', false)}
+        {row(122, '21 days left', false)}
       </svg>
     );
   }
@@ -159,21 +164,20 @@ function StepArt({ step }: { step: number }) {
   if (step === 1) {
     // Two clocks, one further through its window than the other: the shop's
     // and the law's, which is the promise the screen is making.
+    const ring = (x: number, label: string, days: string, offset: number, stroke: string) => (
+      <g transform={`translate(${x} 86)`}>
+        <circle r="38" fill={color.white} stroke={color.borderHair} strokeWidth="5" />
+        <circle r="38" fill="none" stroke={stroke} strokeWidth="5" strokeLinecap="round"
+          strokeDasharray="239" strokeDashoffset={offset} transform="rotate(-90)" />
+        <text y="6" textAnchor="middle" fontSize="19" fontWeight="600" fill={color.ink} fontFamily="Instrument Sans, sans-serif">{days}</text>
+        <text y="64" textAnchor="middle" fontSize="10" fontWeight="500" fill={color.muted} fontFamily="Instrument Sans, sans-serif">{label}</text>
+      </g>
+    );
     return (
       <svg {...common} role="img" aria-label="Two countdown clocks running side by side">
         <rect width="356" height="190" fill={color.surfaceAlt} />
-        <g transform="translate(122 95)">
-          <circle r="52" fill="none" stroke={color.white} strokeWidth="9" />
-          <circle r="52" fill="none" stroke={color.accent} strokeWidth="9" strokeLinecap="round"
-            strokeDasharray="327" strokeDashoffset="98" transform="rotate(-90)" />
-          <path d="M0 -26V2l18 13" fill="none" stroke={color.ink} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-        </g>
-        <g transform="translate(244 95)">
-          <circle r="40" fill="none" stroke={color.white} strokeWidth="8" />
-          <circle r="40" fill="none" stroke={color.danger} strokeWidth="8" strokeLinecap="round"
-            strokeDasharray="251" strokeDashoffset="176" transform="rotate(-90)" />
-          <path d="M0 -20V2l14 10" fill="none" stroke={color.ink} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
-        </g>
+        {ring(124, 'The shop’s window', '2', 205, color.danger)}
+        {ring(232, 'Your legal right', '18', 96, color.accent)}
       </svg>
     );
   }
@@ -182,18 +186,13 @@ function StepArt({ step }: { step: number }) {
   return (
     <svg {...common} role="img" aria-label="A phone holding its receipts behind a lock">
       <rect width="356" height="190" fill={color.surfaceAlt} />
-      <rect x="134" y="20" width="88" height="152" rx="18" fill={color.ink} />
-      <rect x="141" y="27" width="74" height="138" rx="13" fill={color.canvas} />
-      <g transform="translate(161 50) scale(0.85)">
-        <path d={ticket} fill={color.accentSoft} stroke={color.borderSoft} strokeWidth="0.8" />
-        <path d="M9 13h22M9 20h22M9 27h13" stroke={color.muted} strokeWidth="1" strokeLinecap="round" opacity="0.6" />
-      </g>
-      <g transform="translate(161 111)">
-        <rect x="4" y="14" width="30" height="22" rx="6" fill={color.ink} />
-        <path d="M11 14V9a8 8 0 0116 0v5" fill="none" stroke={color.ink} strokeWidth="4" />
-        <circle cx="19" cy="25" r="3.5" fill={color.accent} />
-      </g>
-      <path d="M44 62h44M44 78h28M268 108h44M282 124h28" stroke={color.fainter} strokeWidth="3" strokeLinecap="round" strokeDasharray="2 9" />
+      <rect x="136" y="22" width="84" height="146" rx="16" fill={color.white} stroke={color.borderSoft} strokeWidth="1.2" />
+      <rect x="165" y="30" width="26" height="4" rx="2" fill={color.borderSoft} />
+      <circle cx="178" cy="95" r="24" fill={color.accentSoft} />
+      <rect x="168" y="94" width="20" height="15" rx="3.5" fill="none" stroke={color.accent} strokeWidth="1.8" />
+      <path d="M172 94v-4a6 6 0 0112 0v4" fill="none" stroke={color.accent} strokeWidth="1.8" />
+      <rect x="152" y="134" width="52" height="5" rx="2.5" fill={color.muted} opacity="0.35" />
+      <rect x="160" y="145" width="36" height="5" rx="2.5" fill={color.muted} opacity="0.25" />
     </svg>
   );
 }

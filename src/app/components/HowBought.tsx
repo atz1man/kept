@@ -38,11 +38,11 @@ export function HowBought({ id, value, onChange }: { id: string; value: boolean;
                 flex: 1,
                 minWidth: 0,
                 padding: '11px 10px',
-                borderRadius: radius.card,
-                border: `1.5px solid ${selected ? color.ink : color.border}`,
+                borderRadius: radius.control,
+                border: `1.5px solid ${selected ? color.accent : color.border}`,
                 background: selected ? color.accentSoft : color.white,
                 fontSize: 14,
-                fontWeight: 700,
+                fontWeight: 600,
                 color: color.ink,
               }}
             >
