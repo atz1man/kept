@@ -82,7 +82,7 @@ export function Watch({ updates, receipts, today, watching, onOpen }: Props) {
                     border: 0, borderRadius: 0, textAlign: 'left',
                   }}
                 >
-                  <span style={{ width: 52, flexShrink: 0, textAlign: 'center' }}>
+                  <span style={{ width: 64, flexShrink: 0, textAlign: 'left', whiteSpace: 'nowrap' }}>
                     <span style={{ display: 'block', fontWeight: 600, fontSize: 15 }}>{fmtDate(c.date)}</span>
                     <span style={{ display: 'block', fontSize: 11.5, color: n <= 3 ? color.danger : color.muted, fontWeight: n <= 3 ? 600 : 500, marginTop: 2 }}>{when}</span>
                   </span>

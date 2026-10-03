@@ -41,6 +41,7 @@ const tab = (active: boolean) => ({
 const Indicator = () => (
   <span
     aria-hidden="true"
+    data-tab-indicator
     style={{ position: 'absolute', top: -7, left: '50%', transform: 'translateX(-50%)', width: 24, height: 0, borderTop: `2px solid ${color.accent}`, borderRadius: 2 }}
   />
 );

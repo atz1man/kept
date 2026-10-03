@@ -564,14 +564,16 @@ const forcedColourProblems = [];
     return [...(nav?.querySelectorAll('button') ?? [])].map((b) => ({
       name: (b.textContent ?? '').trim() || 'add',
       current: b.getAttribute('aria-current') === 'page',
-      // The "+" is a circle by design and is not a tab state; it is excluded
-      // by name below rather than by guessing from its border.
-      bordered: parseFloat(getComputedStyle(b).borderTopWidth) > 0,
+      // The tab's own border, or the bar drawn over it: a bordered element
+      // marked as the indicator. Either is a border, so either survives
+      // forced colours; a background would not.
+      bordered: parseFloat(getComputedStyle(b).borderTopWidth) > 0 ||
+        [...b.querySelectorAll('[data-tab-indicator]')].some((i) => parseFloat(getComputedStyle(i).borderTopWidth) > 0),
     }));
   });
   const states = tabs.filter((t) => t.name !== 'add');
-  if (states.length < 3) {
-    forcedColourProblems.push(['the forced-colours tab check', `found ${states.length} tabs, expected the bar's three`]);
+  if (states.length < 4) {
+    forcedColourProblems.push(['the forced-colours tab check', `found ${states.length} tabs, expected the bar's four`]);
   }
   for (const t of states) {
     if (t.current !== t.bordered) {

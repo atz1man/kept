@@ -24,7 +24,7 @@ const SPLASHES = ['splash-2732x2732.png', 'splash-2732x2732-1.png', 'splash-2732
   .map((n) => join(ASSETS, 'Splash.imageset', n));
 
 const GROUND = [31, 107, 78];   // #1F6B4E, the icon's ground
-const CANVAS = [246, 246, 243]; // #F6F6F3, what the shell is told to paint
+const CANVAS = [255, 255, 255]; // #FFFFFF, what the shell is told to paint
 const MARK = [255, 255, 255];   // #FFFFFF, the mark itself
 
 const near = (got: number[], want: number[]) =>
@@ -36,10 +36,10 @@ const near = (got: number[], want: number[]) =>
  * it is replaced by something else the same colour; "the mark's white appears
  * somewhere inside the artwork" is the claim actually worth making.
  */
-const hasMark = (image: { width: number; height: number }, box: [number, number, number, number]) => {
+const hasMark = (image: { width: number; height: number }, box: [number, number, number, number], ink = MARK) => {
   const [x0, y0, x1, y1] = box;
   for (let y = y0; y < y1; y += 4) {
-    for (let x = x0; x < x1; x += 4) if (near(pixelAt(image, x, y), MARK)) return true;
+    for (let x = x0; x < x1; x += 4) if (near(pixelAt(image, x, y), ink)) return true;
   }
   return false;
 };
@@ -104,12 +104,15 @@ describe('the launch screen', () => {
   });
 
   it('has the mark on it, centred, rather than a plain empty field', () => {
+    // Looked for by the tile's green: the launch screen is white now, so the
+    // mark's own white is everywhere on it and would prove nothing.
+    expect(CANVAS).toEqual(MARK);
     const s = decodePng(SPLASHES[0]);
-    expect(hasMark(s, [1110, 1110, 1622, 1622])).toBe(true);
+    expect(hasMark(s, [1110, 1110, 1622, 1622], GROUND)).toBe(true);
     // And nothing outside where the mark belongs — the first attempt at this
     // artwork rendered it several times too large and running off the canvas,
     // which the generator reported as a success because it had drawn something.
-    expect(hasMark(s, [0, 0, 1000, 2732])).toBe(false);
-    expect(hasMark(s, [1732, 0, 2732, 2732])).toBe(false);
+    expect(hasMark(s, [0, 0, 1000, 2732], GROUND)).toBe(false);
+    expect(hasMark(s, [1732, 0, 2732, 2732], GROUND)).toBe(false);
   });
 });

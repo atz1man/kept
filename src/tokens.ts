@@ -16,7 +16,7 @@ export const color = {
   inkHover: '#000000',
 
   /** The page. Warm off-white, so white cards read as cards on it. */
-  canvas: '#F6F6F3',
+  canvas: '#FFFFFF',
   /** Inputs, secondary buttons, quiet panels. 5.3:1 for `muted` on it. */
   surfaceAlt: '#EEEEEA',
   /** Row and button hover. */

@@ -1,7 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <rect width="512" height="512" rx="112" fill="#1F6B4E"/>
-  <g transform="translate(146 92) scale(5.55)">
-    <path d="M8 1H32Q39 1 39 9V44L32.7 50 26.3 44 20 50 13.7 44 7.3 50 1 44V9Q1 1 8 1Z" fill="#FFFFFF"/>
-    <text x="20" y="32" text-anchor="middle" font-family="Instrument Sans, Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#1F6B4E">k</text>
+  <g transform="translate(0 0) scale(1)">
+    <circle cx="256" cy="256" r="132" fill="none" stroke="#FFFFFF" stroke-opacity="0.24" stroke-width="37"/>
+    <circle cx="256" cy="256" r="132" fill="none" stroke="#FFFFFF" stroke-width="37" stroke-linecap="round" stroke-dasharray="829.4" stroke-dashoffset="207.3" transform="rotate(-90 256 256)"/>
+    <path d="M196 262l42 40 82-90" fill="none" stroke="#FFFFFF" stroke-width="37" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
 </svg>

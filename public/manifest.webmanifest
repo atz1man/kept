@@ -6,8 +6,8 @@
   "scope": "/app/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#F6F6F3",
-  "theme_color": "#F6F6F3",
+  "background_color": "#FFFFFF",
+  "theme_color": "#FFFFFF",
   "lang": "en-GB",
   "categories": [
     "finance",

@@ -2,41 +2,67 @@ import type { CSSProperties } from 'react';
 import { color, font } from '../../tokens';
 import type { Category } from '../../lib/types';
 
-/** The receipt mark: rounded top, torn zigzag bottom. The brand's whole logo. */
+/*
+ * The mark: a countdown ring nearly run down, with a tick inside — a deadline,
+ * caught in time. Drawn on a 40-unit grid, the same geometry as
+ * public/icons/icon.svg (512 units, ×12.8), so the app icon and every mark
+ * inside the app are one drawing at different sizes.
+ *
+ * It replaced a receipt-shaped ticket with a "k" set in type, which read as a
+ * toy at app-icon size and said "receipt" without saying "deadline".
+ */
+const RING_R = 10.3;
+const RING_C = 2 * Math.PI * RING_R;
+const TICK = 'M15.3 20.5l3.3 3.1 6.4-7';
+
+function MarkGlyph({ ink, track, run = 0.75, weight = 2.9 }: { ink: string; track: string; run?: number; weight?: number }) {
+  return (
+    <>
+      <circle cx="20" cy="20" r={RING_R} fill="none" stroke={track} strokeWidth={weight} />
+      <circle
+        cx="20" cy="20" r={RING_R} fill="none" stroke={ink} strokeWidth={weight} strokeLinecap="round"
+        strokeDasharray={RING_C} strokeDashoffset={RING_C * (1 - run)} transform="rotate(-90 20 20)"
+      />
+      <path d={TICK} fill="none" stroke={ink} strokeWidth={weight} strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  );
+}
+
+/** The logo: the mark, white, on a green tile — the app icon at header size. */
 export function Logo({ size = 28, style }: { size?: number; style?: CSSProperties }) {
   return (
-    <svg width={size} height={(size / 40) * 52} viewBox="0 0 40 52" style={style} aria-hidden="true">
-      <path d="M8 1H32Q39 1 39 9V44L32.7 50 26.3 44 20 50 13.7 44 7.3 50 1 44V9Q1 1 8 1Z" fill={color.accent} />
-      <text x="20" y="32" textAnchor="middle" fontFamily="Instrument Sans, sans-serif" fontSize="22" fontWeight="700" fill={color.white}>k</text>
+    <svg width={size} height={size} viewBox="0 0 40 40" style={style} aria-hidden="true">
+      <rect width="40" height="40" rx="9" fill={color.accent} />
+      <MarkGlyph ink={color.white} track="rgba(255,255,255,0.24)" />
     </svg>
   );
 }
 
-/** The bare ticket silhouette, no letter — for tiles that are themselves ink. */
+/** The bare mark, no tile — for surfaces that are themselves the accent. */
 export function LogoMark({ size = 18, fill = color.accent }: { size?: number; fill?: string }) {
   return (
-    <svg width={size} height={(size / 40) * 52} viewBox="0 0 40 52" aria-hidden="true">
-      <path d="M8 1H32Q39 1 39 9V44L32.7 50 26.3 44 20 50 13.7 44 7.3 50 1 44V9Q1 1 8 1Z" fill={fill} />
+    <svg width={size} height={size} viewBox="4 4 32 32" aria-hidden="true">
+      <MarkGlyph ink={fill} track="transparent" weight={3.4} />
     </svg>
   );
 }
 
-/** The celebrate variant: yellow ticket, ink tick. */
+/** The celebrate variant: the ring run all the way round — returned in time. */
 export function LogoChecked({ size = 38 }: { size?: number }) {
   return (
-    <svg width={size} height={(size / 40) * 52} viewBox="0 0 40 52" aria-hidden="true">
-      <path d="M8 1H32Q39 1 39 9V44L32.7 50 26.3 44 20 50 13.7 44 7.3 50 1 44V9Q1 1 8 1Z" fill={color.accent} />
-      <path d="M12 27l6 6 10-13" fill="none" stroke={color.ink} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+    <svg width={size} height={size} viewBox="0 0 40 40" aria-hidden="true">
+      <rect width="40" height="40" rx="9" fill={color.accentSoft} />
+      <MarkGlyph ink={color.accent} track={color.accentSoft} run={1} />
     </svg>
   );
 }
 
-
+/** The empty state: the mark in outline, waiting for a first receipt. */
 export function LogoDashed({ size = 72 }: { size?: number }) {
   return (
-    <svg width={size} height={(size / 40) * 52} viewBox="0 0 40 52" style={{ margin: '0 auto 20px' }} aria-hidden="true">
-      <path d="M8 1H32Q39 1 39 9V44L32.7 50 26.3 44 20 50 13.7 44 7.3 50 1 44V9Q1 1 8 1Z" fill="none" stroke={color.ink} strokeWidth="1.4" strokeDasharray="3 3" />
-      <path d="M9 13h22M9 20h22M9 27h13" stroke={color.fainter} strokeWidth="1.4" strokeLinecap="round" />
+    <svg width={size} height={size} viewBox="0 0 40 40" style={{ margin: '0 auto 20px' }} aria-hidden="true">
+      <circle cx="20" cy="20" r={RING_R + 4} fill="none" stroke={color.borderSoft} strokeWidth="1" strokeDasharray="2.5 2.5" />
+      <MarkGlyph ink={color.fainter} track={color.surfaceAlt} run={0.3} weight={1.8} />
     </svg>
   );
 }
@@ -44,8 +70,8 @@ export function LogoDashed({ size = 72 }: { size?: number }) {
 export function Wordmark({ size = 24 }: { size?: number }) {
   return (
     // data-logotype: WCAG 1.4.3 exempts text that is part of a logo or brand
-    // name from the contrast minimum, and the yellow full stop is the
-    // wordmark's whole signature. Marked in the DOM rather than waved through,
+    // name from the contrast minimum, and the green full stop is part of the
+    // wordmark. Marked in the DOM rather than waved through,
     // so scripts/contrast.mjs applies the real exception to the real element
     // instead of carrying a hand-kept allowlist that would rot.
     <span

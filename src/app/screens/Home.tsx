@@ -207,7 +207,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
         >
           <span className="k-pulse" style={{ width: 7, height: 7, borderRadius: 999, background: color.accent, flexShrink: 0 }} />
           <span style={{ flex: 1, fontSize: 13, fontWeight: 500, lineHeight: 1.4, textAlign: 'left', color: color.bodyStrong }}>{policyAlert}</span>
-          <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1, color: color.faint }}>›</span>
+          <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1, color: color.muted }}>›</span>
         </Pressable>
       )}
 
