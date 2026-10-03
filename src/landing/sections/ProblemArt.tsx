@@ -3,85 +3,76 @@ import { color } from '../../tokens';
 /**
  * The three "problem" illustrations.
  *
- * The handoff left photo slots here and a note that real photography is
- * needed. Rather than ship three grey boxes reading "drop a photo", these are
- * drawn in the brand's own line-work — a finished page today, and a
- * one-component swap when the shoot happens.
+ * Drawn as the product rather than as cartoons: miniature rows, an inbox and a
+ * page of terms, in the app's own thin lines and colours. The first drawings
+ * were shopping bags with clock faces, scattered tickets and a magnifying
+ * glass, which read as a children's app on a page asking to be trusted with
+ * money. Still a one-component swap when real photography exists.
  */
-const TICKET = 'M8 1H32Q39 1 39 9V44L32.7 50 26.3 44 20 50 13.7 44 7.3 50 1 44V9Q1 1 8 1Z';
-
 const frame = { width: '100%', height: '100%', viewBox: '0 0 400 220', preserveAspectRatio: 'xMidYMid slice' } as const;
+const FONT = 'Instrument Sans, sans-serif';
+
+const bar = (x: number, y: number, w: number, strong = false) => (
+  <rect x={x} y={y} width={w} height={strong ? 7 : 6} rx={3} fill={strong ? color.ink : color.muted} opacity={strong ? 0.75 : 0.3} />
+);
 
 /** Five shops, one afternoon, five clocks already running. */
 export function HaulArt() {
+  const rows = [
+    { y: 34, rule: '14 days from purchase', urgent: true },
+    { y: 86, rule: '28 days from delivery', urgent: false },
+    { y: 138, rule: '30 days from dispatch', urgent: false },
+  ];
   return (
-    <svg {...frame} role="img" aria-label="Five shopping bags, each with its own return clock already running">
+    <svg {...frame} role="img" aria-label="Three purchases, each with a different return clock">
       <rect width="400" height="220" fill={color.surfaceAlt} />
-      {[
-        { x: 34, w: 62, h: 78, fill: color.white },
-        { x: 110, w: 74, h: 96, fill: color.accentSoft },
-        { x: 198, w: 58, h: 70, fill: color.white },
-        { x: 268, w: 80, h: 104, fill: color.accent },
-      ].map((b, i) => (
-        <g key={i} transform={`translate(${b.x} ${190 - b.h})`}>
-          <rect width={b.w} height={b.h} rx="4" fill={b.fill} stroke={color.ink} strokeWidth="1.1" />
-          <path d={`M${b.w * 0.3} 0 v-12 a${b.w * 0.2} 12 0 0 1 ${b.w * 0.4} 0 v12`} fill="none" stroke={color.ink} strokeWidth="1.1" />
-          <path d={`M10 ${b.h * 0.45} h${b.w - 20}`} stroke={color.ink} strokeWidth="1.4" opacity="0.3" />
-        </g>
-      ))}
-      {[70, 150, 230, 312].map((cx, i) => (
-        <g key={cx} transform={`translate(${cx} 42)`}>
-          <circle r="14" fill={color.canvas} stroke={color.ink} strokeWidth="1.1" />
-          <path d="M0 -8V1l6 4" fill="none" stroke={i === 3 ? color.danger : color.ink} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      {rows.map((r) => (
+        <g key={r.y} transform={`translate(70 ${r.y})`}>
+          <rect width="260" height="44" rx="10" fill={color.white} stroke={color.borderHair} />
+          <rect x="10" y="10" width="24" height="24" rx="6" fill={color.surfaceAlt} />
+          {bar(44, 13, 70, true)}
+          {bar(44, 25, 96)}
+          <text x="250" y="27" textAnchor="end" fontSize="9.5" fontWeight="600" fill={r.urgent ? color.danger : color.muted} fontFamily={FONT}>{r.rule}</text>
         </g>
       ))}
     </svg>
   );
 }
 
-/** Jacket pockets, kitchen drawers, a 9,000-email inbox. */
+/** The proof of purchase is somewhere in thousands of emails. */
 export function LostReceiptsArt() {
   return (
-    <svg {...frame} role="img" aria-label="A scattered pile of crumpled receipts">
+    <svg {...frame} role="img" aria-label="An inbox where the order confirmation is buried">
       <rect width="400" height="220" fill={color.surfaceAlt} />
-      {[
-        { x: 26, y: 26, r: -22, o: 0.9 }, { x: 118, y: 12, r: 11, o: 0.55 },
-        { x: 210, y: 34, r: -8, o: 0.75 }, { x: 300, y: 18, r: 17, o: 0.4 },
-        { x: 60, y: 112, r: 8, o: 0.6 }, { x: 152, y: 124, r: -15, o: 0.85 },
-        { x: 246, y: 118, r: 6, o: 0.45 }, { x: 330, y: 132, r: -12, o: 0.7 },
-      ].map((t, i) => (
-        <g key={i} transform={`translate(${t.x} ${t.y}) rotate(${t.r}) scale(1.7)`} opacity={t.o}>
-          <path d={TICKET} fill={color.white} stroke={color.muted} strokeWidth="0.9" />
-          <path d="M9 13h22M9 20h22M9 27h13" stroke={color.muted} strokeWidth="0.9" strokeLinecap="round" opacity="0.6" />
-        </g>
-      ))}
+      <g transform="translate(70 26)">
+        <rect width="260" height="168" rx="12" fill={color.white} stroke={color.borderHair} />
+        {[0, 1, 2, 3, 4].map((i) => (
+          <g key={i} transform={`translate(0 ${12 + i * 31})`}>
+            {i > 0 && <rect x="14" y="-6" width="232" height="1" fill={color.borderHair} />}
+            <circle cx="28" cy="10" r="8" fill={i === 2 ? color.accentSoft : color.surfaceAlt} />
+            {bar(44, 4, i === 2 ? 64 : 80 - i * 6, i === 2)}
+            {bar(44, 15, 130 - (i % 3) * 18)}
+            <text x="244" y="12" textAnchor="end" fontSize="8.5" fontWeight="500" fill={color.muted} fontFamily={FONT}>{['09:12', 'Mon', '12 Aug', 'Jul', 'Jun'][i]}</text>
+          </g>
+        ))}
+      </g>
     </svg>
   );
 }
 
-/** Clause 14b, at the size it is actually printed. */
+/** The one clause that decides the deadline, in the middle of a page of them. */
 export function FinePrintArt() {
   return (
-    <svg {...frame} role="img" aria-label="A page of return-policy fine print, with one clause circled">
+    <svg {...frame} role="img" aria-label="A page of terms with the returns clause picked out">
       <rect width="400" height="220" fill={color.surfaceAlt} />
-      <rect x="58" y="16" width="284" height="200" rx="6" fill={color.white} stroke={color.ink} strokeWidth="1.1" />
-      {Array.from({ length: 16 }, (_, i) => (
-        <rect
-          key={i}
-          x="78"
-          y={40 + i * 11}
-          width={i % 4 === 3 ? 150 : i % 3 === 0 ? 244 : 208}
-          height="3.5"
-          rx="1.75"
-          fill={color.ink}
-          opacity={i >= 8 && i <= 10 ? 0.75 : 0.16}
-        />
-      ))}
-      <ellipse cx="200" cy="140" rx="128" ry="28" fill="none" stroke={color.danger} strokeWidth="2.6" transform="rotate(-2 200 140)" />
-      <g transform="translate(292 156)">
-        <circle r="30" fill="none" stroke={color.ink} strokeWidth="3.4" />
-        <path d="M21 21l16 16" stroke={color.ink} strokeWidth="4" strokeLinecap="round" />
-        <circle r="30" fill={color.accent} opacity="0.18" />
+      <g transform="translate(100 18)">
+        <rect width="200" height="184" rx="10" fill={color.white} stroke={color.borderHair} />
+        {bar(18, 18, 90, true)}
+        {[38, 52, 66].map((y) => bar(18, y, 164 - (y % 3) * 10))}
+        <rect x="12" y="80" width="176" height="34" rx="6" fill={color.accentSoft} />
+        <text x="20" y="94" fontSize="9" fontWeight="600" fill={color.accentInk} fontFamily={FONT}>14b. Returns</text>
+        <text x="20" y="107" fontSize="9" fontWeight="500" fill={color.ink} fontFamily={FONT}>30 days from dispatch, unworn.</text>
+        {[124, 138, 152, 166].map((y) => bar(18, y, 160 - (y % 4) * 12))}
       </g>
     </svg>
   );
