@@ -668,6 +668,43 @@ for (const cancel of [false, true]) {
 }
 
 /*
+ * A shop with two windows. Liberty gives 30 days for an online order and 14
+ * for one bought in the store, and the window the Add screen offers — and
+ * saves — has to follow "How did you buy it?", not stay on whichever number
+ * the paste suggested first.
+ */
+{
+  const lCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const lp = await lCtx.newPage();
+  await lp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await lp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await lp.getByRole('button', { name: 'Add a receipt' }).click();
+  await lp.locator('#paste').fill('Liberty London\nYour order is confirmed\nOrder date: 21 September 2026\nSilk scarf £95.00\nOrder total: £95.00');
+  await lp.getByRole('button', { name: 'Read it' }).click();
+  await lp.waitForTimeout(300);
+  const windowShown = async () => (/Return window\s*(\d+) days/.exec(await lp.locator('main').innerText()) ?? [])[1];
+  const online = await windowShown();
+  await lp.getByRole('radio', { name: 'In a shop' }).click();
+  await lp.waitForTimeout(200);
+  const inStore = await windowShown();
+  await lp.getByLabel(/what is it/i).fill('Silk scarf').catch(() => {});
+  await lp.getByRole('button', { name: 'Save receipt' }).click();
+  await lp.waitForTimeout(500);
+  const saved = await lp.evaluate(() => {
+    for (let i = 0; i < localStorage.length; i++) {
+      const v = localStorage.getItem(localStorage.key(i)) ?? '';
+      const m = /"store":"Liberty"[^}]*?"windowDays":(\d+)/.exec(v) ?? /"windowDays":(\d+)[^}]*?"store":"Liberty"/.exec(v);
+      if (m) return m[1];
+    }
+    return null;
+  });
+  const name = 'a shop with an online window offers the window for the way it was bought, and saves that one';
+  results[name] = online === '30' && inStore === '14' && saved === '14';
+  if (!results[name]) problems.push(`online window: ${JSON.stringify({ online, inStore, saved })}`);
+  await lCtx.close();
+}
+
+/*
  * The web build's library lives only in this browser, and it never asked the
  * browser to keep it. It asks now, once, on open.
  */

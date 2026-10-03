@@ -2453,7 +2453,8 @@ reached six of the original twenty for the first time and corrected four:
 Sainsbury's and Uniqlo count an online order from delivery, Sports Direct gives
 a credit note rather than a refund in store, and Next an eVoucher after 28 days.
 
-The table holds ninety-two shops. On the closing run (`2026-10-03-2.md`)
+The table held ninety-two shops then, and ninety-six once the online window
+let four more in. On the closing run (`2026-10-03-2.md`)
 eighty-two were read and confirmed from their own pages and ten were not:
 Amazon, Argos, ASOS, Boots, Currys, H&M, John Lewis and Zara have refused or
 moved on every run, and need a person in an ordinary browser. The other two,
@@ -2470,11 +2471,14 @@ homepage and follows its own Returns or Refunds links (staying on its own site,
 at most two clicks deep), and writes every sentence that states a period to
 `store/retailer-check/<date>-candidates.md`. A shop moves into `stores.ts` by
 hand, from those quotes, with its returns page added to `retailer-sources.json`
-in the same change. Some were read and held back because the table cannot say
-what they do: a different window online and in store (Liberty, New Look, Snow+Rock,
-Rixo, Fortnum & Mason), pages that contradict each other (Phase Eight, Ted Baker,
-Freemans), or a window in months (Charles Tyrwhitt). One window per shop, plus an
-online clock, is what a row holds. Shops whose only window is the legal 14 days
+in the same change. A row holds one window and one clock, and an online
+window and online clock where the shop's page gives them separately: Liberty
+is 14 days in store and 30 from delivery online, and the Add screen offers
+whichever "How did you buy it?" says, and saves that one. Liberty, New Look,
+Snow+Rock and Fortnum & Mason were read and held until a row could say so.
+Still held: pages that contradict each other (Phase Eight, Ted Baker,
+Freemans), a window in months (Charles Tyrwhitt), a window per product
+(Dyson), and Rixo, whose page answered in its US edition. Shops whose only window is the legal 14 days
 are left to the legal clock kept already runs. Brands that other shops also sell
 (Nike, Clarks, LEGO, Bose, Levi's and others) are marked `commonWord`, so a JD
 order for Nike trainers is not read as a Nike order: the window is the seller's.

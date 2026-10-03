@@ -185,7 +185,7 @@ const results = await eachInParallel(rows, async (row) => {
   const found = readable.length
     ? { sentences: readable.flatMap((p) => p.sentences) }
     : { unreadable: pages.map((p) => p.unreadable).join('; ') || 'no source listed', sentences: [] };
-  const result = { row, pages, verdict: verdict(row.windowDays, found) };
+  const result = { row, pages, verdict: verdict(row.onlineWindowDays ? [row.windowDays, row.onlineWindowDays] : row.windowDays, found) };
   console.log(`${result.verdict === 'mentioned' ? '✓' : '✗'} ${row.name.padEnd(14)} table ${String(row.windowDays).padStart(3)} from ${row.clockStart.padEnd(8)} → ${result.verdict}`);
   return result;
 });

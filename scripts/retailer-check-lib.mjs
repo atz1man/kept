@@ -18,7 +18,13 @@ export function readTable(storesSource) {
   // runs to the first UNescaped quote, and the escapes come off after.
   const re = /name: '((?:[^'\\]|\\.)+)'[^\n]*?windowDays: (\d+), clockStart: '(\w+)'/g;
   let m;
-  while ((m = re.exec(storesSource))) rows.push({ name: m[1].replace(/\\(.)/g, '$1'), windowDays: Number(m[2]), clockStart: m[3] });
+  while ((m = re.exec(storesSource))) {
+    const row = { name: m[1].replace(/\\(.)/g, '$1'), windowDays: Number(m[2]), clockStart: m[3] };
+    // An online window of its own, on the same line, is checked too.
+    const line = storesSource.slice(m.index, storesSource.indexOf('\n', m.index));
+    const online = /onlineWindowDays: (\d+)/.exec(line);
+    rows.push(online ? { ...row, onlineWindowDays: Number(online[1]) } : row);
+  }
   return rows;
 }
 
@@ -96,7 +102,9 @@ export function verdict(tableDays, found) {
   if (found.unreadable) return 'unreadable';
   if (found.sentences.length === 0) return 'no window found';
   const all = found.sentences.flatMap(daysIn);
-  if (all.includes(tableDays)) return 'mentioned';
+  // A shop with an online window has two numbers, and the page has to name
+  // both: finding the in-store 30 says nothing about the online 14.
+  if ([tableDays].flat().every((d) => all.includes(d))) return 'mentioned';
   return 'differs';
 }
 

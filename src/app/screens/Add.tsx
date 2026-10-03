@@ -6,7 +6,7 @@ import { parseReceiptText, UNKNOWN_STORE_WINDOW_DAYS, type ParsedReceipt } from 
 import { fromScan, scanFailure } from '../../lib/receipt-scan';
 import { arrivalProblem, MAX_WINDOW_DAYS, purchaseProblem, readAmount, windowStartFor } from '../../lib/draft';
 import { makeReceiptId } from '../../lib/receipts';
-import { findStore, policyFor } from '../../lib/stores';
+import { findStore, policyFor, windowFor } from '../../lib/stores';
 import { windowInForceFor } from '../../lib/policy-feed';
 import { FEATURED_TIER } from '../../lib/pricing';
 import { FREE_TIER_LIMIT } from '../../lib/quota';
@@ -254,7 +254,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
   const boughtError = dateTyped ? purchaseProblem(boughtOn, today) : undefined;
   const purchasedOn = parsed ? (!dateTyped || boughtError ? parsed.purchasedOn : boughtOn) : '';
   const inForce = policy && parsed ? windowInForceFor(policy.name, purchasedOn, updates) : undefined;
-  const knownWindow = inForce?.days ?? policy?.windowDays ?? (storeTyped ? UNKNOWN_STORE_WINDOW_DAYS : parsed?.windowDays ?? 0);
+  const knownWindow = inForce?.days ?? (policy ? windowFor(policy, distance) : undefined) ?? (storeTyped ? UNKNOWN_STORE_WINDOW_DAYS : parsed?.windowDays ?? 0);
   /*
    * The window, as a field, when the card is typed in or being corrected. A
    * shop Kept has not checked gets 28 days as a guess, and until now that
@@ -349,7 +349,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       windowDays: effectiveWindow,
       ...(distance && arrivedOn ? { arrivedOn } : {}),
       ...(parsed.orderRef ? { orderRef: parsed.orderRef } : {}),
-      policy: policyFor(store, effectiveWindow, inForce?.changedOn),
+      policy: policyFor(store, effectiveWindow, inForce?.changedOn, distance),
       distance,
       gotcha: policy?.gotcha,
       status: 'active',

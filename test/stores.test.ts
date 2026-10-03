@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ALIASES_BY_LENGTH, STORE_POLICIES, findStore, tableCheck, type StorePolicy } from '../src/lib/stores';
+import { ALIASES_BY_LENGTH, STORE_POLICIES, findStore, policyFor, tableCheck, windowChecked, windowFor, type StorePolicy } from '../src/lib/stores';
 import { addDays, fromISODate, toISODate } from '../src/lib/dates';
 import { parseReceiptText } from '../src/lib/parse';
 
@@ -166,6 +166,47 @@ describe('naming a shop that is not there', () => {
 
   it('lets an unambiguous shop win over an ordinary word in the same email', () => {
     expect(store('Amazon order · next day delivery · Total £20.00 · 20 Aug 2026')).toBe('Amazon');
+  });
+});
+
+describe('a shop with a different window online', () => {
+  const split = STORE_POLICIES.filter((p) => 'onlineWindowDays' in p) as StorePolicy[];
+
+  it('has entries to check', () => {
+    // A sweep over an empty set passes silently.
+    expect(split.length).toBeGreaterThan(0);
+  });
+
+  it.each(split.map((s) => [s.name, s] as const))('%s: names both windows, and they differ', (_name, store) => {
+    // A second number equal to the first is a field that means nothing, and
+    // an online window the sentence never names is one nobody can check at a
+    // counter.
+    expect(store.onlineWindowDays).not.toBe(store.windowDays);
+    const quoted = [...store.policy.matchAll(/\b(\d+)[- ]days?\b/gi)].map((m) => Number(m[1]));
+    expect(quoted).toContain(store.windowDays);
+    expect(quoted).toContain(store.onlineWindowDays);
+  });
+
+  it('gives an online order the online window and a counter purchase the shop\'s', () => {
+    const liberty = findStore('Liberty')!;
+    expect(windowFor(liberty, true)).toBe(30);
+    expect(windowFor(liberty, false)).toBe(14);
+    // One window for both, where the shop has only one.
+    const ikea = findStore('IKEA')!;
+    expect(windowFor(ikea, true)).toBe(ikea.windowDays);
+    expect(windowFor(ikea, false)).toBe(ikea.windowDays);
+  });
+
+  it('calls a saved window the shop\'s only for the way it was bought', () => {
+    const r = (windowDays: number, distance: boolean) => ({ store: 'Liberty', windowDays, distance, policy: policyFor('Liberty', windowDays, undefined, distance) });
+    expect(windowChecked(r(30, true))).toBe(true);
+    expect(windowChecked(r(14, false))).toBe(true);
+    expect(windowChecked(r(30, false))).toBe(false);
+    expect(windowChecked(r(14, true))).toBe(false);
+    // And the wording saved with it says so: the shop's sentence only for the
+    // window the shop gives that way.
+    expect(r(30, true).policy).toBe(findStore('Liberty')!.policy);
+    expect(r(30, false).policy).toMatch(/as entered, not verified/);
   });
 });
 
