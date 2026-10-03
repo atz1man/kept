@@ -255,13 +255,31 @@ for (const s of STORE_POLICIES) for (const a of s.aliases) BY_ALIAS.set(a, s);
  * shipped with, and it hides where the number came from on the one screen that
  * explains the deadline.
  */
+const FROM_A_POLICY_CHANGE = 'from a policy change on';
+
 export function policyFor(store: string, windowDays: number, changedOn?: string): string {
   const known = findStore(store);
   if (known && known.windowDays === windowDays) return known.policy;
   if (changedOn) {
-    return `${store} · ${windowDays}-day return window, from a policy change on ${fmtDateLong(fromISODate(changedOn))}.`;
+    return `${store} · ${windowDays}-day return window, ${FROM_A_POLICY_CHANGE} ${fmtDateLong(fromISODate(changedOn))}.`;
   }
   return `${store} · ${windowDays}-day return window — as entered, not verified. Check the receipt.`;
+}
+
+/**
+ * Whether a receipt's window is one Kept has checked: the shop is in the
+ * table and the window is the table's, or it came from a cited policy change.
+ *
+ * Everything else is a guess or a number typed in, and the two cannot be told
+ * apart once saved — "as entered, not verified" covers both. Most shops a
+ * person uses are not in the table, so most windows are this kind, and a
+ * reminder that says "Today is the last day" about one is stating a guess as
+ * fact in the one place a person acts on without opening the app.
+ */
+export function windowChecked(r: { store: string; windowDays: number; policy: string }): boolean {
+  const known = findStore(r.store);
+  if (!known) return false;
+  return known.windowDays === r.windowDays || r.policy.includes(FROM_A_POLICY_CHANGE);
 }
 
 /**

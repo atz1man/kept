@@ -72,7 +72,9 @@ describe('what gets lodged with the system', () => {
 
   it('uses the same words as the alert the app shows itself', () => {
     // Not a parameter, not a copy: one exported function feeds both paths.
-    const today = plan([receipt()]).find((p) => p.rung === 'today')!;
+    // A shop whose window the table has at 30 days, so the copy is the
+    // checked one; an unchecked window is worded as a guess (alerts.test.ts).
+    const today = plan([receipt({ store: 'Argos' })]).find((p) => p.rung === 'today')!;
     expect(today.title).toBe('Today is the last day');
     expect(today.body).toContain('£89.00');
   });

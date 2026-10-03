@@ -3,6 +3,7 @@ import { REPLY_DAYS } from './fault-letter';
 import { REJECT_DAYS } from './legal';
 import { money } from './money';
 import { derive, refundOf } from './receipts';
+import { windowChecked } from './stores';
 import type { Receipt } from './types';
 
 /**
@@ -167,27 +168,40 @@ function rungFor(daysLeft: number, urgentDays: number): ReturnRung | null {
  */
 export function copyFor(rung: AlertRung, r: Receipt, daysLeft: number, deadline: Date): { title: string; body: string } {
   const what = `${r.store} · ${r.item}`;
+  /*
+   * The shop's window, said as what it is. For a shop Kept has checked it is
+   * the shop's; for any other it is the number saved on the receipt — a guess
+   * or a figure typed in — and a reminder must not state it as the shop's.
+   * "That window has closed" about a guess is the one sentence this app must
+   * never say wrongly: the shop may well give longer.
+   */
+  const checked = windowChecked(r);
+  const unchecked = `Kept hasn’t checked ${r.store}’s returns policy, so check the receipt.`;
   switch (rung) {
     case 'week':
       return {
         title: `${money(r.amount)} still returnable`,
-        body: `${what} — ${daysLeft} days left, until ${fmtDate(deadline)}.`,
+        body: `${what} — ${daysLeft} days left, until ${fmtDate(deadline)}.${checked ? '' : ` ${unchecked}`}`,
       };
     case 'soon':
       return {
         title: 'Go now or lose it',
-        body: `${what} — ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left. ${money(r.amount)} back if it goes back.`,
+        body: `${what} — ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left. ${money(r.amount)} back if it goes back.${checked ? '' : ` ${unchecked}`}`,
       };
     case 'today':
-      return {
-        title: 'Today is the last day',
-        body: `${what} — ${money(r.amount)} back, but only if it goes back today.`,
-      };
+      return checked
+        ? { title: 'Today is the last day', body: `${what} — ${money(r.amount)} back, but only if it goes back today.` }
+        : { title: 'The saved window ends today', body: `${what} — the ${r.windowDays} days saved for it end today. ${unchecked}` };
     case 'closed':
-      return {
-        title: 'That window has closed',
-        body: `${what} — the shop’s window has passed. If it turns out to be faulty, you still have rights.`,
-      };
+      return checked
+        ? {
+            title: 'That window has closed',
+            body: `${what} — the shop’s window has passed. If it turns out to be faulty, you still have rights.`,
+          }
+        : {
+            title: 'The saved window has passed',
+            body: `${what} — the ${r.windowDays} days saved for it are up. Kept hasn’t checked ${r.store}’s returns policy, so check the receipt: the shop may give longer. If it turns out to be faulty, you still have rights.`,
+          };
     case 'reject': {
       // `daysLeft` and `deadline` are the RIGHT's here. After it, the shop
       // may repair or replace first (s.23) — which is what is being lost,
