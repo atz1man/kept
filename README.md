@@ -2470,6 +2470,8 @@ window. Settings counts them and names the rest, the receipt screen says under
 the policy whether it was checked, and a reminder states a window as the
 shop's only when it was — a Currys reminder says the 14 days are Kept's guess.
 
+The eight are a person's job, and `npm run record:shop` makes it a short one. Run bare, it lists each unchecked shop with the table's window and the shop's own returns pages. Open one in an ordinary browser, copy the sentence that states the window, and pass it with the page's address: `npm run record:shop -- "Zara" "<address>" "<sentence>"`. It refuses a page off the shop's own site and a sentence that does not name the table's number — a different number means the shop changed, and the table changes by hand. Otherwise it writes the quote into `store/retailer-check/<date>-by-hand.md` and dates the shop in `CHECKED_ON`, in the exact form `test/verified.test.ts` reads back. `test/record-shop.test.ts` holds the two to the same rule.
+
 `store/retailer-candidates.json` lists the UK retailers still waiting:
 supermarkets, department stores, fashion, electronics, home and DIY, beauty,
 books, outdoor. Listing a shop there claims nothing about its window.
