@@ -3112,7 +3112,7 @@ await page.waitForTimeout(300);
 await page.fill('#paste', 'Your Apple order · Total £129.00 · 25 Aug');
 await page.getByRole('button', { name: 'Read it' }).click();
 await page.waitForTimeout(400);
-const cappedSave = page.getByRole('button', { name: /Go unlimited to save this/ });
+const cappedSave = page.getByRole('button', { name: /Unlock unlimited to save this/ });
 const beforeBlocked = await page.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.length);
 await cappedSave.click({ force: true }).catch(() => {});
 await page.waitForTimeout(300);

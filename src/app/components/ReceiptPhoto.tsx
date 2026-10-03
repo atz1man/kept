@@ -145,7 +145,7 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
             entered.
           </div>
           <Pressable
-            className="k-ink"
+            className="k-row-white"
             disabled={busy}
             onClick={() => void take()}
             style={{ padding: '12px 16px', borderRadius: radius.control, background: color.white, border: `1px solid ${color.border}`, color: color.ink, fontSize: 13.5, fontWeight: 600 }}

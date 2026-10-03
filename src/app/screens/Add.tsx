@@ -632,7 +632,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
           {!typedIn && !correcting && (
             <Pressable
               onClick={startCorrecting}
-              style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', marginTop: 4, fontSize: 13, fontWeight: 600, textDecoration: 'underline' }}
+              style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', marginTop: 4, fontSize: 13.5, fontWeight: 500, color: color.accentInk }}
             >
               Something wrong? Correct it
             </Pressable>
@@ -644,7 +644,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
                 checked={keepPhoto && scanShot.text === text}
                 disabled={scanShot.text !== text}
                 onChange={(e) => setKeepPhoto(e.target.checked)}
-                style={{ width: 22, height: 22, accentColor: color.ink, margin: 0 }}
+                style={{ width: 22, height: 22, accentColor: color.accent, margin: 0 }}
               />
               {scanShot.text === text
                 ? 'Keep the photo as proof of purchase'
@@ -657,19 +657,19 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
           {/* Greyed for every reason it cannot save, not only the quota: a
               disabled button drawn as a live one invites the tap it ignores. */}
           <Pressable
-            className={cannotSave ? undefined : 'k-ink'}
+            className={cannotSave ? undefined : 'k-cta-yellow'}
             onClick={() => void save()}
             disabled={cannotSave || saving}
             style={{
               marginTop: 14, padding: 13, textAlign: 'center',
-              background: cannotSave ? color.surfaceAlt : color.ink,
-              color: cannotSave ? color.muted : color.canvas,
+              background: cannotSave ? color.surfaceAlt : color.accent,
+              color: cannotSave ? color.muted : color.white, border: 0,
               borderRadius: radius.control, fontWeight: 600, fontSize: 14,
               cursor: cannotSave ? 'not-allowed' : 'pointer',
             }}
           >
             {quotaFull
-              ? 'Go unlimited to save this'
+              ? 'Unlock unlimited to save this'
               : arrivalError
                 ? 'Fix the arrival date'
                 : typedIn && needsStore
