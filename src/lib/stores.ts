@@ -120,9 +120,9 @@ export const STORE_POLICIES: readonly StorePolicy[] = [
     policy: 'John Lewis · 35 days with proof of purchase, unused and in original packaging.',
   },
   {
-    name: 'M&S', aliases: ['m&s', 'marks and spencer', 'marks & spencer'], windowDays: 28, clockStart: 'purchase', cat: 'clothing',
-    policy: 'M&S · 28 days with receipt, unworn with labels. Food and bought-in-store bras excluded.',
-    gotcha: 'Older M&S terms gave longer. kept counts the shorter window until it has been checked against the current terms, because the shorter one is the one that cannot cost you the return.',
+    name: 'M&S', aliases: ['m&s', 'marks and spencer', 'marks & spencer'], windowDays: 28, clockStart: 'purchase', onlineClockStart: 'delivery', cat: 'clothing',
+    policy: 'M&S · 28 days with receipt, unworn with labels (sale items 14): from purchase in store, from delivery online. Food and bought-in-store bras excluded.',
+    gotcha: 'Sale items get 14 days, not 28. An online order counts the 28 days from the day it arrives. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be.',
   },
   {
     name: 'H&M', aliases: ['h&m', 'hennes'], windowDays: 28, clockStart: 'purchase', cat: 'clothing',
@@ -142,8 +142,9 @@ export const STORE_POLICIES: readonly StorePolicy[] = [
     gotcha: 'Cut-to-size timber and colour-mixed paint are non-returnable, whatever the receipt says.',
   },
   {
-    name: 'Wickes', aliases: ['wickes'], windowDays: 30, clockStart: 'purchase', cat: 'furniture',
-    policy: 'Wickes · 30 days, unused and in original packaging, with proof of purchase.',
+    name: 'Wickes', aliases: ['wickes'], windowDays: 30, clockStart: 'purchase', onlineClockStart: 'delivery', cat: 'furniture',
+    policy: 'Wickes · 30 days, unused and in original packaging, with proof of purchase: from purchase in store, from delivery online.',
+    gotcha: 'An online order counts the 30 days from the day it arrives. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be.',
   },
   {
     name: 'Decathlon', aliases: ['decathlon'], windowDays: 30, clockStart: 'purchase',
@@ -157,6 +158,112 @@ export const STORE_POLICIES: readonly StorePolicy[] = [
   {
     name: 'Tesco', aliases: ['tesco'], windowDays: 30, clockStart: 'purchase',
     policy: 'Tesco · 30 days with receipt for non-food, in original condition.',
+  },
+  /*
+   * Added 3 October 2026 from each shop's own returns page, read by
+   * `npm run check:candidates`; the quotes are in
+   * store/retailer-check/2026-10-03-candidates.md. Online orders count from
+   * delivery only where the page says so in so many words.
+   */
+  {
+    name: 'Lidl', aliases: ['lidl'], windowDays: 30, clockStart: 'purchase',
+    policy: 'Lidl · non-food Specials bought in store: 30 days with your receipt if you change your mind.',
+    gotcha: 'The 30 days are for non-food Specials bought in a Lidl store. Food is not covered by them.',
+  },
+  {
+    name: 'Fenwick', aliases: ['fenwick'], windowDays: 14, clockStart: 'purchase', onlineClockStart: 'delivery', cat: 'clothing',
+    policy: 'Fenwick · 14 days for a refund: from purchase in store, from delivery online. In store, full-price items on days 15 to 28 get a gift card or exchange.',
+    gotcha: 'In store, full-price items brought back on days 15 to 28 get a Fenwick gift card or an exchange, not your money back. An online order counts the 14 days from the day it arrives. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'Debenhams', aliases: ['debenhams'], windowDays: 21, clockStart: 'delivery', cat: 'clothing',
+    policy: 'Debenhams · 21 days from the day it arrives, for a refund or store credit.',
+    gotcha: 'Debenhams counts the 21 days from the day it arrives, not from your order. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'River Island', aliases: ['river island', 'riverisland'], windowDays: 28, clockStart: 'purchase', onlineClockStart: 'delivery', cat: 'clothing',
+    policy: 'River Island · 28 days: from purchase in store, from delivery online.',
+    gotcha: 'An online order counts the 28 days from the day it arrives. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'Matalan', aliases: ['matalan'], windowDays: 28, clockStart: 'purchase', onlineClockStart: 'delivery', cat: 'clothing',
+    policy: 'Matalan · 28 days: from purchase in store, from delivery online.',
+    gotcha: 'An online order counts the 28 days from the day it arrives. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'Boohoo', aliases: ['boohoo'], windowDays: 21, clockStart: 'delivery', cat: 'clothing',
+    policy: 'Boohoo · 21 days from the day it arrives, for a refund or gift card.',
+    gotcha: 'Boohoo counts the 21 days from the day it arrives, not from your order. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'PrettyLittleThing', aliases: ['prettylittlething', 'pretty little thing'], windowDays: 21, clockStart: 'delivery', cat: 'clothing',
+    policy: 'PrettyLittleThing · tell them within 21 days from the day it arrives.',
+    gotcha: 'PrettyLittleThing counts the 21 days from the day it arrives, not from your order. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'Clarks', commonWord: true, aliases: ['clarks'], windowDays: 28, clockStart: 'delivery', cat: 'clothing',
+    policy: 'Clarks · 28 days from delivery (sale items 14), unworn and in original condition.',
+    gotcha: 'Sale items get 14 days, not 28. Clarks counts from the day it arrives, not from your order. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'White Stuff', commonWord: true, aliases: ['white stuff', 'whitestuff'], windowDays: 30, clockStart: 'purchase', onlineClockStart: 'delivery', cat: 'clothing',
+    policy: 'White Stuff · 30 days (sale items 14): from purchase in store, from delivery online.',
+    gotcha: 'Sale items get 14 days, and anything bought from a White Stuff outlet gets 14. An online order counts the 30 days from the day it arrives. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'Monsoon', commonWord: true, aliases: ['monsoon'], windowDays: 30, clockStart: 'purchase', onlineClockStart: 'delivery', cat: 'clothing',
+    policy: 'Monsoon · 30 days: from purchase in store, from delivery online.',
+    gotcha: 'An online order counts the 30 days from the day it arrives. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'AllSaints', commonWord: true, aliases: ['allsaints', 'all saints'], windowDays: 28, clockStart: 'purchase', cat: 'clothing',
+    policy: 'AllSaints · 28 days after purchase, online or in store.',
+  },
+  {
+    name: 'Nike', commonWord: true, aliases: ['nike'], windowDays: 30, clockStart: 'purchase', onlineClockStart: 'delivery', cat: 'clothing',
+    policy: 'Nike · most items within 30 days: from purchase in a Nike store, from delivery online.',
+    gotcha: 'An online order counts the 30 days from the day it arrives. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'Dunelm', aliases: ['dunelm'], windowDays: 28, clockStart: 'purchase', cat: 'furniture',
+    policy: 'Dunelm · change your mind within 28 days of purchase, some exclusions.',
+  },
+  {
+    name: 'B&M', aliases: ['b&m', 'b & m', 'bmstores'], windowDays: 30, clockStart: 'purchase',
+    policy: 'B&M · 30 days in original condition with proof of purchase, for a refund or replacement.',
+  },
+  {
+    name: 'Toolstation', aliases: ['toolstation'], windowDays: 30, clockStart: 'purchase', onlineClockStart: 'delivery',
+    policy: 'Toolstation · 30 days unused: from purchase in store, from delivery online.',
+    gotcha: 'An online order counts the 30 days from the day it arrives. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'Habitat', commonWord: true, aliases: ['habitat'], windowDays: 30, clockStart: 'delivery', cat: 'furniture',
+    policy: 'Habitat · 30 days from delivery (or collection) to ask for a return.',
+    gotcha: 'Habitat counts the 30 days from the day it arrives, not from your order. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'The Body Shop', aliases: ['the body shop', 'thebodyshop'], windowDays: 45, clockStart: 'delivery', cat: 'beauty',
+    policy: 'The Body Shop · 45 days from delivery, with your receipt.',
+    gotcha: 'The Body Shop counts the 45 days from the day it arrives, not from your order. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'Lookfantastic', aliases: ['lookfantastic', 'look fantastic'], windowDays: 30, clockStart: 'delivery', cat: 'beauty',
+    policy: 'Lookfantastic · start a return within 30 days from delivery, in pristine condition.',
+    gotcha: 'Lookfantastic counts the 30 days from the day it arrives, not from your order. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'Holland & Barrett', aliases: ['holland & barrett', 'holland and barrett', 'hollandandbarrett'], windowDays: 30, clockStart: 'purchase', cat: 'beauty',
+    policy: 'Holland & Barrett · 30 days from purchase, unopened with seals intact.',
+  },
+  {
+    name: 'Go Outdoors', commonWord: true, aliases: ['go outdoors', 'gooutdoors'], windowDays: 28, clockStart: 'purchase', onlineClockStart: 'delivery', cat: 'clothing',
+    policy: 'Go Outdoors · 28 days: from purchase in store, from delivery (or collection) online. Refurbished items bought online get 14.',
+    gotcha: 'Refurbished items bought online get 14 days from delivery, not 28. An online order counts the 28 days from the day it arrives. Put the arrival date on the receipt and kept counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'Pets at Home', aliases: ['pets at home', 'petsathome'], windowDays: 30, clockStart: 'purchase',
+    policy: 'Pets at Home · 30 days with proof of purchase if you change your mind.',
   },
 ] as const;
 

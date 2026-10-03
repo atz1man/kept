@@ -44,12 +44,44 @@ const ctx = await browser.newContext({
   viewport: { width: 1280, height: 900 },
 });
 
+/*
+ * Several shops at once: one page at a time is two hours for the candidates,
+ * most of it waiting on slow help pages. Results keep the input order.
+ */
+// Enough for a long help page's every period; a cut quote cannot be evidence.
+const QUOTES_PER_PAGE = 25;
+const PARALLEL = Number(process.env.CHECK_PARALLEL ?? 4);
+async function eachInParallel(items, fn) {
+  const out = new Array(items.length);
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(PARALLEL, items.length) }, async () => {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i], i);
+    }
+  }));
+  return out;
+}
+
 async function read(url) {
   const page = await ctx.newPage();
   try {
-    const res = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    const res = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45_000 });
     await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => {});
-    const text = await page.evaluate(() => document.body?.innerText ?? '');
+    /*
+     * The page's whole text, not only what is on screen: help pages keep the
+     * terms inside collapsed FAQ answers ("What is your returns policy?"), and
+     * reading only visible text found nothing on M&S's page while the 28 days
+     * sat one click away. Scripts and styles are dropped, and each block ends a
+     * line so an answer is never run into the next question.
+     */
+    const text = await page.evaluate(() => {
+      if (!document.body) return '';
+      const clone = document.body.cloneNode(true);
+      clone.querySelectorAll('script,style,noscript,template,svg').forEach((n) => n.remove());
+      clone.querySelectorAll('p,li,div,h1,h2,h3,h4,h5,h6,dt,dd,br,td,th,summary,details,section,article').forEach((n) => n.append('\n'));
+      return clone.textContent ?? '';
+    });
     const status = res?.status() ?? 0;
     const title = await page.title().catch(() => '');
     if (looksBlocked(status, text)) return { url, status, title, unreadable: 'blocked by the site', sentences: [], links: [] };
@@ -75,8 +107,7 @@ async function read(url) {
 if (candidatesMode) {
   const all = JSON.parse(readFileSync(CANDIDATES, 'utf8')).candidates;
   const names = only.length ? Object.keys(all).filter((n) => only.includes(n)) : Object.keys(all);
-  const found = [];
-  for (const name of names) {
+  const found = await eachInParallel(names, async (name) => {
     const home = await read(all[name].home);
     const pages = [home];
     if (!home.unreadable) {
@@ -92,9 +123,9 @@ if (candidatesMode) {
     const sentencesFound = [...new Set(pages.flatMap((p) => p.sentences))];
     const sum = proposal(sentencesFound);
     const status = home.unreadable ? `unreadable: ${home.unreadable}` : pages.length === 1 ? 'no returns link found' : sentencesFound.length ? 'read' : 'no window found';
-    found.push({ name, home: all[name].home, pages, sentencesFound, sum, status });
     console.log(`${sentencesFound.length ? '•' : '✗'} ${name.padEnd(20)} ${status}${sum.periods.length ? ` — ${sum.periods.map((p) => `${p.days}d×${p.times}`).join(', ')}` : ''}`);
-  }
+    return { name, home: all[name].home, pages, sentencesFound, sum, status };
+  });
   await browser.close();
   const md = [
     `# Candidate retailers, read from their own sites — ${today}`,
@@ -112,7 +143,7 @@ if (candidatesMode) {
       '',
       ...f.pages.flatMap((p) => [
         `- ${p.finalUrl ?? p.url}${p.title ? ` — “${p.title}”` : ''} — ${p.unreadable ? `**unreadable: ${p.unreadable}**` : `HTTP ${p.status}`}`,
-        ...p.sentences.slice(0, 12).map((s) => {
+        ...p.sentences.slice(0, QUOTES_PER_PAGE).map((s) => {
           const tags = [channelIn(s), clockIn(s) && `counts from ${clockIn(s)}`].filter(Boolean);
           return `  - > ${s}${tags.length ? ` _(${tags.join(', ')})_` : ''}`;
         }),
@@ -132,17 +163,17 @@ const table = readTable(readFileSync(join(ROOT, 'src/lib/stores.ts'), 'utf8'));
 const sources = readSources(join(ROOT, 'store/retailer-sources.json'));
 const rows = only.length ? table.filter((r) => only.includes(r.name)) : table;
 
-const results = [];
-for (const row of rows) {
+const results = await eachInParallel(rows, async (row) => {
   const pages = [];
   for (const url of sources[row.name] ?? []) pages.push(await read(url));
   const readable = pages.filter((p) => !p.unreadable);
   const found = readable.length
     ? { sentences: readable.flatMap((p) => p.sentences) }
     : { unreadable: pages.map((p) => p.unreadable).join('; ') || 'no source listed', sentences: [] };
-  results.push({ row, pages, verdict: verdict(row.windowDays, found) });
-  console.log(`${results.at(-1).verdict === 'mentioned' ? '✓' : '✗'} ${row.name.padEnd(14)} table ${String(row.windowDays).padStart(3)} from ${row.clockStart.padEnd(8)} → ${results.at(-1).verdict}`);
-}
+  const result = { row, pages, verdict: verdict(row.windowDays, found) };
+  console.log(`${result.verdict === 'mentioned' ? '✓' : '✗'} ${row.name.padEnd(14)} table ${String(row.windowDays).padStart(3)} from ${row.clockStart.padEnd(8)} → ${result.verdict}`);
+  return result;
+});
 await browser.close();
 
 const md = [
@@ -161,11 +192,11 @@ const md = [
     '',
     ...r.pages.flatMap((p) => [
       `- ${p.finalUrl ?? p.url}${p.title ? ` — “${p.title}”` : ''} — ${p.unreadable ? `**unreadable: ${p.unreadable}**` : `HTTP ${p.status}`}`,
-      ...p.sentences.slice(0, 12).map((s) => {
+      ...p.sentences.slice(0, QUOTES_PER_PAGE).map((s) => {
         const tags = [channelIn(s), clockIn(s) && `counts from ${clockIn(s)}`].filter(Boolean);
         return `  - > ${s}${tags.length ? ` _(${tags.join(', ')})_` : ''}`;
       }),
-      ...(p.sentences.length > 12 ? [`  - …and ${p.sentences.length - 12} more`] : []),
+      ...(p.sentences.length > QUOTES_PER_PAGE ? [`  - …and ${p.sentences.length - QUOTES_PER_PAGE} more`] : []),
     ]),
     '',
   ]),

@@ -22,7 +22,7 @@ describe('the returns page for each shop', () => {
       expect(url.protocol).toBe('https:');
       // The shop's name, squeezed, is in its own domain: argos.co.uk, johnlewis.com,
       // marksandspencer.com for M&S, diy.com for B&Q, www2.hm.com for H&M.
-      const own: Record<string, string> = { 'M&S': 'marksandspencer', 'B&Q': 'diy', 'H&M': 'hm', 'Sainsbury’s': 'sainsburys' };
+      const own: Record<string, string> = { 'M&S': 'marksandspencer', 'B&Q': 'diy', 'H&M': 'hm', 'Sainsbury’s': 'sainsburys', 'B&M': 'bmstores', 'Holland & Barrett': 'hollandandbarrett' };
       const expected = own[shop.name] ?? shop.name.toLowerCase().replace(/[^a-z]/g, '');
       expect(url.hostname.split('.')).toContain(expected);
     }
