@@ -614,6 +614,117 @@ export const STORE_COUNT = STORE_POLICIES.length;
 export const TABLE_CHECKED_ON: string | null = null;
 
 /**
+ * The day each shop's window was last read off the shop's OWN returns page.
+ *
+ * `TABLE_CHECKED_ON` is one date for the whole table, and it stays null until
+ * every row has been checked. That left the app with two answers and no third:
+ * Settings said the whole list was unchecked when most of it had been read and
+ * quoted, and reminders treated every row as checked, so a Currys reminder said
+ * "That window has closed" about a number nobody had read off Currys' page.
+ *
+ * A shop is here only with evidence: test/verified.test.ts finds, in a report
+ * under store/retailer-check/ from that day, a sentence quoted from the shop's
+ * own site naming the row's number of days. A shop missing from this list is
+ * one Kept has not been able to read, and it says so wherever it would
+ * otherwise speak for the shop.
+ */
+export const CHECKED_ON: Readonly<Record<string, string>> = {
+  Apple: '2026-10-03',
+  'IKEA': '2026-10-03',
+  'Uniqlo': '2026-10-03',
+  'Next': '2026-10-03',
+  'M&S': '2026-10-03',
+  'Sports Direct': '2026-10-03',
+  'Screwfix': '2026-10-03',
+  'B&Q': '2026-10-03',
+  'Wickes': '2026-10-03',
+  'Decathlon': '2026-10-03',
+  'Sainsbury’s': '2026-10-03',
+  'Tesco': '2026-10-03',
+  'Lidl': '2026-10-03',
+  'Fenwick': '2026-10-03',
+  'Debenhams': '2026-10-03',
+  'River Island': '2026-10-03',
+  'Matalan': '2026-10-03',
+  'Boohoo': '2026-10-03',
+  'PrettyLittleThing': '2026-10-03',
+  'Clarks': '2026-10-03',
+  'White Stuff': '2026-10-03',
+  'Monsoon': '2026-10-03',
+  'AllSaints': '2026-10-03',
+  'Nike': '2026-10-03',
+  'Dunelm': '2026-10-03',
+  'B&M': '2026-10-03',
+  'Toolstation': '2026-10-03',
+  'Habitat': '2026-10-03',
+  'The Body Shop': '2026-10-03',
+  'Lookfantastic': '2026-10-03',
+  'Holland & Barrett': '2026-10-03',
+  'Go Outdoors': '2026-10-03',
+  'Pets at Home': '2026-10-03',
+  'Aldi': '2026-10-03',
+  'FatFace': '2026-10-03',
+  'Richer Sounds': '2026-10-03',
+  'Samsung': '2026-10-03',
+  'Selfridges': '2026-10-03',
+  'The Works': '2026-10-03',
+  'Card Factory': '2026-10-03',
+  'Seasalt': '2026-10-03',
+  'Mint Velvet': '2026-10-03',
+  'Hobbs': '2026-10-03',
+  'Whistles': '2026-10-03',
+  'Jigsaw': '2026-10-03',
+  'Boden': '2026-10-03',
+  'Gymshark': '2026-10-03',
+  'Oliver Bonas': '2026-10-03',
+  'Kurt Geiger': '2026-10-03',
+  'Dune London': '2026-10-03',
+  'Crew Clothing': '2026-10-03',
+  'Peacocks': '2026-10-03',
+  'Cult Beauty': '2026-10-03',
+  'Charlotte Tilbury': '2026-10-03',
+  'Beaverbrooks': '2026-10-03',
+  'LEGO': '2026-10-03',
+  'Muji': '2026-10-03',
+  'Foot Locker': '2026-10-03',
+  'Ellis Brigham': '2026-10-03',
+  'Blacks': '2026-10-03',
+  'Millets': '2026-10-03',
+  'Trespass': '2026-10-03',
+  'Regatta': '2026-10-03',
+  'Mamas & Papas': '2026-10-03',
+  'JD Williams': '2026-10-03',
+  'Jacamo': '2026-10-03',
+  'Topps Tiles': '2026-10-03',
+  'Selco': '2026-10-03',
+  'Poundstretcher': '2026-10-03',
+  "Levi's": '2026-10-03',
+  'Jack & Jones': '2026-10-03',
+  'Bershka': '2026-10-03',
+  'Massimo Dutti': '2026-10-03',
+  'Accessorize': '2026-10-03',
+  'Ann Summers': '2026-10-03',
+  'Microsoft Store': '2026-10-03',
+  'Appliances Direct': '2026-10-03',
+  'Bose': '2026-10-03',
+  'Joe Browns': '2026-10-03',
+  "Nobody's Child": '2026-10-03',
+  'Coast': '2026-10-03',
+  'Karen Millen': '2026-10-03',
+  "Lands' End": '2026-10-03',
+  'Toast': '2026-10-03',
+  'Liberty': '2026-10-03',
+  'New Look': '2026-10-03',
+  'Snow+Rock': '2026-10-03',
+  'Fortnum & Mason': '2026-10-03',
+  'Bonmarché': '2026-10-03',
+  'Cotswold Outdoor': '2026-10-03',
+  'GAME': '2026-10-03',
+  'Home Bargains': '2026-10-03',
+  'Space NK': '2026-10-03',
+};
+
+/**
  * How long a check stays worth quoting.
  *
  * Our judgement, not a fact, so no test asserts the number — what is asserted
@@ -651,6 +762,22 @@ export function tableCheck(today: Date, checkedOn: string | null = TABLE_CHECKED
   const on = fromISODate(checkedOn);
   const age = daysBetween(on, today);
   return age > CHECK_GOOD_FOR_DAYS ? { state: 'stale', on } : { state: 'fresh', on };
+}
+
+/**
+ * When this shop's window was last read off its own page, if that was within
+ * the year a check stays good for; otherwise null.
+ */
+export function shopCheckedOn(name: string, today: Date = new Date(), checked: Readonly<Record<string, string>> = CHECKED_ON): Date | null {
+  const on = checked[name];
+  if (!on) return null;
+  return tableCheck(today, on).state === 'fresh' ? fromISODate(on) : null;
+}
+
+/** How many of the table's shops have a current check, and which do not. */
+export function checkedCount(today: Date = new Date(), checked: Readonly<Record<string, string>> = CHECKED_ON): { checked: number; total: number; unchecked: string[] } {
+  const unchecked = STORE_POLICIES.filter((s) => !shopCheckedOn(s.name, today, checked)).map((s) => s.name);
+  return { checked: STORE_POLICIES.length - unchecked.length, total: STORE_POLICIES.length, unchecked };
 }
 
 const BY_ALIAS = new Map<string, StorePolicy>();
@@ -707,12 +834,17 @@ export function policyFor(store: string, windowDays: number, changedOn: string |
  * reminder that says "Today is the last day" about one is stating a guess as
  * fact in the one place a person acts on without opening the app.
  */
-export function windowChecked(r: { store: string; windowDays: number; policy: string; distance: boolean }): boolean {
+export function windowChecked(r: { store: string; windowDays: number; policy: string; distance: boolean }, today: Date = new Date()): boolean {
   const known = findStore(r.store);
   if (!known) return false;
+  // A window from a cited policy change was checked when the change was.
+  if (r.policy.includes(FROM_A_POLICY_CHANGE)) return true;
+  // A row nobody has read off the shop's own page is Kept's guess, however
+  // confidently it is written: Currys' 14 days among them.
+  if (!shopCheckedOn(known.name, today)) return false;
   // The window for the way it was bought: Liberty's in-store number on an
   // online order is a number Kept has checked, but not for that order.
-  return windowFor(known, r.distance) === r.windowDays || r.policy.includes(FROM_A_POLICY_CHANGE);
+  return windowFor(known, r.distance) === r.windowDays;
 }
 
 /**

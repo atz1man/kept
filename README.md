@@ -2462,7 +2462,13 @@ moved on every run, and need a person in an ordinary browser. The other two,
 Sports Direct and JD Williams, were read on an earlier run that day, and Monsoon,
 Richer Sounds and Levi's refused once and read the next time: a bot wall that
 comes and goes is reported each time it is met, never worked round.
-`TABLE_CHECKED_ON` stays unset until the eight are done.
+`TABLE_CHECKED_ON` stays unset until the eight are done. Until then the app
+says which shops are which: `CHECKED_ON` in `stores.ts` dates each shop read
+off its own page, and `test/verified.test.ts` refuses any entry without a
+quote from that shop's own site, in a report from that day, naming the row's
+window. Settings counts them and names the rest, the receipt screen says under
+the policy whether it was checked, and a reminder states a window as the
+shop's only when it was — a Currys reminder says the 14 days are Kept's guess.
 
 `store/retailer-candidates.json` lists the UK retailers still waiting:
 supermarkets, department stores, fashion, electronics, home and DIY, beauty,

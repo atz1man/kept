@@ -6,7 +6,7 @@ import { REFUND_CHASE_DAYS } from '../../lib/alerts';
 import { money } from '../../lib/money';
 import { asksForGuarantee, awaitingArrival, derive, refundOf } from '../../lib/receipts';
 import type { Receipt } from '../../lib/types';
-import { clockFor, findStore } from '../../lib/stores';
+import { clockFor, findStore, shopCheckedOn, windowChecked } from '../../lib/stores';
 import { returnsPageFor } from '../../lib/returns-pages';
 import { urgency } from '../../lib/urgency';
 import { ChevronLeft, Warning } from '../components/Icons';
@@ -20,6 +20,7 @@ import { canSplit } from '../../lib/split';
 import { RefundForm } from '../components/RefundForm';
 import { Letter } from '../components/Letter';
 import { readReturnRef, refundChase, refundChaseLine, refundLetter } from '../../lib/refund-chase';
+import { possessive } from '../../lib/words';
 
 /** 2π × 40, the circumference of the ring the countdown draws on. */
 const RING_CIRCUMFERENCE = 251.3;
@@ -100,6 +101,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
   // The online clock for an online order, where the shop has one (`clockFor`).
   const shop = findStore(receipt.store);
   const clockStart = shop ? clockFor(shop, receipt.distance) : 'purchase';
+  const checkedOn = shop ? shopCheckedOn(shop.name) : null;
   /*
    * The step the deadline is for. Only while it can still be taken: after the
    * shop's window a returns page invites a change-of-mind return the shop will
@@ -223,6 +225,18 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
 
           <div style={cardLabel}>STORE POLICY</div>
           <div style={{ fontSize: 14, marginTop: 5, lineHeight: 1.5, color: color.bodyStrong }}>{receipt.policy}</div>
+          {/* Where that sentence came from, said under it: read off the shop's
+              own page on a day, or not yet. The words a person repeats at a
+              counter should say how far to trust them. */}
+          {shop && (
+            <div style={{ fontSize: 12.5, marginTop: 6, lineHeight: 1.5, color: color.muted }}>
+              {checkedOn && windowChecked(receipt)
+                ? `Checked against ${possessive(shop.name)} own returns page on ${fmtDateLong(checkedOn)}.`
+                : checkedOn
+                  ? `This receipt’s window differs from ${possessive(shop.name)}, which was checked on ${fmtDateLong(checkedOn)}.`
+                  : `Not yet checked against ${possessive(shop.name)} own returns page — trust your receipt over this.`}
+            </div>
+          )}
           {returnsPage && (
             /* A link, not a button: it leaves the app, and says where to. The
                shop's own page, the one `check:retailers` reads; nothing about
