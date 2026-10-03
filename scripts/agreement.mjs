@@ -253,10 +253,9 @@ agree('receipts counted, by the meter and on the list', (meter.match(/^(\d+)/) ?
  * product is not a cosmetic drift.
  */
 const inApp = await page.evaluate(() => {
-  const tiers = [...document.querySelectorAll('button')]
-    .map((b) => b.textContent ?? '')
-    .filter((t) => /^£[\d.]+(monthly|yearly|lifetime)/.test(t.replace(/Best value/, '').trim()))
-    .map((t) => t.replace(/Best value/, '').trim());
+  const tiers = [...document.querySelectorAll('main button')]
+    .map((b) => (b.textContent ?? '').trim())
+    .filter((t) => /^Unlock unlimited · £\d+\.\d{2}/.test(t));
   const free = ([...document.querySelectorAll('span')]
     .map((s) => s.textContent ?? '')
     .find((t) => /of \d+ free receipts/.test(t)) ?? '').match(/of (\d+) free/)?.[1];
@@ -286,11 +285,11 @@ await landing.close();
 // empty strings, which is the shape of a sweep that reports success for a
 // question it never asked.
 if (!onPage.found) disagreements.push({ what: 'the landing page has no #pricing section to read', saw: [] });
-// Both sides going empty would "agree" on nothing at all. There are three
-// tiers; anything else means a selector stopped matching, not that the prices
-// match.
+// Both sides going empty would "agree" on nothing at all. There is one price,
+// paid once; anything else means a selector stopped matching, or a second
+// price crept in, not that the prices match.
 for (const [where, found] of [['Settings', inApp.prices], ['the pricing cards', onPage.prices]]) {
-  if (found.length !== 3) disagreements.push({ what: `three prices were not found in ${where}`, saw: found });
+  if (found.length !== 1) disagreements.push({ what: `exactly one price was not found in ${where}`, saw: found });
 }
 agree('the free tier’s size, in the marketing copy and on the meter', onPage.free, inApp.free);
 /*

@@ -8,7 +8,7 @@ import { arrivalProblem, MAX_WINDOW_DAYS, purchaseProblem, readAmount, windowSta
 import { makeReceiptId } from '../../lib/receipts';
 import { findStore, policyFor, windowFor } from '../../lib/stores';
 import { windowInForceFor } from '../../lib/policy-feed';
-import { FEATURED_TIER } from '../../lib/pricing';
+import { UNLOCK } from '../../lib/pricing';
 import { FREE_TIER_LIMIT } from '../../lib/quota';
 import { isNative } from '../../lib/mirror';
 import { savePhoto, scannedPhotoToKeep } from '../../lib/photos';
@@ -403,18 +403,18 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       )}
 
       {quotaFull && (
-        <div style={{ background: color.ink, color: color.canvas, borderRadius: radius.cardLg, padding: 18, marginTop: 14 }}>
+        <div style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, padding: 18, marginTop: 14, boxShadow: shadow.raised }}>
           <div style={{ fontWeight: 700, fontSize: 15 }}>That’s your {FREE_TIER_LIMIT} free receipts</div>
-          <div style={{ fontSize: 13, color: color.fainter, lineHeight: 1.55, marginTop: 6 }}>
+          <div style={{ fontSize: 13, color: color.body, lineHeight: 1.55, marginTop: 6 }}>
             Kept has tracked {trackedTotal} for free. Return something you are already tracking, or mark one you are keeping, and a slot frees up —
-            or go unlimited, and one missed return pays for the year.
+            or unlock unlimited once, and one missed return pays for it.
           </div>
           <Pressable
             className="k-cta-yellow"
             onClick={onUpgrade}
             style={{ marginTop: 12, padding: 13, textAlign: 'center', background: color.accent, color: color.white, borderRadius: 999, fontWeight: 700, fontSize: 14 }}
           >
-            {`Go unlimited · ${FEATURED_TIER.price}${FEATURED_TIER.suffix}`}
+            {`Unlock unlimited · ${UNLOCK.price}${UNLOCK.suffix}`}
           </Pressable>
         </div>
       )}

@@ -10,7 +10,7 @@ import { CONTACT_EMAIL, TAGLINE } from '../../lib/brand';
 import { LEGAL_DISCLAIMER } from '../../lib/legal';
 import { checkedCount, CHECKED_ON, STORE_COUNT, tableCheck } from '../../lib/stores';
 import { discardSetAside, setAsideData, URGENT_DAYS_MAX, URGENT_DAYS_MIN, type Settings as SettingsShape } from '../../lib/storage';
-import { sellsPaidTiers, TIERS } from '../../lib/pricing';
+import { sellsPaidTiers, UNLOCK } from '../../lib/pricing';
 import { countedAgainstQuota, FREE_TIER_LIMIT } from '../../lib/quota';
 import { Pressable } from '../components/Pressable';
 
@@ -21,7 +21,7 @@ interface Props {
   onRestore: (receipts: Receipt[]) => void;
   onWipe: () => void;
   onClearSamples: () => void;
-  onUpgrade: (plan: 'monthly' | 'yearly' | 'lifetime') => void;
+  onUpgrade: () => void;
   onChange: (patch: Partial<SettingsShape>) => void;
 }
 
@@ -252,10 +252,10 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
       </section>
 
       {selling && free && (
-        <section style={{ background: color.ink, color: color.canvas, borderRadius: radius.cardLg, padding: 18, marginTop: 12 }}>
+        <section style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, padding: 18, marginTop: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
             <span style={{ fontWeight: 700, fontSize: 15 }}>Free plan</span>
-            <span style={{ fontFamily: font.figures, fontSize: 12, color: color.faint }}>
+            <span style={{ fontFamily: font.figures, fontSize: 12, color: color.muted }}>
               {used} of {FREE_TIER_LIMIT} free receipts
             </span>
           </div>
@@ -265,18 +265,22 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
             aria-valuemin={0}
             aria-valuemax={FREE_TIER_LIMIT}
             aria-label="Free receipts used"
-            style={{ height: 6, borderRadius: 999, background: color.onInkBorder, marginTop: 10, overflow: 'hidden' }}
+            style={{ height: 6, borderRadius: 999, background: color.surfaceDeep, marginTop: 10, overflow: 'hidden' }}
           >
             <div style={{ height: '100%', background: color.accent, borderRadius: 999, width: `${usagePct}%` }} />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 16 }}>
-            {/* One source with the landing page's cards — see lib/pricing.ts. */}
-            {TIERS.map((t) => (
-              <Tier key={t.period} price={t.price} period={t.period} featured={t.featured} onClick={() => onUpgrade(t.period)} />
-            ))}
+          {/* One price, from the same module as the landing page — see lib/pricing.ts. */}
+          <Pressable
+            className="k-cta-yellow"
+            onClick={onUpgrade}
+            style={{ marginTop: 16, padding: 14, minHeight: 44, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.pill, fontWeight: 700, fontSize: 15 }}
+          >
+            {`Unlock unlimited · ${UNLOCK.price}${UNLOCK.suffix}`}
+          </Pressable>
+          <div style={{ fontSize: 12, color: color.muted, textAlign: 'center', marginTop: 10 }}>
+            One payment. No subscription, nothing to cancel.
           </div>
-          <div style={{ fontSize: 11, color: color.faint, textAlign: 'center', marginTop: 10 }}>One missed return pays for it.</div>
         </section>
       )}
 
@@ -286,14 +290,14 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
           and no reason to doubt they were being billed. They are not: say so
           where the price used to be, not only in the sheet they tapped past. */}
       {selling && !free && (
-        <section style={{ background: color.ink, color: color.canvas, borderRadius: radius.cardLg, padding: 18, marginTop: 12 }}>
+        <section style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, padding: 18, marginTop: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
             <span style={{ fontWeight: 700, fontSize: 15 }}>Unlocked</span>
-            <span style={{ fontFamily: font.figures, fontSize: 12, color: color.faint }}>
+            <span style={{ fontFamily: font.figures, fontSize: 12, color: color.muted }}>
               {used} receipts · no limit
             </span>
           </div>
-          <div style={{ fontSize: 13, color: color.fainter, lineHeight: 1.55, marginTop: 8 }}>
+          <div style={{ fontSize: 13, color: color.body, lineHeight: 1.55, marginTop: 8 }}>
             Nothing was charged and no card was taken — kept cannot accept payments yet. There is no subscription
             here to cancel.
           </div>
@@ -446,27 +450,6 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
         {LEGAL_DISCLAIMER}
       </p>
     </div>
-  );
-}
-
-function Tier({ price, period, featured, onClick }: { price: string; period: string; featured?: boolean; onClick: () => void }) {
-  return (
-    <Pressable
-      onClick={onClick}
-      style={{
-        border: `1.5px solid ${featured ? color.accent : color.onInkBorderStrong}`,
-        borderRadius: 14, padding: '13px 8px', textAlign: 'center', position: 'relative',
-        background: featured ? color.accentSoft : 'transparent',
-      }}
-    >
-      {featured && (
-        <span style={{ position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)', background: color.accent, color: color.white, fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 999, whiteSpace: 'nowrap' }}>
-          Best value
-        </span>
-      )}
-      <div style={{ fontFamily: font.figures, fontWeight: 700, fontSize: 14, color: featured ? color.accent : color.canvas }}>{price}</div>
-      <div style={{ fontSize: 11, color: color.faint, marginTop: 2 }}>{period}</div>
-    </Pressable>
   );
 }
 

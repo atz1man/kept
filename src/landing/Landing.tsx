@@ -1,6 +1,6 @@
 import { color, font, shadow } from '../tokens';
 import { Logo, Wordmark } from '../app/components/Icons';
-import { TIERS as PRICING_TIERS, type Period } from '../lib/pricing';
+import { UNLOCK } from '../lib/pricing';
 import { FREE_TIER_LIMIT } from '../lib/quota';
 import { STORE_COUNT, findStore } from '../lib/stores';
 import { COOLING_OFF_DAYS, REJECT_DAYS } from '../lib/legal';
@@ -81,18 +81,15 @@ const WHY: { n: string; title: string; body: string; link?: { href: string; labe
 ];
 
 /**
- * The selling copy is this page's own; the price and period come from
- * lib/pricing.ts, which the app's Settings tiers read too. A price that says
- * one thing on the page someone bought from and another inside the product is
- * not a cosmetic drift.
+ * The selling copy is this page's own; the price comes from lib/pricing.ts,
+ * which Settings and the add screen read too. A price that says one thing on
+ * the page someone bought from and another inside the product is not a
+ * cosmetic drift.
  */
-const TIER_COPY: Record<Period, { name: string; lines: string[] }> = {
-  monthly: { name: 'Monthly', lines: ['Unlimited receipts', 'Cancel anytime'] },
-  yearly: { name: 'Yearly', lines: ['Unlimited receipts', 'One missed return pays for it'] },
-  lifetime: { name: 'Lifetime', lines: ['Unlimited, forever', 'No subscription'] },
-};
-
-const TIERS = PRICING_TIERS.map((t) => ({ ...t, ...TIER_COPY[t.period] }));
+const PLANS = [
+  { name: 'Free', price: '£0', suffix: '', lines: [`Your first ${FREE_TIER_LIMIT} receipts`, 'Every shop, every deadline'], featured: false },
+  { name: 'Unlimited', price: UNLOCK.price, suffix: UNLOCK.suffix, lines: ['Unlimited receipts, for good', 'One payment, no subscription'], featured: true },
+];
 
 export function Landing() {
   return (
@@ -243,14 +240,14 @@ export function Landing() {
           <h2 style={{ fontFamily: font.display, fontSize: 'clamp(30px, 4vw, 40px)', fontWeight: 700, letterSpacing: '-0.03em', margin: '14px 0 0' }}>
             Free for your first {FREE_TIER_LIMIT} receipts.
           </h2>
-          <p style={{ fontSize: 16, color: color.muted, margin: '12px 0 0' }}>Pro when it’s earning its keep.</p>
+          <p style={{ fontSize: 16, color: color.muted, margin: '12px 0 0' }}>Then {UNLOCK.price}, once, for unlimited. No subscription.</p>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: 20, maxWidth: 880, margin: '44px auto 0' }}>
-          {TIERS.map((t) =>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: 20, maxWidth: 600, margin: '44px auto 0' }}>
+          {PLANS.map((t) =>
             t.featured ? (
               <div key={t.name} style={{ background: color.white, borderRadius: 18, padding: '30px 26px', position: 'relative', border: `1.5px solid ${color.accent}`, boxShadow: shadow.raisedLg }}>
                 <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: color.accent, color: color.white, fontSize: 11, fontWeight: 700, padding: '5px 14px', borderRadius: 999, letterSpacing: 0, whiteSpace: 'nowrap' }}>
-                  Best value
+                  Pay once
                 </div>
                 <div style={{ fontWeight: 700, fontSize: 15, color: color.muted }}>{t.name}</div>
                 <div style={{ fontFamily: font.figures, fontSize: 36, fontWeight: 700, marginTop: 10, color: color.ink }}>

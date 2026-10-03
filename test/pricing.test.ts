@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { FEATURED_TIER, sellsPaidTiers, TIERS } from '../src/lib/pricing';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+import { sellsPaidTiers, UNLOCK } from '../src/lib/pricing';
 import { quotaFull, type AppState } from '../src/app/state';
 import { FREE_TIER_LIMIT } from '../src/lib/quota';
 import { DEFAULT_SETTINGS } from '../src/lib/storage';
@@ -7,30 +9,44 @@ import { toPence } from '../src/lib/money';
 import type { Receipt } from '../src/lib/types';
 
 /**
- * The tier every upsell points at.
+ * One price, paid once.
  *
- * `TIERS.find((t) => t.featured) ?? TIERS[0]` — the fallback index was the only
- * mutation this file had and it survived, because the fallback is unreachable
- * while exactly one tier is featured. Which is the property worth asserting:
- * TWO featured tiers would make `find` pick whichever came first and the
- * fallback would still never run, so the mutation would stay invisible while
- * the page grew a second highlighted price.
+ * The product sold three — monthly, yearly and lifetime — for an app whose
+ * whole job is a handful of dates a month, and the agreement suite had to hold
+ * three figures together across two entry points. Now there is one unlock,
+ * and the claim printed beside it everywhere is "no subscription", so what is
+ * worth asserting is that the claim stays true: the price is a single figure
+ * paid once, and nothing a person can read offers a period to pay by.
  */
-describe('the tier the app points at', () => {
-  it('is exactly one of them, which is what makes the fallback unreachable', () => {
-    expect(TIERS.filter((t) => t.featured)).toHaveLength(1);
+describe('what kept costs', () => {
+  it('is one figure in pounds, paid once', () => {
+    expect(UNLOCK.price).toMatch(/^£\d+\.\d{2}$/);
+    expect(UNLOCK.suffix.trim()).toBe('once');
   });
 
-  it('is the one found, not the one at the front of the list', () => {
-    // Only meaningful because the featured tier is NOT first: if it were, this
-    // would pass whether `find` worked or not.
-    expect(TIERS[0].featured).not.toBe(true);
-    expect(FEATURED_TIER).toBe(TIERS.find((t) => t.featured));
+  const SRC = join(__dirname, '..', 'src');
+  const walk = (dir: string): string[] =>
+    readdirSync(dir).flatMap((n) => {
+      const p = join(dir, n);
+      return statSync(p).isDirectory() ? walk(p) : /\.tsx?$/.test(n) ? [p] : [];
+    });
+  // Comments are history and may name the old tiers; what a person reads is
+  // a string or JSX text, and comments are blanked before matching.
+  const uncommented = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const PERIOD = /£\d+(?:\.\d{2})?\s*(?:\/\s*(?:mo|month|yr|year)\b|a month|a year|per month|per year)|['"]\/\s*(?:mo|month|yr|year)['"]|\b(?:monthly|yearly|annual) (?:plan|price|subscription)\b/i;
+
+  it('is never offered by the month or the year, anywhere in the product', () => {
+    const offenders = walk(SRC).filter((f) => PERIOD.test(uncommented(readFileSync(f, 'utf8'))));
+    expect(offenders.map((f) => f.slice(SRC.length + 1))).toEqual([]);
   });
 
-  it('offers a way to pay once, and says the price of each', () => {
-    expect(TIERS.map((t) => t.period)).toContain('lifetime');
-    expect(TIERS.every((t) => /^£\d/.test(t.price))).toBe(true);
+  it('would notice a period if one came back', () => {
+    // The sweep over an empty match is the sweep that reports success for a
+    // question it never asked: each shape the old tiers wore is caught.
+    for (const s of ["{ price: '£2.99', suffix: '/mo' }", '£16.99/yr', '£2.99 a month', 'the yearly plan']) {
+      expect(PERIOD.test(s), s).toBe(true);
+    }
+    expect(walk(SRC).length).toBeGreaterThan(20);
   });
 });
 
@@ -68,7 +84,7 @@ describe('what the iOS build sells', () => {
     return {
       version: 1, receipts, updates: [], onboardingSeen: true,
       settings: { ...DEFAULT_SETTINGS, plan: 'free' }, alertsSent: [],
-      screen: 'home', selId: null, obStep: 0, celebrating: null, shared: 'no', upgrading: null,
+      screen: 'home', selId: null, obStep: 0, celebrating: null, shared: 'no', upgrading: false,
       sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null,
     };
   };

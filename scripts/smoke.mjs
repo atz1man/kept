@@ -3124,22 +3124,26 @@ results['a full free tier actually refuses the save'] =
  * Tapping a price must not behave as though money changed hands.
  *
  * It did: the tier tiles dispatched plan:'pro' on the spot, so someone who
- * pressed "£39.99 lifetime" watched the paywall vanish with no card box, no
+ * pressed the price watched the paywall vanish with no card box, no
  * confirmation and no word either way. The only reading available to them was
- * that they had just been charged £39.99. Payments are not built, so nothing
+ * that they had just been charged it. Payments are not built, so nothing
  * was — which is exactly the thing the screen has to say.
  */
 const planOf = () => page.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).settings.plan);
 await page.getByRole('button', { name: 'Settings', exact: true }).click();
 await page.waitForTimeout(400);
-await page.getByRole('button', { name: /£39\.99/ }).click();
+const priceButton = page.getByRole('button', { name: /^Unlock unlimited · £\d+\.\d{2}/ });
+const pressed = ((await priceButton.innerText().catch(() => '')).match(/£\d+\.\d{2}/) ?? [])[0];
+await priceButton.click();
 await page.waitForTimeout(400);
 const notice = page.getByRole('dialog');
 const noticeSaid = (await notice.innerText().catch(() => '')) || '';
+// The sheet names the price that was pressed, read off the button rather than
+// written here, so a change of price is not a change to this check.
 results['tapping a price does not pretend to charge for it'] =
   (await planOf()) === 'free' &&
   /charge/i.test(noticeSaid) &&
-  /£39\.99/.test(noticeSaid);
+  !!pressed && noticeSaid.includes(pressed);
 // And it must be leaveable without buying anything. The clicks below are
 // guarded because the failure this section exists to catch removes the sheet
 // entirely: an unguarded click would kill the harness before it printed a
@@ -3149,7 +3153,7 @@ await page.waitForTimeout(400);
 results['the notice can be dismissed, and nothing is unlocked'] =
   (await planOf()) === 'free' && (await page.getByRole('dialog').count()) === 0;
 // The unlock itself is real, and the screen keeps saying it was free.
-await page.getByRole('button', { name: /£16\.99/ }).click({ timeout: 2000 }).catch(() => {});
+await priceButton.click({ timeout: 2000 }).catch(() => {});
 await page.waitForTimeout(300);
 await page.getByRole('button', { name: 'Unlock everything, free' }).click({ timeout: 2000 }).catch(() => {});
 await page.waitForTimeout(500);

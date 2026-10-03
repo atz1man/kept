@@ -1,25 +1,24 @@
 import { useEffect, useRef } from 'react';
 import { color, font, radius, shadow } from '../../tokens';
-import { TIERS, type Period } from '../../lib/pricing';
+import { UNLOCK } from '../../lib/pricing';
 import { Pressable } from './Pressable';
 
 /**
  * What a tap on a price actually does, said out loud before it does it.
  *
- * Tapping a tier used to flip the plan to pro on the spot — no card, no
- * confirmation, no word about either. Someone taps "£39.99 lifetime", the
- * paywall vanishes, and the only reading available to them is that they were
- * charged £39.99. Nothing was charged: payments are not built. An app that
+ * Tapping a price used to flip the plan to pro on the spot — no card, no
+ * confirmation, no word about either. Someone taps the price, the paywall
+ * vanishes, and the only reading available to them is that they were charged
+ * it. Nothing was charged: payments are not built. An app that
  * shows a price, accepts a tap and then behaves as though money changed hands
  * is making a claim about somebody's bank account, and it is a false one.
  *
  * So the sheet leads with the fact that costs money to get wrong — no card,
- * nothing taken — and only then offers the unlock, which is real. The tier
- * that was tapped is named, because "which one did I just press" is the next
- * question and the answer should not require closing this to go and look.
+ * nothing taken — and only then offers the unlock, which is real. The price
+ * is named, because "what did I just press" is the next question and the
+ * answer should not require closing this to go and look.
  */
-export function UpgradeNotice({ period, onUnlock, onCancel }: { period: Period; onUnlock: () => void; onCancel: () => void }) {
-  const tier = TIERS.find((t) => t.period === period) ?? TIERS[0];
+export function UpgradeNotice({ onUnlock, onCancel }: { onUnlock: () => void; onCancel: () => void }) {
   const sheet = useRef<HTMLDivElement>(null);
 
   // Focus moves into the sheet, and Escape closes it. Without both, a keyboard
@@ -63,8 +62,8 @@ export function UpgradeNotice({ period, onUnlock, onCancel }: { period: Period; 
           Nothing has been charged
         </h2>
         <p style={{ fontSize: 14, color: color.body, lineHeight: 1.6, margin: '10px 0 0' }}>
-          kept cannot take payments yet — there is no card box, no {tier.price} leaving your account, and nothing to
-          cancel later. The {tier.period} price is what it is <em>meant</em> to cost.
+          kept cannot take payments yet — there is no card box, no {UNLOCK.price} leaving your account, and nothing to
+          cancel later. {UNLOCK.price}, once, is what it is <em>meant</em> to cost.
         </p>
         <p style={{ fontSize: 14, color: color.body, lineHeight: 1.6, margin: '10px 0 0' }}>
           You can unlock everything now anyway, for free, and keep it.

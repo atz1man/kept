@@ -186,7 +186,7 @@ await shoot('paste-an-order-email');
 
 await page.getByRole('button', { name: 'Settings', exact: true }).click();
 await settle();
-const priced = await page.evaluate(() => /£\d/.test(document.body.innerText) && /Go unlimited|lifetime|\/ ?month/i.test(document.body.innerText));
+const priced = await page.evaluate(() => /£\d/.test(document.body.innerText) && /Unlock unlimited|\bonce\b/i.test(document.body.innerText));
 await browser.close();
 stop();
 if (priced) {

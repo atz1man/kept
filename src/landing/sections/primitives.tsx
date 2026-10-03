@@ -49,7 +49,7 @@ export function OpenAppButton({ large }: { large?: boolean }) {
         padding: large ? '15px 30px' : '14px 26px', borderRadius: 14, boxShadow: shadow.raised,
       }}
     >
-      <LogoMark size={22} />
+      <LogoMark size={22} fill={color.white} />
       <span>
         <span style={{ display: 'block', fontSize: 10, fontWeight: 600, letterSpacing: 0, opacity: 0.8 }}>
           Nothing to install
