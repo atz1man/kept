@@ -146,6 +146,10 @@ describe('naming a shop that is not there', () => {
     ['a brand another shop sells', 'JD\nOrder confirmed\n24/09/2026\nNike Tech Fleece hoodie £100.00\nTotal £100.00'],
     ['another brand another shop sells', 'Your Very order\n24 September 2026\nClarks Un Rio sandals £65.00\nTotal £65.00'],
     ['a third brand another shop sells', 'Zalando\nOrder 24.09.2026\nAllSaints leather jacket £299.00\nTotal £299.00'],
+    // Shops named with ordinary words: an item or an event, not the shop.
+    ['a breakfast that is also a shop', 'Your Deliveroo order\n24 September 2026\nAvocado toast £8.50\nTotal £8.50'],
+    ['a place that is also a shop', 'Your Airbnb order\n24 September 2026\nCoast walk tour £20.00\nTotal £20.00'],
+    ['an event that is also a shop', 'Your Eventbrite order\n24 September 2026\nHenley regatta ticket £30.00\nTotal £30.00'],
   ])('does not invent a retailer from %s', (_label, text) => {
     expect(store(text)).toBeNull();
   });

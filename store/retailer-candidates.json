@@ -3,6 +3,9 @@
   "candidates": {
     "Asda": {
       "home": "https://www.asda.com/",
+      "returns": [
+        "https://direct.asda.com/george/GRG_INFO_RETURNS,default,pg.html"
+      ],
       "aliases": [
         "asda",
         "george at asda"
@@ -11,6 +14,10 @@
     },
     "Morrisons": {
       "home": "https://www.morrisons.com/",
+      "returns": [
+        "https://www.morrisons.com/help/online-shopping/payments/refunds",
+        "https://groceries.morrisons.com/content/terms-and-conditions"
+      ],
       "aliases": [
         "morrisons"
       ],
@@ -18,27 +25,19 @@
     },
     "Waitrose": {
       "home": "https://www.waitrose.com/",
+      "returns": [
+        "https://www.waitrose.com/ecom/help-information/customer-service/shoppingonline/refunds---returns"
+      ],
       "aliases": [
         "waitrose"
       ],
       "cat": "kitchen"
     },
-    "Aldi": {
-      "home": "https://www.aldi.co.uk/",
-      "aliases": [
-        "aldi"
-      ],
-      "cat": "other"
-    },
-    "Selfridges": {
-      "home": "https://www.selfridges.com/GB/en/",
-      "aliases": [
-        "selfridges"
-      ],
-      "cat": "clothing"
-    },
     "Harrods": {
       "home": "https://www.harrods.com/en-gb/",
+      "returns": [
+        "https://www.harrods.com/en-gb/c/faqs/returns"
+      ],
       "aliases": [
         "harrods"
       ],
@@ -54,6 +53,10 @@
     },
     "House of Fraser": {
       "home": "https://www.houseoffraser.co.uk/",
+      "returns": [
+        "https://help.houseoffraser.co.uk/support/solutions/articles/80001157126-i-need-to-return-an-item-bought-online",
+        "https://help.houseoffraser.co.uk/support/solutions/articles/80001157127-i-need-to-return-my-order-or-item-bought-in-store"
+      ],
       "aliases": [
         "house of fraser",
         "houseoffraser"
@@ -62,6 +65,9 @@
     },
     "Primark": {
       "home": "https://www.primark.com/en-gb",
+      "returns": [
+        "https://www.help.primark.com/hc/en-gb/articles/115005690845-Refunds-and-Returns-Policy"
+      ],
       "aliases": [
         "primark"
       ],
@@ -69,6 +75,10 @@
     },
     "New Look": {
       "home": "https://www.newlook.com/uk",
+      "returns": [
+        "https://help-uk.newlook.com/hc/en-gb/articles/360015244592-What-is-your-returns-policy",
+        "https://help-uk.newlook.com/hc/en-gb/articles/14434647950237-What-is-your-in-store-returns-policy"
+      ],
       "aliases": [
         "new look",
         "newlook"
@@ -77,6 +87,9 @@
     },
     "TK Maxx": {
       "home": "https://www.tkmaxx.com/uk/en/",
+      "returns": [
+        "https://www.tkmaxx.com/uk/en/l/customer-service/returns+refunds"
+      ],
       "aliases": [
         "tk maxx",
         "tkmaxx"
@@ -85,6 +98,10 @@
     },
     "Mango": {
       "home": "https://shop.mango.com/gb",
+      "returns": [
+        "https://shop.mango.com/gb/en/help/returns/return-conditions",
+        "https://shop.mango.com/gb/en/help/returns/online-returns"
+      ],
       "aliases": [
         "mango"
       ],
@@ -93,6 +110,9 @@
     },
     "Shein": {
       "home": "https://www.shein.co.uk/",
+      "returns": [
+        "https://www.shein.co.uk/Return-Policy-a-281.html"
+      ],
       "aliases": [
         "shein"
       ],
@@ -100,6 +120,10 @@
     },
     "Very": {
       "home": "https://www.very.co.uk/",
+      "returns": [
+        "https://www.very.co.uk/returns-help.page",
+        "https://www.very.co.uk/help/en/online-help-system/help_returns"
+      ],
       "aliases": [
         "very"
       ],
@@ -108,6 +132,9 @@
     },
     "JD Sports": {
       "home": "https://www.jdsports.co.uk/",
+      "returns": [
+        "https://www.jdsports.co.uk/pages/faqs/returns-and-refunds/what-is-your-returns-policy/"
+      ],
       "aliases": [
         "jd sports",
         "jdsports"
@@ -116,29 +143,19 @@
     },
     "Schuh": {
       "home": "https://www.schuh.co.uk/",
+      "returns": [
+        "https://www.schuh.co.uk/help/returns/"
+      ],
       "aliases": [
         "schuh"
       ],
       "cat": "clothing"
     },
-    "FatFace": {
-      "home": "https://www.fatface.com/",
-      "aliases": [
-        "fatface",
-        "fat face"
-      ],
-      "cat": "clothing"
-    },
-    "Joules": {
-      "home": "https://www.joules.com/",
-      "aliases": [
-        "joules"
-      ],
-      "cat": "clothing",
-      "commonWord": true
-    },
     "Superdry": {
       "home": "https://www.superdry.com/",
+      "returns": [
+        "https://help.superdry.com/Returns/Returns-Policy/1660038622/What-is-your-return-policy.htm"
+      ],
       "aliases": [
         "superdry"
       ],
@@ -146,6 +163,9 @@
     },
     "Urban Outfitters": {
       "home": "https://www.urbanoutfitters.com/en-gb/",
+      "returns": [
+        "https://www.urbanoutfitters.com/en-gb/help/return-policy"
+      ],
       "aliases": [
         "urban outfitters",
         "urbanoutfitters"
@@ -154,6 +174,10 @@
     },
     "Reiss": {
       "home": "https://www.reiss.com/",
+      "returns": [
+        "https://help.reiss.com/hc/en-gb/articles/4411046702609-Our-Returns-Policy",
+        "https://help.reiss.com/hc/en-gb/articles/4429050436881-Returning-Store-Purchases"
+      ],
       "aliases": [
         "reiss"
       ],
@@ -161,6 +185,9 @@
     },
     "Office": {
       "home": "https://www.office.co.uk/",
+      "returns": [
+        "https://www.office.co.uk/view/content/returnsinfo-page"
+      ],
       "aliases": [
         "office"
       ],
@@ -169,6 +196,10 @@
     },
     "Footasylum": {
       "home": "https://www.footasylum.com/",
+      "returns": [
+        "https://support.footasylum.com/hc/en-us/articles/201616331-How-do-I-return-my-order-for-an-exchange-or-a-refund-",
+        "https://support.footasylum.com/hc/en-us/articles/201616431-What-is-your-Store-Returns-Policy-"
+      ],
       "aliases": [
         "footasylum"
       ],
@@ -176,6 +207,9 @@
     },
     "Adidas": {
       "home": "https://www.adidas.co.uk/",
+      "returns": [
+        "https://www.adidas.co.uk/help/return.html"
+      ],
       "aliases": [
         "adidas"
       ],
@@ -183,6 +217,9 @@
     },
     "Lululemon": {
       "home": "https://www.lululemon.co.uk/",
+      "returns": [
+        "https://www.lululemon.co.uk/en-gb/returns-policy-and-refunds/returnspolicyandrefunds.html"
+      ],
       "aliases": [
         "lululemon"
       ],
@@ -190,29 +227,20 @@
     },
     "AO": {
       "home": "https://ao.com/",
+      "returns": [
+        "https://ao.com/help-and-advice/delivery-and-services/returns"
+      ],
       "aliases": [
         "ao.com",
         "appliances online"
       ],
       "cat": "kitchen"
     },
-    "Samsung": {
-      "home": "https://www.samsung.com/uk/",
-      "aliases": [
-        "samsung"
-      ],
-      "cat": "audio"
-    },
-    "Richer Sounds": {
-      "home": "https://www.richersounds.com/",
-      "aliases": [
-        "richer sounds",
-        "richersounds"
-      ],
-      "cat": "audio"
-    },
     "CeX": {
       "home": "https://uk.webuy.com/",
+      "returns": [
+        "https://uk.support.webuy.com/support/solutions/articles/80001011699-returning-an-unwanted-online-order"
+      ],
       "aliases": [
         "cex",
         "webuy"
@@ -221,6 +249,10 @@
     },
     "GAME": {
       "home": "https://www.game.co.uk/",
+      "returns": [
+        "https://helps.game.co.uk/en/support/solutions/articles/80000620493-game-returns-policy",
+        "https://help.game.co.uk/support/solutions/articles/80001148308-delivery-and-returns"
+      ],
       "aliases": [
         "game"
       ],
@@ -229,6 +261,9 @@
     },
     "Smyths": {
       "home": "https://www.smythstoys.com/uk/en-gb",
+      "returns": [
+        "https://www.smythstoys.com/uk/en-gb/returns"
+      ],
       "aliases": [
         "smyths",
         "smyths toys"
@@ -237,6 +272,10 @@
     },
     "The Entertainer": {
       "home": "https://www.thetoyshop.com/",
+      "returns": [
+        "https://www.thetoyshop.com/returns",
+        "https://ask.thetoyshop.com/help/returns"
+      ],
       "aliases": [
         "the entertainer",
         "thetoyshop"
@@ -246,6 +285,9 @@
     },
     "Hamleys": {
       "home": "https://www.hamleys.com/",
+      "returns": [
+        "https://www.hamleys.com/frequently-asked-questions"
+      ],
       "aliases": [
         "hamleys"
       ],
@@ -260,6 +302,10 @@
     },
     "The Range": {
       "home": "https://www.therange.co.uk/",
+      "returns": [
+        "https://help.therange.co.uk/hc/en-gb/articles/360015308140-What-is-your-returns-policy",
+        "https://www.therange.co.uk/returnsandrefunds/"
+      ],
       "aliases": [
         "the range",
         "therange"
@@ -269,6 +315,10 @@
     },
     "Homebase": {
       "home": "https://www.homebase.co.uk/",
+      "returns": [
+        "https://help.homebase.co.uk/hc/en-gb/articles/30405319631505-Can-I-return-my-online-order-for-a-refund",
+        "https://help.homebase.co.uk/hc/en-gb/articles/30055728344081-Can-I-return-my-items-purchased-from-a-store"
+      ],
       "aliases": [
         "homebase"
       ],
@@ -276,6 +326,10 @@
     },
     "DFS": {
       "home": "https://www.dfs.co.uk/",
+      "returns": [
+        "https://help.dfs.co.uk/hc/en-gb/articles/4408189564689-Can-I-return-my-furniture",
+        "https://help.dfs.co.uk/hc/en-gb/articles/4408224278161-What-is-your-cancellation-policy"
+      ],
       "aliases": [
         "dfs"
       ],
@@ -283,6 +337,9 @@
     },
     "Furniture Village": {
       "home": "https://www.furniturevillage.co.uk/",
+      "returns": [
+        "https://www.furniturevillage.co.uk/help-and-advice/returns-and-cancellations.html"
+      ],
       "aliases": [
         "furniture village",
         "furniturevillage"
@@ -307,6 +364,10 @@
     },
     "Lakeland": {
       "home": "https://www.lakeland.co.uk/",
+      "returns": [
+        "https://www.lakeland.co.uk/info/DeliveryAndReturns",
+        "https://www.lakeland.co.uk/info/LakelandGuarantee"
+      ],
       "aliases": [
         "lakeland"
       ],
@@ -323,22 +384,19 @@
     },
     "Hobbycraft": {
       "home": "https://www.hobbycraft.co.uk/",
+      "returns": [
+        "https://www.hobbycraft.co.uk/help-centre/customer-services/cp-returns-information.html"
+      ],
       "aliases": [
         "hobbycraft"
       ],
       "cat": "other"
     },
-    "The Works": {
-      "home": "https://www.theworks.co.uk/",
-      "aliases": [
-        "the works",
-        "theworks"
-      ],
-      "cat": "other",
-      "commonWord": true
-    },
     "Superdrug": {
       "home": "https://www.superdrug.com/",
+      "returns": [
+        "https://www.superdrug.com/returnPolicy"
+      ],
       "aliases": [
         "superdrug"
       ],
@@ -346,6 +404,9 @@
     },
     "Lush": {
       "home": "https://www.lush.com/uk/en",
+      "returns": [
+        "https://www.lush.com/uk/en/faq/returns-and-refunds"
+      ],
       "aliases": [
         "lush"
       ],
@@ -354,6 +415,9 @@
     },
     "Space NK": {
       "home": "https://www.spacenk.com/uk/",
+      "returns": [
+        "https://help.spacenk.com/hc/en-us/articles/360002297754-Returns-Policy-Store-Online"
+      ],
       "aliases": [
         "space nk",
         "spacenk"
@@ -362,6 +426,9 @@
     },
     "Sephora": {
       "home": "https://www.sephora.co.uk/",
+      "returns": [
+        "https://www.sephora.co.uk/terms-and-conditions/"
+      ],
       "aliases": [
         "sephora"
       ],
@@ -369,6 +436,9 @@
     },
     "Waterstones": {
       "home": "https://www.waterstones.com/",
+      "returns": [
+        "https://www.waterstones.com/help/returning-items/41"
+      ],
       "aliases": [
         "waterstones"
       ],
@@ -376,6 +446,9 @@
     },
     "WHSmith": {
       "home": "https://www.whsmith.co.uk/",
+      "returns": [
+        "https://www.whsmith.co.uk/help/returns/"
+      ],
       "aliases": [
         "whsmith",
         "wh smith",
@@ -385,6 +458,9 @@
     },
     "Ryman": {
       "home": "https://www.ryman.co.uk/",
+      "returns": [
+        "https://www.ryman.co.uk/returns-policy"
+      ],
       "aliases": [
         "ryman"
       ],
@@ -400,6 +476,9 @@
     },
     "Cotswold Outdoor": {
       "home": "https://www.cotswoldoutdoor.com/",
+      "returns": [
+        "https://help.cotswoldoutdoor.com/hc/en-gb/articles/4411467010834-Returns-Policy"
+      ],
       "aliases": [
         "cotswold outdoor",
         "cotswoldoutdoor"
@@ -408,6 +487,10 @@
     },
     "Halfords": {
       "home": "https://www.halfords.com/",
+      "returns": [
+        "https://www.halfords.com/help-and-advice/orders-and-bookings/returns-and-refunds/returns-information",
+        "https://www.halfords.com/help-and-advice/orders-and-bookings/returns-and-refunds/returns-faqs"
+      ],
       "aliases": [
         "halfords"
       ],
@@ -421,6 +504,827 @@
         "jojomamanbebe"
       ],
       "cat": "clothing"
+    },
+    "Home Bargains": {
+      "home": "https://www.homebargains.co.uk/",
+      "returns": [
+        "https://help.homebargains.co.uk/hc/en-gb/articles/205395762-How-do-I-return-an-item",
+        "https://help.homebargains.co.uk/hc/en-gb/articles/200213017-What-is-your-returns-policy-for-in-store-purchases"
+      ],
+      "aliases": [
+        "home bargains",
+        "homebargains"
+      ],
+      "cat": "other"
+    },
+    "Hotter": {
+      "home": "https://www.hotter.com/gb/en/",
+      "returns": [
+        "https://www.hotter.com/gb/en/info/FAQ-returning-goods"
+      ],
+      "aliases": [
+        "hotter shoes",
+        "hotter.com"
+      ],
+      "cat": "clothing",
+      "commonWord": true
+    },
+    "Phase Eight": {
+      "home": "https://www.phase-eight.com/",
+      "returns": [
+        "https://www.phase-eight.com/returns/",
+        "https://www.phase-eight.com/faqs/"
+      ],
+      "aliases": [
+        "phase eight",
+        "phase-eight"
+      ],
+      "cat": "clothing"
+    },
+    "Ted Baker": {
+      "home": "https://www.tedbaker.com/",
+      "returns": [
+        "https://www.tedbaker.com/pages/shipping-returns",
+        "https://www.tedbaker.com/en-gb/pages/shipping-returns"
+      ],
+      "aliases": [
+        "ted baker",
+        "tedbaker"
+      ],
+      "cat": "clothing",
+      "commonWord": true
+    },
+    "Sweaty Betty": {
+      "home": "https://www.sweatybetty.com/",
+      "returns": [
+        "https://www.sweatybetty.com/delivery-returns.html",
+        "https://help.sweatybetty.com/kb/en/returns"
+      ],
+      "aliases": [
+        "sweaty betty",
+        "sweatybetty"
+      ],
+      "cat": "clothing"
+    },
+    "Moss": {
+      "home": "https://www.moss.co.uk/",
+      "returns": [
+        "https://www.moss.co.uk/returns-policy"
+      ],
+      "aliases": [
+        "moss bros",
+        "moss"
+      ],
+      "cat": "clothing",
+      "commonWord": true
+    },
+    "Charles Tyrwhitt": {
+      "home": "https://www.charlestyrwhitt.com/uk/",
+      "returns": [
+        "https://www.charlestyrwhitt.com/uk/terms-and-conditions-wrapper.html"
+      ],
+      "aliases": [
+        "charles tyrwhitt",
+        "charlestyrwhitt"
+      ],
+      "cat": "clothing"
+    },
+    "Bonmarché": {
+      "home": "https://www.bonmarche.co.uk/",
+      "returns": [
+        "https://www.bonmarche.co.uk/returns-and-refunds/returns-and-refunds.html"
+      ],
+      "aliases": [
+        "bonmarché",
+        "bonmarche"
+      ],
+      "cat": "clothing"
+    },
+    "Iceland": {
+      "home": "https://www.iceland.co.uk/",
+      "returns": [
+        "https://www.iceland.co.uk/terms.html"
+      ],
+      "aliases": [
+        "iceland"
+      ],
+      "cat": "kitchen",
+      "commonWord": true
+    },
+    "Ocado": {
+      "home": "https://www.ocado.com/",
+      "returns": [
+        "https://help.ocado.com/hc/en-us/articles/360017561952-How-do-I-request-a-refund"
+      ],
+      "aliases": [
+        "ocado"
+      ],
+      "cat": "kitchen"
+    },
+    "Co-op": {
+      "home": "https://www.coop.co.uk/",
+      "returns": [
+        "https://www.coop.co.uk/terms/delivery-click-and-collect-and-home-delivery-terms-and-conditions"
+      ],
+      "aliases": [
+        "co-op",
+        "coop"
+      ],
+      "cat": "kitchen",
+      "commonWord": true
+    },
+    "Pandora": {
+      "home": "https://uk.pandora.net/en/",
+      "returns": [
+        "https://help.pandora.net/uk/s/article/How-do-I-return-my-order",
+        "https://uk.pandora.net/en/tandcs/terms-and-conditions.html"
+      ],
+      "aliases": [
+        "pandora"
+      ],
+      "cat": "other",
+      "commonWord": true
+    },
+    "Ernest Jones": {
+      "home": "https://www.ernestjones.co.uk/",
+      "returns": [
+        "https://www.ernestjones.co.uk/refunds"
+      ],
+      "aliases": [
+        "ernest jones",
+        "ernestjones"
+      ],
+      "cat": "other"
+    },
+    "H.Samuel": {
+      "home": "https://www.hsamuel.co.uk/",
+      "returns": [
+        "https://www.hsamuel.co.uk/returns"
+      ],
+      "aliases": [
+        "h.samuel",
+        "h samuel",
+        "hsamuel"
+      ],
+      "cat": "other"
+    },
+    "Goldsmiths": {
+      "home": "https://www.goldsmiths.co.uk/",
+      "returns": [
+        "https://www.goldsmiths.co.uk/i/returns-policy"
+      ],
+      "aliases": [
+        "goldsmiths"
+      ],
+      "cat": "other",
+      "commonWord": true
+    },
+    "Hotel Chocolat": {
+      "home": "https://www.hotelchocolat.com/uk",
+      "returns": [
+        "https://www.hotelchocolat.com/uk/help/our-guarantee.html",
+        "https://www.hotelchocolat.com/uk/i/terms-and-conditions.html"
+      ],
+      "aliases": [
+        "hotel chocolat",
+        "hotelchocolat"
+      ],
+      "cat": "kitchen"
+    },
+    "Disney Store": {
+      "home": "https://www.disneystore.co.uk/",
+      "returns": [
+        "https://support.disneystore.co.uk/hc/en-gb/articles/20170021665171-General-Returns-Policy",
+        "https://support.disneystore.co.uk/hc/en-gb/articles/5655881774355-How-long-do-I-have-to-return-an-order-and-how-quickly-will-I-be-refunded"
+      ],
+      "aliases": [
+        "disney store",
+        "disneystore"
+      ],
+      "cat": "other"
+    },
+    "Build-A-Bear": {
+      "home": "https://www.buildabear.co.uk/",
+      "returns": [
+        "https://www.buildabear.co.uk/brand-help-returns.html"
+      ],
+      "aliases": [
+        "build-a-bear",
+        "build a bear",
+        "buildabear"
+      ],
+      "cat": "other"
+    },
+    "Foyles": {
+      "home": "https://www.foyles.co.uk/",
+      "returns": [
+        "https://www.foyles.co.uk/help/refunds-returns"
+      ],
+      "aliases": [
+        "foyles"
+      ],
+      "cat": "other"
+    },
+    "Flying Tiger": {
+      "home": "https://flyingtiger.com/en-gb",
+      "returns": [
+        "https://flyingtiger.com/en-gb/pages/terms-conditions",
+        "https://flyingtiger.com/en-gb/pages/faq"
+      ],
+      "aliases": [
+        "flying tiger",
+        "flyingtiger"
+      ],
+      "cat": "other"
+    },
+    "Snow+Rock": {
+      "home": "https://www.snowandrock.com/",
+      "returns": [
+        "https://help.snowandrock.com/hc/en-gb/articles/12594771378450-Returns-Policy",
+        "https://help.snowandrock.com/hc/en-gb/articles/360001576380-Our-refund-policy"
+      ],
+      "aliases": [
+        "snow+rock",
+        "snow and rock",
+        "snowandrock"
+      ],
+      "cat": "clothing"
+    },
+    "Rohan": {
+      "home": "https://www.rohan.co.uk/",
+      "returns": [
+        "https://www.rohan.co.uk/help/exchange-refunds-cancellations/"
+      ],
+      "aliases": [
+        "rohan"
+      ],
+      "cat": "clothing",
+      "commonWord": true
+    },
+    "Evans Cycles": {
+      "home": "https://www.evanscycles.com/",
+      "returns": [
+        "https://www.evanscycles.com/help/returns-and-refunds"
+      ],
+      "aliases": [
+        "evans cycles",
+        "evanscycles"
+      ],
+      "cat": "other"
+    },
+    "Jollyes": {
+      "home": "https://www.jollyes.co.uk/",
+      "returns": [
+        "https://www.jollyes.co.uk/i/returns-and-refunds"
+      ],
+      "aliases": [
+        "jollyes"
+      ],
+      "cat": "other"
+    },
+    "Bensons for Beds": {
+      "home": "https://www.bensonsforbeds.co.uk/",
+      "returns": [
+        "https://help.bensonsforbeds.co.uk/support/solutions/articles/80000856319-can-i-exchange-my-goods-after-they-have-been-delivered-",
+        "https://www.bensonsforbeds.co.uk/terms-and-conditions/"
+      ],
+      "aliases": [
+        "bensons for beds",
+        "bensonsforbeds",
+        "bensons"
+      ],
+      "cat": "furniture"
+    },
+    "Dreams": {
+      "home": "https://www.dreams.co.uk/",
+      "returns": [
+        "https://www.dreams.co.uk/help/returns-and-refunds-services",
+        "https://www.dreams.co.uk/help/returns-and-refunds"
+      ],
+      "aliases": [
+        "dreams"
+      ],
+      "cat": "furniture",
+      "commonWord": true
+    },
+    "Loaf": {
+      "home": "https://loaf.com/",
+      "returns": [
+        "https://loaf.com/helphub/returns",
+        "https://loaf.com/returns-and-exchanges"
+      ],
+      "aliases": [
+        "loaf"
+      ],
+      "cat": "furniture",
+      "commonWord": true
+    },
+    "Sofology": {
+      "home": "https://www.sofology.co.uk/",
+      "returns": [
+        "https://help.sofology.co.uk/hc/en-us/articles/19236830172434-Can-I-cancel-my-order",
+        "https://www.sofology.co.uk/terms-and-conditions"
+      ],
+      "aliases": [
+        "sofology"
+      ],
+      "cat": "furniture"
+    },
+    "ScS": {
+      "home": "https://www.scs.co.uk/",
+      "returns": [
+        "https://www.scs.co.uk/help/terms-and-conditions/telephone-sales-terms-and-conditions.html",
+        "https://www.scs.co.uk/help/before-you-buy/faqs/aftersales-faqs.html"
+      ],
+      "aliases": [
+        "scs"
+      ],
+      "cat": "furniture",
+      "commonWord": true
+    },
+    "Barker and Stonehouse": {
+      "home": "https://www.barkerandstonehouse.co.uk/",
+      "returns": [
+        "https://www.barkerandstonehouse.co.uk/returns"
+      ],
+      "aliases": [
+        "barker and stonehouse",
+        "barker & stonehouse",
+        "barkerandstonehouse"
+      ],
+      "cat": "furniture"
+    },
+    "Littlewoods": {
+      "home": "https://www.littlewoods.com/",
+      "returns": [
+        "https://www.littlewoods.com/delivery-options.page"
+      ],
+      "aliases": [
+        "littlewoods"
+      ],
+      "cat": "other"
+    },
+    "Simply Be": {
+      "home": "https://www.simplybe.co.uk/",
+      "returns": [
+        "https://support.simplybe.co.uk/hc/en-gb/articles/360011852400-What-is-your-return-policy",
+        "https://support.simplybe.co.uk/hc/en-gb/articles/360002530644-How-long-do-I-have-to-return-my-order"
+      ],
+      "aliases": [
+        "simply be",
+        "simplybe"
+      ],
+      "cat": "clothing",
+      "commonWord": true
+    },
+    "Freemans": {
+      "home": "https://www.freemans.com/",
+      "returns": [
+        "https://www.freemans.com/web/main/help.asp?cid=71",
+        "https://www.freemans.com/web/main/help.asp?qid=2955"
+      ],
+      "aliases": [
+        "freemans"
+      ],
+      "cat": "clothing",
+      "commonWord": true
+    },
+    "QVC": {
+      "home": "https://www.qvcuk.com/",
+      "returns": [
+        "https://www.qvcuk.com/content/legal-information/return-policy.html",
+        "https://www.qvcuk.com/content/how-do-i-return-to-qvc.html"
+      ],
+      "aliases": [
+        "qvc"
+      ],
+      "cat": "other"
+    },
+    "The Perfume Shop": {
+      "home": "https://www.theperfumeshop.com/",
+      "returns": [
+        "https://www.theperfumeshop.com/returns-and-refunds"
+      ],
+      "aliases": [
+        "the perfume shop",
+        "theperfumeshop"
+      ],
+      "cat": "beauty"
+    },
+    "Hollister": {
+      "home": "https://www.hollisterco.com/shop/uk",
+      "returns": [
+        "https://www.hollisterco.com/shop/uk/help/online-return-exchange-policy"
+      ],
+      "aliases": [
+        "hollister"
+      ],
+      "cat": "clothing",
+      "commonWord": true
+    },
+    "Abercrombie & Fitch": {
+      "home": "https://www.abercrombie.com/shop/uk",
+      "returns": [
+        "https://www.abercrombie.com/shop/uk/help/online-return-exchange-policy"
+      ],
+      "aliases": [
+        "abercrombie & fitch",
+        "abercrombie and fitch",
+        "abercrombie"
+      ],
+      "cat": "clothing"
+    },
+    "Gap": {
+      "home": "https://www.gap.co.uk/",
+      "returns": [
+        "https://www.gap.co.uk/shop/customer-service/changes-returns-and-exchanges-2/gap-onlinereturns.html",
+        "https://www.gap.co.uk/shop/customer-service/changes-returns-and-exchanges-2/gap-FAQs.html"
+      ],
+      "aliases": [
+        "gap"
+      ],
+      "cat": "clothing",
+      "commonWord": true
+    },
+    "Pull&Bear": {
+      "home": "https://www.pullandbear.com/gb/",
+      "returns": [
+        "https://www.pullandbear.com/gb/faqs.html"
+      ],
+      "aliases": [
+        "pull&bear",
+        "pull & bear",
+        "pullandbear"
+      ],
+      "cat": "clothing"
+    },
+    "Stradivarius": {
+      "home": "https://www.stradivarius.com/gb/",
+      "returns": [
+        "https://www.stradivarius.com/gb/help-center/article/returns/how-to-return-a-product"
+      ],
+      "aliases": [
+        "stradivarius"
+      ],
+      "cat": "clothing",
+      "commonWord": true
+    },
+    "COS": {
+      "home": "https://www.cos.com/en-gb",
+      "returns": [
+        "https://www.cos.com/en-gb/customer-service/returns",
+        "https://www.cos.com/en-gb/customer-service/how-to-return-items"
+      ],
+      "aliases": [
+        "cos"
+      ],
+      "cat": "clothing",
+      "commonWord": true
+    },
+    "& Other Stories": {
+      "home": "https://www.stories.com/en-gb",
+      "returns": [
+        "https://www.stories.com/en-gb/customer-service/return-refund/"
+      ],
+      "aliases": [
+        "& other stories",
+        "and other stories",
+        "stories.com"
+      ],
+      "cat": "clothing"
+    },
+    "Arket": {
+      "home": "https://www.arket.com/en-gb",
+      "returns": [
+        "https://www.arket.com/en-gb/customer-service/returns/"
+      ],
+      "aliases": [
+        "arket"
+      ],
+      "cat": "clothing"
+    },
+    "Thorntons": {
+      "home": "https://www.thorntons.com/uk/en/",
+      "returns": [
+        "https://www.thorntons.com/uk/en/terms-and-conditions"
+      ],
+      "aliases": [
+        "thorntons"
+      ],
+      "cat": "kitchen",
+      "commonWord": true
+    },
+    "Moonpig": {
+      "home": "https://www.moonpig.com/uk/",
+      "returns": [
+        "https://help.moonpig.com/en/articles/318763-can-i-return-an-order"
+      ],
+      "aliases": [
+        "moonpig"
+      ],
+      "cat": "other"
+    },
+    "Funky Pigeon": {
+      "home": "https://www.funkypigeon.com/",
+      "returns": [
+        "https://help.funkypigeon.com/hc/en-gb/articles/32645473532701-Can-I-return-my-non-personalised-gift",
+        "https://www.funkypigeon.com/terms-and-conditions"
+      ],
+      "aliases": [
+        "funky pigeon",
+        "funkypigeon"
+      ],
+      "cat": "other"
+    },
+    "Dell": {
+      "home": "https://www.dell.com/en-gb",
+      "returns": [
+        "https://www.dell.com/en-gb/shop/lp/return-policy"
+      ],
+      "aliases": [
+        "dell"
+      ],
+      "cat": "other",
+      "commonWord": true
+    },
+    "Lenovo": {
+      "home": "https://www.lenovo.com/gb/en/",
+      "returns": [
+        "https://www.lenovo.com/gb/en/shopping-faq/"
+      ],
+      "aliases": [
+        "lenovo"
+      ],
+      "cat": "other",
+      "commonWord": true
+    },
+    "HP Store": {
+      "home": "https://www.hp.com/gb-en/shop/",
+      "returns": [
+        "https://www.hp.com/gb-en/shop/faq/returns",
+        "https://www.hp.com/gb-en/shop/faq/returns/how-hp-store-will-manage-my-refund"
+      ],
+      "aliases": [
+        "hp store"
+      ],
+      "cat": "other"
+    },
+    "Scan Computers": {
+      "home": "https://www.scan.co.uk/",
+      "returns": [
+        "https://www.scan.co.uk/help/orders/returns/returns-policy"
+      ],
+      "aliases": [
+        "scan computers",
+        "scan.co.uk"
+      ],
+      "cat": "other"
+    },
+    "Overclockers UK": {
+      "home": "https://www.overclockers.co.uk/",
+      "returns": [
+        "https://www.overclockers.co.uk/returns"
+      ],
+      "aliases": [
+        "overclockers"
+      ],
+      "cat": "other"
+    },
+    "Laptops Direct": {
+      "home": "https://www.laptopsdirect.co.uk/",
+      "returns": [
+        "https://www.laptopsdirect.co.uk/content/cancellation-returns-process"
+      ],
+      "aliases": [
+        "laptops direct",
+        "laptopsdirect"
+      ],
+      "cat": "other"
+    },
+    "Hughes": {
+      "home": "https://www.hughes.co.uk/",
+      "returns": [
+        "https://www.hughes.co.uk/returns"
+      ],
+      "aliases": [
+        "hughes"
+      ],
+      "cat": "kitchen",
+      "commonWord": true
+    },
+    "Euronics": {
+      "home": "https://www.euronics.co.uk/",
+      "returns": [
+        "https://www.euronics.co.uk/returns-&-cancellations"
+      ],
+      "aliases": [
+        "euronics"
+      ],
+      "cat": "audio"
+    },
+    "Sonos": {
+      "home": "https://www.sonos.com/en-gb/home",
+      "returns": [
+        "https://support.sonos.com/en-gb/article/return-your-sonos-product",
+        "https://www.sonos.com/en-gb/shipping-faq"
+      ],
+      "aliases": [
+        "sonos"
+      ],
+      "cat": "audio",
+      "commonWord": true
+    },
+    "Harvey Nichols": {
+      "home": "https://www.harveynichols.com/",
+      "returns": [
+        "https://www.harveynichols.com/info/help/delivery-help/returns/"
+      ],
+      "aliases": [
+        "harvey nichols",
+        "harveynichols"
+      ],
+      "cat": "clothing"
+    },
+    "Fortnum & Mason": {
+      "home": "https://www.fortnumandmason.com/",
+      "returns": [
+        "https://support.fortnumandmason.com/hc/en-gb/articles/360002788698-How-do-I-return-an-item",
+        "https://www.fortnumandmason.com/terms-and-conditions"
+      ],
+      "aliases": [
+        "fortnum & mason",
+        "fortnum and mason",
+        "fortnums"
+      ],
+      "cat": "kitchen"
+    },
+    "Sosandar": {
+      "home": "https://www.sosandar.com/",
+      "returns": [
+        "https://www.sosandar.com/returns",
+        "https://help.sosandar.com/hc/en-gb/articles/18169993767441-What-is-your-returns-policy"
+      ],
+      "aliases": [
+        "sosandar"
+      ],
+      "cat": "clothing"
+    },
+    "Hush": {
+      "home": "https://www.hush-uk.com/",
+      "returns": [
+        "https://www.hush-uk.com/faq"
+      ],
+      "aliases": [
+        "hush"
+      ],
+      "cat": "clothing",
+      "commonWord": true
+    },
+    "ME+EM": {
+      "home": "https://www.meandem.com/",
+      "returns": [
+        "https://www.meandem.com/returns"
+      ],
+      "aliases": [
+        "me+em",
+        "meandem"
+      ],
+      "cat": "clothing"
+    },
+    "Rixo": {
+      "home": "https://rixolondon.com/",
+      "returns": [
+        "https://rixolondon.com/pages/returns"
+      ],
+      "aliases": [
+        "rixo"
+      ],
+      "cat": "clothing",
+      "commonWord": true
+    },
+    "Free People": {
+      "home": "https://www.freepeople.com/uk/",
+      "returns": [
+        "https://www.freepeople.com/uk/help/returns-exchanges/"
+      ],
+      "aliases": [
+        "free people",
+        "freepeople"
+      ],
+      "cat": "clothing",
+      "commonWord": true
+    },
+    "Anthropologie": {
+      "home": "https://www.anthropologie.com/en-gb",
+      "returns": [
+        "https://www.anthropologie.com/en-gb/help/returns-exchanges"
+      ],
+      "aliases": [
+        "anthropologie"
+      ],
+      "cat": "clothing"
+    },
+    "In The Style": {
+      "home": "https://www.inthestyle.com/",
+      "returns": [
+        "https://www.inthestyle.com/pages/returns",
+        "https://www.inthestyle.com/policies/refund-policy"
+      ],
+      "aliases": [
+        "in the style",
+        "inthestyle"
+      ],
+      "cat": "clothing",
+      "commonWord": true
+    },
+    "Quiz": {
+      "home": "https://www.quizclothing.co.uk/",
+      "returns": [
+        "https://help.quizclothing.co.uk/hc/en-gb/articles/360014671120-How-do-I-return-an-item-purchased-online-",
+        "https://help.quizclothing.co.uk/hc/en-gb/articles/360011637480-Do-I-have-to-pay-for-returning-an-item"
+      ],
+      "aliases": [
+        "quiz clothing",
+        "quizclothing"
+      ],
+      "cat": "clothing",
+      "commonWord": true
+    },
+    "Yours Clothing": {
+      "home": "https://www.yoursclothing.co.uk/",
+      "returns": [
+        "https://www.yoursclothing.co.uk/returns-policy"
+      ],
+      "aliases": [
+        "yours clothing",
+        "yoursclothing"
+      ],
+      "cat": "clothing"
+    },
+    "Roman Originals": {
+      "home": "https://www.roman.co.uk/",
+      "returns": [
+        "https://www.roman.co.uk/help/returns"
+      ],
+      "aliases": [
+        "roman originals",
+        "roman.co.uk"
+      ],
+      "cat": "clothing"
+    },
+    "Damart": {
+      "home": "https://www.damart.co.uk/",
+      "returns": [
+        "https://www.damart.co.uk/delivery-and-returns"
+      ],
+      "aliases": [
+        "damart"
+      ],
+      "cat": "clothing"
+    },
+    "Cotton Traders": {
+      "home": "https://www.cottontraders.com/",
+      "returns": [
+        "https://www.cottontraders.com/customer-service/information/returns.html"
+      ],
+      "aliases": [
+        "cotton traders",
+        "cottontraders"
+      ],
+      "cat": "clothing"
+    },
+    "The White Company": {
+      "home": "https://www.thewhitecompany.com/uk/",
+      "returns": [
+        "https://www.thewhitecompany.com/uk/help/returns"
+      ],
+      "aliases": [
+        "the white company",
+        "thewhitecompany"
+      ],
+      "cat": "furniture"
+    },
+    "Brora": {
+      "home": "https://www.brora.co.uk/",
+      "returns": [
+        "https://www.brora.co.uk/our-site/terms-conditions",
+        "https://www.brora.co.uk/customer-service/return-faulty-or-incorrect-products"
+      ],
+      "aliases": [
+        "brora"
+      ],
+      "cat": "clothing"
+    },
+    "Joules": {
+      "home": "https://www.joules.com/",
+      "returns": [
+        "https://www.joules.com/faq/faqReturnsAndRefunds"
+      ],
+      "aliases": [
+        "joules"
+      ],
+      "cat": "clothing",
+      "commonWord": true
     }
   }
 }

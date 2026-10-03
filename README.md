@@ -2438,33 +2438,48 @@ it twice. It never edits the table, because "30 days" beside "for Members" is
 not the window a person gets. The report is the evidence the table changes
 from; `test/retailer-check.test.ts` holds the parts that decide what it says.
 
-The first full run was on 3 October 2026 (`store/retailer-check/2026-10-03.md`).
-Of the forty-one shops in the table, twenty-seven were read and confirmed from
-their own pages. That run moved two of the original twenty: M&S and Wickes
-count an online order from the day it arrives, and M&S gives sale items 14 days.
-Fourteen still need a person in an ordinary browser: Amazon, Argos, ASOS,
-Boots, Currys, Decathlon, H&M, John Lewis, Next, Sainsbury's, Sports Direct,
-Tesco, Uniqlo and Zara. Some of those pages refuse an automated browser outright
-and some have moved; the script reports each one rather than working its way
-round a block. `TABLE_CHECKED_ON` stays unset until those fourteen are done.
+The first full run was on 3 October 2026, and it took three readings that day.
+The first (`store/retailer-check/2026-10-03.md`, `2026-10-03-candidates.md`)
+confirmed twenty-seven shops, moved M&S and Wickes to count an online order from
+delivery, and added twenty-one candidates. The second and third gave each
+candidate a `returns` list: its own help-centre pages, read directly, because
+many shops wall their homepage against an automated browser and leave the help
+pages open. Reading the page that holds the policy is not working round the one
+that refuses; the test holds every listed page to the shop's own site, and the
+reader now refuses a page a redirect has taken anywhere else. That rule cost a
+row: Joules' returns URL lands on a help centre at zendesk.com, its 28 days had
+been quoted from there, and it went back to the candidates. The same readings
+reached six of the original twenty for the first time and corrected four:
+Sainsbury's and Uniqlo count an online order from delivery, Sports Direct gives
+a credit note rather than a refund in store, and Next an eVoucher after 28 days.
 
-Twenty-one of the forty-one came in on that run from
-`store/retailer-candidates.json`, which lists UK retailers waiting to be read:
+The table holds ninety-two shops. On the closing run (`2026-10-03-2.md`)
+eighty-two were read and confirmed from their own pages and ten were not:
+Amazon, Argos, ASOS, Boots, Currys, H&M, John Lewis and Zara have refused or
+moved on every run, and need a person in an ordinary browser. The other two,
+Sports Direct and JD Williams, were read on an earlier run that day, and Monsoon,
+Richer Sounds and Levi's refused once and read the next time: a bot wall that
+comes and goes is reported each time it is met, never worked round.
+`TABLE_CHECKED_ON` stays unset until the eight are done.
+
+`store/retailer-candidates.json` lists the UK retailers still waiting:
 supermarkets, department stores, fashion, electronics, home and DIY, beauty,
 books, outdoor. Listing a shop there claims nothing about its window.
-`npm run check:candidates` opens each homepage, follows the shop's own Returns
-or Refunds links (staying on its own site, at most two clicks deep, because a
-returns page is found rather than guessed), and writes every sentence that
-states a period to `store/retailer-check/<date>-candidates.md`. A shop moves into
-`stores.ts` by hand, from those quotes, with its returns page added to
-`retailer-sources.json` in the same change. Two were read and held back because
-the table cannot say what they do: Liberty gives a different window online and
-in store, and Dyson a different one for different products. One window per shop,
-plus an online clock, is what a row holds. Brands that other shops also sell
-(Nike, Clarks, AllSaints, White Stuff, Monsoon, Habitat, Go Outdoors) are marked
-`commonWord`, so a JD order for Nike trainers is not read as a Nike order: the
-window is the seller's. Marketplaces are left out for the same reason; on eBay,
-Etsy or Vinted the window is the seller's.
+`npm run check:candidates` reads each one's listed returns pages, or opens its
+homepage and follows its own Returns or Refunds links (staying on its own site,
+at most two clicks deep), and writes every sentence that states a period to
+`store/retailer-check/<date>-candidates.md`. A shop moves into `stores.ts` by
+hand, from those quotes, with its returns page added to `retailer-sources.json`
+in the same change. Some were read and held back because the table cannot say
+what they do: a different window online and in store (Liberty, New Look, Snow+Rock,
+Rixo, Fortnum & Mason), pages that contradict each other (Phase Eight, Ted Baker,
+Freemans), or a window in months (Charles Tyrwhitt). One window per shop, plus an
+online clock, is what a row holds. Shops whose only window is the legal 14 days
+are left to the legal clock kept already runs. Brands that other shops also sell
+(Nike, Clarks, LEGO, Bose, Levi's and others) are marked `commonWord`, so a JD
+order for Nike trainers is not read as a Nike order: the window is the seller's.
+Marketplaces are left out for the same reason; on eBay, Etsy or Vinted the
+window is the seller's.
 
 **The iOS privacy manifest is written, and so are the four project edits that
 make it more than a file.** It is the one place the App Store reads this app's
