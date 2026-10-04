@@ -27,7 +27,7 @@ export function CancelPanel({ receipt, today, onSent, onUnsent }: {
   if (!offered && !by) return null;
 
   return (
-    <div style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, marginTop: 12, padding: '15px 18px' }}>
+    <div style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, marginTop: 12, padding: '15px 18px' }}>
       <Pressable
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}

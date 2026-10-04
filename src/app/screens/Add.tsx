@@ -32,9 +32,34 @@ interface Props {
   updates: readonly PolicyUpdate[];
   onSave: (r: Receipt) => void;
   onUpgrade: () => void;
+  /** A way in chosen on the home screen, started as the screen opens. */
+  start?: AddStart;
+  /** Told once `start` has been acted on, so coming back here later does not start it again. */
+  onStarted?: () => void;
 }
 
-export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSave, onUpgrade }: Props) {
+/** A way in, drawn as a money app draws "Add money" options: a round icon, the words, a chevron. */
+const wayIn = {
+  display: 'flex', alignItems: 'center', gap: 14, padding: '13px 16px', textAlign: 'left' as const,
+  background: color.surfaceAlt, border: 0, borderRadius: radius.card, fontWeight: 600, fontSize: 15.5, color: color.ink,
+};
+const wayInIcon = { width: 42, height: 42, borderRadius: '50%', background: color.accentSoft, display: 'grid', placeItems: 'center', flexShrink: 0 } as const;
+const wayInChevron = { fontSize: 22, lineHeight: 1, color: color.muted, flexShrink: 0 } as const;
+
+/** A pencil, for typing a receipt in by hand. */
+function PencilGlyph() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+      <path d="M4 16l1-4 8.5-8.5a2.1 2.1 0 013 3L8 15l-4 1z" fill="none" stroke={color.accentInk} strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M12 5l3 3" fill="none" stroke={color.accentInk} strokeWidth="1.6" />
+    </svg>
+  );
+}
+
+/** How the Add screen can be opened already doing something: the camera, the file picker, the paste box. */
+export type AddStart = 'scan' | 'file' | 'paste';
+
+export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSave, onUpgrade, start, onStarted }: Props) {
   const route = shareRoute(isNative());
   const [text, setText] = useState(sharedText ?? '');
   const [parsed, setParsed] = useState<ParsedReceipt | null>(null);
@@ -278,6 +303,52 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
     }
   };
 
+  /** The camera itself in the iOS app, never the library; a file picker (or the phone's camera) on the web. */
+  const startScan = () => {
+    if (!isNative()) {
+      photoInput.current?.click();
+      return;
+    }
+    void (async () => {
+      try {
+        // Apple's document camera first: it finds the slip's edges and
+        // flattens it as it is taken, and Vision reads it on the phone.
+        // Where this build or this phone has none, the camera as before.
+        const { scanWithDocumentCamera } = await import('../native-scanner');
+        const doc = await scanWithDocumentCamera();
+        if (doc.kind === 'cancelled') return;
+        if (doc.kind === 'read') {
+          readDocumentScan(doc.text, doc.base64);
+          return;
+        }
+        const { takeReceiptPhoto } = await import('../scan');
+        const shot = await takeReceiptPhoto();
+        if (shot) await scanPhoto(shot.blob, shot.base64);
+      } catch {
+        setScanFailed('unreadable');
+      }
+    })();
+  };
+
+  /*
+   * A way in chosen on the home screen, started once as the screen opens.
+   * Within the tap that brought the person here, so a browser still counts
+   * the file picker as something they asked for. The ref, not a flag in
+   * state: a development remount runs this twice, and the picker must open
+   * once.
+   */
+  const started = useRef(false);
+  useEffect(() => {
+    if (!start || started.current) return;
+    started.current = true;
+    onStarted?.();
+    if (start === 'scan') startScan();
+    else if (start === 'file') fileInput.current?.click();
+    else document.getElementById('paste')?.focus();
+    // Once, on arrival: the screen's own buttons do the rest.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (!sharedText || readShare) return;
     setReadShare(true);
@@ -441,22 +512,22 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
         }}
         placeholder="Paste your order email here… e.g. 'Your Apple order · Total £129.00 · 25 Aug'"
         style={{
-          width: '100%', boxSizing: 'border-box', height: 120, border: `1px solid ${color.border}`,
-          borderRadius: radius.control, background: color.white, padding: 14,
-          fontFamily: font.figures, fontSize: 13, color: color.ink, resize: 'none',
+          width: '100%', boxSizing: 'border-box', height: 120, border: '1px solid transparent',
+          borderRadius: radius.card, background: color.surfaceAlt, padding: '14px 16px',
+          fontFamily: font.figures, fontSize: 14, color: color.ink, resize: 'none',
         }}
       />
 
       <Pressable
         className="k-primary"
         onClick={read}
-        style={{ marginTop: 12, padding: 13, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 15, boxShadow: shadow.raised }}
+        style={{ marginTop: 12, padding: 15, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 650, fontSize: 16, boxShadow: shadow.raised }}
       >
         Read it
       </Pressable>
 
       {error && (
-        <div className="k-fade" role="alert" style={{ display: 'flex', gap: 10, background: color.white, border: '1px solid rgba(217,45,32,0.4)', borderRadius: 12, padding: '14px 16px', marginTop: 14 }}>
+        <div className="k-fade" role="alert" style={{ display: 'flex', gap: 10, background: color.white, border: '1px solid rgba(229,55,43,0.4)', borderRadius: 12, padding: '14px 16px', marginTop: 14 }}>
           <Warning stroke={color.danger} />
           <div style={{ fontSize: 13, color: color.danger, lineHeight: 1.5, fontWeight: 600 }}>
             Couldn’t find a store or amount in that. Make sure the paste includes the shop’s name and a £ total — or scan the paper receipt, or type it in yourself below.
@@ -465,7 +536,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       )}
 
       {quotaFull && (
-        <div style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, padding: 18, marginTop: 14, boxShadow: shadow.raised }}>
+        <div style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, padding: 18, marginTop: 14, boxShadow: shadow.raised }}>
           <div style={{ fontWeight: 600, fontSize: 15 }}>That’s your {FREE_TIER_LIMIT} free receipts</div>
           <div style={{ fontSize: 13, color: color.body, lineHeight: 1.55, marginTop: 6 }}>
             Kept has tracked {trackedTotal} for free. Return something you are already tracking, or mark one you are keeping, and a slot frees up —
@@ -482,7 +553,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       )}
 
       {parsed && (
-        <div className="k-fade" style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, padding: 18, marginTop: 16, boxShadow: shadow.raised }}>
+        <div className="k-fade" style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, padding: 18, marginTop: 16, boxShadow: shadow.raised }}>
           <div style={{ fontFamily: font.figures, fontSize: 11, letterSpacing: 0, color: color.accentInk, fontWeight: 600 }}>
             {typedIn ? 'Type it in' : scannedText !== null && text === scannedText ? (readFrom === 'file' ? 'Read from your file' : 'Read from your photo') : 'Found in your paste'}
           </div>
@@ -781,45 +852,18 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
         }}
       />
       <Pressable
-        className="k-row-white k-secondary"
-        onClick={() => {
-          // The camera itself in the iOS app, never the library; a file
-          // picker (or the phone's camera) on the web.
-          if (!isNative()) {
-            photoInput.current?.click();
-            return;
-          }
-          void (async () => {
-            try {
-              // Apple's document camera first: it finds the slip's edges and
-              // flattens it as it is taken, and Vision reads it on the phone.
-              // Where this build or this phone has none, the camera as before.
-              const { scanWithDocumentCamera } = await import('../native-scanner');
-              const doc = await scanWithDocumentCamera();
-              if (doc.kind === 'cancelled') return;
-              if (doc.kind === 'read') {
-                readDocumentScan(doc.text, doc.base64);
-                return;
-              }
-              const { takeReceiptPhoto } = await import('../scan');
-              const shot = await takeReceiptPhoto();
-              if (shot) await scanPhoto(shot.blob, shot.base64);
-            } catch {
-              setScanFailed('unreadable');
-            }
-          })();
-        }}
+        className="k-row-white"
+        onClick={startScan}
         disabled={scanning !== null}
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16,
-          background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.control,
-          fontWeight: 600, fontSize: 15, cursor: scanning !== null ? 'progress' : 'pointer',
-        }}
+        style={{ ...wayIn, cursor: scanning !== null ? 'progress' : 'pointer' }}
       >
-        <CameraGlyph />
-        {scanning === null
-          ? 'Scan a paper receipt'
-          : `${lookingAgain ? 'Having another look' : 'Reading your receipt'}… ${Math.round(scanning * 100)}%`}
+        <span style={wayInIcon}><CameraGlyph size={20} stroke={color.accentInk} /></span>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          {scanning === null
+            ? 'Scan a paper receipt'
+            : `${lookingAgain ? 'Having another look' : 'Reading your receipt'}… ${Math.round(scanning * 100)}%`}
+        </span>
+        <span aria-hidden="true" style={wayInChevron}>›</span>
       </Pressable>
       <div role="status" aria-live="polite" style={{ fontSize: 12.5, color: scanFailed ? color.danger : color.muted, textAlign: 'center', marginTop: 8, lineHeight: 1.5 }}>
         {scanFailed === 'offline'
@@ -849,17 +893,14 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
         }}
       />
       <Pressable
-        className="k-row-white k-secondary"
+        className="k-row-white"
         onClick={() => fileInput.current?.click()}
         disabled={readingFile || scanning !== null}
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16, marginTop: 12,
-          background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.control,
-          fontWeight: 600, fontSize: 15, cursor: readingFile ? 'progress' : 'pointer',
-        }}
+        style={{ ...wayIn, marginTop: 12, cursor: readingFile ? 'progress' : 'pointer' }}
       >
-        <ReceiptGlyph size={20} />
-        {readingFile ? 'Reading your file…' : 'Open a PDF or saved email'}
+        <span style={wayInIcon}><ReceiptGlyph size={20} stroke={color.accentInk} /></span>
+        <span style={{ flex: 1, minWidth: 0 }}>{readingFile ? 'Reading your file…' : 'Open a PDF or saved email'}</span>
+        <span aria-hidden="true" style={wayInChevron}>›</span>
       </Pressable>
       <div role="status" aria-live="polite" style={{ fontSize: 12.5, color: fileFailed ? color.danger : color.muted, textAlign: 'center', marginTop: 8, lineHeight: 1.5 }}>
         {fileFailed === 'too-big'
@@ -874,11 +915,13 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       {/* No email and no paper — a market stall, a receipt that went in the
           bin, an order the inbox never kept. The same card, blank. */}
       <Pressable
-        className="k-row-white k-secondary"
+        className="k-row-white"
         onClick={typeItIn}
-        style={{ marginTop: 12, padding: 13, textAlign: 'center', background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 15 }}
+        style={{ ...wayIn, marginTop: 12 }}
       >
-        Type it in yourself
+        <span style={wayInIcon}><PencilGlyph /></span>
+        <span style={{ flex: 1, minWidth: 0 }}>Type it in yourself</span>
+        <span aria-hidden="true" style={wayInChevron}>›</span>
       </Pressable>
 
       {/* The three steps are a promise about the device holding them, and it

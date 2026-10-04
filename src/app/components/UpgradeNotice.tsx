@@ -41,7 +41,7 @@ export function UpgradeNotice({ onUnlock, onCancel }: { onUnlock: () => void; on
     <div
       style={{
         position: 'fixed', inset: 0, zIndex: 60, display: 'flex', alignItems: 'flex-end',
-        justifyContent: 'center', background: 'rgba(20,22,26,0.55)', padding: 16,
+        justifyContent: 'center', background: 'rgba(10,10,18,0.55)', padding: 16,
       }}
       onClick={onCancel}
     >

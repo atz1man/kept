@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { category, color, font, radius, shadow } from '../../tokens';
+import { category, color, font, gradient, radius, shadow } from '../../tokens';
 import { winCardLine } from '../win-card';
 import { money, type Pence } from '../../lib/money';
 import { LogoChecked } from '../components/Icons';
@@ -42,7 +42,8 @@ interface Props {
  * moment belongs to the same app rather than to a confetti library.
  */
 const BURST = (() => {
-  const fills = [color.accent, category.audio.ink, category.kitchen.ink, category.clothing.ink, category.beauty.ink, category.furniture.ink];
+  // The category TINTS, on the hero's gradient: the light half of each pair is what reads on indigo.
+  const fills = [color.white, category.audio.tint, category.kitchen.tint, category.clothing.tint, category.beauty.tint, category.furniture.tint];
   return Array.from({ length: 10 }, (_, i) => {
     const a = (i / 10) * Math.PI * 2;
     const r = i % 2 ? 40 : 58;
@@ -62,7 +63,10 @@ export function Celebrate({ amount, cost, store, inTime, recovered, shared, line
     // and never shrinks below its content.
     <div className="k-fade" style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', padding: `6px 20px ${undoShowing ? 196 : 104}px` }}>
       <div style={{ flex: '1 0 auto', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-        <div style={{ background: color.white, color: color.ink, borderRadius: radius.heroLg, padding: '28px 24px', border: `1px solid ${color.borderHair}`, boxShadow: shadow.raisedLg, position: 'relative', overflow: 'hidden' }}>
+        {/* The money arriving, drawn as the home screen draws the balance: the
+            hero's gradient, declared at its lightest stop so the contrast
+            sweep measures every word here where white is weakest. */}
+        <div style={{ backgroundColor: color.heroEnd, backgroundImage: gradient.hero, color: color.white, borderRadius: radius.heroLg, padding: '28px 24px', boxShadow: shadow.lift, position: 'relative', overflow: 'hidden' }}>
           <span style={{ position: 'relative', display: 'inline-block' }}>
             <span className="k-pop" style={{ display: 'inline-block' }}><LogoChecked /></span>
             {BURST.map(({ dx, dy, fill }, i) => (
@@ -78,21 +82,21 @@ export function Celebrate({ amount, cost, store, inTime, recovered, shared, line
               />
             ))}
           </span>
-          <h1 tabIndex={-1} style={{ fontSize: 14, color: color.muted, fontWeight: 600, margin: '14px 0 0' }}>
+          <h1 tabIndex={-1} style={{ fontSize: 14.5, color: color.onHeroSoft, fontWeight: 600, margin: '14px 0 0' }}>
             Money back
           </h1>
-          <div style={{ fontFamily: font.figures, fontSize: 52, fontWeight: 600, letterSpacing: '-2px', color: color.accentInk, marginTop: 4 }}>
+          <div style={{ fontFamily: font.figures, fontSize: 56, fontWeight: 700, letterSpacing: '-0.05em', color: color.white, marginTop: 4, lineHeight: 1.05 }}>
             {money(amount)}
           </div>
           {amount !== cost && (
-            <div style={{ fontFamily: font.figures, fontSize: 13.5, color: color.muted, marginTop: 2 }}>of the {money(cost)} it cost</div>
+            <div style={{ fontFamily: font.figures, fontSize: 13.5, color: color.onHeroSoft, marginTop: 2 }}>of the {money(cost)} it cost</div>
           )}
-          <div style={{ fontSize: 15, color: color.body, marginTop: 8 }}>
+          <div style={{ fontSize: 15.5, fontWeight: 500, color: color.white, marginTop: 10 }}>
             {winCardLine(store, inTime)}
           </div>
-          <div style={{ borderTop: `1px solid ${color.borderHair}`, marginTop: 20, paddingTop: 14, display: 'flex', justifyContent: 'space-between', fontFamily: font.figures, fontSize: 13 }}>
-            <span style={{ color: color.muted }}>Kept back so far</span>
-            <span style={{ color: color.accentInk, fontWeight: 600 }}>{money(recovered)}</span>
+          <div style={{ borderTop: `1px solid ${color.onInkBorderStrong}`, marginTop: 20, paddingTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontFamily: font.figures, fontSize: 13.5 }}>
+            <span style={{ color: color.onHeroSoft }}>Kept back so far</span>
+            <span style={{ color: color.white, fontWeight: 700, fontSize: 16 }}>{money(recovered)}</span>
           </div>
         </div>
         {/* Before the share, not after it: the figure on the card is the one

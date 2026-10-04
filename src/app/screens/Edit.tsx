@@ -81,7 +81,7 @@ export function Edit({ receipt, today, onSave, onCancel }: Props) {
         Fix anything the paste got wrong — or give it a name you will recognise later.
       </p>
 
-      <div style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, padding: '4px 18px 20px', marginTop: 12 }}>
+      <div style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, padding: '4px 18px 20px', marginTop: 12 }}>
         <Field id="e-store" label="Shop" error={errors.store} hint="A shop we know brings its policy and window with it.">
           {(p) => (
             <>

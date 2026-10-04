@@ -33,9 +33,9 @@ describe('reading a PNG somebody else encoded', () => {
 
   it('finds the rounded-rectangle the source SVG describes', () => {
     /*
-     * icon.svg is `<rect width=512 height=512 rx=112 fill=#1F6B4E>` on a
+     * icon.svg is `<rect width=512 height=512 rx=112 fill=url(#tile)>`, an indigo gradient, on a
      * transparent ground. So every CORNER is outside the curve and must be
-     * transparent, and every EDGE MIDPOINT is inside it and must be opaque green.
+     * transparent, and every EDGE MIDPOINT is inside it and must be opaque indigo.
      * Garbage from a mis-unfiltered scanline satisfies neither, and — unlike a
      * single spot check — it cannot satisfy them by luck either, because the
      * two sets have to come out opposite.
@@ -46,7 +46,7 @@ describe('reading a PNG somebody else encoded', () => {
     for (const [x, y] of [[256, 0], [256, 511], [0, 256], [511, 256]]) {
       const px = pixelAt(icon, x, y);
       expect(px[3], `edge ${x},${y} alpha`).toBe(255);
-      expect(px[1] - px[0] > 40 && px[1] - px[2] > 15, `edge ${x},${y} was ${px}, not the tile's green`).toBe(true);
+      expect(px[2] - px[1] > 100 && px[2] - px[0] > 60, `edge ${x},${y} was ${px}, not the tile's indigo`).toBe(true);
     }
   });
 

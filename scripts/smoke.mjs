@@ -986,6 +986,41 @@ for (const cancel of [false, true]) {
 }
 
 /*
+ * The quick actions under the balance each start the Add screen doing the
+ * thing they name, within the same tap — so a browser still counts the file
+ * picker as something the person asked for — and only once: coming back to
+ * Add later from the tab bar does not open a picker nobody asked for.
+ */
+{
+  const qCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const qp = await qCtx.newPage();
+  await qp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await qp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  const chooserFrom = async (name) => {
+    const chooser = qp.waitForEvent('filechooser', { timeout: 3000 }).catch(() => null);
+    await qp.getByRole('button', { name }).click();
+    const c = await chooser;
+    return c ? await c.element().evaluate((el) => `${el.id}|${el.accept}`) : null;
+  };
+  const scan = await chooserFrom('Scan a receipt');
+  await qp.getByRole('button', { name: 'Receipts', exact: true }).click();
+  const upload = await chooserFrom('Upload a PDF or email');
+  await qp.getByRole('button', { name: 'Receipts', exact: true }).click();
+  await qp.getByRole('button', { name: 'Paste an order email' }).click();
+  await qp.waitForTimeout(200);
+  const pasteFocused = await qp.evaluate(() => document.activeElement?.id === 'paste');
+  // Back to Add from the tab bar: no picker this time.
+  await qp.getByRole('button', { name: 'Receipts', exact: true }).click();
+  const again = qp.waitForEvent('filechooser', { timeout: 1500 }).then(() => true).catch(() => false);
+  await qp.getByRole('button', { name: 'Add a receipt' }).click();
+  const reopened = await again;
+  results['each quick action starts Add doing what it says, once'] =
+    scan === 'add-photo|image/*' && /^add-file\|.*application\/pdf/.test(upload ?? '') && pasteFocused && !reopened;
+  if (!results['each quick action starts Add doing what it says, once']) problems.push(`quick actions: ${JSON.stringify({ scan, upload, pasteFocused, reopened })}`);
+  await qCtx.close();
+}
+
+/*
  * Store credit. A return that ended in credit rather than money had no way
  * to be said, and credit that lapses unspent is money lost as surely as a
  * missed window. It can be marked, dated from the credit note, and taken back.
@@ -2574,7 +2609,7 @@ results['a delivery date in the paste is read, not asked for'] =
    * page itself holds, rather than against a number written here that would go
    * stale with the seed.
    */
-  const footer = /(£[\d,]+\.\d\d) still returnable/.exec(shown);
+  const footer = /(£[\d,]+\.\d\d)/.exec(await backlogPage.locator('[data-balance="returnable"]').innerText().catch(() => ''));
   const sums = await backlogPage.evaluate(() => {
     // Real receipts only: the samples stop counting towards a total the moment
     // a real receipt exists (`countsAsMoney`), and there are two here.

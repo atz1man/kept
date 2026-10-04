@@ -17,7 +17,7 @@ import { SaveFailedBanner } from './components/SaveFailedBanner';
 import { TabBar } from './components/TabBar';
 import { UndoBar } from './components/UndoBar';
 import { UpgradeNotice } from './components/UpgradeNotice';
-import { Add } from './screens/Add';
+import { Add, type AddStart } from './screens/Add';
 import { Celebrate } from './screens/Celebrate';
 import { ClaimPack } from './screens/ClaimPack';
 import { Detail } from './screens/Detail';
@@ -253,6 +253,8 @@ export function App() {
    */
   const firstPaint = useRef(true);
   const [announced, setAnnounced] = useState('');
+  /** A way into the Add screen chosen on home (Scan, Upload, Paste), held until Add has acted on it. */
+  const [addStart, setAddStart] = useState<AddStart | undefined>(undefined);
   useEffect(() => {
     if (firstPaint.current) {
       firstPaint.current = false;
@@ -425,7 +427,10 @@ export function App() {
               : undefined
           }
           onClearSamples={() => dispatch({ type: 'clear-samples' })}
-          onAdd={() => dispatch({ type: 'go', screen: 'add' })}
+          onAdd={(start) => {
+            setAddStart(start);
+            dispatch({ type: 'go', screen: 'add' });
+          }}
           onWatch={() => dispatch({ type: 'go', screen: 'watch' })}
         />
       )}
@@ -489,6 +494,8 @@ export function App() {
           updates={state.updates}
           onSave={(receipt) => dispatch({ type: 'add', receipt })}
           onUpgrade={() => dispatch({ type: 'upgrade-ask' })}
+          start={addStart}
+          onStarted={() => setAddStart(undefined)}
         />
       )}
 

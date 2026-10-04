@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { category, color, font, radius, shadow } from '../../tokens';
+import { color, font, radius, shadow } from '../../tokens';
 import { addDays, daysBetween, fmtDateLong, fmtDatesTogether, fromISODate } from '../../lib/dates';
 import { firstToClose, firstToCloseLine, LEGAL_DISCLAIMER, legalRights } from '../../lib/legal';
 import { REFUND_CHASE_DAYS } from '../../lib/alerts';
@@ -9,7 +9,8 @@ import type { Receipt } from '../../lib/types';
 import { clockFor, findStore, shopCheckedOn, windowChecked } from '../../lib/stores';
 import { returnsPageFor } from '../../lib/returns-pages';
 import { urgency, windowRemaining } from '../../lib/urgency';
-import { CatIcon, ChevronLeft, ReceiptGlyph, Warning } from '../components/Icons';
+import { ChevronLeft, ReceiptGlyph, Warning } from '../components/Icons';
+import { Avatar } from '../components/Avatar';
 import { Pressable } from '../components/Pressable';
 import { ReceiptPhoto } from '../components/ReceiptPhoto';
 import { CancelPanel } from '../components/CancelPanel';
@@ -95,7 +96,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
   // is coming up, ink otherwise; grey once settled.
   const ringColor = settled
     ? color.muted
-    : d.expired ? color.danger : u.level === 'critical' ? color.danger : u.level === 'soon' ? color.accent : color.ink;
+    : d.expired ? color.danger : u.level === 'critical' ? color.danger : color.accent;
 
   const dispatchDiffers = receipt.windowStartsOn && receipt.windowStartsOn !== receipt.purchasedOn;
   // The table, not the receipt: which clock a shop runs is not something a
@@ -149,53 +150,37 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
         </Pressable>
       </div>
 
-      <div style={{ background: color.white, color: color.ink, borderRadius: radius.hero, padding: '18px 18px', border: `1px solid ${color.borderHair}`, boxShadow: shadow.raised }}>
-        {/*
-          * The amount gets its own line rather than the name getting none.
-          *
-          * A price is one unbreakable token, so its min-content width is the
-          * whole of "£1,299,999.99" — and the name column beside it carries
-          * `minWidth: 0`, which is what lets a flex child be squeezed below
-          * the width of its own longest word. Rendered at 320px with a browser
-          * minimum font size of 20px, that is exactly what happened: the item
-          * name came out one word per line, eleven lines of it, beside a price
-          * at its full width.
-          *
-          * Wrapping the row is the whole fix. Where both fit they sit side by
-          * side as before; where they do not, the price drops below instead of
-          * taking the room out of the name. `60%` is the basis rather than a
-          * pixel floor because the pressure here is the ratio between two
-          * pieces of text, not the size of the screen.
-          */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ minWidth: 0, flex: '1 1 60%', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-           <span
-             aria-hidden="true"
-             style={{ width: 42, height: 42, flexShrink: 0, borderRadius: 11, display: 'grid', placeItems: 'center', background: category[receipt.cat].tint }}
-           >
-             <CatIcon cat={receipt.cat} stroke={category[receipt.cat].ink} />
-           </span>
-           <div style={{ minWidth: 0 }}>
-            <h1 tabIndex={-1} style={{ fontSize: 21, fontWeight: 600, margin: 0 }}>{receipt.store}</h1>
-            <div style={{ fontSize: 14, color: color.muted, marginTop: 3 }}>{receipt.item}</div>
-            {receipt.orderRef && (
-              <div style={{ fontSize: 12.5, color: color.muted, marginTop: 3, fontFamily: font.figures, userSelect: 'text', overflowWrap: 'anywhere' }}>
-                Order {receipt.orderRef}
-              </div>
-            )}
-           </div>
-          </div>
-          <div style={{ fontFamily: font.figures, fontSize: 26, fontWeight: 600, color: color.ink }}>
-            {money(receipt.amount)}
-          </div>
+      {/*
+        * The purchase, as a statement opens one payment: who, what, and the
+        * money, centred and big, before any of the detail.
+        *
+        * Stacked rather than side by side, which also ends a layout fault the
+        * side-by-side version had to work around: a price is one unbreakable
+        * token, so beside the name it took its full width and squeezed the
+        * item to one word per line at 320px with a large minimum font size.
+        * Stacked, each has the whole width.
+        */}
+      <div style={{ textAlign: 'center', padding: '4px 8px 18px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Avatar store={receipt.store} cat={receipt.cat} size={64} />
+        <h1 tabIndex={-1} style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', margin: '12px 0 0', overflowWrap: 'anywhere' }}>{receipt.store}</h1>
+        <div style={{ fontSize: 14.5, color: color.muted, marginTop: 3, overflowWrap: 'anywhere' }}>{receipt.item}</div>
+        <div style={{ fontFamily: font.figures, fontSize: 40, fontWeight: 700, letterSpacing: '-0.045em', color: color.ink, marginTop: 10, lineHeight: 1.05 }}>
+          {money(receipt.amount)}
         </div>
+        {receipt.orderRef && (
+          <div style={{ fontSize: 12.5, color: color.muted, marginTop: 6, fontFamily: font.figures, userSelect: 'text', overflowWrap: 'anywhere' }}>
+            Order {receipt.orderRef}
+          </div>
+        )}
+      </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginTop: 20 }}>
+      <div style={{ background: color.white, color: color.ink, borderRadius: radius.cardLg, padding: '18px 18px', boxShadow: shadow.raisedLg }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
           <div style={{ position: 'relative', width: 92, height: 92, flexShrink: 0 }}>
             <svg width="92" height="92" viewBox="0 0 92 92" style={{ transform: 'rotate(-90deg)' }} aria-hidden="true">
-              <circle cx="46" cy="46" r="40" fill="none" stroke={color.surfaceAlt} strokeWidth="5" />
+              <circle cx="46" cy="46" r="40" fill="none" stroke={color.surfaceDeep} strokeWidth="7" />
               <circle
-                cx="46" cy="46" r="40" fill="none" stroke={ringColor} strokeWidth="5" strokeLinecap="round"
+                cx="46" cy="46" r="40" fill="none" stroke={ringColor} strokeWidth="7" strokeLinecap="round"
                 strokeDasharray={RING_CIRCUMFERENCE} strokeDashoffset={ringOffset}
               />
             </svg>
@@ -203,7 +188,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
               {/* Coloured like the count on the home hero, which has always
                   done this. Here the ring's stroke was the only urgency
                   signal on the screen, and on the last day it was a hairline. */}
-              <div style={{ fontFamily: font.figures, fontSize: settled || d.expired ? 15 : 22, fontWeight: 600, lineHeight: 1, color: ringColor }}>
+              <div style={{ fontFamily: font.figures, fontSize: settled || d.expired ? 15 : 26, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1, color: ringColor }}>
                 {receipt.status === 'returned' ? 'back' : receipt.status === 'kept' ? 'kept' : receipt.status === 'sent' ? 'sent' : d.expired ? 'closed' : d.daysLeft}
               </div>
               {!settled && !d.expired && <div style={{ fontSize: 11, color: color.muted, marginTop: 2 }}>days left</div>}
@@ -213,7 +198,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
             <div style={{ fontSize: 13, color: color.muted, fontWeight: 600 }}>
               {settled ? 'The window ran to' : d.expired ? 'Window closed' : 'Return by'}
             </div>
-            <div style={{ fontFamily: font.figures, fontSize: 24, fontWeight: 600, marginTop: 4 }}>
+            <div style={{ fontFamily: font.figures, fontSize: 26, fontWeight: 700, letterSpacing: '-0.03em', marginTop: 4 }}>
               {deadlineText}
             </div>
             <div style={{ fontSize: 13, color: color.muted, marginTop: 6 }}>
@@ -231,7 +216,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
         )}
       </div>
 
-      <div style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, marginTop: 12 }}>
+      <div style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, marginTop: 14 }}>
         <div style={{ padding: '16px 18px 14px' }}>
           <ReceiptPhoto receiptId={receipt.id} />
 
@@ -421,7 +406,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
         onClick={onPack}
         style={{
           display: 'flex', alignItems: 'center', gap: 12, marginTop: 12, padding: '14px 16px', textAlign: 'left',
-          background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg,
+          background: color.surfaceAlt, borderRadius: radius.cardLg,
         }}
       >
         <span aria-hidden="true" style={{ width: 38, height: 38, flexShrink: 0, borderRadius: 10, display: 'grid', placeItems: 'center', background: color.accentSoft }}>
@@ -721,7 +706,7 @@ function RefundChasePanel({ receipt, today }: { receipt: Receipt; today: Date })
     <section
       aria-labelledby="refund-late"
       data-refund-chase
-      style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, marginTop: 12, padding: '15px 18px' }}
+      style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, marginTop: 12, padding: '15px 18px' }}
     >
       <h2 id="refund-late" style={{ margin: 0, fontSize: 15, fontWeight: 600, color: color.bodyStrong }}>
         The refund is late

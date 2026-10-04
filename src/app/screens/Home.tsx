@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { category, color, font, radius, shadow } from '../../tokens';
+import { color, font, gradient, radius, shadow } from '../../tokens';
 import { addDays, fmtDate, fmtDateNear, fromISODate } from '../../lib/dates';
 import { money, sumPence } from '../../lib/money';
 import { awaitingArrival, bucket, settledRows, coverLine, derive, refundOf, everyReturnInTime, countsAsMoney, stillReturnablePence, timelineDots } from '../../lib/receipts';
@@ -8,7 +8,9 @@ import { midSentence } from '../../lib/words';
 import { TAGLINE_LEAD } from '../../lib/brand';
 import { heroCount, urgency, windowRemaining } from '../../lib/urgency';
 import type { Receipt } from '../../lib/types';
-import { ArrowRight, CatIcon, Logo, LogoDashed, Tick, Wordmark } from '../components/Icons';
+import { ArrowRight, BellGlyph, CameraGlyph, Logo, LogoDashed, PlusGlyph, ReceiptGlyph, Tick, Wordmark } from '../components/Icons';
+import { Avatar } from '../components/Avatar';
+import type { AddStart } from './Add';
 import { Pressable } from '../components/Pressable';
 import { ReceiptRow } from '../components/ReceiptRow';
 import { refundChase } from '../../lib/refund-chase';
@@ -32,14 +34,16 @@ interface Props {
   onKeepClosed: (ids: string[]) => void;
   /** Present when the iPhone app should explain its reminders before iOS asks. */
   reminders?: { onYes: () => void; onNo: () => void };
-  onAdd: () => void;
+  /** To the Add screen; with a way in, it starts there — the camera, the file picker, the paste box. */
+  onAdd: (start?: AddStart) => void;
   onWatch: () => void;
   /** Takes the five samples off the list, leaving the person's own receipts. */
   onClearSamples: () => void;
 }
 
+/** A section's heading, as a statement heads a month: big and black, red only where a deadline is. */
 const sectionLabel = (c: string) => ({
-  fontSize: 13, fontWeight: 600, color: c, margin: '22px 4px 8px', letterSpacing: '-0.005em',
+  fontSize: 18, fontWeight: 700, color: c === color.muted ? color.ink : c, margin: '26px 4px 10px', letterSpacing: '-0.02em',
 });
 
 export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onOpen, onSwipe, onKeepClosed, reminders, onAdd, onWatch, onClearSamples, undoShowing = false }: Props) {
@@ -111,7 +115,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
         </h1>
         {/* nowrap + no shrink: at 320px this was breaking to "ON-" / "DEVICE".
             The masthead beside it wraps instead, which it does gracefully. */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500, color: color.muted, whiteSpace: 'nowrap', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: color.bodyStrong, whiteSpace: 'nowrap', flexShrink: 0, background: color.surfaceAlt, borderRadius: radius.pill, padding: '7px 11px' }}>
           <span style={{ width: 6, height: 6, borderRadius: 999, background: color.accent }} />
           On this phone
         </div>
@@ -149,12 +153,22 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
         </section>
       )}
 
+      {!empty && !searching && (
+        <Balance
+          returnable={stillReturnable}
+          keptBack={keptBack}
+          live={active.filter(counts).length}
+          dueThisWeek={[...urgent, ...later].filter((r) => counts(r) && derive(r, today).daysLeft <= 7).length}
+          samples={!receipts.some((r) => !r.demo)}
+        />
+      )}
+
+      {!searching && <QuickActions onAdd={onAdd} onWatch={onWatch} />}
+
       {next && (
         <HeroCard
           receipt={next}
           today={today}
-          stillReturnable={money(stillReturnable)}
-          keptBack={money(keptBack)}
           onOpen={() => onOpen(next.id)}
         />
       )}
@@ -201,8 +215,8 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
           className="k-banner k-fade"
           onClick={onWatch}
           style={{
-            display: 'flex', alignItems: 'center', gap: 10, background: color.white,
-            border: `1px solid ${color.borderHair}`, borderRadius: radius.card, padding: '12px 14px', marginTop: 10,
+            display: 'flex', alignItems: 'center', gap: 10, background: color.accentSoft,
+            borderRadius: radius.card, padding: '13px 16px', marginTop: 12,
           }}
         >
           <span className="k-pulse" style={{ width: 7, height: 7, borderRadius: 999, background: color.accent, flexShrink: 0 }} />
@@ -392,7 +406,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
                 <Pressable
                   onClick={() => onOpen(r.id)}
                   aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${r.exchanged ? 'swapped for another' : `${money(refundOf(r))} ${r.credit ? 'in credit' : 'back'}, returned`}`}
-                  style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 15, background: color.surfaceAlt, border: '1px solid rgba(20,22,26,0.06)', borderRadius: radius.card }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 15, background: color.surfaceAlt, border: '1px solid rgba(10,10,18,0.06)', borderRadius: radius.card }}
                 >
                   <div style={{ width: 40, height: 40, borderRadius: 10, background: color.accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <Tick />
@@ -437,7 +451,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
                 <Pressable
                   onClick={() => onOpen(r.id)}
                   aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${money(r.amount)}, ${cover ? `${cover}, ` : ''}keeping it`}
-                  style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 15, background: color.surfaceAlt, border: '1px solid rgba(20,22,26,0.06)', borderRadius: radius.card }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 15, background: color.surfaceAlt, border: '1px solid rgba(10,10,18,0.06)', borderRadius: radius.card }}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, fontSize: 15, color: color.body, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.store}</div>
@@ -478,9 +492,7 @@ function ShowAll({ list, total, hidden, open, onToggle }: { list: string; total:
   );
 }
 
-function HeroCard({ receipt, today, stillReturnable, keptBack, onOpen }: {
-  receipt: Receipt; today: Date; stillReturnable: string; keptBack: string; onOpen: () => void;
-}) {
+function HeroCard({ receipt, today, onOpen }: { receipt: Receipt; today: Date; onOpen: () => void }) {
   const d = derive(receipt, today);
   const { count, word } = heroCount(d.daysLeft);
   const accent = d.daysLeft <= 3 ? color.danger : color.ink;
@@ -502,35 +514,33 @@ function HeroCard({ receipt, today, stillReturnable, keptBack, onOpen }: {
       className="k-fade"
       onClick={onOpen}
       style={{
-        // A white card on the page, not the ink slab it was: the number and
-        // the date carry the urgency, in red when it is close.
-        background: color.white, borderRadius: radius.hero, padding: '18px 18px 14px',
-        position: 'relative', overflow: 'hidden', color: color.ink, border: `1px solid ${color.borderHair}`,
-        boxShadow: shadow.raised, textAlign: 'left',
+        // A white card floating on the page: the money is said once, big, in
+        // the hero above; this is the one purchase to act on, and its number
+        // and date carry the urgency, in red when it is close.
+        background: color.white, borderRadius: radius.cardLg, padding: '18px 18px 16px', marginTop: 16,
+        position: 'relative', overflow: 'hidden', color: color.ink,
+        boxShadow: shadow.raisedLg, textAlign: 'left',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ width: 7, height: 7, borderRadius: 999, background: d.daysLeft <= 3 ? color.dangerDot : color.accent }} />
-        <span style={{ fontSize: 12.5, color: color.muted, fontWeight: 500 }}>
+        <span style={{ fontSize: 13, color: color.muted, fontWeight: 600 }}>
           {closed ? 'Window closed' : 'Next to close'}
         </span>
-        {/* The kind of thing, in the colour its row in the list wears, so the
-            eye matches the card to the row below without reading either. */}
-        <span
-          aria-hidden="true"
-          style={{ marginLeft: 'auto', width: 34, height: 34, borderRadius: 9, display: 'grid', placeItems: 'center', background: category[receipt.cat].tint }}
-        >
-          <CatIcon cat={receipt.cat} stroke={category[receipt.cat].ink} />
+        {/* The shop, as its row in the list draws it, so the eye matches the
+            card to the row below without reading either. */}
+        <span style={{ marginLeft: 'auto' }}>
+          <Avatar store={receipt.store} cat={receipt.cat} size={40} />
         </span>
       </div>
       {/* No wrap: the count and the sentence share a baseline, and the
           sentence wraps inside its own column rather than dropping below a
           44px number and leaving it stranded on a line of its own. */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 8 }}>
-        <span style={{ fontFamily: font.figures, fontSize: 38, fontWeight: 600, letterSpacing: '-0.04em', color: accent, lineHeight: 1, flexShrink: 0 }}>
+        <span style={{ fontFamily: font.figures, fontSize: 44, fontWeight: 700, letterSpacing: '-0.05em', color: accent, lineHeight: 1, flexShrink: 0 }}>
           {count}
         </span>
-        <span style={{ fontSize: 15, fontWeight: 500, color: color.bodyStrong, lineHeight: 1.35 }}>
+        <span style={{ fontSize: 16, fontWeight: 600, color: color.bodyStrong, lineHeight: 1.3, letterSpacing: '-0.01em' }}>
           {word} {midSentence(receipt.item)}
         </span>
       </div>
@@ -545,10 +555,10 @@ function HeroCard({ receipt, today, stillReturnable, keptBack, onOpen }: {
           deadline in the colour the count is in. Decorative: the number and
           the date above already say it in words. */}
       {!closed && (
-        <div data-window-bar aria-hidden="true" style={{ height: 6, borderRadius: radius.pill, background: color.surfaceAlt, marginTop: 12, overflow: 'hidden' }}>
+        <div data-window-bar aria-hidden="true" style={{ height: 8, borderRadius: radius.pill, background: color.surfaceDeep, marginTop: 14, overflow: 'hidden' }}>
           <div
             style={{
-              height: '100%', borderRadius: radius.pill, background: d.daysLeft <= 3 ? color.dangerDot : color.accent,
+              height: '100%', borderRadius: radius.pill, background: d.daysLeft <= 3 ? color.dangerDot : gradient.accent,
               width: `${Math.max(4, Math.round((1 - windowRemaining(d.daysLeft, receipt.windowDays)) * 100))}%`,
               transition: 'width .6s ease',
             }}
@@ -561,11 +571,97 @@ function HeroCard({ receipt, today, stillReturnable, keptBack, onOpen }: {
       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 14, color: color.accentInk, fontWeight: 600, fontSize: 14 }}>
         See what to do <ArrowRight stroke={color.accentInk} />
       </div>
-      <div style={{ borderTop: `1px solid ${color.borderHair}`, marginTop: 14, paddingTop: 11, display: 'flex', justifyContent: 'space-between', gap: 10, fontFamily: font.figures, fontSize: 12.5 }}>
-        <span style={{ color: color.muted }}>{stillReturnable} still returnable</span>
-        <span style={{ color: color.accentInk, fontWeight: 600 }}>{keptBack} kept back</span>
-      </div>
     </Pressable>
+  );
+}
+
+/** £1,234.56 as the two parts a balance is drawn in: pounds, and smaller pence. */
+function splitMoney(pence: number): [string, string] {
+  const shown = money(pence);
+  const dot = shown.lastIndexOf('.');
+  return dot === -1 ? [shown, ''] : [shown.slice(0, dot), shown.slice(dot)];
+}
+
+/**
+ * The balance: what is still returnable, said once and big, the way a bank
+ * app opens on what is in the account.
+ *
+ * The figure used to sit in the footer of the next-to-close card in 12.5px
+ * grey — the one number on the screen a person would want to be told first,
+ * set smallest. It is the same figure, from the same sum
+ * (`stillReturnablePence`); the agreement sweep reads it here, by
+ * `data-balance`, and checks it against the rows below.
+ */
+function Balance({ returnable, keptBack, live, dueThisWeek, samples }: {
+  returnable: number; keptBack: number; live: number; dueThisWeek: number; samples: boolean;
+}) {
+  const [pounds, pence] = splitMoney(returnable);
+  const chip = { fontSize: 12.5, fontWeight: 600, color: color.white, background: color.onHeroGlass, borderRadius: radius.pill, padding: '6px 11px', whiteSpace: 'nowrap' as const };
+  return (
+    <section
+      className="k-fade"
+      aria-label="Your money"
+      style={{
+        // The colour declared is the gradient's LIGHTEST stop, where white is
+        // weakest: the contrast sweep reads colours, not gradients, so every
+        // word here is measured at its worst case rather than against the page.
+        backgroundColor: color.heroEnd, backgroundImage: gradient.hero,
+        borderRadius: radius.hero, padding: '20px 20px 18px', color: color.white,
+        boxShadow: shadow.lift, position: 'relative', overflow: 'hidden',
+      }}
+    >
+      {/* Light on the glass: two soft discs, decorative. */}
+      <span aria-hidden="true" style={{ position: 'absolute', right: -60, top: -70, width: 200, height: 200, borderRadius: '50%', background: color.onHeroGlass, pointerEvents: 'none' }} />
+      <span aria-hidden="true" style={{ position: 'absolute', right: 40, top: 70, width: 120, height: 120, borderRadius: '50%', background: color.onHeroGlass, opacity: 0.5, pointerEvents: 'none' }} />
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <span style={{ fontSize: 13.5, fontWeight: 600, color: color.onHeroSoft }}>Still returnable</span>
+        {/* As every row says it: a figure about purchases nobody made is labelled. */}
+        {samples && <span style={chip}>Samples</span>}
+      </div>
+      <div data-balance="returnable" style={{ position: 'relative', fontFamily: font.figures, fontSize: 46, fontWeight: 700, letterSpacing: '-0.05em', lineHeight: 1.05, marginTop: 6 }}>
+        {pounds}
+        <span style={{ fontSize: 28, letterSpacing: '-0.03em' }}>{pence}</span>
+      </div>
+      <div style={{ position: 'relative', display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+        <span style={chip}>{live === 1 ? '1 receipt open' : `${live} receipts open`}</span>
+        {dueThisWeek > 0 && <span style={chip}>{dueThisWeek} due this week</span>}
+      </div>
+      <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, borderTop: `1px solid ${color.onInkBorderStrong}`, marginTop: 16, paddingTop: 12 }}>
+        <span style={{ fontSize: 13, fontWeight: 500, color: color.onHeroSoft }}>Kept back so far</span>
+        <span data-balance="kept-back" style={{ fontFamily: font.figures, fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em' }}>{money(keptBack)}</span>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The ways in, one tap from home, as round buttons under the balance — where
+ * a money app puts "Add money" and "Send". Each opens the Add screen already
+ * doing the thing: the camera, the file picker, the paste box.
+ */
+function QuickActions({ onAdd, onWatch }: { onAdd: (start?: AddStart) => void; onWatch: () => void }) {
+  const actions: { label: string; name: string; icon: React.ReactNode; go: () => void }[] = [
+    { label: 'Scan', name: 'Scan a receipt', icon: <CameraGlyph size={21} stroke={color.accentInk} />, go: () => onAdd('scan') },
+    { label: 'Upload', name: 'Upload a PDF or email', icon: <ReceiptGlyph size={20} stroke={color.accentInk} />, go: () => onAdd('file') },
+    { label: 'Paste', name: 'Paste an order email', icon: <PlusGlyph size={20} stroke={color.accentInk} />, go: () => onAdd('paste') },
+    { label: 'Watch', name: 'Watch shop policies', icon: <BellGlyph size={20} stroke={color.accentInk} />, go: onWatch },
+  ];
+  return (
+    <nav aria-label="Quick actions" data-quick-actions style={{ display: 'flex', justifyContent: 'space-between', gap: 6, margin: '18px 4px 2px' }}>
+      {actions.map((a) => (
+        <Pressable
+          key={a.label}
+          onClick={a.go}
+          aria-label={a.name}
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7, flex: 1, minWidth: 0, color: color.bodyStrong }}
+        >
+          <span className="k-soft" style={{ width: 54, height: 54, borderRadius: '50%', background: color.accentSoft, display: 'grid', placeItems: 'center', color: color.accentInk }}>
+            {a.icon}
+          </span>
+          <span style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{a.label}</span>
+        </Pressable>
+      ))}
+    </nav>
   );
 }
 

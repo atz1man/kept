@@ -212,7 +212,7 @@ try {
   results['the app launches with the network gone'] =
     launched &&
     (await page.getByText('Return deadlines, watched', { exact: true }).isVisible().catch(() => false)) &&
-    (await page.evaluate(() => document.fonts.check('700 16px "Instrument Sans"')).catch(() => false));
+    (await page.evaluate(() => document.fonts.check('700 16px "Geist"')).catch(() => false));
 
   await page.locator('li button').first().click().catch(() => {});
   await page.waitForTimeout(400);

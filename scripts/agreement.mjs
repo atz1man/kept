@@ -76,13 +76,15 @@ const readHero = () => page.evaluate(() => {
   const spans = [...card.querySelectorAll('span')];
   const count = spans.find((s) => /^[\d]+$|^Today$|^Gone$/.test(s.textContent.trim()));
   const line = [...card.querySelectorAll('div')].find((d) => /goes back by/.test(d.textContent));
-  const footer = [...card.querySelectorAll('span')].filter((s) => /still returnable|kept back/.test(s.textContent));
+  // The two totals live in the balance at the top of the screen, not on this
+  // card; each is its own named element, so nothing runs into it.
+  const figure = (name) => document.querySelector(`[data-balance="${name}"]`)?.textContent ?? null;
   return {
     days: count?.textContent.trim() ?? null,
     // The tail of its own element, so nothing downstream can run into it.
     deadline: (line?.textContent.match(/goes back by (.+)$/) ?? [])[1]?.trim() ?? null,
-    returnable: footer.find((s) => /still returnable/.test(s.textContent))?.textContent ?? null,
-    keptBack: footer.find((s) => /kept back/.test(s.textContent))?.textContent ?? null,
+    returnable: figure('returnable'),
+    keptBack: figure('kept-back'),
   };
 });
 const hero = await readHero();

@@ -38,9 +38,24 @@ describe('type is set from the tokens', () => {
     expect(files.length).toBeGreaterThan(15);
   });
 
+  /*
+   * Every family the stylesheet declares, and the ones it used to. Matched
+   * quoted or not: the first version of this looked only for the quoted
+   * form, and two SVGs named the face as `fontFamily="Instrument Sans,
+   * sans-serif"` — so when the typeface changed, those two kept asking for
+   * a font the app no longer shipped, and fell back to whatever the phone had.
+   */
+  const declared = [...readFileSync(join(SRC, 'styles.css'), 'utf8').matchAll(/font-family:\s*'([^']+)'/g)].map((m) => m[1]);
+  const families = [...new Set([...declared, 'Space Grotesk', 'Instrument Sans'])];
+
+  it('knows the family the stylesheet declares', () => {
+    expect(declared.length).toBeGreaterThan(0);
+  });
+
   it('names no typeface outside the tokens', () => {
+    const name = new RegExp(`\\b(?:${families.join('|')})\\b`, 'g');
     const offenders = files
-      .map((f) => ({ f: f.slice(SRC.length + 1), hits: [...readFileSync(f, 'utf8').matchAll(/'(Space Grotesk|Instrument Sans)'/g)] }))
+      .map((f) => ({ f: f.slice(SRC.length + 1), hits: [...readFileSync(f, 'utf8').matchAll(name)] }))
       .filter((x) => x.hits.length > 0)
       .map((x) => `${x.f} (${x.hits.length})`);
     expect(offenders).toEqual([]);

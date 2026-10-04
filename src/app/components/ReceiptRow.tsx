@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react';
-import { category, color, font } from '../../tokens';
+import { color, font } from '../../tokens';
 import { money } from '../../lib/money';
 import type { Receipt } from '../../lib/types';
 import type { Urgency } from '../../lib/urgency';
-import { CatIcon, Tick } from './Icons';
+import { Tick } from './Icons';
+import { Avatar } from './Avatar';
 
 /** Past this many pixels of leftward drag, releasing marks the receipt returned. */
 const COMMIT_PX = 80;
@@ -105,11 +106,13 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
         // would say it.
         aria-label={`${receipt.store}, ${receipt.item}${receipt.demo ? ' (sample)' : ''}${onItsWay ? ' (on its way)' : ''}, ${money(receipt.amount)}, ${urgency.label}`}
         style={{
-          display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px',
+          display: 'flex', alignItems: 'center', gap: 13, padding: '14px 16px',
           // A row in a grouped list (`.k-group`), not a card of its own: the
           // list is the card, rows are divided by a hairline, and urgency is
           // said in the red of the countdown rather than by lifting the row.
-          background: color.white,
+          // Opaque, in the card's own grey, so the swipe's backing stays
+          // hidden until the row is dragged off it.
+          background: color.surfaceAlt,
           border: 0,
           borderRadius: 0,
           position: 'relative',
@@ -118,15 +121,7 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
           touchAction: 'pan-y',
         }}
       >
-        <div
-          style={{
-            width: 36, height: 36, borderRadius: 9, background: category[receipt.cat].tint,
-            display: 'flex', alignItems: 'center',
-            justifyContent: 'center', flexShrink: 0,
-          }}
-        >
-          <CatIcon cat={receipt.cat} stroke={category[receipt.cat].ink} />
-        </div>
+        <Avatar store={receipt.store} cat={receipt.cat} />
 
         <div style={{ flex: 1, minWidth: 0 }}>
           {/* Wraps, and the name keeps a floor.
@@ -144,7 +139,7 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
                 still being clipped to one. */}
             {/* data-name is read by the layout sweep, which measures whether
                 anything beside this has squeezed it past reading. */}
-            <span data-name style={{ fontWeight: 600, fontSize: 15, letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: MIN_NAME_PX }}>
+            <span data-name style={{ fontWeight: 600, fontSize: 15.5, letterSpacing: '-0.015em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: MIN_NAME_PX }}>
               {receipt.store}
             </span>
             {policyChanged && (
@@ -181,7 +176,7 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
         </div>
 
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
-          <div style={{ fontFamily: font.figures, fontSize: 15, fontWeight: 550 }}>{money(receipt.amount)}</div>
+          <div style={{ fontFamily: font.figures, fontSize: 15.5, fontWeight: 650, letterSpacing: '-0.01em' }}>{money(receipt.amount)}</div>
           {/* Said in colour and in words, not in a pill: red and "2 days
               left" when it is close, the accent when it is coming up, grey
               when there is time. */}

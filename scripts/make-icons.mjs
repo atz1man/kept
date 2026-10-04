@@ -93,8 +93,8 @@ const shoot = async (source, size, background) => {
 
 const ICON = new URL('../ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png', import.meta.url);
 const TMP = new URL('../ios/App/App/Assets.xcassets/AppIcon.appiconset/.tmp.png', import.meta.url);
-writeFileSync(TMP, await shoot(iosIcon, 1024, '#1F6B4E'));
-writeOpaquePng(ICON, decodePng(TMP), [31, 107, 78]);
+writeFileSync(TMP, await shoot(iosIcon, 1024, '#4636E8'));
+writeOpaquePng(ICON, decodePng(TMP), [70, 54, 232]);
 rmSync(TMP);
 console.log(`AppIcon-512@2x.png 1024x1024 ${readFileSync(ICON).length}b, no alpha`);
 

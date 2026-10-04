@@ -283,7 +283,7 @@ export function Landing() {
 
       </main>
 
-      <footer style={{ borderTop: '1px solid rgba(20,22,26,0.1)', padding: 28 }}>
+      <footer style={{ borderTop: '1px solid rgba(10,10,18,0.1)', padding: 28 }}>
         <div style={{ maxWidth: 1160, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, color: color.muted, gap: 14, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Logo size={20} />

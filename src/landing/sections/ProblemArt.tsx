@@ -1,4 +1,4 @@
-import { color } from '../../tokens';
+import { color, font } from '../../tokens';
 
 /**
  * The three "problem" illustrations.
@@ -10,7 +10,7 @@ import { color } from '../../tokens';
  * money. Still a one-component swap when real photography exists.
  */
 const frame = { width: '100%', height: '100%', viewBox: '0 0 400 220', preserveAspectRatio: 'xMidYMid slice' } as const;
-const FONT = 'Instrument Sans, sans-serif';
+const FONT = font.ui;
 
 const bar = (x: number, y: number, w: number, strong = false) => (
   <rect x={x} y={y} width={w} height={strong ? 7 : 6} rx={3} fill={strong ? color.ink : color.muted} opacity={strong ? 0.75 : 0.3} />
