@@ -249,6 +249,62 @@ if (!/Deadline alerts/.test(settingsText)) {
 
 
 /*
+ * The iPhone's own scanner: Apple's document camera, read by Vision
+ * (packages/receipt-scanner). The bridge answers it with what Vision hands
+ * back for a till slip — each label and each figure its own piece, in no
+ * order, as fractions of a tall page — and the card must read the shop, the
+ * total and the date with no OCR run at all, and keep the page as proof.
+ * Then a cancelled scan: nothing read, nothing said, and the plain camera NOT
+ * opened in its place — cancelling is the person's answer.
+ */
+{
+  const row = (text, n, x, jitter = 0) => ({ text, x, width: Math.min(0.9 - x, text.length * 0.025), height: 0.012, y: 1 - 0.06 - n * 0.016 + jitter });
+  const pages = [{ width: 300, height: 900, jpeg: 'UEFHRQ==', lines: [
+    row('1,448.00', 6, 0.66, 0.001), row('TOTAL', 6, 0.08), row('Currys', 0, 0.4), row('Tottenham Court Rd', 1, 0.22),
+    row('LG OLED55C4 TV', 3, 0.08), row('1,299.00', 3, 0.66), row('CARE & REPAIR 3YR', 4, 0.08), row('149.00', 4, 0.7),
+    row('AMEX', 7, 0.08), row('1,448.00', 7, 0.66), row('24/09/2026 15:20', 9, 0.08),
+  ] }];
+  const dctx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  await answeringBridge(dctx, { documentScan: pages });
+  const dp = await dctx.newPage();
+  await dp.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
+  await dp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await dp.getByRole('button', { name: 'Add a receipt' }).click();
+  await dp.getByRole('button', { name: /Scan a paper receipt/ }).click();
+  const read = await dp.getByText('Read from your photo', { exact: true }).waitFor({ timeout: 15_000 }).then(() => true).catch(() => false);
+  const card = read ? await dp.locator('main').innerText() : '';
+  if (!read || !/Currys/.test(card) || !/£1,448\.00/.test(card) || !/24 Sep/.test(card)) {
+    failures.push({ what: 'the document camera’s reading did not make the card', saw: (card || await dp.locator('main').innerText()).slice(0, 240) });
+  }
+  if (read && !(await dp.getByRole('checkbox', { name: 'Keep the photo as proof of purchase' }).isChecked().catch(() => false))) {
+    failures.push({ what: 'the document camera’s page was not offered as proof of purchase', saw: '' });
+  }
+  if ((await dp.evaluate(() => window.__cameraShots)) !== 0) failures.push({ what: 'the plain camera opened although the document camera was there', saw: '' });
+  if (read) {
+    await dp.getByRole('button', { name: 'Save receipt' }).click();
+    await dp.waitForTimeout(600);
+    const kept = await dp.evaluate(() => Object.entries(window.__keptDisk()).filter(([k]) => k.startsWith('receipts/')).map(([, v]) => v));
+    if (kept.length !== 1 || kept[0] !== 'UEFHRQ==') failures.push({ what: 'saving did not keep the document camera’s page', saw: `${kept.length} photos` });
+  }
+  await dctx.close();
+
+  const cctx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  await answeringBridge(cctx, { documentScan: 'cancel', shot: 'UEhPVE8=' });
+  const cp = await cctx.newPage();
+  await cp.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
+  await cp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await cp.getByRole('button', { name: 'Add a receipt' }).click();
+  await cp.getByRole('button', { name: /Scan a paper receipt/ }).click();
+  await cp.waitForTimeout(800);
+  const after = await cp.evaluate(() => ({ docs: window.__documentScans, shots: window.__cameraShots }));
+  const said = await cp.locator('main').innerText();
+  if (after.docs !== 1 || after.shots !== 0 || /couldn.t read/i.test(said)) {
+    failures.push({ what: 'a cancelled document scan was not left alone', saw: JSON.stringify(after) });
+  }
+  await cctx.close();
+}
+
+/*
  * A scanned receipt keeps its photo, as the iPhone app would.
  *
  * On a phone, "Scan a paper receipt" photographs the slip and reads it, and
