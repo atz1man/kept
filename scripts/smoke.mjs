@@ -2940,7 +2940,46 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
   results['the rescue hands back the receipts that were on the device'] =
     !!rescued && rescued.app === 'kept' && Array.isArray(rescued.receipts) && rescued.receipts.length > 0;
 
+  // And it says what broke, for the person to send — the error and how much
+  // is stored, never what any of it is. It was written to the console alone.
+  const told = await broken.locator('[data-support] pre').textContent().catch(() => '');
+  const shops = (rescued?.receipts ?? []).map((r) => r.store).filter(Boolean);
+  results['the broken screen says what broke, and nothing about the purchases'] =
+    /Error: Error: simulated platform failure/.test(told ?? '') &&
+    new RegExp(`Receipts: ${shops.length} \\(`).test(told ?? '') &&
+    // The device line is the browser's own user agent ("AppleWebKit…"), which
+    // a shop's name can coincide with; every other line is ours.
+    shops.length > 0 && shops.every((shop) => !(told ?? '').split('\n').filter((l) => !l.startsWith('Device:')).join('\n').includes(shop));
+  if (!results['the broken screen says what broke, and nothing about the purchases']) problems.push(`recovery support: ${JSON.stringify(told)}`);
+
   await brokenCtx.close();
+}
+
+/*
+ * The version is on screen, and what a person sends to support is what they
+ * were shown: copied to the real clipboard, with the version and the counts,
+ * and not one shop's name from the list they are holding.
+ */
+{
+  const supCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  await supCtx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: ORIGIN });
+  const sp = await supCtx.newPage();
+  await sp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await sp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await sp.getByRole('button', { name: 'Settings', exact: true }).click();
+  await sp.waitForTimeout(500);
+  const shown = await sp.locator('[data-support]').innerText().catch(() => '');
+  await sp.getByRole('button', { name: 'Copy details for support' }).click();
+  await sp.waitForTimeout(300);
+  const copied = await sp.evaluate(() => navigator.clipboard.readText()).catch(() => '');
+  const stored = await sp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.map((r) => r.store));
+  results['the version is shown, and support gets counts, not purchases'] =
+    /^Kept \d+\.\d+\.\d+/.test(shown) && /^Kept \d+\.\d+\.\d+/.test(copied) &&
+    new RegExp(`Receipts: ${stored.length} \\(`).test(copied) &&
+    stored.length > 0 && stored.every((shop) => !copied.split('\n').filter((l) => !l.startsWith('Device:')).join('\n').includes(shop)) &&
+    /Copied — paste it/.test(await sp.locator('[data-support] [role="status"]').innerText().catch(() => ''));
+  if (!results['the version is shown, and support gets counts, not purchases']) problems.push(`support: ${JSON.stringify({ shown: shown.slice(0, 80), copied: copied.slice(0, 200) })}`);
+  await supCtx.close();
 }
 
 /*
