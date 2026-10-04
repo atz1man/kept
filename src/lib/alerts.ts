@@ -112,6 +112,18 @@ export const REJECT_NOTICE_DAYS = 3;
 export const REJECT_GAP_DAYS = 7;
 
 /**
+ * The last day of the 30-day right to reject, as its reminder counts it.
+ *
+ * From the day it came, as the Act counts it; for an online order nobody has
+ * said arrived, the order date, which can only be earlier — so the alert comes
+ * early rather than late, and says "no earlier than". One count for the alert
+ * and for the reducer, which forgets the reminder when this day moves.
+ */
+export function rejectEnds(r: Receipt): Date {
+  return addDays(fromISODate(r.arrivedOn ?? r.purchasedOn), REJECT_DAYS);
+}
+
+/**
  * The day the 30-day right to reject ends, when that day deserves its own
  * alert, else null.
  *
@@ -144,10 +156,7 @@ export const REJECT_GAP_DAYS = 7;
 export function rejectWatched(r: Receipt, today: Date): { ends: Date; hedged: boolean } | null {
   if (r.demo || r.faultClaim) return null;
   if (r.status !== 'active' && r.status !== 'kept') return null;
-  // From the day it came, as the Act counts it; for an online order nobody
-  // has said arrived, the order date, which can only be earlier — so the
-  // alert comes early rather than late, and says "no earlier than".
-  const ends = addDays(fromISODate(r.arrivedOn ?? r.purchasedOn), REJECT_DAYS);
+  const ends = rejectEnds(r);
   if (r.status === 'active' && Math.abs(daysBetween(ends, derive(r, today).deadline)) < REJECT_GAP_DAYS) return null;
   return { ends, hedged: r.distance && r.arrivedOn === undefined };
 }

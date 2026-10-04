@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useState } from 'react';
-import { alertKey, pruneSent, remindedBeforeWindow } from '../lib/alerts';
+import { alertKey, pruneSent, rejectEnds, remindedBeforeWindow } from '../lib/alerts';
 import { planAlerts } from '../lib/schedule';
 import { isNative } from '../lib/mirror';
 import { cleanupPhotos } from '../lib/photos';
@@ -673,7 +673,8 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
        * arrival starts both statutory clocks, and the shop's own for a shop
        * that counts from delivery; `windowStartFor` is the same rule an edit
        * saves by, so the two ways of saying it cannot disagree. Routed through
-       * `update` so a moved deadline forgets what was said about the old one.
+       * `update` so a moved deadline, or a moved right to reject, forgets
+       * what was said about the old one.
        */
       const r = state.receipts.find((x) => x.id === action.id);
       if (!r || !awaitingArrival(r, today)) return state;
@@ -708,9 +709,19 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         !before ||
         toISODate(derive(before, today).deadline) !== toISODate(derive(action.receipt, today).deadline);
       const coverMoved = !before || coverEnd(before) !== coverEnd(action.receipt);
+      /*
+       * And the right to reject, which runs from the day it came, so "It
+       * arrived today" or a corrected date moves it. Its reminder stayed
+       * recorded and the real last days went unannounced: an IKEA sofa
+       * ordered on 1 September was told on the 28th that the right ended "no
+       * earlier than 1 Oct", came on the 30th, and nothing was due on 27
+       * October, three days before its right really ended.
+       */
+      const rejectMoved = !before || toISODate(rejectEnds(before)) !== toISODate(rejectEnds(action.receipt));
       const forget = new Set<string>([
         ...(moved ? (['week', 'soon', 'today', 'closed'] as const).map((rung) => alertKey(id, rung)) : []),
         ...(coverMoved ? [alertKey(id, 'warranty')] : []),
+        ...(rejectMoved ? [alertKey(id, 'reject')] : []),
       ]);
       return {
         ...state,
