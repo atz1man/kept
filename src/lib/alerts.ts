@@ -98,11 +98,16 @@ export function warrantyWatched(r: Receipt): boolean {
 export const REJECT_NOTICE_DAYS = 3;
 
 /**
- * How much earlier than the shop's own window the right to reject has to end
- * before it earns an alert of its own. Our number. Inside a week of the
- * shop's deadline the ladder is already talking about this receipt, and a
- * second alert about the same days is the kind that gets notifications
- * switched off.
+ * How far from the shop's own deadline, before it or after it, the right to
+ * reject has to end before it earns an alert of its own. Our number. Inside a
+ * week of the shop's deadline the ladder is already talking about this
+ * receipt, and a second alert about the same days is the kind that gets
+ * notifications switched off.
+ *
+ * Either side, because the ladder's days sit on both sides of the deadline:
+ * "week" before it, "closed" the morning after. At a week's gap, with the
+ * default seven-day warning, the morning this reminder is lodged for is at
+ * least three days from every rung's, whichever way round the two clocks are.
  */
 export const REJECT_GAP_DAYS = 7;
 
@@ -118,11 +123,23 @@ export const REJECT_GAP_DAYS = 7;
  *
  * Kept receipts are watched whatever the shop's window: they have left the
  * return ladder, and "is it working?" is the one question left worth asking
- * before the right lapses. Active ones only when the right ends well before
- * the shop's window. Never a sample, and never once a fault letter has gone:
- * that has its own clock and its own follow-up. The 14-day right to cancel
- * gets none — where the shop's window is longer it already covers a change of
- * mind, and where it is shorter the ladder is already speaking.
+ * before the right lapses. Active ones only when the right ends at least a
+ * week away from the shop's deadline, on either side of it. Never a sample,
+ * and never once a fault letter has gone: that has its own clock and its own
+ * follow-up. The 14-day right to cancel gets none — where the shop's window
+ * is longer it already covers a change of mind, and where it is shorter the
+ * ladder is already speaking.
+ *
+ * Either side, not only before. The gap was measured one way, as if every
+ * shop gave longer than thirty days, so a SHORTER window silenced the right
+ * as well: Currys', Apple's, Samsung's and Selfridges' fourteen days, and
+ * Debenhams', Boohoo's and PrettyLittleThing's twenty-one. Their ladder says
+ * its last the morning after the shop's day — "If it turns out to be faulty,
+ * you still have rights" — and the first of those rights to lapse then went a
+ * week or two later with nothing said. Measured: bought 27 days ago and still
+ * on the list, a Currys, Apple or Debenhams receipt raised nothing on the web
+ * and had nothing lodged with iOS, while an IKEA one was told it had three
+ * days left.
  */
 export function rejectWatched(r: Receipt, today: Date): { ends: Date; hedged: boolean } | null {
   if (r.demo || r.faultClaim) return null;
@@ -131,7 +148,7 @@ export function rejectWatched(r: Receipt, today: Date): { ends: Date; hedged: bo
   // has said arrived, the order date, which can only be earlier — so the
   // alert comes early rather than late, and says "no earlier than".
   const ends = addDays(fromISODate(r.arrivedOn ?? r.purchasedOn), REJECT_DAYS);
-  if (r.status === 'active' && daysBetween(ends, derive(r, today).deadline) < REJECT_GAP_DAYS) return null;
+  if (r.status === 'active' && Math.abs(daysBetween(ends, derive(r, today).deadline)) < REJECT_GAP_DAYS) return null;
   return { ends, hedged: r.distance && r.arrivedOn === undefined };
 }
 
