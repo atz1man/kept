@@ -47,9 +47,9 @@ export function midSentence(name: string): string {
  * kept does unconditionally.
  */
 export function winSentence(
-  { amount, store, warned, inTime }: { amount: string; store: string; warned: boolean; inTime: boolean },
+  { amount, store, warned, inTime }: { amount: string; store: string; warned: boolean; inTime: boolean | null },
 ): string {
-  const earned = warned && inTime;
+  const earned = warned && inTime === true;
   return `Just got ${amount} back from ${store} — kept. ${
     earned ? 'reminded me before the window shut.' : 'keeps every return deadline in one place.'
   }`;

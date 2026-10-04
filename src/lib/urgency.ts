@@ -1,6 +1,6 @@
 import { color } from '../tokens';
 
-export type UrgencyLevel = 'expired' | 'critical' | 'soon' | 'relaxed';
+export type UrgencyLevel = 'unsure' | 'expired' | 'critical' | 'soon' | 'relaxed';
 
 export interface Urgency {
   level: UrgencyLevel;
@@ -26,7 +26,16 @@ export const DEFAULT_URGENT_DAYS = 7;
  * constants that could never reach zero. Real receipts do, and a closed
  * window must say so rather than render "-3 days left".
  */
-export function urgency(daysLeft: number, urgentDays: number = DEFAULT_URGENT_DAYS): Urgency {
+export function urgency(daysLeft: number, urgentDays: number = DEFAULT_URGENT_DAYS, floor = false): Urgency {
+  /*
+   * `floor` is `deadlineIsFloor`: past the earliest day the window could end,
+   * which is not past the day it ends. "window closed" on that row was the
+   * claim the reminders and the claim pack were making too. Not red, because
+   * nothing is known to be lost; the words are the question that settles it.
+   */
+  if (daysLeft < 0 && floor) {
+    return { level: 'unsure', bg: color.accentSoft, fg: color.accentInk, label: 'arrived when?', dot: color.accent };
+  }
   if (daysLeft < 0) {
     return { level: 'expired', bg: color.dangerChipBg, fg: color.danger, label: 'window closed', dot: color.dangerDot };
   }
@@ -46,7 +55,9 @@ export function urgency(daysLeft: number, urgentDays: number = DEFAULT_URGENT_DA
 }
 
 /** The hero's headline number and the word beside it. */
-export function heroCount(daysLeft: number): { count: string; word: string } {
+export function heroCount(daysLeft: number, floor = false): { count: string; word: string } {
+  // A floor gone by (`deadlineIsFloor`) is not "Gone": nobody knows yet.
+  if (daysLeft < 0 && floor) return { count: 'Maybe', word: 'still time to return your' };
   if (daysLeft < 0) return { count: 'Gone', word: 'the window closed on your' };
   if (daysLeft === 0) return { count: 'Today', word: 'is the last day to return your' };
   if (daysLeft === 1) return { count: '1', word: 'day left to return your' };

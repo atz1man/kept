@@ -1,5 +1,6 @@
 import { addDays, addMonths, daysBetween, fmtDateNear, fromISODate, startOfDay } from './dates';
 import { sumPence } from './money';
+import { clockFor, findStore } from './stores';
 import type { Receipt } from './types';
 
 /**
@@ -104,6 +105,65 @@ export function asksForGuarantee(r: Receipt): boolean {
   return (r.status === 'active' || r.status === 'kept') && !r.warranty && r.cat !== 'clothing' && r.cat !== 'beauty';
 }
 
+/**
+ * Whether the shop's deadline `derive` gives is a FLOOR rather than the date,
+ * and if so which event the shop really counts from. Null when the date is
+ * the date.
+ *
+ * `derive` counts the shop's window from `windowStartsOn`, and without one
+ * from the order. For an online order from a shop that counts from delivery
+ * or dispatch — 66 of the 101 in the table, 63 of them checked — the order is
+ * the EARLIEST the clock could have started, so the deadline is the earliest
+ * the window could end and never the latest. Only the Detail screen said so.
+ * The reminders, Home's "Window closed" and its "I'm keeping all", the iOS
+ * schedule and the claim pack all stated that floor as the deadline, in the
+ * confident wording a checked shop earns. Measured: an Apple order placed 19
+ * September with no arrival entered was told on 4 October "That window has
+ * closed — the shop's window has passed"; a parcel that took three days had
+ * until the 6th. And an Apple order sent back thirteen days after it arrived
+ * went into the claim pack as "after the shop's own window had closed" — a
+ * return made in time, described as late, to the shop.
+ *
+ * One condition, read by every surface, so none of them can say a floor
+ * closed while another says it might not have:
+ *  - an online order (`distance`): over a counter the thing is handed over
+ *    when it is paid for, so delivery and dispatch ARE the purchase — Apple's
+ *    in-store receipt counts from the till, whatever its table row says;
+ *  - from a shop whose online clock is delivery or dispatch (`clockFor`, the
+ *    rule Add, Edit and `windowStartFor` save by);
+ *  - with no `windowStartsOn`, the one field the shop's clock is counted from.
+ *    `arrivedOn` sets it for a delivery shop (`windowStartFor`) and does
+ *    nothing for a dispatch shop, which counts from earlier — so it is not
+ *    read here. A receipt carrying an arrival but no start (a shop whose
+ *    clock the table learned after the receipt was saved) is still counted
+ *    from the order by `derive`, so its date is still a floor, and Edit's
+ *    save puts the start back.
+ *
+ * A shop not in the table is counted from the order and worded as a guess
+ * already (`windowChecked`); nothing here can say more about it.
+ */
+export function floorClock(r: Pick<Receipt, 'store' | 'distance' | 'windowStartsOn'>): 'delivery' | 'dispatch' | null {
+  if (!r.distance || r.windowStartsOn) return null;
+  const shop = findStore(r.store);
+  const clock = shop ? clockFor(shop, true) : 'purchase';
+  return clock === 'purchase' ? null : clock;
+}
+
+/** The same condition, as a yes or no. */
+export function deadlineIsFloor(r: Pick<Receipt, 'store' | 'distance' | 'windowStartsOn'>): boolean {
+  return floorClock(r) !== null;
+}
+
+/**
+ * The words for why a floor is a floor, and the one thing that turns it into
+ * a date — for every surface that has to say it, so they say it alike.
+ */
+export function floorWords(clock: 'delivery' | 'dispatch'): { countsFrom: string; addIt: string } {
+  return clock === 'dispatch'
+    ? { countsFrom: 'dispatch', addIt: 'add the day it was dispatched' }
+    : { countsFrom: 'delivery', addIt: 'add the day it arrived' };
+}
+
 export function derive(r: Receipt, today: Date): DerivedReceipt {
   const windowStart = fromISODate(r.windowStartsOn ?? r.purchasedOn);
   const deadline = addDays(windowStart, r.windowDays);
@@ -142,6 +202,11 @@ export interface DerivedPair {
 }
 
 export interface Buckets {
+  /**
+   * Past the earliest day its window could close, and nobody has said when
+   * it arrived (`deadlineIsFloor`): it may still be open. Not `closed`.
+   */
+  unsure: Receipt[];
   /** The shop's window has already shut. Still the top of the list. */
   closed: Receipt[];
   urgent: Receipt[];
@@ -168,8 +233,20 @@ export interface Buckets {
  */
 export function bucket(receipts: readonly Receipt[], today: Date, urgentDays: number): Buckets {
   const active = sortByDeadline(receipts.filter((r) => r.status === 'active'), today);
+  const past = active.filter((x) => x.derived.daysLeft < 0);
   return {
-    closed: active.filter((x) => x.derived.daysLeft < 0).map((x) => x.receipt),
+    /*
+     * A floor past its day is not a closed window, and was filed as one: red
+     * under WINDOW CLOSED · CHECK YOUR RIGHTS, and swept into "I'm keeping
+     * all" — one tap that settled as kept an Apple order whose window, for a
+     * parcel that took three days, had two days left. Its own section
+     * instead, asking for the one date that settles it. It stays there until
+     * somebody says, however old the order: "may still be open" about a long
+     * shut window costs a row that asks a question, and "closed" about an
+     * open one costs the money.
+     */
+    unsure: past.filter((x) => deadlineIsFloor(x.receipt)).map((x) => x.receipt),
+    closed: past.filter((x) => !deadlineIsFloor(x.receipt)).map((x) => x.receipt),
     urgent: active.filter((x) => x.derived.daysLeft >= 0 && x.derived.daysLeft <= urgentDays).map((x) => x.receipt),
     later: active.filter((x) => x.derived.daysLeft > urgentDays).map((x) => x.receipt),
     returned: latestFirst(receipts.filter((r) => r.status === 'returned'), (r) => r.returnedOn),
@@ -211,7 +288,9 @@ function latestFirst(receipts: Receipt[], on: (r: Receipt) => string | undefined
  * language of rights rather than of refunds.
  */
 export function stillReturnablePence(b: Buckets, everything?: readonly Receipt[]): number {
-  const counts = countsAsMoney(everything ?? [...b.closed, ...b.urgent, ...b.later, ...b.returned]);
+  // Not `unsure` either: whether the shop still takes it back is the thing
+  // nobody knows yet, and this total is a claim that it will.
+  const counts = countsAsMoney(everything ?? [...b.unsure, ...b.closed, ...b.urgent, ...b.later, ...b.returned]);
   return sumPence([...b.urgent, ...b.later].filter(counts).map((r) => r.amount));
 }
 

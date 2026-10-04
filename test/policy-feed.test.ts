@@ -152,9 +152,20 @@ describe('what a change means for a receipt already held', () => {
   });
 
   it('says "closed" rather than negative days on an expired receipt', () => {
-    const expired = { ...zaraReceipt, purchasedOn: ago(60) };
+    // With its dispatch day: Zara counts from dispatch, so without one the
+    // date is a floor and "closed" is not something to say (the next case).
+    const expired = { ...zaraReceipt, purchasedOn: ago(60), windowStartsOn: ago(58) };
     const [a] = assess([update({ newWindowDays: 14 })], [expired], TODAY);
     expect(a.impacts[0].note).toContain('window closed');
+    expect(a.impacts[0].note).not.toContain('-');
+  });
+
+  it('says a floor gone by "may have closed", not "closed"', () => {
+    // No dispatch day: 60 days from the order is the earliest Zara's 30
+    // could have run out, not the day they did (`deadlineIsFloor`).
+    const floor = { ...zaraReceipt, purchasedOn: ago(60) };
+    const [a] = assess([update({ newWindowDays: 14 })], [floor], TODAY);
+    expect(a.impacts[0].note).toContain('(window may have closed)');
     expect(a.impacts[0].note).not.toContain('-');
   });
 

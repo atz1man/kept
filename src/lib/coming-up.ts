@@ -1,7 +1,7 @@
 import { creditWatched, faultWatched, REFUND_CHASE_DAYS, rejectWatched, warrantyWatched } from './alerts';
 import { addDays, daysBetween, fromISODate } from './dates';
 import { REPLY_DAYS } from './fault-letter';
-import { derive } from './receipts';
+import { deadlineIsFloor, derive } from './receipts';
 import type { Receipt } from './types';
 
 /**
@@ -45,7 +45,9 @@ export function comingUp(receipts: readonly Receipt[], today: Date, days: number
     if (within(date)) out.push({ receiptId: r.id, date, kind, what, demo: !!r.demo });
   };
   for (const r of receipts) {
-    if (r.status === 'active') push(r, derive(r, today).deadline, 'return', 'Last day to return it');
+    // "(or later)" on a floor (`deadlineIsFloor`), as the right to reject
+    // already says it below: counted from the order, the day is the earliest.
+    if (r.status === 'active') push(r, derive(r, today).deadline, 'return', `Last day to return it${deadlineIsFloor(r) ? ' (or later)' : ''}`);
     if (r.status === 'sent' && r.sentOn) {
       push(r, addDays(fromISODate(r.sentOn), REFUND_CHASE_DAYS), 'refund', 'Refund due — chase it if it has not come');
     }

@@ -4,7 +4,7 @@ import { addDays, daysBetween, fmtDateLong, fmtDatesTogether, fromISODate } from
 import { firstToClose, firstToCloseLine, LEGAL_DISCLAIMER, legalRights } from '../../lib/legal';
 import { REFUND_CHASE_DAYS } from '../../lib/alerts';
 import { money } from '../../lib/money';
-import { asksForGuarantee, awaitingArrival, derive, refundOf } from '../../lib/receipts';
+import { asksForGuarantee, awaitingArrival, derive, floorClock, floorWords, refundOf } from '../../lib/receipts';
 import type { Receipt } from '../../lib/types';
 import { clockFor, findStore, shopCheckedOn, windowChecked } from '../../lib/stores';
 import { returnsPageFor } from '../../lib/returns-pages';
@@ -67,7 +67,17 @@ const cardLabel = { fontSize: 13, fontWeight: 600, color: color.muted } as const
 export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onSetCredit, onCreditSpent, onArrived, onFaultSent, onFaultUnsent, onCancelSent, onCancelUnsent, onExchange, onUnexchange, onDelete, onSplit, onUnsplit, splitFromReceipt }: Props) {
   const [legalOpen, setLegalOpen] = useState(true);
   const d = derive(receipt, today);
-  const u = urgency(d.daysLeft, urgentDays);
+  /*
+   * The deadline is a floor (`floorClock`): counted from the order, for a
+   * shop that counts from delivery or dispatch, because nobody has said when
+   * that was. Past it, the ring said "closed" and the heading "Window closed"
+   * directly above the sentence saying the date "is the earliest it can be,
+   * never the latest" — and the reminders, Home and the claim pack all said
+   * the same as the ring. They read this one condition now; so does this.
+   */
+  const floor = floorClock(receipt);
+  const unsure = receipt.status === 'active' && d.expired && floor !== null;
+  const u = urgency(d.daysLeft, urgentDays, floor !== null);
   const rights = legalRights(receipt, today, !d.expired);
   const firstClock = receipt.status === 'active' ? firstToClose(receipt, today, d.deadline) : null;
 
@@ -96,7 +106,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
   // is coming up, ink otherwise; grey once settled.
   const ringColor = settled
     ? color.muted
-    : d.expired ? color.danger : u.level === 'critical' ? color.danger : color.accent;
+    : unsure ? color.accent : d.expired ? color.danger : u.level === 'critical' ? color.danger : color.accent;
 
   const dispatchDiffers = receipt.windowStartsOn && receipt.windowStartsOn !== receipt.purchasedOn;
   // The table, not the receipt: which clock a shop runs is not something a
@@ -112,7 +122,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
    * shop's window a returns page invites a change-of-mind return the shop will
    * refuse, and the rights that outlast it (faulty goods) are set out below.
    */
-  const returnsPage = receipt.status === 'active' && !d.expired ? returnsPageFor(receipt.store) : null;
+  const returnsPage = receipt.status === 'active' && (!d.expired || unsure) ? returnsPageFor(receipt.store) : null;
 
   // Rendered as a pair: a year on the deadline and none on the purchase is
   // what let "RETURN BY 15 Feb 2027" sit above "bought 15 Feb". See
@@ -189,14 +199,14 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
                   done this. Here the ring's stroke was the only urgency
                   signal on the screen, and on the last day it was a hairline. */}
               <div style={{ fontFamily: font.figures, fontSize: settled || d.expired ? 15 : 26, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1, color: ringColor }}>
-                {receipt.status === 'returned' ? 'back' : receipt.status === 'kept' ? 'kept' : receipt.status === 'sent' ? 'sent' : d.expired ? 'closed' : d.daysLeft}
+                {receipt.status === 'returned' ? 'back' : receipt.status === 'kept' ? 'kept' : receipt.status === 'sent' ? 'sent' : unsure ? 'open?' : d.expired ? 'closed' : d.daysLeft}
               </div>
               {!settled && !d.expired && <div style={{ fontSize: 11, color: color.muted, marginTop: 2 }}>days left</div>}
             </div>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13, color: color.muted, fontWeight: 600 }}>
-              {settled ? 'The window ran to' : d.expired ? 'Window closed' : 'Return by'}
+              {settled ? 'The window ran to' : unsure ? 'Earliest it could close' : d.expired ? 'Window closed' : 'Return by'}
             </div>
             <div style={{ fontFamily: font.figures, fontSize: 26, fontWeight: 700, letterSpacing: '-0.03em', marginTop: 4 }}>
               {deadlineText}
@@ -267,11 +277,15 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
               would still take the thing back. Same hedge the statutory
               clocks make when the arrival date is unknown, pointing the
               other way. */}
-          {clockStart !== 'purchase' && !receipt.windowStartsOn && (
-            <div style={{ fontSize: 12.5, marginTop: 8, color: color.muted }}>
-              {receipt.store} counts from {clockStart === 'dispatch' ? 'dispatch' : 'the day it arrives'}, not from your
+          {/* Read off `floorClock`, the condition every other surface reads,
+              which also asks whether it was an ONLINE order: this used to
+              test the shop's clock alone, and so told someone who bought at
+              Apple's counter that Apple counts from the day it arrives. */}
+          {floor && (
+            <div data-floor style={{ fontSize: 12.5, marginTop: 8, color: color.muted }}>
+              {receipt.store} counts from {floor === 'dispatch' ? 'dispatch' : 'the day it arrives'}, not from your
               order — and this receipt does not say when that was, so the date above is the earliest it can be, never
-              the latest.
+              the latest.{unsure && ` Its window may still be open: ${floorWords(floor).addIt} to know.`}
             </div>
           )}
           {/* The fix for the floor above, in one tap, while the parcel could

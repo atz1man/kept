@@ -7,7 +7,7 @@ import { onNotificationTap, syncScheduled } from './schedule-native';
 import { currentDay, daysBetween, fromISODate, startOfDay, toISODate } from '../lib/dates';
 import { sharedTextFrom, strippedShareUrl } from '../lib/share';
 import { canSplit, splitReceipt, validSplit } from '../lib/split';
-import { awaitingArrival, countsAsMoney, derive, makeReceiptId, refundOf } from '../lib/receipts';
+import { awaitingArrival, countsAsMoney, deadlineIsFloor, derive, makeReceiptId, refundOf } from '../lib/receipts';
 import { windowStartFor } from '../lib/draft';
 import { readReturnRef } from '../lib/refund-chase';
 import { freshState, load, onExternalChange, save, type KeptState, type Settings } from '../lib/storage';
@@ -73,7 +73,7 @@ export interface AppState extends KeptState {
    * `id` and `cost` so the figure can be corrected where it is celebrated: a
    * £30 refund on a £60 order was shown, and shared, as "£60 back".
    */
-  celebrating: { id: string; amount: number; cost: number; store: string; inTime: boolean; warned: boolean } | null;
+  celebrating: { id: string; amount: number; cost: number; store: string; inTime: boolean | null; warned: boolean } | null;
   /**
    * What happened when the win was shared. Not a boolean, because "the copy
    * failed" and "it has not been tried" are different things to say — and the
@@ -244,10 +244,13 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
           cost: r.amount,
           store: r.store,
           // Judged on the day it went back, where that was recorded: posted on
-          // day 27 and refunded on day 35 is a return made in time.
-          inTime: r.sentOn
+          // day 27 and refunded on day 35 is a return made in time. Null when
+          // it cannot be judged: past a floor (`deadlineIsFloor`) is not past
+          // the window, and "after the shop's own window had closed" on a
+          // card somebody shares is a claim about a day nobody recorded.
+          inTime: (r.sentOn
             ? daysBetween(fromISODate(r.sentOn), derive(r, today).deadline) >= 0
-            : !derive(r, today).expired,
+            : !derive(r, today).expired) || (deadlineIsFloor(r) ? null : false),
           // What the share line claims is a reminder before the window shut —
           // not the guarantee alert, not the refund chase, not "window closed".
           warned: remindedBeforeWindow(state.alertsSent, r.id),
@@ -548,10 +551,15 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
        * here rather than trusted from the screen: an id that was returned in
        * another tab, or a window that turned out to be open, is not the
        * person's to have settled by this tap.
+       *
+       * Nor one whose deadline is a floor (`deadlineIsFloor`): past the
+       * earliest day its window could close is not past the day it closes,
+       * and Home no longer offers it here. Refused here as well, for the same
+       * reason the status is.
        */
       const ids = new Set(
         state.receipts
-          .filter((r) => action.ids.includes(r.id) && r.status === 'active' && derive(r, today).daysLeft < 0)
+          .filter((r) => action.ids.includes(r.id) && r.status === 'active' && derive(r, today).daysLeft < 0 && !deadlineIsFloor(r))
           .map((r) => r.id),
       );
       if (ids.size === 0) return state;

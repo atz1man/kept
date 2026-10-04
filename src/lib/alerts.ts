@@ -2,7 +2,7 @@ import { addDays, daysBetween, fmtDate, fromISODate, toISODate } from './dates';
 import { REPLY_DAYS } from './fault-letter';
 import { REFUND_CHASE_DAYS, REJECT_DAYS } from './legal';
 import { money } from './money';
-import { derive, refundOf } from './receipts';
+import { derive, floorClock, floorWords, refundOf } from './receipts';
 import { refundIsStatutory } from './refund-chase';
 import { windowChecked } from './stores';
 import type { Receipt } from './types';
@@ -204,6 +204,21 @@ export function copyFor(rung: AlertRung, r: Receipt, daysLeft: number, deadline:
    */
   const checked = windowChecked(r);
   const unchecked = `Kept hasn’t checked ${possessive(r.store)} returns policy, so check the receipt.`;
+  /*
+   * And for a floor (`floorClock`), the date is not the date at all: counted
+   * from the order because nobody said when the parcel came, it is the
+   * EARLIEST the window can end. "That window has closed" about one was the
+   * same sentence about a day the shop would still take it back — measured on
+   * an Apple order, two days before its real last day — and the checked
+   * shops said it most confidently, because their windows ARE checked. So
+   * the last two rungs hedge, the way the statutory lines already do ("no
+   * earlier than"), and say the one thing that settles it. The earlier rungs
+   * need nothing: "3 days left" when there may be more is a reminder that
+   * comes early, the direction `rejectEnds` errs in on purpose.
+   */
+  const floor = floorClock(r);
+  const counts = floor ? `${r.store} counts from ${floorWords(floor).countsFrom}` : '';
+  const addIt = floor ? `${floorWords(floor).addIt} to know` : '';
   switch (rung) {
     case 'week':
       return {
@@ -216,10 +231,21 @@ export function copyFor(rung: AlertRung, r: Receipt, daysLeft: number, deadline:
         body: `${what} — ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left. ${money(r.amount)} back if it goes back.${checked ? '' : ` ${unchecked}`}`,
       };
     case 'today':
+      if (floor) {
+        return checked
+          ? { title: 'The window may close today', body: `${what} — ${money(r.amount)} back if it goes back today, the earliest its window can close. ${counts}, so it may give longer — ${addIt}.` }
+          : { title: 'The saved window may end today', body: `${what} — the ${r.windowDays} days saved for it end today at the earliest. ${counts}, so it may give longer — ${addIt}. ${unchecked}` };
+      }
       return checked
         ? { title: 'Today is the last day', body: `${what} — ${money(r.amount)} back, but only if it goes back today.` }
         : { title: 'The saved window ends today', body: `${what} — the ${r.windowDays} days saved for it end today. ${unchecked}` };
     case 'closed':
+      if (floor) {
+        return {
+          title: checked ? 'That window may have closed' : 'The saved window may have passed',
+          body: `${what} — counted from your order its ${r.windowDays} days are up, but ${counts}, so it may still be open — ${addIt}.${checked ? '' : ` ${unchecked}`} If it turns out to be faulty, you still have rights.`,
+        };
+      }
       return checked
         ? {
             title: 'That window has closed',

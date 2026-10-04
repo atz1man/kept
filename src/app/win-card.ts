@@ -20,12 +20,20 @@ export const WIN_CARD = { width: 1080, height: 1350 } as const;
 export interface WinCard {
   amount: string;
   store: string;
-  inTime: boolean;
+  /** Null when nobody can say: a floor deadline (`deadlineIsFloor`) had passed. */
+  inTime: boolean | null;
   recovered: string;
 }
 
-/** The sentence under the amount, shared with the screen so the two cannot drift. */
-export function winCardLine(store: string, inTime: boolean): string {
+/**
+ * The sentence under the amount, shared with the screen so the two cannot
+ * drift. Says nothing about timing it cannot stand behind: past the earliest
+ * day an online order's window could close, with the arrival never entered,
+ * "after the window had closed" was a guess about a return possibly made in
+ * time, printed on a card made to be shared.
+ */
+export function winCardLine(store: string, inTime: boolean | null): string {
+  if (inTime === null) return `Recovered from ${store}.`;
   return inTime
     ? `Recovered from ${store} before the window closed.`
     : `Recovered from ${store}, after the shop’s own window had closed.`;

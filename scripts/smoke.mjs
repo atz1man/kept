@@ -507,6 +507,110 @@ for (const cancel of [false, true]) {
 }
 
 /*
+ * A floor is not a closed window.
+ *
+ * An online order from a shop that counts from delivery, the arrival never
+ * entered, is counted from the order: the EARLIEST its window can end. Past
+ * that day it was filed under WINDOW CLOSED, swept into "I'm keeping all",
+ * and told by a reminder "That window has closed" — measured on an Apple
+ * order with two days really left. Here it is past its floor beside a
+ * counter purchase that really has shut, so the closed section and its keep
+ * button are on screen to be read, not merely absent; and the arrival date,
+ * once given, has to turn the floor back into a deadline.
+ */
+{
+  const fCtx = await browser.newContext({ viewport: { width: 402, height: 874 }, permissions: ['notifications'] });
+  const fp = await fCtx.newPage();
+  await fp.addInitScript(() => {
+    window.__notes = [];
+    class StubNotification {
+      static permission = 'granted';
+      static requestPermission() { return Promise.resolve('granted'); }
+      constructor(title, opts) { window.__notes.push({ title, body: opts?.body }); }
+    }
+    window.Notification = StubNotification;
+    navigator.serviceWorker?.ready.then((reg) => {
+      reg.showNotification = (title, opts) => { window.__notes.push({ title, body: opts?.body }); return Promise.resolve(); };
+    }).catch(() => {});
+  });
+  await fp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  const today = await fp.evaluate(() => {
+    const iso = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    const s = JSON.parse(localStorage.getItem('kept.v1'));
+    s.onboardingSeen = true;
+    s.receipts.push(
+      // Bought at the counter 40 days ago on a 14-day window: really shut.
+      { id: 'r_shut', store: 'Currys', item: 'Toaster', cat: 'kitchen', amount: 3000, purchasedOn: iso(40), windowDays: 14, policy: 'p', distance: false, status: 'active' },
+      // Ordered from Apple 15 days ago: a day past the floor, arrival unknown.
+      { id: 'r_floor', store: 'Apple', item: 'AirPods Pro', cat: 'audio', amount: 22900, purchasedOn: iso(15), windowDays: 14, policy: 'Apple · 14 days from delivery.', distance: true, status: 'active' },
+    );
+    localStorage.setItem('kept.v1', JSON.stringify(s));
+    return iso(0);
+  });
+  await fp.reload({ waitUntil: 'networkidle' });
+  await fp.waitForTimeout(600);
+  const home = () => fp.evaluate(() => {
+    const heads = [...document.querySelectorAll('h2')];
+    const under = (re) => { const h = heads.find((x) => re.test(x.textContent)); return h ? (h.nextElementSibling?.matches('p') ? h.nextElementSibling.nextElementSibling : h.nextElementSibling)?.textContent ?? '' : null; };
+    return {
+      closed: under(/Window closed/),
+      unsure: under(/when did it arrive/i),
+      keep: [...document.querySelectorAll('button')].map((b) => b.textContent.trim()).filter((t) => /^I’m keeping (it|all \d+)$/.test(t)),
+      row: [...document.querySelectorAll('li button')].map((b) => b.getAttribute('aria-label') ?? '').find((l) => l.startsWith('Apple, AirPods Pro')) ?? '',
+      hero: [...document.querySelectorAll('main button')].find((b) => /See what to do/.test(b.textContent))?.innerText ?? '',
+    };
+  });
+  const before = await home();
+  const filed = {
+    // The section is there, holding the toaster: absence is not a pass.
+    closedShown: /Toaster/.test(before.closed ?? ''),
+    notClosed: !/AirPods/.test(before.closed ?? ''),
+    keepOnlyShut: before.keep.length === 1 && before.keep[0] === 'I’m keeping it',
+    asks: /AirPods/.test(before.unsure ?? '') && /, arrived when\?$/.test(before.row),
+    hero: /May still be open/.test(before.hero) && !/Gone|Window closed/.test(before.hero),
+  };
+  // "I'm keeping it" settles the toaster and leaves the order alone.
+  if (filed.keepOnlyShut) {
+    await fp.getByRole('button', { name: 'I’m keeping it', exact: true }).click();
+    await fp.waitForTimeout(400);
+    const status = await fp.evaluate(() => Object.fromEntries(JSON.parse(localStorage.getItem('kept.v1')).receipts.filter((r) => r.id === 'r_shut' || r.id === 'r_floor').map((r) => [r.id, r.status])));
+    filed.keptOnlyShut = status.r_shut === 'kept' && status.r_floor === 'active';
+  }
+  const notes = await fp.evaluate(() => window.__notes.filter((n) => /Apple · AirPods Pro/.test(n.body ?? '')));
+  const said = {
+    // Something was said about it, or there is nothing to check.
+    alerted: notes.length > 0,
+    hedged: notes.length > 0 && notes.every((n) => !/has closed|has passed/.test(n.title) && /may have/.test(n.title)),
+    pointed: notes.some((n) => /add the day it arrived/.test(n.body)),
+  };
+  // The arrival date, offered where the row leads, and what it does.
+  await fp.getByRole('button', { name: /^Apple, AirPods Pro/ }).first().click({ timeout: 3000 }).catch(() => {});
+  await fp.waitForTimeout(400);
+  const detail = await fp.locator('main').innerText();
+  const arrival = {
+    offered: (await fp.getByRole('button', { name: 'It arrived today' }).count()) === 1,
+    hedged: !/Window closed/.test(detail) && /Earliest it could close/.test(detail) && /may still be open/.test(detail),
+  };
+  if (arrival.offered) {
+    await fp.getByRole('button', { name: 'It arrived today' }).click();
+    await fp.waitForTimeout(300);
+    const stored = await fp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => r.id === 'r_floor'));
+    arrival.stored = stored?.windowStartsOn === today;
+    await fp.getByRole('button', { name: 'Back', exact: true }).click();
+    await fp.waitForTimeout(300);
+    const after = await home();
+    arrival.relisted = after.unsure === null && /, 14 days left$/.test(after.row);
+  }
+  results['a floor gone by is not filed as closed or kept with the closed ones, and asks when it arrived'] = Object.values(filed).every(Boolean) && Object.keys(filed).length === 6;
+  if (!results['a floor gone by is not filed as closed or kept with the closed ones, and asks when it arrived']) problems.push(`floor on home: ${JSON.stringify({ filed, before })}`);
+  results['a floor gone by is not announced as closed'] = Object.values(said).every(Boolean);
+  if (!results['a floor gone by is not announced as closed']) problems.push(`floor alert: ${JSON.stringify({ said, notes })}`);
+  results['a floor gone by offers the arrival date, which turns it back into a deadline'] = !!(arrival.offered && arrival.hedged && arrival.stored && arrival.relisted);
+  if (!results['a floor gone by offers the arrival date, which turns it back into a deadline']) problems.push(`floor arrival: ${JSON.stringify({ arrival, detail: detail.slice(0, 300) })}`);
+  await fCtx.close();
+}
+
+/*
  * Something wrong with it: the rights, turned into the letter.
  *
  * The receipt's screen always said which remedy the law gives today; the
