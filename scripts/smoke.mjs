@@ -2969,7 +2969,9 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
   await sp.getByRole('button', { name: 'Settings', exact: true }).click();
   await sp.waitForTimeout(500);
   const shown = await sp.locator('[data-support]').innerText().catch(() => '');
-  await sp.getByRole('button', { name: 'Copy details for support' }).click();
+  // Guarded, as the price checks are: the failure this exists to catch is a
+  // missing button, and an unguarded click would end the run before it said so.
+  await sp.getByRole('button', { name: 'Copy details for support' }).click({ timeout: 2000 }).catch(() => {});
   await sp.waitForTimeout(300);
   const copied = await sp.evaluate(() => navigator.clipboard.readText()).catch(() => '');
   const stored = await sp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.map((r) => r.store));
