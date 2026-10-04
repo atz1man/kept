@@ -195,6 +195,14 @@ function datesIn(text: string, today: Date): DateHit[] {
    */
   const push = (y: number, m: number, d: number, index: number, length: number) => {
     if (m < 0 || m > 11 || d < 1 || d > 31) return;
+    // A run of text is one date. "21 Sep 26" is the 21st, day first with the
+    // year cut to two digits — and its tail, "Sep 26", also reads month first
+    // as the 26th, a second date that was never written. That phantom was the
+    // later of the two, so it became the purchase: five days late, and every
+    // deadline counted from it with it. A match lying wholly inside one
+    // already found is part of that one; day-first is read first, as a UK
+    // app reads dates.
+    if (found.some((f) => index >= f.index && index + length <= f.index + f.length)) return;
     const dt = new Date(y, m, d);
     if (dt.getMonth() === m && dt.getDate() === d) found.push({ date: dt, index, length });
   };
