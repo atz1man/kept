@@ -442,6 +442,10 @@ const screens = [
     await p.waitForTimeout(300);
     await p.getByRole('button', { name: /refund late/ }).first().click();
   }],
+  // The pack for a parcel sent back with its refund late: the most it holds —
+  // tracking, a statutory refund date, and a long reference to wrap.
+  ['claim pack · refund late', async (p) => { await p.getByRole('button', { name: /^Claim pack/ }).click(); }],
+  ['back from the pack', async (p) => { await p.getByRole('button', { name: 'Back', exact: true }).click(); }],
   ['edit', async (p) => { await p.getByRole('button', { name: 'Edit', exact: true }).click(); }],
   ['back to home', async (p) => { await p.getByRole('button', { name: 'Cancel' }).click(); await p.getByRole('button', { name: 'Back', exact: true }).click(); }],
   ['watch', async (p) => { await p.getByRole('button', { name: /^Watch/ }).click(); }],

@@ -2099,6 +2099,43 @@ results['an edit reaches the receipt'] =
   (await page.getByText('Charcoal wool coat').first().isVisible()) &&
   (await page.getByText('£39.50').first().isVisible());
 
+/*
+ * The claim pack: opened from a receipt, laid out in date order with today
+ * marked, and saved as a page that carries the purchase and loads nothing.
+ * Back has to land on the receipt it came from, not the list.
+ */
+await page.getByRole('button', { name: 'Receipts', exact: true }).click();
+await page.waitForTimeout(300);
+// By the shop: the edit above renamed the item, and the pack must carry the new name.
+await page.getByRole('button', { name: /^Zara, / }).click();
+await page.waitForTimeout(300);
+await page.getByRole('button', { name: /^Claim pack/ }).click();
+await page.waitForTimeout(400);
+{
+  const shape = await page.evaluate(() => ({
+    h1: document.querySelector('main h1')?.textContent?.trim() ?? '',
+    done: document.querySelectorAll('[data-pack-timeline] [data-event="done"]').length,
+    deadlines: document.querySelectorAll('[data-pack-timeline] [data-event="open"], [data-pack-timeline] [data-event="gone"]').length,
+    today: document.querySelectorAll('[data-pack-timeline] [data-today]').length,
+  }));
+  const [packFile] = await Promise.all([
+    page.waitForEvent('download', { timeout: 5000 }).catch(() => null),
+    page.getByRole('button', { name: 'Save a copy' }).click(),
+  ]);
+  const html = packFile ? readFileSync(await packFile.path(), 'utf8') : '';
+  results['the claim pack lays out a receipt in date order, with today marked'] =
+    /Charcoal wool coat/.test(shape.h1) && shape.done >= 1 && shape.deadlines >= 3 && shape.today === 1;
+  results['the claim pack saves as a page that carries the purchase and loads nothing'] =
+    !!packFile && /^kept-claim-zara-\d{4}-\d{2}-\d{2}\.html$/.test(packFile.suggestedFilename()) &&
+    html.includes('Claim pack: Charcoal wool coat') && html.includes('Zara') && !/<script|https?:\/\//i.test(html);
+  if (!results['the claim pack lays out a receipt in date order, with today marked']) problems.push(`claim pack: ${JSON.stringify(shape)}`);
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await page.waitForTimeout(300);
+  results['Back from the claim pack lands on its receipt'] = await page.getByRole('button', { name: 'Edit', exact: true }).isVisible();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await page.waitForTimeout(300);
+}
+
 // Export, delete something, restore it back.
 await page.getByRole('button', { name: 'Settings', exact: true }).click();
 await page.waitForTimeout(300);

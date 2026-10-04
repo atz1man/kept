@@ -174,7 +174,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         // The undo is gone, so what was said about the receipt it held goes too.
         alertsSent: state.justDeleted ? pruneSent(state.alertsSent, state.receipts) : state.alertsSent,
         screen: action.screen,
-        selId: action.screen === 'detail' || action.screen === 'edit' ? state.selId : null,
+        selId: action.screen === 'detail' || action.screen === 'edit' || action.screen === 'pack' ? state.selId : null,
       };
     case 'open': {
       /*
@@ -785,7 +785,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         ...state,
         ...action.state,
         selId: stillThere ? state.selId : null,
-        screen: stillThere || (state.screen !== 'detail' && state.screen !== 'edit') ? state.screen : 'home',
+        screen: stillThere || (state.screen !== 'detail' && state.screen !== 'edit' && state.screen !== 'pack') ? state.screen : 'home',
       };
     }
     case 'feed':

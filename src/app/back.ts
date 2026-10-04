@@ -17,6 +17,7 @@ export function screenDepth(screen: Screen): number {
     case 'onboard':
       return 0;
     case 'edit':
+    case 'pack':
       return 2;
     default:
       return 1;
@@ -25,6 +26,6 @@ export function screenDepth(screen: Screen): number {
 
 /** The screen one Back leads to, or null where Back should leave the app. */
 export function backTarget(screen: Screen): Screen | null {
-  if (screen === 'edit') return 'detail';
+  if (screen === 'edit' || screen === 'pack') return 'detail';
   return screenDepth(screen) === 0 ? null : 'home';
 }

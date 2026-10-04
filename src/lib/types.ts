@@ -216,4 +216,4 @@ export interface PolicyUpdate {
   source?: { url: string; checkedOn: string };
 }
 
-export type Screen = 'onboard' | 'home' | 'watch' | 'detail' | 'edit' | 'add' | 'settings' | 'celebrate';
+export type Screen = 'onboard' | 'home' | 'watch' | 'detail' | 'edit' | 'pack' | 'add' | 'settings' | 'celebrate';

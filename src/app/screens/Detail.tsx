@@ -9,7 +9,7 @@ import type { Receipt } from '../../lib/types';
 import { clockFor, findStore, shopCheckedOn, windowChecked } from '../../lib/stores';
 import { returnsPageFor } from '../../lib/returns-pages';
 import { urgency } from '../../lib/urgency';
-import { ChevronLeft, Warning } from '../components/Icons';
+import { ChevronLeft, ReceiptGlyph, Warning } from '../components/Icons';
 import { Pressable } from '../components/Pressable';
 import { ReceiptPhoto } from '../components/ReceiptPhoto';
 import { CancelPanel } from '../components/CancelPanel';
@@ -31,6 +31,8 @@ interface Props {
   urgentDays: number;
   onBack: () => void;
   onEdit: () => void;
+  /** Everything about it on one page: the claim pack. */
+  onPack: () => void;
   onReturn: () => void;
   onUnreturn: () => void;
   /** Swapped for another: settle this one and open the one that came home. */
@@ -61,7 +63,7 @@ interface Props {
 
 const cardLabel = { fontSize: 13, fontWeight: 600, color: color.muted } as const;
 
-export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onSetCredit, onCreditSpent, onArrived, onFaultSent, onFaultUnsent, onCancelSent, onCancelUnsent, onExchange, onUnexchange, onDelete, onSplit, onUnsplit, splitFromReceipt }: Props) {
+export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onSetCredit, onCreditSpent, onArrived, onFaultSent, onFaultUnsent, onCancelSent, onCancelUnsent, onExchange, onUnexchange, onDelete, onSplit, onUnsplit, splitFromReceipt }: Props) {
   const [legalOpen, setLegalOpen] = useState(true);
   const d = derive(receipt, today);
   const u = urgency(d.daysLeft, urgentDays);
@@ -402,6 +404,31 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onReturn, o
           refund: that purchase has already gone back. */}
       {receipt.status === 'active' && <CancelPanel receipt={receipt} today={today} onSent={onCancelSent} onUnsent={onCancelUnsent} />}
       {(receipt.status === 'active' || receipt.status === 'kept') && <FaultPanel receipt={receipt} today={today} onSent={onFaultSent} onUnsent={onFaultUnsent} />}
+
+      {/* The case, assembled: what the shop, the bank or a card claim asks
+          for, in date order, as one page to share or keep. */}
+      <Pressable
+        data-pack-open
+        className="k-row-white"
+        onClick={onPack}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 12, marginTop: 12, padding: '14px 16px', textAlign: 'left',
+          background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg,
+        }}
+      >
+        <span aria-hidden="true" style={{ width: 38, height: 38, flexShrink: 0, borderRadius: 10, display: 'grid', placeItems: 'center', background: color.accentSoft }}>
+          <ReceiptGlyph size={20} stroke={color.accentInk} />
+        </span>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: color.ink }}>Claim pack</span>
+          <span style={{ display: 'block', fontSize: 13, lineHeight: 1.4, color: color.muted, marginTop: 2 }}>
+            Every date, right and letter on one page — for the shop, your bank or a card claim.
+          </span>
+        </span>
+        <span aria-hidden="true" style={{ display: 'inline-flex', transform: 'rotate(180deg)' }}>
+          <ChevronLeft stroke={color.muted} />
+        </span>
+      </Pressable>
 
       {receipt.gotcha && (
         <div style={{ display: 'flex', gap: 10, background: color.accentSoft, border: `1px solid ${color.border}`, borderRadius: 12, padding: '14px 16px', marginTop: 12 }}>

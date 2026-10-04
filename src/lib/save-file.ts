@@ -35,6 +35,11 @@ export type SaveOutcome =
  * looking like it worked.
  */
 export async function saveJsonFile(name: string, text: string): Promise<SaveOutcome> {
+  return saveTextFile(name, text, 'application/json');
+}
+
+/** Any text file, the same way: the claim pack is a page, not JSON. */
+export async function saveTextFile(name: string, text: string, type: string): Promise<SaveOutcome> {
   if (isNative()) {
     try {
       const { Filesystem, Directory, Encoding } = await filesystem();
@@ -50,7 +55,7 @@ export async function saveJsonFile(name: string, text: string): Promise<SaveOutc
     }
   }
   try {
-    const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+    const url = URL.createObjectURL(new Blob([text], { type }));
     const a = document.createElement('a');
     a.href = url;
     a.download = name;
