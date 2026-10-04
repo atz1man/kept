@@ -14,7 +14,7 @@
  * keep them after that.
  */
 import { readable, toGray, type Gray } from '../lib/flatten';
-import { readFlattenedOrAsTaken, type Reader } from '../lib/receipt-scan';
+import { readFlattenedOrAsTaken, UNSURE_BELOW, type Reader, type Reading } from '../lib/receipt-scan';
 
 /** Where the reader's files live: `ocr/` beside the app, whatever the app's path. */
 function ocrBase(): string {
@@ -90,8 +90,8 @@ export async function readerReachable(): Promise<boolean> {
 
 export type ScanProgress = (fraction: number, again: boolean) => void;
 
-/** The text on the receipt in the photo, read on this device. */
-export async function readReceiptPhoto(file: Blob, today: Date, onProgress?: ScanProgress): Promise<string> {
+/** The text on the receipt in the photo, read on this device, and the words the reader was unsure of. */
+export async function readReceiptPhoto(file: Blob, today: Date, onProgress?: ScanProgress): Promise<Reading> {
   const [{ createWorker, OEM }, prepared] = await Promise.all([import('tesseract.js'), prepare(file)]);
   const base = ocrBase();
   let again = false;
@@ -113,8 +113,12 @@ export async function readReceiptPhoto(file: Blob, today: Date, onProgress?: Sca
       again = reads++ > 0;
       // tesseract's own names: 0 is Otsu, one threshold for the page; 2 is Sauvola, one per neighbourhood.
       await worker.setParameters({ thresholding_method: how === 'global' ? '0' : '2' });
-      const { data } = await worker.recognize(canvas);
-      return data.text;
+      // `blocks` for the per-word scores; the text is the same either way.
+      const { data } = await worker.recognize(canvas, {}, { text: true, blocks: true });
+      const unsure = (data.blocks ?? []).flatMap((b) =>
+        b.paragraphs.flatMap((p) => p.lines.flatMap((l) => l.words.filter((w) => w.confidence < UNSURE_BELOW).map((w) => ({ text: w.text, confidence: w.confidence })))),
+      );
+      return { text: data.text, unsure };
     };
     return await readFlattenedOrAsTaken(prepared.flat && readerFor(prepared.flat), readerFor(prepared.asTaken), today);
   } finally {
