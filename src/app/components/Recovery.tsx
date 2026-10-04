@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { color, font, radius } from '../../tokens';
 import { rescueBackup } from '../../lib/storage';
 import { backupFilename, savedWhere, saveJsonFile } from '../../lib/save-file';
+import { SupportDetails } from './SupportDetails';
 
 /**
  * What is on screen when the app cannot render.
@@ -34,10 +35,16 @@ interface State {
    * returned; see save-file.ts.
    */
   saved: 'idle' | 'saving' | 'nothing' | { note: string; ok: boolean };
+  /**
+   * What broke, for the person to send if they write in. It was written to
+   * the console and nowhere else — a place no one holding a phone can open —
+   * so the most useful report anyone could make was "it broke".
+   */
+  error: { message: string; where?: string } | null;
 }
 
 export class Recovery extends Component<{ children: ReactNode }, State> {
-  state: State = { failed: false, saved: 'idle' };
+  state: State = { failed: false, saved: 'idle', error: null };
 
   static getDerivedStateFromError(): Partial<State> {
     return { failed: true };
@@ -45,9 +52,21 @@ export class Recovery extends Component<{ children: ReactNode }, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     // Nowhere to send it — no server, and the privacy notice says nothing
-    // leaves the device — so the console is the whole of the reporting. It is
-    // still worth writing: it is what a person can copy into a bug report.
+    // leaves the device. The console was the whole of the reporting, and no
+    // one holding a phone can open a console; so the error is also kept here,
+    // for the person to read and copy into a message themselves (below).
     console.error('kept could not render:', error, info.componentStack);
+    this.setState({ error: { message: `${error?.name ?? 'Error'}: ${error?.message ?? String(error)}`, where: info.componentStack ?? undefined } });
+  }
+
+  /** The stored receipt list, read raw — past the loader, which may be what threw. Counts only. */
+  private storedReceipts(): { status?: unknown; demo?: unknown }[] {
+    try {
+      const parsed = JSON.parse(rescueBackup()?.text ?? 'null') as { receipts?: unknown } | null;
+      return Array.isArray(parsed?.receipts) ? (parsed.receipts as { status?: unknown; demo?: unknown }[]) : [];
+    } catch {
+      return [];
+    }
   }
 
   private rescue = async () => {
@@ -124,7 +143,30 @@ export class Recovery extends Component<{ children: ReactNode }, State> {
         >
           Try again
         </button>
+        <section aria-labelledby="recovery-support" style={{ marginTop: 8 }}>
+          <h2 id="recovery-support" style={{ fontSize: 15, fontWeight: 600, margin: '0 0 6px' }}>Telling us what happened</h2>
+          <Contained>
+            <SupportDetails receipts={this.storedReceipts()} error={this.state.error} />
+          </Contained>
+        </section>
       </main>
     );
+  }
+}
+
+/**
+ * Renders nothing if what it holds throws. This is the last screen there is:
+ * a fault in the support details must cost the support details, never the
+ * rescue button above them.
+ */
+class Contained extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  render() {
+    return this.state.failed ? null : this.props.children;
   }
 }
