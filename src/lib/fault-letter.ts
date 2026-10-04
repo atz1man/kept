@@ -1,4 +1,4 @@
-import { addDays, addMonths, daysBetween, fmtDateLong, fromISODate } from './dates';
+import { addDays, addMonths, daysBetween, fmtDateLong, fromISODate, lastDayOfMonthsBeginning } from './dates';
 import { PRESUMED_FAULT_MONTHS, presumedFaultEnds, REJECT_DAYS } from './legal';
 import { money } from './money';
 import type { Receipt } from './types';
@@ -160,7 +160,15 @@ export function finalRejectLetter(r: Receipt, today: Date, whatsWrong: string): 
   const arrived = r.arrivedOn && r.arrivedOn !== r.purchasedOn ? `, and it was delivered on ${fmtDateLong(fromISODate(r.arrivedOn))}` : '';
   const reported = fmtDateLong(fromISODate(r.faultClaim.sentOn));
   const problem = whatsWrong.trim().replace(/\s+/g, ' ');
-  const noDeduction = daysBetween(today, addMonths(from, PRESUMED_FAULT_MONTHS)) >= 0;
+  /*
+   * Six months "starting with the first day after" delivery (s.24(10)), so the
+   * period begins the day after and runs to the day before the same date six
+   * months on. `addMonths(from, 6)` agreed on most days and fell short at the
+   * end of a short month: delivered 28 February, the six months begin on
+   * 1 March and run to 31 August, and the letter dropped the sentence on
+   * 29, 30 and 31 August.
+   */
+  const noDeduction = daysBetween(today, lastDayOfMonthsBeginning(addDays(from, 1), PRESUMED_FAULT_MONTHS)) >= 0;
   return [
     `Dear ${r.store},`,
     '',
