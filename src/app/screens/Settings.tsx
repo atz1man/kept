@@ -10,9 +10,11 @@ import { CONTACT_EMAIL, TAGLINE } from '../../lib/brand';
 import { LEGAL_DISCLAIMER } from '../../lib/legal';
 import { checkedCount, CHECKED_ON, STORE_COUNT, tableCheck } from '../../lib/stores';
 import { discardSetAside, setAsideData, URGENT_DAYS_MAX, URGENT_DAYS_MIN, type Settings as SettingsShape } from '../../lib/storage';
-import { sellsPaidTiers, UNLOCK } from '../../lib/pricing';
+import type { Offer } from '../../lib/pricing';
+import type { StoreView } from '../../lib/app-store';
 import { countedAgainstQuota, FREE_TIER_LIMIT } from '../../lib/quota';
 import { Pressable } from '../components/Pressable';
+import { Note, UnlockOffer } from '../components/UnlockOffer';
 import { SupportDetails } from '../components/SupportDetails';
 
 interface Props {
@@ -24,8 +26,14 @@ interface Props {
   onRestore: (receipts: Receipt[]) => void;
   onWipe: () => void;
   onClearSamples: () => void;
+  /** The web's sheet, or the App Store's purchase: App decides which (lib/pricing.ts `Offer`). */
   onUpgrade: () => void;
   onChange: (patch: Partial<SettingsShape>) => void;
+  /** What this build sells, if anything. */
+  offer: Offer;
+  /** The App Store on iPhone: its answers and anything in flight. */
+  store: StoreView;
+  onRestorePurchase: () => void;
 }
 
 const RESTORE_FAILURES = {
@@ -34,7 +42,7 @@ const RESTORE_FAILURES = {
   'nothing-usable': 'That backup’s receipts couldn’t be read — nothing was changed.',
 } as const;
 
-export function Settings({ settings, receipts, embedded, onExport, onRestore, onWipe, onClearSamples, onUpgrade, onChange }: Props) {
+export function Settings({ settings, receipts, embedded, onExport, onRestore, onWipe, onClearSamples, onUpgrade, onChange, offer, store, onRestorePurchase }: Props) {
   // How current the retailer table is, decided in `tableCheck` so that a date
   // set once cannot go on reassuring people years later.
   const check = tableCheck(new Date());
@@ -155,8 +163,6 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, on
       : 'Removes every receipt stored here. Your data is yours; taking it back is part of that.';
 
   const free = settings.plan === 'free';
-  // No plan, no prices and no unlock on iOS — see sellsPaidTiers.
-  const selling = sellsPaidTiers(isNative());
   // The meter has to count what the cap counts, or it reports a wall the app
   // will not actually put up.
   const used = countedAgainstQuota(receipts);
@@ -273,7 +279,8 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, on
         )}
       </section>
 
-      {selling && free && (
+      {/* No plan, no price and no unlock where nothing can be bought — see offerFor. */}
+      {offer.kind !== 'none' && free && (
         <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, padding: 18, marginTop: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
             <span style={{ fontWeight: 600, fontSize: 15 }}>Free plan</span>
@@ -292,14 +299,8 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, on
             <div style={{ height: '100%', background: color.accent, borderRadius: 999, width: `${usagePct}%` }} />
           </div>
 
-          {/* One price, from the same module as the landing page — see lib/pricing.ts. */}
-          <Pressable
-            className="k-primary"
-            onClick={onUpgrade}
-            style={{ marginTop: 16, padding: 14, minHeight: 44, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 15 }}
-          >
-            {`Unlock unlimited · ${UNLOCK.price}${UNLOCK.suffix}`}
-          </Pressable>
+          {/* One price: the landing page's on the web, the App Store's on iPhone — see lib/pricing.ts. */}
+          <UnlockOffer offer={offer} store={store} onUnlock={onUpgrade} onRestore={onRestorePurchase} />
           <div style={{ fontSize: 12, color: color.muted, textAlign: 'center', marginTop: 10 }}>
             One payment. No subscription, nothing to cancel.
           </div>
@@ -311,7 +312,10 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, on
           Someone coming back a week later would find no plan section at all,
           and no reason to doubt they were being billed. They are not: say so
           where the price used to be, not only in the sheet they tapped past. */}
-      {selling && !free && (
+      {/* Said whatever the App Store is doing now: on iPhone the plan is 'pro'
+          only because StoreKit verified a purchase. And there money WAS taken,
+          so the web's sentence would be false. */}
+      {!free && (
         <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, padding: 18, marginTop: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
             <span style={{ fontWeight: 600, fontSize: 15 }}>Unlocked</span>
@@ -320,9 +324,11 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, on
             </span>
           </div>
           <div style={{ fontSize: 13, color: color.body, lineHeight: 1.55, marginTop: 8 }}>
-            Nothing was charged and no card was taken — kept cannot accept payments yet. There is no subscription
-            here to cancel.
+            {isNative()
+              ? 'Paid once, through the App Store. There is no subscription here to cancel.'
+              : 'Nothing was charged and no card was taken — kept cannot accept payments yet. There is no subscription here to cancel.'}
           </div>
+          {isNative() && <div role="status">{store.note && <Note note={store.note} />}</div>}
         </section>
       )}
 

@@ -42,6 +42,25 @@ describe('the final right to reject, after a repair that did not work', () => {
     expect(finalRejectLetter(faulty(daysSince(inside) + 1), TODAY, '')).not.toMatch(/deduct/i);
   });
 
+  it('counts the six months from the day after delivery, to the end of a short month', () => {
+    // s.24(10): "the period of 6 months starting with the first day after"
+    // delivery. Delivered 28 February, that is 1 March to 31 August.
+    const deliveredOn = (iso: string, today: Date) =>
+      finalRejectLetter(
+        faulty(0, { purchasedOn: iso, keptOn: iso, faultClaim: { sentOn: toISODate(addDays(new Date(iso), 20)) } }),
+        today,
+        '',
+      ) ?? '';
+    for (const day of [28, 29, 30, 31]) expect(deliveredOn('2026-02-28', new Date(2026, 7, day)), `${day} Aug`).toContain('section 24(10)');
+    expect(deliveredOn('2026-02-28', new Date(2026, 8, 1))).not.toContain('24(10)');
+    // Delivered 30 April: 1 May to 31 October.
+    expect(deliveredOn('2026-04-30', new Date(2026, 9, 31))).toContain('section 24(10)');
+    expect(deliveredOn('2026-04-30', new Date(2026, 10, 1))).not.toContain('24(10)');
+    // An ordinary date is unchanged: delivered 15 January, the last day is 15 July.
+    expect(deliveredOn('2026-01-15', new Date(2026, 6, 15))).toContain('section 24(10)');
+    expect(deliveredOn('2026-01-15', new Date(2026, 6, 16))).not.toContain('24(10)');
+  });
+
   it('is not written once the claim is out of time', () => {
     const old = Math.round((TODAY.getTime() - addMonths(TODAY, -CLAIM_YEARS * 12 - 1).getTime()) / 86_400_000);
     expect(finalRejectLetter(faulty(old), TODAY, '')).toBeNull();
