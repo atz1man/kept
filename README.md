@@ -352,8 +352,10 @@ src/lib/          the decision logic — pure, tested, no React
   claim-pack.ts   one purchase's dates, rights and letters on one page, to share or keep
   split.ts        one thing out of a basket, as a receipt of its own on the same clocks
   persist.ts      asking the browser to keep the library, on the web
+  stale-build.ts  when a tab older than the deploy reloads into it, and when it must not
   quota.ts        what the free tier counts, and when it is full
-  pricing.ts      the one price, and what a tap on it is allowed to claim
+  pricing.ts      the one price, what each build offers, and what a tap on it is allowed to claim
+  app-store.ts    the unlock on iPhone: what StoreKit's answers mean for the plan, and what each outcome says
   storage.ts      localStorage persistence, and the shape a stored state is
   backup.ts       reading a backup file back in, and merging it by id
   save-file.ts    where a backup actually lands — Files on iOS, a download on the web
@@ -1437,6 +1439,69 @@ scrim over the tab bar as a defect, which is what a modal is *for*, so it now
 narrows to the open dialog's own buttons and still fails when those are
 covered.
 
+### The unlock on iPhone
+
+The iPhone app sells unlimited receipts through In-App Purchase. Guideline
+3.1.1 allows nothing else, and until StoreKit the iOS build sold nothing at all
+(APN-18). It is one non-consumable, `kept.unlimited`. `packages/purchases` is
+the native half, in StoreKit 2. It only asks StoreKit and reports what it was
+told; every decision is in `lib/app-store.ts`, because the native half cannot
+run here and an untested branch on this path costs someone money.
+
+**Only a verified transaction unlocks.** StoreKit 2 checks the App Store's
+signature on the phone. An answer that fails the check unlocks nothing and is
+left unfinished, so StoreKit offers it again. There is no server to keep, and
+nothing a proxy rewrites can unlock the app.
+
+**Nothing relocks on silence.** A new phone reports "no purchase" until its
+records arrive. Relocking on that would lock a paying customer out of their
+own library, so only an explicit revocation (a refund, or a family member no
+longer sharing) puts the cap back. Being wrong in that direction costs one
+refunded £9.99. A transaction that arrives outside a purchase call, such as an
+Ask to Buy approval, a purchase on another phone or a refund, comes through
+StoreKit's `Transaction.updates`. The plugin listens from launch and the plan
+follows, with a sentence saying why it moved.
+
+**No wall without a door, and no way round it either.** The cap stands only
+where the App Store sells the unlock. But "offline lifts the cap" would make
+airplane mode the way to unlimited, so the price the App Store last quoted is
+remembered and the cap stands on it. On a first launch offline, before the App
+Store has ever answered, there is no cap. Where Screen Time switches purchases
+off, the button is replaced by where to switch them back on.
+
+**The App Store's price, not ours.** The button shows StoreKit's
+`displayPrice` for the person's storefront ("£9.99", "9,99 €"). A hard-coded
+"£9.99" would be wrong in every other country, and could disagree with the
+sheet Apple shows next.
+
+**Every ending has words, and none of them guesses about money.** A cancelled
+sheet says nothing. A failure says "nothing was charged" only where that is
+certain, which is when the App Store had nothing to sell. A dropped connection
+mid-purchase can still end in a charge, so it says what happens if it did: the
+App Store finishes the transaction and the app unlocks by itself. Restore
+purchase sits directly under the button, which App Review expects for a
+one-off purchase.
+
+`test/app-store.test.ts` pins each of those decisions. It also reads the Swift
+and the TypeScript and checks they agree on every name that crosses the bridge:
+methods, the event, outcomes, states and reasons. A rename on one side would
+otherwise pass every test and fail on the first real purchase. `npm run ios`
+walks it all on the bundle that ships, with StoreKit emulated in the bridge:
+- buying at the cap, then saving the receipt that was waiting;
+- another storefront's price;
+- a cancelled sheet;
+- an unverified purchase;
+- a dropped connection;
+- Screen Time;
+- Ask to Buy, approved later;
+- both kinds of restore;
+- a refund while open, and one found at launch;
+- a slow record on a new phone;
+- offline with a remembered price, and offline on a first launch;
+- nothing on sale.
+`ios/App/Kept.storekit` lets the same flows run in the Simulator without App
+Store Connect (`store/SUBMISSION.md`, section 4b).
+
 ### The date it was already holding
 
 The Add screen asks for the day the parcel landed — both statutory clocks run
@@ -2005,9 +2070,51 @@ train, in the shop, with no signal — and it is the one claim that cannot be
 verified by reading the code. It is verified by `npm run freshness`, which
 stops its own server and then requires the app to launch, render the library
 in its self-hosted typeface, navigate to a receipt, and serve the policy feed
-from the copy it kept. The service worker caches the shell at install and
-fills in the hashed bundles, fonts and icons on first run; the feed is
-network-first with that cached copy behind it.
+from the copy it kept. The service worker precaches, at install, the shell and
+every file the app can load — the list is written into it by the build — and
+takes over only once all of it has arrived; the feed and its signature are
+network-first with the cached copy behind them.
+
+### Offline after a first visit, after a deploy, and on a signal that lies
+
+That sweep reloaded the page before going offline, which is the one order of
+events that hides what the worker did not hold, and it passed while three
+white screens stood behind it. Measured on main, in Chromium, against a real
+second build:
+
+- **A first visit, then the train.** The page loads its bundles before the
+  worker exists, and the worker precached only the shell — so offline the
+  shell opened and named files nobody held: `#root` empty, every script
+  refused.
+- **A deploy, one online launch, then the train.** The new build's bundles
+  went through the OLD worker into the old cache, and the new worker deleted
+  that cache as it took over. Same empty page.
+- **A deploy whose download dropped one request.** The install swallowed the
+  failure "to fill the rest at runtime", so the new worker activated with an
+  empty cache and deleted the complete one. Offline: the browser's own error
+  page.
+- **A signal that connects and never answers.** Network first, with no limit:
+  with every file cached, nothing on screen after a minute.
+- **A tab left open across a deploy.** Its lazily loaded pieces — the PDF
+  reader, the scanner — have names the server no longer has. The server
+  answered them with its index page and a 200, the worker cached that page as
+  the script, and choosing a file said "kept couldn't read that file" for as
+  long as the tab lived.
+
+So the build writes the app's whole file list into the worker (walked from the
+bundle's own graph, lazy chunks included, and checked against what the shell
+loads), the install fetches all of it or fails — leaving the worker already in
+charge, and its cache, alone — a launch waits three seconds for the network and
+then opens the held shell, nothing but the shell may be cached as HTML, and a
+tab whose piece will not load reloads into the newer build when one can be
+named (`lib/stale-build.ts` says when it must not: offline with nowhere to go,
+or with receipts the store does not hold). The feed's signature joined the feed
+as network-first, because the two are a pair and a cached signature would have
+refused every genuine feed after the first once signing was on.
+
+`npm run freshness` asks each of these in its own browser profile, against a
+second build it makes itself, and each step was confirmed to fail on main and
+to fail again when its fix is taken back out.
 
 It was verified in the smoke suite before that, under a comment saying the
 network was cut completely, and it was not — see the section above for what
@@ -2334,8 +2441,9 @@ screen, and an unticked second scan that leaves nothing on the disk.
   cancels what is waiting, that a first purchase asks for permission exactly
   once, and that a refusal lodges nothing while Settings says where to
   change it. Each of those has a broken version it names.
-- **Payments.** The one-off unlock (£9.99, once) sets the local plan flag and says plainly
-  that nothing was charged. No card, no billing, nothing to cancel.
+- **Payments on the web.** The web's one-off unlock (£9.99, once) sets the local plan flag
+  and says plainly that nothing was charged. No card, no billing, nothing to cancel. The
+  iPhone app sells the real unlock through In-App Purchase; see *The unlock on iPhone*.
 - **Signing the policy feed.** The feed is fetched from the app's own origin,
   validated entry by entry and merged (`lib/policy-feed.ts`), and the download
   is of *all* changes — never a query naming the shops a particular user

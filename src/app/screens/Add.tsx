@@ -9,7 +9,8 @@ import { arrivalProblem, MAX_WINDOW_DAYS, purchaseProblem, readAmount, windowSta
 import { makeReceiptId } from '../../lib/receipts';
 import { findStore, policyFor, windowFor } from '../../lib/stores';
 import { windowInForceFor } from '../../lib/policy-feed';
-import { UNLOCK } from '../../lib/pricing';
+import type { Offer } from '../../lib/pricing';
+import type { StoreView } from '../../lib/app-store';
 import { FREE_TIER_LIMIT } from '../../lib/quota';
 import { isNative } from '../../lib/mirror';
 import { savePhoto, scannedPhotoToKeep } from '../../lib/photos';
@@ -18,6 +19,7 @@ import type { PolicyUpdate, Receipt } from '../../lib/types';
 import { ArrowRight, CameraGlyph, LogoMark, MailGlyph, ShareGlyph, Warning, ReceiptGlyph } from '../components/Icons';
 import { HowBought } from '../components/HowBought';
 import { Pressable } from '../components/Pressable';
+import { Note, UnlockOffer } from '../components/UnlockOffer';
 
 interface Props {
   today: Date;
@@ -33,6 +35,11 @@ interface Props {
   updates: readonly PolicyUpdate[];
   onSave: (r: Receipt) => void;
   onUpgrade: () => void;
+  /** What this build sells at the cap (lib/pricing.ts). */
+  offer: Offer;
+  /** The App Store on iPhone: its answers and anything in flight. */
+  store: StoreView;
+  onRestorePurchase: () => void;
   /** A way in chosen on the home screen, started as the screen opens. */
   start?: AddStart;
   /** Told once `start` has been acted on, so coming back here later does not start it again. */
@@ -60,7 +67,7 @@ function PencilGlyph() {
 /** How the Add screen can be opened already doing something: the camera, the file picker, the paste box. */
 export type AddStart = 'scan' | 'file' | 'paste';
 
-export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSave, onUpgrade, start, onStarted }: Props) {
+export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSave, onUpgrade, offer, store, onRestorePurchase, start, onStarted }: Props) {
   const route = shareRoute(isNative());
   const [text, setText] = useState(sharedText ?? '');
   const [parsed, setParsed] = useState<ParsedReceipt | null>(null);
@@ -549,21 +556,28 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
         </div>
       )}
 
-      {quotaFull && (
+      {quotaFull && offer.kind !== 'none' && (
         <div style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, padding: 18, marginTop: 14, boxShadow: shadow.raised }}>
           <div style={{ fontWeight: 600, fontSize: 15 }}>That’s your {FREE_TIER_LIMIT} free receipts</div>
           <div style={{ fontSize: 13, color: color.body, lineHeight: 1.55, marginTop: 6 }}>
             Kept has tracked {trackedTotal} for free. Return something you are already tracking, or mark one you are keeping, and a slot frees up —
             or unlock unlimited once, and one missed return pays for it.
           </div>
-          <Pressable
-            className="k-primary"
-            onClick={onUpgrade}
-            style={{ marginTop: 12, padding: 13, textAlign: 'center', background: color.accent, color: color.white, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
-          >
-            {`Unlock unlimited · ${UNLOCK.price}${UNLOCK.suffix}`}
-          </Pressable>
+          <UnlockOffer
+            offer={offer}
+            store={store}
+            onUnlock={onUpgrade}
+            onRestore={onRestorePurchase}
+            buttonStyle={{ marginTop: 12, padding: 13, fontSize: 14 }}
+          />
         </div>
+      )}
+      {/* Bought here, at the cap: the block above goes with the cap, so the
+          thank-you is said where the person is, above the receipt they were
+          saving, which they can now save. Always present on iPhone so it is
+          announced when it fills. */}
+      {offer.kind === 'app-store' && (
+        <div role="status">{!quotaFull && store.note?.tone === 'ok' && <Note note={store.note} />}</div>
       )}
 
       {parsed && (

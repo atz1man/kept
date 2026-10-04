@@ -18,7 +18,7 @@ import { CONTACT_EMAIL } from '../lib/brand';
 
 
 /** Moves whenever what this page says moves. */
-export const UPDATED_ON = '30 September 2026';
+export const UPDATED_ON = '4 October 2026';
 
 export function Privacy() {
   return (
@@ -71,6 +71,13 @@ export function Privacy() {
           receipt as proof of purchase, unless you untick that before saving; in a browser it is discarded. A picture
           kept with a receipt is stored with it in the app’s Documents folder on this phone, and kept never uploads
           it.
+        </Section>
+
+        <Section title="Buying the unlock">
+          On iPhone, unlimited receipts is bought through the App Store, and the payment is between you and Apple: kept
+          never sees your card, your name or your Apple ID. All kept learns, from the App Store on this phone, is whether
+          this Apple ID has bought the unlock, so it can stop counting receipts, and it keeps that answer here with your
+          settings. Restore purchase in Settings asks the App Store again.
         </Section>
 
         <Section title="Backups">

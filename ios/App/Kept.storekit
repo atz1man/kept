@@ -1,0 +1,35 @@
+{
+  "identifier" : "6F1D2A7C",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "9.99",
+      "familyShareable" : false,
+      "internalID" : "6739104511",
+      "localizations" : [
+        {
+          "description" : "No limit on receipts. Paid once.",
+          "displayName" : "Unlimited receipts",
+          "locale" : "en_GB"
+        }
+      ],
+      "productID" : "kept.unlimited",
+      "referenceName" : "Unlimited receipts",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_GB",
+    "_storefront" : "GBR"
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 2,
+    "minor" : 0
+  }
+}

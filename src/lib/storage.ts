@@ -1,3 +1,4 @@
+import { readPrice } from './app-store';
 import { readReceipt } from './backup';
 import { chooseSource, holdMirrorWrites, isNative, mirrorWritesHeld, readMirrorWithin, releaseMirrorWrites, writeMirror } from './mirror';
 import { erasePhotos } from './photos';
@@ -41,8 +42,22 @@ const SCHEMA_VERSION = 1;
 
 export interface Settings {
   urgentDays: number;
-  /** The free tier caps the library; the paid tiers do not. */
+  /**
+   * The free tier caps the library; the unlock does not. On the web this is
+   * the local flag the free unlock sets. On iPhone only StoreKit sets it: a
+   * verified purchase makes it 'pro' and a refund makes it 'free'
+   * (lib/app-store.ts). It is stored so a paying customer is not shown the
+   * cap while the App Store is still being asked.
+   */
   plan: 'free' | 'pro';
+  /**
+   * The unlock's price at the App Store's last answer, as Apple wrote it for
+   * this storefront, or null when it has never answered or does not sell the
+   * unlock here. It keeps the offer, and the cap, in place while the App Store
+   * cannot be reached, so going offline is not a way round the cap
+   * (`offerFor` in lib/pricing.ts).
+   */
+  appStorePrice: string | null;
   deadlineAlerts: boolean;
   policyWatch: boolean;
   /**
@@ -81,6 +96,7 @@ export const URGENT_DAYS_MAX = 21;
 export const DEFAULT_SETTINGS: Settings = {
   urgentDays: DEFAULT_URGENT_DAYS,
   plan: 'free',
+  appStorePrice: null,
   deadlineAlerts: true,
   policyWatch: true,
   remindersExplained: false,
@@ -150,6 +166,7 @@ function readSettings(raw: unknown): Settings {
   return {
     urgentDays: urgent,
     plan: s.plan === 'pro' ? 'pro' : 'free',
+    appStorePrice: readPrice(s.appStorePrice),
     deadlineAlerts: bool(s.deadlineAlerts, DEFAULT_SETTINGS.deadlineAlerts),
     policyWatch: bool(s.policyWatch, DEFAULT_SETTINGS.policyWatch),
     remindersExplained: bool(s.remindersExplained, DEFAULT_SETTINGS.remindersExplained),
@@ -263,6 +280,7 @@ export async function restoreFromMirror(budgetMs?: number): Promise<boolean> {
       if (pending !== null) {
         try {
           store.setItem(KEY, pending);
+          landed = true;
           void writeMirror(pending);
         } catch {
           // As any failed save: the live store refused it.
@@ -362,15 +380,35 @@ export function discardSetAside(): void {
 /** The latest save held back during a late mirror read; see `save`. */
 let heldLive: string | null = null;
 
+/** Whether the last save put what was on screen into the store; see `savedToStore`. */
+let landed = true;
+
+/**
+ * Whether the store holds what is on screen — asked before anything throws the
+ * page away, because a reload loads the store, not the screen.
+ *
+ * Not the same as what `save` returns. A save held back during a late mirror
+ * read answers true, so the failure banner does not claim a loss that has not
+ * happened, and it has still not reached the store: a reload then would lose
+ * it. False there, false after a failed write, true once a write lands.
+ */
+export function savedToStore(): boolean {
+  return landed;
+}
+
 export function save(state: KeptState): boolean {
   const store = storage();
+  landed = false;
   if (!store) return false;
   try {
     const next = JSON.stringify(state);
     // Skip an identical write. Adopting another tab's state sets this state,
     // which would otherwise write straight back what was just read — churning
     // the quota for nothing.
-    if (store.getItem(KEY) === next) return true;
+    if (store.getItem(KEY) === next) {
+      landed = true;
+      return true;
+    }
     /*
      * Held while a late mirror read may still bring the real library back
      * (see `restoreFromMirror`), in the live store as well as the mirror. The
@@ -384,6 +422,7 @@ export function save(state: KeptState): boolean {
       return true;
     }
     store.setItem(KEY, next);
+    landed = true;
     /*
      * And again, outside the web view, on iOS only. Deliberately not awaited:
      * the reducer saves synchronously and cannot wait, and a mirror that fails
