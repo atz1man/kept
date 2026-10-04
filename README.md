@@ -2005,9 +2005,10 @@ train, in the shop, with no signal — and it is the one claim that cannot be
 verified by reading the code. It is verified by `npm run freshness`, which
 stops its own server and then requires the app to launch, render the library
 in its self-hosted typeface, navigate to a receipt, and serve the policy feed
-from the copy it kept. The service worker caches the shell at install and
-fills in the hashed bundles, fonts and icons on first run; the feed is
-network-first with that cached copy behind it.
+from the copy it kept. The service worker precaches, at install, the shell and
+every file the app can load — the list is written into it by the build — and
+takes over only once all of it has arrived; the feed and its signature are
+network-first with the cached copy behind them.
 
 It was verified in the smoke suite before that, under a comment saying the
 network was cut completely, and it was not — see the section above for what

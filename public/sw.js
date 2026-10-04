@@ -24,25 +24,93 @@
 const CACHE = 'kept-__BUILD_ID__';
 
 /**
- * The shell, precached at install so a first offline launch works. Hashed
- * bundle URLs are deliberately absent — they change every build and a stale
- * hard-coded list would poison the cache. They are picked up at runtime
- * instead, on the first online load.
+ * Every file this build's app can ask for, stamped beside the cache name by
+ * the same plugin: the scripts and stylesheet the app document loads, and
+ * every chunk those can import later — reading a PDF, scanning a receipt — so
+ * a feature reached for the first time on the train is already here.
+ *
+ * These were once left out on purpose, on the grounds that hashed names change
+ * every build and a hard-coded list would go stale, and picked up at runtime
+ * instead. A list written BY the build cannot go stale, and leaving them to
+ * runtime left the app a white screen offline twice over. Measured on main:
+ *
+ *   - a first visit, then offline: the page loaded its bundles before this
+ *     worker existed, so the cache held the shell and nothing it names —
+ *     `#root` empty, every script and the stylesheet failed;
+ *   - a deploy, one online launch, then offline: the new build's bundles were
+ *     fetched through the OLD worker into the old cache, which the new worker's
+ *     `activate` then deleted, leaving it a shell naming files it did not hold.
+ *
+ * Empty when this file is read straight out of public/ (the dev server, which
+ * has no build), so the shell alone is precached there, as it always was.
  */
+const BUILD = [/* __BUILD_FILES__ */];
+
+/** The document every launch opens, and the files it names that no build emits. */
 const SHELL = ['/app/', '/manifest.webmanifest', '/icons/icon.svg', '/fonts/geist.woff2'];
 
+/*
+ * All or nothing, and NO catch — the install fails if any of it does.
+ *
+ * It had one, on the grounds that a single 404 "would leave the worker
+ * uninstalled; better to install with a partial cache and fill the rest at
+ * runtime". The partial cache was the defect. A worker
+ * that installs goes on to activate, and `activate` deletes every cache but its
+ * own — so one dropped request while a deploy precached threw away a complete
+ * working copy and replaced it with an empty one. Measured: the new worker's
+ * fetch of `/app/` answered 503 once, the worker activated with a cache of
+ * nothing, and the next offline launch was the browser's own error page.
+ *
+ * A failed install is the safe failure: the worker already in charge stays in
+ * charge with the cache it has, and the browser tries the update again at the
+ * next launch. Nothing is put until everything has arrived, so a failure here
+ * leaves no half-filled cache behind it either.
+ */
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches
-      .open(CACHE)
-      .then((c) => c.addAll(SHELL))
-      // A single 404 in the shell list would reject addAll and leave the
-      // worker uninstalled; better to install with a partial cache and fill
-      // the rest at runtime.
-      .catch(() => undefined)
-      .then(() => self.skipWaiting()),
-  );
+  event.waitUntil(precache().then(() => self.skipWaiting()));
 });
+
+async function precache() {
+  const arrived = await Promise.all(
+    [...SHELL, ...BUILD].map(async (path) => {
+      // `no-cache`: the HTTP cache may confirm a copy but not answer for the
+      // server, so an hour-old shell cannot be precached under a new build.
+      const res = await fetch(path, { cache: 'no-cache' });
+      if (!res.ok || !fits(path, res)) {
+        throw new Error(`precache: ${path} answered ${res.status} ${res.headers.get('content-type')}`);
+      }
+      return [path, res];
+    }),
+  );
+  const cache = await caches.open(CACHE);
+  await Promise.all(arrived.map(([path, res]) => cache.put(path, res)));
+}
+
+/**
+ * Whether a response is the kind of file that was asked for. HTML is this
+ * app's shell and nothing else: a server with no file at a path usually
+ * answers with its index page and a 200, and that page must never be
+ * precached as one of the app's files.
+ *
+ * Deliberately no stricter than that. Demanding a JavaScript type for `.js`
+ * would refuse a host that serves `.mjs` as octet-stream — and here a refusal
+ * fails the install, so a fussy rule would pin people to an old build.
+ */
+function fits(path, res) {
+  const html = /^text\/html/i.test(res.headers.get('content-type') ?? '');
+  return path === '/app/' ? html : !html;
+}
+
+/*
+ * Read from this worker's OWN cache, never from whichever cache happens to
+ * match: a cache left by a worker that failed to install holds another build.
+ * And ignoring Vary, because servers vary on Origin (vite preview does, on
+ * every file) and the cached copy was fetched by this worker while the page's
+ * own requests carry an Origin — a same-origin file is the same bytes whoever
+ * asks. Measured: without it the precache is never matched, and removing it
+ * fails exactly the `freshness` steps that removing the precache does.
+ */
+const fromCache = (key) => caches.open(CACHE).then((c) => c.match(key, { ignoreVary: true }));
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
@@ -77,21 +145,35 @@ self.addEventListener('activate', (event) => {
  */
 const FRESH = ['/policy-feed.json', '/policy-feed.sig'];
 
-/**
- * Network first, with the cache behind it. Used for the things a deploy is
- * supposed to reach: the app shell, and the feed. Offline still works — the
- * fallback is the last copy successfully fetched.
+/*
+ * A launch: the network's answer, and the held shell when there is none.
+ *
+ * Not written to the cache. The shell this worker holds is the one it
+ * precached with the files it names, and that pairing is the point — a shell
+ * from the network after a deploy names a NEW build's files, and kept here it
+ * would be opened offline over a cache that has none of them, which is the
+ * white screen again. A new shell arrives with its own worker, because the
+ * worker's cache name is a hash of the shell.
  */
-function networkFirst(req, cacheKey) {
+function launch(event) {
+  return fetch(event.request).catch(() => fromCache('/app/').then((hit) => hit ?? Response.error()));
+}
+
+/**
+ * Network first, with the cache behind it, for the files that change at a
+ * fixed url. Offline still works — the fallback is the last copy successfully
+ * fetched.
+ */
+function networkFirst(req, path) {
   return fetch(req)
     .then((res) => {
       if (res.ok) {
         const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(cacheKey, copy));
+        caches.open(CACHE).then((c) => c.put(path, copy));
       }
       return res;
     })
-    .catch(() => caches.match(cacheKey).then((hit) => hit ?? Response.error()));
+    .catch(() => fromCache(path).then((hit) => hit ?? Response.error()));
 }
 
 self.addEventListener('fetch', (event) => {
@@ -105,9 +187,9 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
 
   // Navigations: network first, so a deployed update is picked up on the
-  // next online launch, with the cached shell behind it for offline.
+  // next online launch, with the precached shell behind it for offline.
   if (req.mode === 'navigate') {
-    event.respondWith(networkFirst(req, '/app/'));
+    event.respondWith(launch(event));
     return;
   }
 
@@ -120,7 +202,7 @@ self.addEventListener('fetch', (event) => {
   // Everything else — hashed bundles, fonts, icons — is immutable per URL, so
   // cache first and fill on miss.
   event.respondWith(
-    caches.match(req).then(
+    fromCache(req).then(
       (hit) =>
         hit ??
         fetch(req).then((res) => {
