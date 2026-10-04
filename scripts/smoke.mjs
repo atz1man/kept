@@ -3458,6 +3458,204 @@ results['the landing demo cannot touch the real app’s data'] =
   (await page.evaluate(() => localStorage.getItem('kept.v1'))) === storedBefore;
 await landing.close();
 
+/*
+ * The demo, asked to do the most it offers rather than the least.
+ *
+ * A swipe in the frame, above, is the gentlest thing a visitor does there, and
+ * it was the only thing this suite asked of it. Erase everything, pressed in
+ * the demo, wrote an empty library over the visitor's real one — measured,
+ * [Sofa, Kettle, Coat] became [] — because that screen called the store
+ * directly, and nothing on its path asked whether this was the demo. Opened
+ * here as `/app/?embed=1`, which is the demo, framed or not.
+ *
+ * The real app's data is planted, and read back, from a page that is not the
+ * app (`/privacy/`), so nothing runs against it but the demo under test. Its
+ * own contexts, so the main page's library is not in the way.
+ */
+{
+  const demoCtx = await browser.newContext({ viewport: { width: 402, height: 874 }, acceptDownloads: true });
+  const realOne = (id, item, pence) => ({
+    id, store: 'John Lewis', item, cat: 'other', amount: pence, purchasedOn: '2026-09-28',
+    windowDays: 35, policy: 'John Lewis · 35 days', distance: false, status: 'active',
+  });
+  const realLibrary = JSON.stringify({
+    version: 1, onboardingSeen: true, updates: [], alertsSent: [],
+    settings: { urgentDays: 7, plan: 'free', deadlineAlerts: false, policyWatch: false, remindersExplained: true },
+    receipts: [realOne('r_1', 'Sofa', 89900), realOne('r_2', 'Kettle', 4999), realOne('r_3', 'Coat', 12000)],
+  });
+  const plant = async (cells) => {
+    const p = await demoCtx.newPage();
+    await p.goto(`${ORIGIN}/privacy/`, { waitUntil: 'domcontentloaded' });
+    await p.evaluate((c) => {
+      localStorage.clear();
+      for (const [k, v] of Object.entries(c)) localStorage.setItem(k, v);
+    }, cells);
+    await p.close();
+  };
+  const onDisk = async () => {
+    const p = await demoCtx.newPage();
+    await p.goto(`${ORIGIN}/privacy/`, { waitUntil: 'domcontentloaded' });
+    const cells = await p.evaluate(() => Object.fromEntries(Object.keys(localStorage).map((k) => [k, localStorage.getItem(k)])));
+    await p.close();
+    return cells;
+  };
+  const itemsIn = (raw) => {
+    try {
+      return JSON.parse(raw).receipts.map((r) => r.item).join(', ');
+    } catch {
+      return null;
+    }
+  };
+  const openDemo = async (ctx = demoCtx) => {
+    const p = await ctx.newPage();
+    await p.goto(`${ORIGIN}/app/?embed=1`, { waitUntil: 'networkidle' });
+    await p.waitForTimeout(400);
+    return p;
+  };
+
+  // Erase everything: the demo's own receipts go, and nothing else.
+  await plant({ 'kept.v1': realLibrary });
+  const eraser = await openDemo();
+  await eraser.getByRole('button', { name: 'Settings', exact: true }).click();
+  await eraser.waitForTimeout(300);
+  await eraser.getByRole('button', { name: 'Erase everything' }).click();
+  await eraser.waitForTimeout(300);
+  const warning = await eraser.locator('main').innerText();
+  await eraser.getByRole('button', { name: 'Erase everything' }).click({ timeout: 2000 }).catch(() => {});
+  await eraser.waitForTimeout(600);
+  await eraser.getByRole('button', { name: 'Receipts', exact: true }).click({ timeout: 2000 }).catch(() => {});
+  await eraser.waitForTimeout(400);
+  const demoCleared = await eraser.getByText('Nothing tracked yet').isVisible().catch(() => false);
+  await eraser.close();
+  results['erasing in the demo clears the demo and leaves the real library alone'] =
+    demoCleared && itemsIn((await onDisk())['kept.v1']) === 'Sofa, Kettle, Coat';
+  // It counted the demo's five samples and said "from this device".
+  results['the demo’s erase says it clears the demo, not this device'] =
+    /in this demo/.test(warning) && !/from this device/.test(warning);
+
+  // The copy a bad launch set aside: the demo showed it, and saving it from
+  // there threw the real one away.
+  const realAside = '{"version":1,"onboardingSeen":true,"receipts":[{"id":"mine","store":"Currys","item":"Kettle"';
+  await plant({ 'kept.v1': realLibrary, 'kept.v1.unreadable': realAside });
+  const asideDemo = await openDemo();
+  await asideDemo.getByRole('button', { name: 'Settings', exact: true }).click();
+  await asideDemo.waitForTimeout(300);
+  const offered = await asideDemo.getByRole('button', { name: 'Save them as a file' }).isVisible().catch(() => false);
+  await asideDemo.getByRole('button', { name: 'Save them as a file' }).click({ timeout: 2000 }).catch(() => {});
+  await asideDemo.waitForTimeout(600);
+  await asideDemo.close();
+  results['the demo neither offers nor discards the real set-aside copy'] =
+    !offered && (await onDisk())['kept.v1.unreadable'] === realAside;
+
+  // Merely opened, over a store the app cannot read: reading it was enough
+  // for the demo's launch to set a copy aside.
+  const truncated = '{"version":1,"receipts":[{"id":"r1","store":"Currys"';
+  await plant({ 'kept.v1': truncated });
+  await (await openDemo()).close();
+  const afterOpening = await onDisk();
+  results['opening the demo writes nothing, even over a store it cannot read'] =
+    afterOpening['kept.v1'] === truncated && Object.keys(afterOpening).length === 1;
+
+  // The crash screen, inside the demo: its rescue read the real store and
+  // handed the visitor's library over as a file, under a sentence about the
+  // demo's samples. Broken the way the rescue check above breaks the app.
+  await plant({ 'kept.v1': realLibrary });
+  const crashed = await demoCtx.newPage();
+  await crashed.addInitScript(() => {
+    // eslint-disable-next-line no-extend-native
+    Number.prototype.toLocaleString = function toLocaleString() {
+      throw new Error('simulated platform failure');
+    };
+  });
+  await crashed.goto(`${ORIGIN}/app/?embed=1`, { waitUntil: 'domcontentloaded' });
+  await crashed.waitForTimeout(900);
+  const crashSays = await crashed.locator('main').innerText().catch(() => '');
+  const rescueOffered = await crashed.getByRole('button', { name: 'Save my receipts to a file' }).isVisible().catch(() => false);
+  results['the demo’s crash screen does not hand over the real library'] =
+    /Something in kept broke/.test(crashSays) && /This is the demo/.test(crashSays) && !rescueOffered;
+  await crashed.close();
+  await demoCtx.close();
+
+  /*
+   * Notifications, from the demo opened outside any frame, which the frame
+   * check in notify.ts never covered. Permission is the ORIGIN's, so a prompt
+   * the demo raised and the visitor refused would block the real app's alerts.
+   */
+  const notifying = async (permission) => {
+    const ctx = await browser.newContext({ viewport: { width: 402, height: 874 }, permissions: ['notifications'] });
+    await ctx.addInitScript((granted) => {
+      window.__asked = 0;
+      window.__shown = 0;
+      class StubNotification {
+        static permission = granted;
+        static requestPermission() {
+          window.__asked += 1;
+          StubNotification.permission = 'granted';
+          return Promise.resolve('granted');
+        }
+        constructor() {
+          window.__shown += 1;
+        }
+      }
+      window.Notification = StubNotification;
+      if (window.ServiceWorkerRegistration) {
+        ServiceWorkerRegistration.prototype.showNotification = function showNotification() {
+          window.__shown += 1;
+          return Promise.resolve();
+        };
+      }
+    }, permission);
+    return ctx;
+  };
+  const askCtx = await notifying('default');
+  const asking = await openDemo(askCtx);
+  await asking.getByRole('button', { name: 'Settings', exact: true }).click();
+  await asking.waitForTimeout(300);
+  const alertsSwitch = asking.getByRole('switch', { name: /Deadline alerts/ });
+  const switchFound = await alertsSwitch.isVisible().catch(() => false);
+  await alertsSwitch.click({ timeout: 2000 }).catch(() => {});
+  await asking.waitForTimeout(400);
+  results['the demo asks for no notification permission'] =
+    switchFound && (await asking.evaluate(() => window.__asked)) === 0;
+  await askCtx.close();
+
+  // A receipt of the visitor's own making, four days from its deadline: the
+  // samples never raise an alert, so this is the one the demo would warn about.
+  const toldCtx = await notifying('granted');
+  const told = await openDemo(toldCtx);
+  const bought = new Date(Date.now() - 10 * 86_400_000);
+  await told.getByRole('button', { name: 'Add a receipt' }).click();
+  await told.waitForTimeout(300);
+  await told.fill('#paste', `Your Currys order · Total £49.00 · ${bought.getDate()} ${bought.toLocaleString('en-GB', { month: 'short' })}`);
+  await told.getByRole('button', { name: 'Read it' }).click();
+  await told.waitForTimeout(300);
+  await told.fill('#add-item', 'Toaster');
+  await told.getByRole('button', { name: 'Save receipt' }).click();
+  await told.waitForTimeout(1500);
+  const toasterHeld = await told.getByText('Toaster').first().isVisible().catch(() => false);
+  results['the demo shows no notification, even about a receipt added to it'] =
+    toasterHeld && (await told.evaluate(() => window.__shown)) === 0;
+  await toldCtx.close();
+
+  // The service worker, in a profile that has never opened the app: reading
+  // the marketing page installed it, and its cache, from the demo's frame.
+  const freshCtx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const visit = await freshCtx.newPage();
+  await visit.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
+  await visit.locator('iframe[title="kept — live app demo"]').scrollIntoViewIfNeeded();
+  const demoRan = await visit
+    .frameLocator('iframe[title="kept — live app demo"]')
+    .getByRole('button', { name: 'Settings', exact: true })
+    .waitFor({ timeout: 15000 })
+    .then(() => true)
+    .catch(() => false);
+  // The registration waited for the frame's own load event, so give it that.
+  await visit.waitForTimeout(2000);
+  const workers = await visit.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).map((r) => r.scope));
+  results['visiting the landing page installs no service worker'] = demoRan && workers.length === 0;
+  await freshCtx.close();
+}
+
 // The manifest has to be installable-shaped, because "add it to your home
 // screen" is how the share target and the offline promise are reached at all.
 const manifest = await page.evaluate(async () => (await fetch('/manifest.webmanifest')).json());

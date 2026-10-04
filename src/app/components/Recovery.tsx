@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { color, font, radius } from '../../tokens';
+import { embedded } from '../../lib/embed';
 import { rescueBackup } from '../../lib/storage';
 import { backupFilename, savedWhere, saveJsonFile } from '../../lib/save-file';
 
@@ -66,6 +67,17 @@ export class Recovery extends Component<{ children: ReactNode }, State> {
   render() {
     if (!this.state.failed) return this.props.children;
 
+    /*
+     * The landing page's demo keeps nothing, so it has nothing to rescue. The
+     * button read the real store all the same: a crash inside the demo handed
+     * the visitor's own library over as a file, under a sentence about the
+     * demo's samples. Measured: the file held the three real receipts. The
+     * store refuses the demo now, which would leave the button reporting
+     * nothing on this device to save, and that is false for anyone who uses
+     * kept. So the demo says what is true of it, and offers nothing.
+     */
+    const demo = embedded();
+
     return (
       <main
         style={{
@@ -77,20 +89,29 @@ export class Recovery extends Component<{ children: ReactNode }, State> {
         <h1 tabIndex={-1} style={{ fontFamily: font.display, fontSize: 26, fontWeight: 600, margin: 0 }}>
           Something in kept broke
         </h1>
-        <p style={{ fontSize: 14.5, lineHeight: 1.55, color: color.body, margin: 0 }}>
-          Your receipts are still on this device and nothing has been deleted. Save a copy before anything else — kept
-          keeps them here and nowhere else, so a file on your phone is the only backup there is.
-        </p>
-        <button className="k-primary"
-          type="button"
-          onClick={() => void this.rescue()}
-          style={{
-            padding: '14px 18px', borderRadius: radius.control, border: 0,
-            background: color.accent, color: color.white, fontWeight: 600, fontSize: 14.5, cursor: 'pointer',
-          }}
-        >
-          Save my receipts to a file
-        </button>
+        {demo ? (
+          <p style={{ fontSize: 14.5, lineHeight: 1.55, color: color.body, margin: 0 }}>
+            This is the demo. It keeps nothing, so nothing has been lost, and the receipts you keep in kept itself are
+            not touched by it.
+          </p>
+        ) : (
+          <>
+            <p style={{ fontSize: 14.5, lineHeight: 1.55, color: color.body, margin: 0 }}>
+              Your receipts are still on this device and nothing has been deleted. Save a copy before anything else — kept
+              keeps them here and nowhere else, so a file on your phone is the only backup there is.
+            </p>
+            <button className="k-primary"
+              type="button"
+              onClick={() => void this.rescue()}
+              style={{
+                padding: '14px 18px', borderRadius: radius.control, border: 0,
+                background: color.accent, color: color.white, fontWeight: 600, fontSize: 14.5, cursor: 'pointer',
+              }}
+            >
+              Save my receipts to a file
+            </button>
+          </>
+        )}
         {typeof this.state.saved === 'object' && (
           <p
             role="status"
