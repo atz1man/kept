@@ -223,8 +223,12 @@ results['a changed policy is announced on the receipts list'] =
   await alertCtx.close();
 }
 
-// Swipe the urgent row left past the commit threshold.
+// Swipe the urgent row left past the commit threshold. Brought into view
+// first, as a thumb would: below the balance and the quick actions the list
+// starts under the fold, and a drag at off-screen coordinates touches nothing.
 const row = page.getByRole('button', { name: /Currys, JBL/ });
+await row.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+await page.waitForTimeout(150);
 const box = await row.boundingBox();
 const y = box.y + box.height / 2;
 await page.mouse.move(box.x + box.width - 40, y);
@@ -3378,6 +3382,10 @@ await landing.locator('iframe[title="kept — live app demo"]').scrollIntoViewIf
 await landing.waitForTimeout(600);
 const demo = landing.frameLocator('iframe[title="kept — live app demo"]');
 const demoRow = demo.getByRole('button', { name: /Currys, JBL/ });
+// And the row into the middle of the demo's own screen: the app opens on its
+// balance, so the list starts below the fold inside the frame too.
+await demoRow.evaluate((el) => el.scrollIntoView({ block: 'center' })).catch(() => {});
+await landing.waitForTimeout(300);
 const demoBox = await demoRow.boundingBox();
 if (demoBox) {
   const y = demoBox.y + demoBox.height / 2;

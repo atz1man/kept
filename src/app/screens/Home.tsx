@@ -644,7 +644,9 @@ function QuickActions({ onAdd, onWatch }: { onAdd: (start?: AddStart) => void; o
     { label: 'Scan', name: 'Scan a receipt', icon: <CameraGlyph size={21} stroke={color.accentInk} />, go: () => onAdd('scan') },
     { label: 'Upload', name: 'Upload a PDF or email', icon: <ReceiptGlyph size={20} stroke={color.accentInk} />, go: () => onAdd('file') },
     { label: 'Paste', name: 'Paste an order email', icon: <PlusGlyph size={20} stroke={color.accentInk} />, go: () => onAdd('paste') },
-    { label: 'Watch', name: 'Watch shop policies', icon: <BellGlyph size={20} stroke={color.accentInk} />, go: onWatch },
+    // "Policies", not "Watch": the tab bar already has a button called Watch,
+    // and two controls with one name are two answers to "which one?".
+    { label: 'Policies', name: 'Policy changes', icon: <BellGlyph size={20} stroke={color.accentInk} />, go: onWatch },
   ];
   return (
     <nav aria-label="Quick actions" data-quick-actions style={{ display: 'flex', justifyContent: 'space-between', gap: 6, margin: '18px 4px 2px' }}>
