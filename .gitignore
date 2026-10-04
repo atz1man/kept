@@ -5,3 +5,4 @@ dist-ios/
 dist-wiring-unsigned/
 dist-wiring-signed/
 store/screenshots/
+scripts/scan-bench/out/
