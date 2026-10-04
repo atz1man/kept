@@ -1,10 +1,10 @@
 import { color } from '../tokens';
 import { REFUND_CHASE_DAYS } from './alerts';
 import { cancelLetter, cancelledInTime, sendBackBy } from './cancel-notice';
-import { addDays, addMonths, daysBetween, fmtDateLong, fromISODate, toISODate } from './dates';
+import { addDays, daysBetween, fmtDateLong, fromISODate, toISODate } from './dates';
 import { escalation } from './escalate';
 import { faultLetter, REPLY_DAYS } from './fault-letter';
-import { COOLING_OFF_DAYS, LEGAL_DISCLAIMER, legalRights, PRESUMED_FAULT_MONTHS, REJECT_DAYS, type LegalRight } from './legal';
+import { COOLING_OFF_DAYS, LEGAL_DISCLAIMER, legalRights, PRESUMED_FAULT_MONTHS, presumedFaultEnds, REJECT_DAYS, type LegalRight } from './legal';
 import { money } from './money';
 import { derive, refundOf } from './receipts';
 import { refundChase } from './refund-chase';
@@ -134,7 +134,9 @@ export function claimPack(r: Receipt, today: Date): ClaimPack {
   const sendBack = sendBackBy(r);
   if (sendBack) events.push(deadline(sendBack, 'Last day to send it back after cancelling', 'Regulation 35(4)'));
   events.push(deadline(addDays(handover, REJECT_DAYS), 'Last day to reject a fault for a full refund', `${REJECT_DAYS} days — Consumer Rights Act 2015, s.22`, hedged));
-  events.push(deadline(addMonths(handover, PRESUMED_FAULT_MONTHS), 'A fault stops being presumed there from the start', `${PRESUMED_FAULT_MONTHS} months — Consumer Rights Act 2015, s.19(14)`, hedged));
+  // The LAST day it holds, like every other deadline here: on 15 July the
+  // pack dated it 15 July and called it still open, a day after it had gone.
+  events.push(deadline(presumedFaultEnds(handover), 'Last day a fault is presumed there from the start', `${PRESUMED_FAULT_MONTHS} months — Consumer Rights Act 2015, s.19(14)`, hedged));
   if (r.faultClaim) {
     // Our number, not the law's, and labelled as what the letter asked for.
     events.push(deadline(addDays(fromISODate(r.faultClaim.sentOn), REPLY_DAYS), 'Reply asked for by', `The fault letter asked for one within ${REPLY_DAYS} days`));

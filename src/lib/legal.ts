@@ -1,4 +1,4 @@
-import { addDays, addMonths, daysBetween, fmtDate, fromISODate } from './dates';
+import { addDays, daysBetween, fmtDate, fromISODate, lastDayOfMonthsBeginning } from './dates';
 import type { Receipt } from './types';
 
 /**
@@ -144,11 +144,32 @@ export const PRESUMED_FAULT_RULE =
   `For the first ${PRESUMED_FAULT_MONTHS} months after you have it, a fault is taken to have been there from the start, so it is for the shop to show it was not. After that, it is for you to show it was.`;
 
 /**
+ * The last day a fault is taken to have been there from the start.
+ *
+ * Section 19(14) runs "the period of six months beginning with the day on
+ * which the goods were delivered", so the day of delivery is the FIRST of
+ * those days: goods delivered on 15 January are presumed faulty from the start
+ * through 14 July, and not on the 15th. The thirty days to reject (s.22(3)),
+ * and the six months in which a final rejection costs nothing for use
+ * (s.24(10)), are counted from the day after delivery instead; this one is
+ * not.
+ *
+ * The one count of it, for the rights panel, the fault letter and the claim
+ * pack. Each had its own `addMonths(delivered, 6)`, a day too long wherever
+ * the month six on has the same date: on 15 July the panel said "Until 15 Jul
+ * (0 days left)", and the letter written that day told the shop the fault was
+ * presumed under section 19(14).
+ */
+export function presumedFaultEnds(delivered: Date): Date {
+  return lastDayOfMonthsBeginning(delivered, PRESUMED_FAULT_MONTHS);
+}
+
+/**
  * The sentence for the stretch between the two, or nothing once it has gone
  * (from then on the plain repair right is the whole story).
  */
 function presumedFault(bought: Date, today: Date, hedged: boolean): string {
-  const ends = addMonths(bought, PRESUMED_FAULT_MONTHS);
+  const ends = presumedFaultEnds(bought);
   const left = daysBetween(today, ends);
   if (left < 0) return '';
   return hedged
