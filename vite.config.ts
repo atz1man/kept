@@ -1,17 +1,53 @@
 /// <reference types="vitest" />
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, type Plugin, type Rollup } from 'vite';
 import react from '@vitejs/plugin-react';
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+/** Where sw.js keeps the list this plugin writes — an empty array until stamped. */
+const BUILD_FILES = '[/* __BUILD_FILES__ */]';
+
 /**
- * Give each build's service worker its own cache name.
+ * The files the app document can load: its entry chunk, everything that chunk
+ * imports — statically or lazily, so reading a PDF and scanning a receipt are
+ * in it — and the stylesheets and assets those bring. Read from the bundle's
+ * own graph rather than kept as a list, which is the stale list sw.js used to
+ * refuse to have. The landing, privacy and rights pages are outside the
+ * worker's scope and are not walked; `ocr/` is fetched by tesseract's own
+ * worker, ten megabytes of it, and is not either.
+ */
+function appFiles(bundle: Rollup.OutputBundle, appHtml: string): string[] {
+  const entry = Object.values(bundle).find(
+    (f): f is Rollup.OutputChunk => f.type === 'chunk' && f.isEntry && f.facadeModuleId === appHtml,
+  );
+  if (!entry) return [];
+  const files = new Set<string>();
+  const visit = (fileName: string) => {
+    if (files.has(fileName)) return;
+    files.add(fileName);
+    const chunk = bundle[fileName];
+    if (chunk?.type !== 'chunk') return;
+    for (const css of chunk.viteMetadata?.importedCss ?? []) files.add(css);
+    for (const asset of chunk.viteMetadata?.importedAssets ?? []) files.add(asset);
+    for (const next of [...chunk.imports, ...chunk.dynamicImports]) visit(next);
+  };
+  visit(entry.fileName);
+  return [...files].sort();
+}
+
+/**
+ * Give each build's service worker its own cache name, and the list of files
+ * it must hold before it may take over.
  *
  * sw.js is served verbatim from public/, so nothing else in the pipeline can
  * tell it what changed. The id is derived from the emitted asset filenames
  * rather than the clock: rebuilding identical code leaves the name alone, so
  * users are not made to re-download a byte-identical app.
+ *
+ * The list is what the worker precaches. Without it the worker held the shell
+ * and nothing the shell names, and the app was a white screen offline after a
+ * first visit and after every deploy — see sw.js for what was measured.
  */
 function stampServiceWorker(): Plugin {
   /*
@@ -25,11 +61,19 @@ function stampServiceWorker(): Plugin {
    * it was looking at and false of the one it was building.
    */
   let outDir = 'dist';
+  let root = __dirname;
+  let base = '/';
+  let files: string[] = [];
   return {
     name: 'kept-stamp-service-worker',
     apply: 'build',
     configResolved(config) {
       outDir = config.build.outDir;
+      root = config.root;
+      base = config.base;
+    },
+    generateBundle(_options, bundle) {
+      files = appFiles(bundle, resolve(root, 'app/index.html'));
     },
     closeBundle() {
       const swPath = resolve(__dirname, outDir, 'sw.js');
@@ -44,9 +88,25 @@ function stampServiceWorker(): Plugin {
         // renamed placeholder would otherwise be a silent regression.
         this.error('sw.js has no __BUILD_ID__ placeholder to stamp');
       }
+      // The same for the list: unstamped, it is empty, and an empty precache
+      // is the white screen this list exists to end — silently.
+      if (!sw.includes(BUILD_FILES)) this.error(`sw.js has no ${BUILD_FILES} placeholder to stamp`);
       const manifest = readFileSync(resolve(__dirname, outDir, 'app/index.html'), 'utf8');
+      /*
+       * And the list has to hold everything the shell loads, or the worker
+       * would precache a shell that names files it does not have. Asked of the
+       * emitted document rather than assumed from the walk, because a walk
+       * that found nothing — the entry renamed, the input moved — would
+       * otherwise stamp an empty list and report success.
+       */
+      const named = [...manifest.matchAll(/(?:src|href)="\/(assets\/[^"]+)"/g)].map((m) => m[1]);
+      const missing = named.filter((f) => !files.includes(f));
+      if (named.length === 0 || missing.length > 0) {
+        this.error(`the app's precache list misses what its shell loads: ${missing.join(', ') || 'no /assets/ files named at all'}`);
+      }
       const id = createHash('sha256').update(manifest).digest('hex').slice(0, 12);
-      writeFileSync(swPath, sw.replaceAll('__BUILD_ID__', id));
+      const list = JSON.stringify(files.map((f) => base + f));
+      writeFileSync(swPath, sw.replaceAll('__BUILD_ID__', id).replace(BUILD_FILES, list));
     },
   };
 }

@@ -6,7 +6,8 @@ import { Recovery } from './components/Recovery';
 import { color } from '../tokens';
 import { embedded } from '../lib/embed';
 import { isNative } from '../lib/mirror';
-import { restoreFromMirror } from '../lib/storage';
+import { restoreFromMirror, savedToStore } from '../lib/storage';
+import { bootScript, shouldReload } from '../lib/stale-build';
 
 /**
  * On a phone the app is the whole viewport — every phone, the 430 and 440px
@@ -105,3 +106,63 @@ function registerWorker() {
   });
 }
 registerWorker();
+
+/*
+ * A piece of the app that will not load is, on the web, almost always a tab
+ * older than the deploy — see `lib/stale-build.ts` for what was measured and
+ * for when a reload is and is not the answer.
+ *
+ * Every lazy import goes through Vite's preload helper, which fires this event
+ * when one fails and then rethrows to the caller, so the screen says what it
+ * would have said anyway while this finds out whether there is a newer build to
+ * go to. The web only: in the iOS app every file is in the bundle, so there is
+ * no deploy for a tab to be older than.
+ */
+const RELOADED_FROM = 'kept.reloadedFrom';
+
+async function reloadIfOlderThanDeployed() {
+  // Not the landing page's demo, which keeps nothing and starts afresh every
+  // time it is opened, and which must not leave a mark in the tab's session
+  // store either (see embed.ts).
+  if (embedded()) return;
+  const onScreen = document.querySelector('script[type="module"][src]')?.getAttribute('src') ?? null;
+  let available: string | null = null;
+  /*
+   * The shell a reload would open. With the worker in charge this is the one it
+   * precached, answered from its cache at once; without one it is the server's,
+   * given three seconds — on a signal that never answers, nothing can be named,
+   * so nothing is reloaded.
+   */
+  const gaveUp = new AbortController();
+  const timer = setTimeout(() => gaveUp.abort(), 3000);
+  try {
+    const res = await fetch('/app/', { cache: 'no-cache', signal: gaveUp.signal });
+    if (res.ok) available = bootScript(await res.text());
+  } catch {
+    // Offline, or no answer: there is no other build anyone can name.
+  } finally {
+    clearTimeout(timer);
+  }
+  let reloadedFrom: string | null = null;
+  try {
+    reloadedFrom = sessionStorage.getItem(RELOADED_FROM);
+  } catch {
+    // A session store that cannot be read cannot remember a reload either, so
+    // the guard below cannot hold — and a reload that might repeat is not one
+    // to start.
+    return;
+  }
+  if (!shouldReload({ onScreen, available, reloadedFrom, saved: savedToStore() })) return;
+  try {
+    sessionStorage.setItem(RELOADED_FROM, onScreen ?? '');
+  } catch {
+    return; // As above: no memory of it, no reload.
+  }
+  window.location.reload();
+}
+
+if (!isNative()) {
+  window.addEventListener('vite:preloadError', () => {
+    void reloadIfOlderThanDeployed();
+  });
+}
