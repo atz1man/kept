@@ -143,7 +143,7 @@ describe('Home', () => {
   const state = (receipts: Receipt[]): AppState => ({
     version: 1, receipts, updates: [], onboardingSeen: true,
     settings: { ...DEFAULT_SETTINGS }, alertsSent: [],
-    screen: 'home', selId: null, obStep: 0, celebrating: null, shared: 'no', upgrading: false,
+    screen: 'home', selId: null, obStep: 0, celebrating: null, shared: 'no', upgrading: false, store: { shelf: { kind: 'asking' }, busy: null, note: null },
     sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null,
   });
 
