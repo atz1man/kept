@@ -309,6 +309,10 @@ if (!/Deadline alerts/.test(settingsText)) {
   }
   if (read) {
     // axe over the card with the checkbox on it, which no web sweep renders.
+    // Once it has landed: the card fades in, and audited mid-fade its grey
+    // text is blended toward the white under it — measured, #5E6168 (6.2:1)
+    // read as #7A7D82 (4.1:1), a colour nobody sees once the fade is done.
+    await np.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))));
     await np.addScriptTag({ path: `${ROOT}node_modules/axe-core/axe.min.js` });
     const axe = await np.evaluate(async () =>
       (await window.axe.run(document, { resultTypes: ['violations'] })).violations.map((v) => `${v.id} (${v.nodes.length})`),
