@@ -325,6 +325,7 @@ src/lib/          the decision logic — pure, tested, no React
   money.ts        integer pence
   receipt-scan.ts a till receipt, as the camera reads it, made readable by the parser
   confidence.ts   which figures a read was unsure of, so the Add card marks them to check
+  support.ts      the version and the counts a person sends to support, never their purchases
   flatten.ts      finding the receipt in a photo and laying it flat before it is read
   receipts.ts     days left, deadlines, bucketing, the 30-day timeline
   returns-pages.ts each shop's own returns page, read from store/retailer-sources.json

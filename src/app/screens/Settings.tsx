@@ -15,6 +15,7 @@ import type { StoreView } from '../../lib/app-store';
 import { countedAgainstQuota, FREE_TIER_LIMIT } from '../../lib/quota';
 import { Pressable } from '../components/Pressable';
 import { Note, UnlockOffer } from '../components/UnlockOffer';
+import { SupportDetails } from '../components/SupportDetails';
 
 interface Props {
   settings: SettingsShape;
@@ -448,6 +449,13 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
             {settings.urgentDays} days
           </span>
         </div>
+      </section>
+
+      {/* The version, and what to send when something goes wrong. Shown, not
+          just copied: the person reads every line before it leaves. */}
+      <section aria-labelledby="support-title" style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, marginTop: 12, padding: 18 }}>
+        <h2 id="support-title" style={{ fontWeight: 600, fontSize: 15, margin: '0 0 8px' }}>Help and support</h2>
+        <SupportDetails receipts={receipts} />
       </section>
 
       <p style={{ fontSize: 11, color: color.muted, textAlign: 'center', marginTop: 16, lineHeight: 1.6 }}>
