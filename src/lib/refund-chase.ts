@@ -1,8 +1,7 @@
-import { REFUND_CHASE_DAYS } from './alerts';
 import { addDays, daysBetween, fmtDateLong, fromISODate } from './dates';
 import { REPLY_DAYS } from './fault-letter';
 import { cancelledInTime } from './cancel-notice';
-import { COOLING_OFF_DAYS } from './legal';
+import { COOLING_OFF_DAYS, REFUND_CHASE_DAYS } from './legal';
 import { money } from './money';
 import type { Receipt } from './types';
 
@@ -49,29 +48,38 @@ export interface RefundChase {
   due: Date;
   /** On or after `due`, and still no refund. */
   late: boolean;
-  /**
-   * Whether reg. 34 applies: a distance order sent back inside the
-   * cancellation period. Counted from delivery where that is known, and from
-   * the order where it is not — which can only make the period look SHORTER
-   * than it was, so a return that falls inside it counted that way is inside
-   * it for certain.
-   */
+  /** Whether reg. 34 applies: `refundIsStatutory`. */
   statutory: boolean;
+}
+
+/**
+ * Whether reg. 34 applies: a distance order sent back inside the
+ * cancellation period, or after notice of cancelling given inside it. Counted
+ * from delivery where that is known, and from the order where it is not —
+ * which can only make the period look SHORTER than it was, so a return that
+ * falls inside it counted that way is inside it for certain.
+ *
+ * The one test of it, for every place that states the fourteen days: the late
+ * panel and the letter here, the claim pack's "Refund due", the reminder, and
+ * the receipt's own screen while the refund is awaited. The last two tested
+ * `distance` alone, so an ASOS order that came on 1 September and went back on
+ * the 20th, under ASOS's own 28 days, was told on the lock screen and above
+ * the late panel that the shop "has 14 days from getting it back", while the
+ * late panel itself rightly said only "Ask the shop to refund you".
+ */
+export function refundIsStatutory(r: Receipt): boolean {
+  if (!r.distance || !r.sentOn) return false;
+  const handover = fromISODate(r.arrivedOn ?? r.purchasedOn);
+  // Sent inside the period, or notice given inside it: cancelling is the
+  // notice, and the parcel then has fourteen days of its own to go back.
+  return daysBetween(handover, fromISODate(r.sentOn)) <= COOLING_OFF_DAYS || cancelledInTime(r);
 }
 
 /** Null unless it has gone back and the money has not come. */
 export function refundChase(r: Receipt, today: Date): RefundChase | null {
   if (r.status !== 'sent' || !r.sentOn) return null;
-  const sent = fromISODate(r.sentOn);
-  const due = addDays(sent, REFUND_CHASE_DAYS);
-  const handover = fromISODate(r.arrivedOn ?? r.purchasedOn);
-  return {
-    due,
-    late: daysBetween(due, today) >= 0,
-    // Sent inside the period, or notice given inside it: cancelling is the
-    // notice, and the parcel then has fourteen days of its own to go back.
-    statutory: r.distance && (daysBetween(handover, sent) <= COOLING_OFF_DAYS || cancelledInTime(r)),
-  };
+  const due = addDays(fromISODate(r.sentOn), REFUND_CHASE_DAYS);
+  return { due, late: daysBetween(due, today) >= 0, statutory: refundIsStatutory(r) };
 }
 
 /** What the late panel says above the letter. */

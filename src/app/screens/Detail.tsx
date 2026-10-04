@@ -20,7 +20,7 @@ import { SplitPanel } from '../components/SplitPanel';
 import { canSplit } from '../../lib/split';
 import { RefundForm } from '../components/RefundForm';
 import { Letter } from '../components/Letter';
-import { readReturnRef, refundChase, refundChaseLine, refundLetter } from '../../lib/refund-chase';
+import { readReturnRef, refundChase, refundChaseLine, refundIsStatutory, refundLetter } from '../../lib/refund-chase';
 import { possessive } from '../../lib/words';
 
 /** 2π × 40, the circumference of the ring the countdown draws on. */
@@ -465,7 +465,9 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
         <>
           {/* Gone back, money still to come. The day it went is the one that
               decides whether it was in time, so it is said; and the day worth
-              chasing from, so that is said too. */}
+              chasing from, so that is said too. The shop's fourteen days only
+              where reg. 34 gives them (`refundIsStatutory`): this line said it
+              for every online order, above a late panel saying otherwise. */}
           <div style={{ marginTop: 16, padding: 15, background: color.white, border: `1px solid ${color.border}`, borderRadius: 12 }}>
             <div style={{ fontWeight: 600 }}>
               Sent back{receipt.sentOn ? ` · ${fmtDateLong(fromISODate(receipt.sentOn))}` : ''}
@@ -473,7 +475,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
             <div style={{ fontSize: 13, color: color.muted, lineHeight: 1.5, marginTop: 4 }}>
               Waiting for the refund.
               {receipt.sentOn && ` If it has not arrived by ${fmtDateLong(addDays(fromISODate(receipt.sentOn), REFUND_CHASE_DAYS))}, chase it`}
-              {receipt.sentOn && (receipt.distance ? ` — for an online order, the shop has ${REFUND_CHASE_DAYS} days from getting it back.` : '.')}
+              {receipt.sentOn && (refundIsStatutory(receipt) ? ` — for an online order, the shop has ${REFUND_CHASE_DAYS} days from getting it back.` : '.')}
             </div>
             <ReturnRefField receipt={receipt} onSetReturnRef={onSetReturnRef} />
           </div>

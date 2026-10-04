@@ -1,8 +1,9 @@
 import { addDays, daysBetween, fmtDate, fromISODate } from './dates';
 import { REPLY_DAYS } from './fault-letter';
-import { REJECT_DAYS } from './legal';
+import { REFUND_CHASE_DAYS, REJECT_DAYS } from './legal';
 import { money } from './money';
 import { derive, refundOf } from './receipts';
+import { refundIsStatutory } from './refund-chase';
 import { windowChecked } from './stores';
 import type { Receipt } from './types';
 import { possessive } from './words';
@@ -32,12 +33,11 @@ export type ReturnRung = 'week' | 'soon' | 'today' | 'closed';
 export type AlertRung = ReturnRung | 'reject' | 'warranty' | 'refund' | 'credit' | 'fault';
 
 /**
- * How long after something went back it is worth asking whether the money
- * came. Fourteen days is the Consumer Contracts Regulations' limit for
- * refunding a cancelled online order once the goods are back (reg. 34), and a
- * common shop promise besides; after it, a missing refund is worth chasing.
+ * When a refund is asked about: reg. 34's fortnight, defined in legal.ts with
+ * the statute's other periods and exported here too, where the scheduler, the
+ * Coming up list and the screens have always imported it from.
  */
-export const REFUND_CHASE_DAYS = 14;
+export { REFUND_CHASE_DAYS };
 
 /**
  * Whether an alert already sent was a reminder BEFORE the shop's window shut.
@@ -232,12 +232,14 @@ export function copyFor(rung: AlertRung, r: Receipt, daysLeft: number, deadline:
     }
     case 'refund':
       // `deadline` is the day it went back; `daysLeft` is unused. The legal
-      // limit is stated only where it applies — a cancelled distance order —
-      // and never as a promise about any other shop's terms.
+      // limit is stated only where it applies — a cancelled distance order,
+      // by the one test the late panel, the letter and the claim pack use —
+      // and never as a promise about any other shop's terms. It tested
+      // `r.distance`, which is every online order however late it went back.
       return {
         title: 'Has the refund come through?',
         body: `${what} — it went back on ${fmtDate(deadline)}.${
-          r.distance ? ` For an online order, the shop has ${REFUND_CHASE_DAYS} days from getting it back to refund you.` : ''
+          refundIsStatutory(r) ? ` For an online order, the shop has ${REFUND_CHASE_DAYS} days from getting it back to refund you.` : ''
         } If the money has not arrived, chase it.`,
       };
     case 'credit':

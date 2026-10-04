@@ -78,6 +78,19 @@ describe('what gets lodged with the system', () => {
     expect(today.title).toBe('Today is the last day');
     expect(today.body).toContain('£89.00');
   });
+
+  it('states the shop’s fourteen days to refund only where the regulations give them', () => {
+    // Came 19 days before it went back, under the shop's own window: outside
+    // the cancellation period, so reg. 34 does not apply and is not stated.
+    // Six days after it came, it does.
+    const went = (afterArrival: number) => receipt({
+      store: 'ASOS', distance: true, purchasedOn: iso(addDays(TODAY, -afterArrival - 2)), arrivedOn: iso(addDays(TODAY, -afterArrival)),
+      status: 'sent', sentOn: iso(TODAY),
+    });
+    const refund = (r: Receipt) => plan([r]).find((p) => p.rung === 'refund')!.body;
+    expect(refund(went(19))).not.toMatch(/days from getting it back/);
+    expect(refund(went(6))).toMatch(/For an online order, the shop has 14 days from getting it back to refund you\./);
+  });
 });
 
 describe('when an alert is lodged for, and what it says', () => {

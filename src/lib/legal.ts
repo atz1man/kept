@@ -70,6 +70,18 @@ export const COOLING_OFF_DAYS = 14;
  * changed the sentence about cancelling.
  */
 export const RETURN_AFTER_CANCEL_DAYS = 14;
+/**
+ * How long after something went back it is worth asking whether the money
+ * came. Fourteen days is the Consumer Contracts Regulations' limit for
+ * refunding a cancelled online order once the goods are back (reg. 34), and a
+ * common shop promise besides; after it, a missing refund is worth chasing.
+ *
+ * Here with the statute's other periods rather than in alerts.ts, where it
+ * started: the refund reminder now asks refund-chase.ts whether reg. 34
+ * applies, and refund-chase.ts and cancel-notice.ts read this number, so
+ * keeping it in alerts.ts would have made those files import each other.
+ */
+export const REFUND_CHASE_DAYS = 14;
 /** Reg. 28(1)(e), in the words the cooling-off sentence carries for toiletries and cosmetics. */
 export const SEALED_EXCEPTION = 'Not for sealed toiletries or cosmetics once the seal is broken.';
 

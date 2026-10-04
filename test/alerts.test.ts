@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { alertKey, dueAlerts, pruneSent, REFUND_CHASE_DAYS, supersededKeys, WARRANTY_NOTICE_DAYS } from '../src/lib/alerts';
-import { addDays, addMonths, toISODate } from '../src/lib/dates';
+import { addDays, addMonths, fmtDate, toISODate } from '../src/lib/dates';
 import { toPence } from '../src/lib/money';
+import { refundChase } from '../src/lib/refund-chase';
 import { seedReceipts } from '../src/lib/seed';
 import { derive } from '../src/lib/receipts';
 import type { Receipt } from '../src/lib/types';
@@ -329,6 +330,27 @@ describe('a refund still to come', () => {
     expect(refunds([sentAgo(14)])[0].body).toMatch(/For an online order, the shop has 14 days from getting it back/);
     expect(refunds([sentAgo(14, { distance: false })])[0].body).not.toMatch(/online order/);
     expect(refunds([sentAgo(14)])[0].body).toMatch(/^Zara · Wool coat — it went back on .+\. .*If the money has not arrived, chase it\.$/);
+  });
+
+  it('states it only for an online order cancelled in time, by the test the receipt’s screen uses', () => {
+    // An ASOS order that came on 1 September and went back on the 20th, under
+    // ASOS's own 28 days: the cancellation period ended on the 15th, so reg.
+    // 34 does not apply. The late panel said "Ask the shop to refund you" and
+    // this reminder said the shop "has 14 days from getting it back".
+    const today = new Date(2026, 9, 4);
+    const asos = (over: Partial<Receipt> = {}): Receipt => ({
+      id: 'asos', store: 'ASOS', item: 'Coat', cat: 'clothing', amount: toPence(80),
+      purchasedOn: '2026-08-30', arrivedOn: '2026-09-01', windowStartsOn: '2026-09-01', windowDays: 28,
+      policy: 'p', distance: true, status: 'sent', sentOn: '2026-09-20', ...over,
+    });
+    const body = (r: Receipt) => dueAlerts([r], today, URGENT, none).find((a) => a.rung === 'refund')!.body;
+    expect(refundChase(asos(), today)!.statutory).toBe(false);
+    expect(body(asos())).toBe(`ASOS · Coat — it went back on ${fmtDate(new Date(2026, 8, 20))}. If the money has not arrived, chase it.`);
+    // Notice given on the 10th, inside the period, and the parcel posted
+    // after it: the regulations do apply, and the reminder says so.
+    const noticed = asos({ cancelledOn: '2026-09-10' });
+    expect(refundChase(noticed, today)!.statutory).toBe(true);
+    expect(body(noticed)).toMatch(/ For an online order, the shop has 14 days from getting it back to refund you\. /);
   });
 
   it('is never about a sample', () => {
