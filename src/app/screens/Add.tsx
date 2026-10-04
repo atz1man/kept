@@ -14,7 +14,7 @@ import { isNative } from '../../lib/mirror';
 import { savePhoto, scannedPhotoToKeep } from '../../lib/photos';
 import { shareRoute } from '../../lib/share';
 import type { PolicyUpdate, Receipt } from '../../lib/types';
-import { ArrowRight, CameraGlyph, LogoMark, MailGlyph, ShareGlyph, Warning } from '../components/Icons';
+import { ArrowRight, CameraGlyph, LogoMark, MailGlyph, ShareGlyph, Warning, ReceiptGlyph } from '../components/Icons';
 import { HowBought } from '../components/HowBought';
 import { Pressable } from '../components/Pressable';
 
@@ -107,6 +107,15 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
    * the person never pasted. Edit the text and it is a paste again.
    */
   const [scannedText, setScannedText] = useState<string | null>(null);
+  /*
+   * A receipt that came as a file — a PDF e-receipt or invoice, a saved order
+   * email or page. Read on this device, into the same box as everything else.
+   * `readFrom` says which kind of read filled the box, for the card's label.
+   */
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [readingFile, setReadingFile] = useState(false);
+  const [fileFailed, setFileFailed] = useState<'too-big' | 'not-a-receipt' | 'unreadable' | null>(null);
+  const [readFrom, setReadFrom] = useState<'photo' | 'file'>('photo');
   const [saving, setSaving] = useState(false);
   /*
    * Whether the card was typed in rather than read, and whether a READ card
@@ -188,7 +197,8 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
    * the person can see and correct what the camera read before anything is
    * saved. A till receipt is a purchase made in person, so it starts as one.
    */
-  const scanPhoto = async (file: Blob, base64?: string) => {
+  const scanPhoto = async (file: Blob, base64?: string, from: 'photo' | 'file' = 'photo') => {
+    setReadFrom(from);
     setScanFailed(null);
     setScanning(0);
     setLookingAgain(false);
@@ -214,6 +224,36 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       setScanFailed(scanFailure(reachable, isNative()));
     } finally {
       setScanning(null);
+    }
+  };
+
+  /**
+   * A file, read into the box. Text comes back ready for the parser; a photo,
+   * or a PDF that is only a picture of a receipt, goes to the photo reader.
+   * An emailed or downloaded receipt is usually an online order, so the card
+   * starts as one, as a paste does; a scan starts as a counter purchase.
+   */
+  const readFile = async (file: File) => {
+    setFileFailed(null);
+    setScanFailed(null);
+    setReadingFile(true);
+    try {
+      const { readDocument } = await import('../documents');
+      const doc = await readDocument(file, today);
+      if (doc.kind === 'image') {
+        await scanPhoto(doc.image, undefined, 'file');
+        return;
+      }
+      setReadFrom('file');
+      setScanShot(null);
+      setText(doc.text);
+      setScannedText(doc.text);
+      readText(doc.text);
+    } catch (e) {
+      const why = (e as { why?: 'too-big' | 'not-a-receipt' | 'unreadable' }).why;
+      setFileFailed(why ?? 'unreadable');
+    } finally {
+      setReadingFile(false);
     }
   };
 
@@ -422,7 +462,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       {parsed && (
         <div className="k-fade" style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, padding: 18, marginTop: 16, boxShadow: shadow.raised }}>
           <div style={{ fontFamily: font.figures, fontSize: 11, letterSpacing: 0, color: color.accentInk, fontWeight: 600 }}>
-            {typedIn ? 'Type it in' : scannedText !== null && text === scannedText ? 'Read from your photo' : 'Found in your paste'}
+            {typedIn ? 'Type it in' : scannedText !== null && text === scannedText ? (readFrom === 'file' ? 'Read from your file' : 'Read from your photo') : 'Found in your paste'}
           </div>
           <div style={{ marginTop: 12 }}>
             <label htmlFor="add-item" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: color.bodyStrong, marginBottom: 6 }}>
@@ -745,6 +785,46 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
           : scanning !== null
             ? 'Reading it on this phone. Nothing is uploaded.'
             : 'Read on this phone — the photo is never uploaded. Check what it read before you save.'}
+      </div>
+
+      {/* The receipt that came as a file: a PDF e-receipt or invoice, an
+          order email saved from the mail app, an order page saved from the
+          browser. The picker shows files on a phone and a computer alike. */}
+      <input
+        ref={fileInput}
+        id="add-file"
+        type="file"
+        accept="application/pdf,.pdf,message/rfc822,.eml,text/html,.html,.htm,text/plain,.txt,image/*"
+        hidden
+        aria-hidden="true"
+        tabIndex={-1}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = '';
+          if (f) void readFile(f);
+        }}
+      />
+      <Pressable
+        className="k-row-white k-secondary"
+        onClick={() => fileInput.current?.click()}
+        disabled={readingFile || scanning !== null}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16, marginTop: 12,
+          background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.control,
+          fontWeight: 600, fontSize: 15, cursor: readingFile ? 'progress' : 'pointer',
+        }}
+      >
+        <ReceiptGlyph size={20} />
+        {readingFile ? 'Reading your file…' : 'Open a PDF or saved email'}
+      </Pressable>
+      <div role="status" aria-live="polite" style={{ fontSize: 12.5, color: fileFailed ? color.danger : color.muted, textAlign: 'center', marginTop: 8, lineHeight: 1.5 }}>
+        {fileFailed === 'too-big'
+          ? 'That file is far bigger than a receipt. Choose the receipt itself — a PDF, a saved email or a photo.'
+          : fileFailed === 'not-a-receipt'
+            ? 'kept can read PDFs, saved emails (.eml), web pages and photos. That file is none of those.'
+            : fileFailed
+              ? 'kept couldn’t read that file. Open it and paste its text above, or type the details in.'
+              : 'E-receipts, invoices and saved order emails — read on this phone, never uploaded.'}
       </div>
 
       {/* No email and no paper — a market stall, a receipt that went in the

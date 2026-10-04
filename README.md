@@ -334,6 +334,7 @@ src/lib/          the decision logic — pure, tested, no React
   contrast.ts     WCAG luminance and ratio, used to hold the palette to AA
   share.ts        reading an order email shared in from another app
   parse.ts        the paste parser (on-device, rule-based)
+  documents.ts    PDF e-receipts, saved emails and pages, read into the parser's text
   draft.ts        the editable shape of a receipt, and what makes one valid
   search.ts       matching the library as someone types
   seed.ts         the sample set a fresh install opens on
