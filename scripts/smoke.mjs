@@ -3034,6 +3034,34 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
   }
 
   /*
+   * And at an angle, on a table — how a receipt is actually photographed,
+   * and the case the reader was never given: the slip turned fifteen degrees
+   * and in perspective, small in a frame of wood grain. Read as taken, its
+   * lines run uphill and the grain reads as text; the paper has to be found
+   * and laid flat first (lib/flatten.ts).
+   */
+  const anglePage = await browser.newPage({ viewport: { width: 900, height: 1200 }, deviceScaleFactor: 1 });
+  await anglePage.setContent(`<body style="margin:0;width:900px;height:1200px;overflow:hidden;background:repeating-linear-gradient(95deg,#6d4c33 0 14px,#7a5739 14px 31px,#5f412b 31px 40px);display:grid;place-items:center">
+    <div style="transform:scale(1.25)"><div style="transform:perspective(800px) rotateX(22deg) rotateY(-16deg) rotateZ(-9deg);background:#fbfaf6;color:#1a1a1a;width:340px;padding:26px 20px;font:15px/1.45 'DejaVu Sans Mono',monospace;box-shadow:0 12px 30px rgba(0,0,0,.35)">
+      <div>Currys</div><div>Tottenham Court Rd</div><div>&nbsp;</div>
+      <div>LG&nbsp;OLED55C4&nbsp;TV&nbsp;&nbsp;&nbsp;&nbsp;1,299.00</div><div>CARE&nbsp;&amp;&nbsp;REPAIR&nbsp;3YR&nbsp;&nbsp;&nbsp;149.00</div><div>&nbsp;</div>
+      <div>TOTAL&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1,448.00</div><div>AMEX&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1,448.00</div><div>&nbsp;</div>
+      <div>24/09/2026&nbsp;15:20</div>
+    </div></div></body>`);
+  const angled = await anglePage.screenshot({ type: 'png' });
+  await anglePage.close();
+  await scanPage.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await scanPage.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await scanPage.getByRole('button', { name: 'Add a receipt' }).click();
+  await scanPage.waitForTimeout(300);
+  await scanPage.setInputFiles('#add-photo', { name: 'angled.png', mimeType: 'image/png', buffer: angled });
+  const angleFound = await scanPage.getByText('Read from your photo', { exact: true }).waitFor({ timeout: 120_000 }).then(() => true).catch(() => false);
+  const angleCard = angleFound ? await scanPage.locator('main').innerText() : '';
+  results['a receipt photographed at an angle on a table is laid flat and read'] =
+    angleFound && /Currys/.test(angleCard) && /£1,448\.00/.test(angleCard) && /24 Sep/.test(angleCard);
+  if (!results['a receipt photographed at an angle on a table is laid flat and read']) problems.push(`angled read: ${angleFound ? angleCard.slice(0, 300).replace(/\n/g, ' | ') : 'no card'}`);
+
+  /*
    * Offline, a scan either works or says the connection is why it did not.
    *
    * Whether it works depends on the browser. The reader's worker fetches its

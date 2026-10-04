@@ -13,7 +13,8 @@
  * time someone chooses to scan; the service worker and tesseract's own cache
  * keep them after that.
  */
-import { readBestOf } from '../lib/receipt-scan';
+import { readable, toGray, type Gray } from '../lib/flatten';
+import { readFlattenedOrAsTaken, type Reader } from '../lib/receipt-scan';
 
 /** Where the reader's files live: `ocr/` beside the app, whatever the app's path. */
 function ocrBase(): string {
@@ -22,37 +23,44 @@ function ocrBase(): string {
 }
 
 /**
- * The photo, made readable: scaled so the text is the size tesseract reads
- * best (receipt photos arrive at 12 megapixels, which is slow and no more
- * accurate), greyed, and its contrast stretched, because a till receipt is
- * grey print on off-white paper under whatever light the kitchen has.
+ * The photo, made readable: the receipt found and laid flat (lib/flatten.ts),
+ * scaled so the text is the size tesseract reads best (receipt photos arrive
+ * at 12 megapixels, which is slow and no more accurate), greyed, and its
+ * contrast stretched, because a till receipt is grey print on off-white paper
+ * under whatever light the kitchen has.
+ *
+ * The receipt is looked for in a larger copy than is read, so a slip that
+ * fills a third of the frame still comes out at a size tesseract can read.
+ * Where no paper stands out — it already fills the frame, or there is
+ * nothing to tell it from the table — the photo is read as it was taken.
  */
-async function prepare(file: Blob): Promise<HTMLCanvasElement> {
+async function prepare(file: Blob): Promise<{ flat: HTMLCanvasElement | null; asTaken: HTMLCanvasElement }> {
   const bitmap = await createImageBitmap(file);
   const longest = Math.max(bitmap.width, bitmap.height);
-  const scale = Math.min(1, 2000 / longest);
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  if (!ctx) return canvas;
-  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  const scale = Math.min(1, 3000 / longest);
+  const source = document.createElement('canvas');
+  source.width = Math.round(bitmap.width * scale);
+  source.height = Math.round(bitmap.height * scale);
+  const sctx = source.getContext('2d', { willReadFrequently: true });
+  if (!sctx) return { flat: null, asTaken: source };
+  sctx.drawImage(bitmap, 0, 0, source.width, source.height);
   bitmap.close?.();
 
-  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const d = img.data;
-  let lo = 255;
-  let hi = 0;
-  for (let i = 0; i < d.length; i += 4) {
-    const y = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
-    d[i] = y;
-    if (y < lo) lo = y;
-    if (y > hi) hi = y;
-  }
-  const span = Math.max(1, hi - lo);
-  for (let i = 0; i < d.length; i += 4) {
-    const y = Math.round(((d[i] - lo) / span) * 255);
-    d[i] = d[i + 1] = d[i + 2] = y;
+  const { flat, asTaken } = readable(toGray(sctx.getImageData(0, 0, source.width, source.height).data, source.width, source.height));
+  return { flat: flat ? toCanvas(flat) : null, asTaken: toCanvas(asTaken) };
+}
+
+/** Brightness back onto a canvas, which is what the reader takes. */
+function toCanvas(g: Gray): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = g.width;
+  canvas.height = g.height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return canvas;
+  const img = ctx.createImageData(g.width, g.height);
+  for (let i = 0, j = 0; i < g.data.length; i++, j += 4) {
+    img.data[j] = img.data[j + 1] = img.data[j + 2] = g.data[i];
+    img.data[j + 3] = 255;
   }
   ctx.putImageData(img, 0, 0);
   return canvas;
@@ -84,7 +92,7 @@ export type ScanProgress = (fraction: number, again: boolean) => void;
 
 /** The text on the receipt in the photo, read on this device. */
 export async function readReceiptPhoto(file: Blob, today: Date, onProgress?: ScanProgress): Promise<string> {
-  const [{ createWorker, OEM }, canvas] = await Promise.all([import('tesseract.js'), prepare(file)]);
+  const [{ createWorker, OEM }, prepared] = await Promise.all([import('tesseract.js'), prepare(file)]);
   const base = ocrBase();
   let again = false;
   const worker = await createWorker('eng', OEM.LSTM_ONLY, {
@@ -99,13 +107,16 @@ export async function readReceiptPhoto(file: Blob, today: Date, onProgress?: Sca
     },
   });
   try {
-    return await readBestOf(async (how) => {
-      again = how === 'local';
+    let reads = 0;
+    const readerFor = (canvas: HTMLCanvasElement): Reader => async (how) => {
+      // Every read after the first is "having another look".
+      again = reads++ > 0;
       // tesseract's own names: 0 is Otsu, one threshold for the page; 2 is Sauvola, one per neighbourhood.
       await worker.setParameters({ thresholding_method: how === 'global' ? '0' : '2' });
       const { data } = await worker.recognize(canvas);
       return data.text;
-    }, today);
+    };
+    return await readFlattenedOrAsTaken(prepared.flat && readerFor(prepared.flat), readerFor(prepared.asTaken), today);
   } finally {
     await worker.terminate();
   }

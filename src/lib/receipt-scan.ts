@@ -134,6 +134,33 @@ export async function readBestOf(read: (how: Thresholding) => Promise<string>, t
   return fieldsFound(second, today) > firstFound ? second : first;
 }
 
+/** One way of reading one picture — global or local thresholding — as `readBestOf` asks for it. */
+export type Reader = (how: Thresholding) => Promise<string>;
+
+/**
+ * The receipt laid flat, read first; the photo as it was taken, read too only
+ * where that missed the shop, the total or the date — and kept only where it
+ * found MORE.
+ *
+ * Finding the paper (`lib/flatten.ts`) is a judgement about light, and light
+ * can mislead it. A shadow across the slip makes the shaded half as dark as
+ * the table: the "paper" found was the lit half alone, and laying THAT flat
+ * cropped the total away — a receipt the old reader got right came back with
+ * no total (the smoke sweep's shadowed Boots slip). So flattening is a first
+ * attempt, never the only one: the photo as taken is still read when the
+ * flattened read falls short, and the old reading is what came before, so
+ * this can only ever find more than it did. On a tie the flattened read
+ * stands, since it was the one with the receipt straight.
+ */
+export async function readFlattenedOrAsTaken(flat: Reader | null, asTaken: Reader, today: Date): Promise<string> {
+  if (!flat) return readBestOf(asTaken, today);
+  const first = await readBestOf(flat, today);
+  const firstFound = fieldsFound(first, today);
+  if (firstFound === 3) return first;
+  const second = await readBestOf(asTaken, today);
+  return fieldsFound(second, today) > firstFound ? second : first;
+}
+
 /**
  * Why a scan that never produced any text failed, as far as the app can tell.
  *
