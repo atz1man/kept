@@ -1,0 +1,13 @@
+{
+  "name": "@kept/receipt-scanner",
+  "version": "1.0.0",
+  "private": true,
+  "description": "kept's receipt scanner on iOS: Apple's document camera, read by Vision, on the device.",
+  "license": "UNLICENSED",
+  "author": "kept",
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    }
+  }
+}

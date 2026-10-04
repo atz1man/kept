@@ -1,3 +1,4 @@
+import { pdfLines } from './documents';
 import { parseReceiptText } from './parse';
 import { ALIASES_BY_LENGTH } from './stores';
 
@@ -174,4 +175,41 @@ export async function readFlattenedOrAsTaken(flat: Reader | null, asTaken: Reade
  */
 export function scanFailure(readerReachable: boolean, native: boolean): 'offline' | 'unreadable' {
   return !native && !readerReachable ? 'offline' : 'unreadable';
+}
+
+/** One line Vision read on the iPhone, and where: fractions of the page, y up from the bottom. */
+export interface VisionLine {
+  text: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** A page the iPhone's document camera took: its size in points and the lines read off it. */
+export interface VisionPage {
+  width: number;
+  height: number;
+  lines: VisionLine[];
+}
+
+/**
+ * The document camera's pages as the text a till receipt would be pasted as.
+ *
+ * Vision reads a slip's labels and its figures as separate pieces — "TOTAL"
+ * on the left, "19.99" thirty characters to the right — and in no promised
+ * order. They are put back on the lines they share by the rule a PDF's runs
+ * are (`pdfLines`), once the fractions are scaled back to the page's own
+ * proportions. That rule tells a space between words from a break inside one
+ * by comparing a horizontal gap with the text's height; on a slip three times
+ * taller than wide, a fraction of the width is a third of the distance the
+ * same fraction of the height is, and left unscaled a hairline between two
+ * halves of one word reads as a space.
+ */
+export function fromVision(pages: readonly VisionPage[]): string {
+  return pdfLines(
+    pages.map((p) =>
+      p.lines.map((l) => ({ str: l.text, x: l.x * p.width, y: l.y * p.height, width: l.width * p.width, height: l.height * p.height })),
+    ),
+  );
 }

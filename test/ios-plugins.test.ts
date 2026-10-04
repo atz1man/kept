@@ -31,10 +31,25 @@ const PODFILE = readFileSync(join(ROOT, 'ios', 'App', 'Podfile'), 'utf8');
 /** `@capacitor/*` packages that are plugins — the runtime itself is not one. */
 const NOT_PLUGINS = new Set(['core', 'cli', 'ios', 'android']);
 
+const DEPENDENCIES: Record<string, string> = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).dependencies ?? {};
+
+/**
+ * Every dependency with a native iOS half: Capacitor's own plugins, and a
+ * plugin of this app's own (packages/receipt-scanner), which `cap sync`
+ * installs the same way because its package.json says `capacitor.ios` — and
+ * which can be forgotten the same way.
+ */
 const plugins = (): string[] =>
-  Object.keys(JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).dependencies ?? {})
-    .filter((name) => name.startsWith('@capacitor/'))
-    .filter((name) => !NOT_PLUGINS.has(name.slice('@capacitor/'.length)));
+  Object.keys(DEPENDENCIES).filter((name) =>
+    name.startsWith('@capacitor/')
+      ? !NOT_PLUGINS.has(name.slice('@capacitor/'.length))
+      : existsSync(join(ROOT, 'node_modules', name, 'package.json')) &&
+        Boolean(JSON.parse(readFileSync(join(ROOT, 'node_modules', name, 'package.json'), 'utf8')).capacitor?.ios),
+  );
+
+/** Where the Podfile points for a package: node_modules, or the folder a `file:` dependency names. */
+const podPath = (pkg: string): string =>
+  DEPENDENCIES[pkg].startsWith('file:') ? `../../${DEPENDENCIES[pkg].slice('file:'.length)}` : `../../node_modules/${pkg}`;
 
 /** The pod's real name, from the podspec the package ships. */
 const podName = (pkg: string): string | null => {
@@ -66,7 +81,7 @@ describe('the native half of every plugin', () => {
     // run time, which is better, but it is the same staleness and the same fix.
     for (const pkg of plugins()) {
       expect(PODFILE, `${podName(pkg)} does not point at ${pkg}`)
-        .toContain(`pod '${podName(pkg)}', :path => '../../node_modules/${pkg}'`);
+        .toContain(`pod '${podName(pkg)}', :path => '${podPath(pkg)}'`);
     }
   });
 
@@ -77,9 +92,13 @@ describe('the native half of every plugin', () => {
      * `pod install` fails outright on the machine doing the building.
      */
     const wanted = new Set(plugins().map(podName));
-    const declared = [...PODFILE.matchAll(/pod '(Capacitor\w+)', :path => '\.\.\/\.\.\/node_modules\/@capacitor\/([\w-]+)'/g)]
-      .filter(([, , pkg]) => !NOT_PLUGINS.has(pkg))
-      .map(([, pod]) => pod);
+    const declared = [
+      ...[...PODFILE.matchAll(/pod '(Capacitor\w+)', :path => '\.\.\/\.\.\/node_modules\/@capacitor\/([\w-]+)'/g)]
+        .filter(([, , pkg]) => !NOT_PLUGINS.has(pkg))
+        .map(([, pod]) => pod),
+      // This app's own, from packages/.
+      ...[...PODFILE.matchAll(/pod '(\w+)', :path => '\.\.\/\.\.\/packages\/[\w-]+'/g)].map(([, pod]) => pod),
+    ];
     const stale = declared.filter((pod) => !wanted.has(pod));
     expect(stale, `declared but not a dependency: ${stale.join(', ')}`).toEqual([]);
   });

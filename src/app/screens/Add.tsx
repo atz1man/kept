@@ -228,6 +228,27 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
   };
 
   /**
+   * What the iPhone's document camera read, into the box as a scan is: a
+   * till receipt, so a purchase made in person, with its page offered to be
+   * kept as proof of purchase.
+   */
+  const readDocumentScan = (raw: string, base64: string) => {
+    setScanFailed(null);
+    setReadFrom('photo');
+    if (!raw.trim()) {
+      setScanFailed('unreadable');
+      return;
+    }
+    const readable = fromScan(raw);
+    setText(readable);
+    setScannedText(readable);
+    readText(readable);
+    setDistance(false);
+    setScanShot(base64 ? { base64, text: readable } : null);
+    if (base64) setKeepPhoto(true);
+  };
+
+  /**
    * A file, read into the box. Text comes back ready for the parser; a photo,
    * or a PDF that is only a picture of a receipt, goes to the photo reader.
    * An emailed or downloaded receipt is usually an online order, so the card
@@ -757,6 +778,16 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
           }
           void (async () => {
             try {
+              // Apple's document camera first: it finds the slip's edges and
+              // flattens it as it is taken, and Vision reads it on the phone.
+              // Where this build or this phone has none, the camera as before.
+              const { scanWithDocumentCamera } = await import('../native-scanner');
+              const doc = await scanWithDocumentCamera();
+              if (doc.kind === 'cancelled') return;
+              if (doc.kind === 'read') {
+                readDocumentScan(doc.text, doc.base64);
+                return;
+              }
               const { takeReceiptPhoto } = await import('../scan');
               const shot = await takeReceiptPhoto();
               if (shot) await scanPhoto(shot.blob, shot.base64);

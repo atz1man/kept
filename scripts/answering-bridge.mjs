@@ -12,8 +12,8 @@
  * it survives a reload, as a phone's Documents directory does; `slowMirrorMs`
  * delays reading the library's mirror file, as a slow disk would.
  */
-export async function answeringBridge(ctx, { shot = '', disk = {}, slowMirrorMs = 0, notifications = 'granted' } = {}) {
-  await ctx.addInitScript(({ shot, disk, slowMirrorMs, notifications }) => {
+export async function answeringBridge(ctx, { shot = '', disk = {}, slowMirrorMs = 0, notifications = 'granted', documentScan = null } = {}) {
+  await ctx.addInitScript(({ shot, disk, slowMirrorMs, notifications, documentScan }) => {
     const w = window;
     w.webkit = { messageHandlers: { bridge: { postMessage: () => {} } } };
     const KEY = '__keptDisk';
@@ -99,5 +99,25 @@ export async function answeringBridge(ctx, { shot = '', disk = {}, slowMirrorMs 
       { name: 'removeListener', rtype: 'promise' },
     );
     plugins.LocalNotifications.removeListener = async () => {};
-  }, { shot, disk, slowMirrorMs, notifications });
+    /*
+     * The document camera (packages/receipt-scanner), declared only when a
+     * test hands it pages — or 'cancel' — so every other context is a build
+     * without it, and the scan falls back to the camera as it would there.
+     */
+    if (documentScan !== null) {
+      w.__documentScans = 0;
+      plugins.ReceiptScanner = {
+        isAvailable: async () => ({ available: true }),
+        scan: async () => {
+          w.__documentScans += 1;
+          if (documentScan === 'cancel') throw Object.assign(new Error('The scan was cancelled.'), { code: 'CANCELLED' });
+          return { pages: documentScan };
+        },
+      };
+      w.Capacitor.PluginHeaders.push({ name: 'ReceiptScanner', methods: [{ name: 'isAvailable', rtype: 'promise' }, { name: 'scan', rtype: 'promise' }] });
+    }
+    const getPhoto = plugins.Camera.getPhoto;
+    w.__cameraShots = 0;
+    plugins.Camera.getPhoto = async (o) => ((w.__cameraShots += 1), getPhoto(o));
+  }, { shot, disk, slowMirrorMs, notifications, documentScan });
 }
