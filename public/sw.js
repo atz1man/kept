@@ -58,15 +58,24 @@ self.addEventListener('activate', (event) => {
  * cache-first.
  *
  * The rule below — "everything else is immutable per URL" — is true of hashed
- * bundles, fonts and icons, and false of exactly this one file. Kept's claim
+ * bundles, fonts and icons, and false of exactly these. Kept's claim
  * is that it ships a verified policy change the day it happens; cache-first
  * froze the feed at whatever shipped the day this worker installed, and the
  * app's own `cache: 'no-cache'` on that fetch bought nothing, because a
  * service worker is consulted before the HTTP cache it addresses. An installed
  * app therefore never saw another policy update until the next deploy changed
  * the cache name. Measured in a real browser before this list existed.
+ *
+ * The signature beside it, for the same reason and a sharper one. The app
+ * accepts a feed only when the signature covers exactly the bytes that came
+ * back, so the two are a pair — and with the feed network-first and the
+ * signature cache-first, the first signature an installed app ever fetched was
+ * the only one it would ever see. Once signing is switched on, every genuine
+ * feed after the first would be refused as tampered, on installed web apps
+ * only. Measured: a changed `/policy-feed.sig` still read as the old one
+ * through the worker.
  */
-const FRESH = ['/policy-feed.json'];
+const FRESH = ['/policy-feed.json', '/policy-feed.sig'];
 
 /**
  * Network first, with the cache behind it. Used for the things a deploy is
@@ -102,7 +111,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // The feed, for the same reason and by the same route.
+  // The feed and its signature, for the same reason and by the same route.
   if (FRESH.includes(url.pathname)) {
     event.respondWith(networkFirst(req, url.pathname));
     return;

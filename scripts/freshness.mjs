@@ -28,7 +28,7 @@
 import { chromium } from 'playwright';
 import { reportOnCrash, sayCrash } from './crash-report.mjs';
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const PORT = Number(process.env.KEPT_FRESHNESS_PORT ?? 4199);
@@ -39,6 +39,7 @@ const FEED_FILE = `${ROOT}dist/policy-feed.json`;
 const FEED_URL = '/policy-feed.json';
 const NEW_ID = 'freshness-probe-change';
 const VITE_BIN = `${ROOT}node_modules/vite/bin/vite.js`;
+const SIG_FILE = `${ROOT}dist/policy-feed.sig`;
 
 /** The three the offline half is for — named, so they can be marked unasked. */
 const OFFLINE_CHECKS = [
@@ -183,6 +184,27 @@ try {
   const next = await askFeed();
   results['and is still there on the next launch'] = next.ok && next.ids.includes(NEW_ID);
 
+  /*
+   * The feed's signature, which is half of the same answer: a feed is accepted
+   * only when the signature covers exactly the bytes that came back. Asked of
+   * the worker directly rather than through the app, because this build has no
+   * key and so never fetches one — and the day it does, the worker must already
+   * be passing a new signature through. It was not: cache-first kept the first
+   * one for ever, so every genuine feed after it would have been refused.
+   */
+  const askSig = () =>
+    page.evaluate(async () => {
+      const res = await fetch('/policy-feed.sig', { cache: 'no-cache' });
+      return res.ok ? (await res.text()).trim() : `status ${res.status}`;
+    }).catch((e) => `failed: ${e.message.split('\n')[0]}`);
+  writeFileSync(SIG_FILE, 'signature-one');
+  const firstSig = await askSig();
+  writeFileSync(SIG_FILE, 'signature-two');
+  const secondSig = await askSig();
+  results['a feed signature published today reaches an installed app too'] =
+    firstSig === 'signature-one' && secondSig === 'signature-two';
+  rmSync(SIG_FILE, { force: true });
+
   // Now the other promise, with the server genuinely gone.
   const reallyGone = await stopServer();
   results['the server really is unreachable'] = reallyGone;
@@ -228,8 +250,11 @@ try {
   }
 
   results['no page errors'] = problems.length === 0;
+  // Said after that count, which is of what went wrong on the page, not of this.
+  if (secondSig !== 'signature-two') problems.push(`signature after the change: ${secondSig}`);
 } finally {
   writeFileSync(FEED_FILE, original);
+  rmSync(SIG_FILE, { force: true });
   await stopServer();
   await browser.close();
 }
