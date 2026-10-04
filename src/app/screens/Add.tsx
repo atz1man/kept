@@ -3,7 +3,8 @@ import { color, font, radius, shadow } from '../../tokens';
 import { addDays, fmtDate, fmtDateLong, fmtDateNear, fromISODate, toISODate } from '../../lib/dates';
 import { money } from '../../lib/money';
 import { parseReceiptText, UNKNOWN_STORE_WINDOW_DAYS, type ParsedReceipt } from '../../lib/parse';
-import { fromScan, scanFailure } from '../../lib/receipt-scan';
+import { fromScan, scanFailure, type UnsureWord } from '../../lib/receipt-scan';
+import { checkCount, checkWords, toCheck } from '../../lib/confidence';
 import { arrivalProblem, MAX_WINDOW_DAYS, purchaseProblem, readAmount, windowStartFor } from '../../lib/draft';
 import { makeReceiptId } from '../../lib/receipts';
 import { findStore, policyFor, windowFor } from '../../lib/stores';
@@ -107,6 +108,8 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
    * the person never pasted. Edit the text and it is a paste again.
    */
   const [scannedText, setScannedText] = useState<string | null>(null);
+  /** The words the photo reader was unsure of, for the text in `scannedText`. */
+  const [scanUnsure, setScanUnsure] = useState<readonly UnsureWord[]>([]);
   /*
    * A receipt that came as a file — a PDF e-receipt or invoice, a saved order
    * email or page. Read on this device, into the same box as everything else.
@@ -164,6 +167,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
     setParsed({
       store: null, policy: null, amount: null, purchasedOn: toISODate(today), dateFound: false,
       arrivedOn: null, dispatchedOn: null, windowDays: UNKNOWN_STORE_WINDOW_DAYS, item: null, orderRef: null, lines: [],
+      how: { amount: null, purchasedOn: null },
     });
     setError(false);
     setTypedIn(true);
@@ -204,14 +208,17 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
     setLookingAgain(false);
     setScanShot(null);
     setScannedText(null);
+    setScanUnsure([]);
     try {
       const { readReceiptPhoto } = await import('../scan');
-      const readable = fromScan(await readReceiptPhoto(file, today, (p, again) => {
+      const reading = await readReceiptPhoto(file, today, (p, again) => {
         setScanning(p);
         setLookingAgain(again);
-      }));
+      });
+      const readable = fromScan(reading.text);
       setText(readable);
       setScannedText(readable);
+      setScanUnsure(reading.unsure);
       readText(readable);
       setDistance(false);
       if (base64) {
@@ -242,6 +249,8 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
     const readable = fromScan(raw);
     setText(readable);
     setScannedText(readable);
+    // Vision gives no per-word score here yet; only the parser's own doubt applies.
+    setScanUnsure([]);
     readText(readable);
     setDistance(false);
     setScanShot(base64 ? { base64, text: readable } : null);
@@ -269,6 +278,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       setScanShot(null);
       setText(doc.text);
       setScannedText(doc.text);
+      setScanUnsure([]);
       readText(doc.text);
     } catch (e) {
       const why = (e as { why?: 'too-big' | 'not-a-receipt' | 'unreadable' }).why;
@@ -312,6 +322,10 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
   // The date the person has confirmed where the paste gave none; the parsed
   // one otherwise, and while the typed one is not yet a date.
   const dateTyped = !!parsed && (!parsed.dateFound || correcting);
+  // What the read was unsure of, while the card still shows what it read:
+  // nothing once the fields are open for correcting, and the reader's own
+  // scores only while the box still holds the text the reader produced.
+  const checks = parsed && !typedIn && !correcting ? toCheck(parsed, scannedText !== null && text === scannedText ? scanUnsure : []) : {};
   const boughtError = dateTyped ? purchaseProblem(boughtOn, today) : undefined;
   const purchasedOn = parsed ? (!dateTyped || boughtError ? parsed.purchasedOn : boughtOn) : '';
   const inForce = policy && parsed ? windowInForceFor(policy.name, purchasedOn, updates) : undefined;
@@ -484,7 +498,10 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       {parsed && (
         <div className="k-fade" style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, padding: 18, marginTop: 16, boxShadow: shadow.raised }}>
           <div style={{ fontFamily: font.figures, fontSize: 11, letterSpacing: 0, color: color.accentInk, fontWeight: 600 }}>
-            {typedIn ? 'Type it in' : scannedText !== null && text === scannedText ? (readFrom === 'file' ? 'Read from your file' : 'Read from your photo') : 'Found in your paste'}
+            {/* Its own element: where the card's findings came from is one
+                fact, how many of them to check is another. */}
+            <span>{typedIn ? 'Type it in' : scannedText !== null && text === scannedText ? (readFrom === 'file' ? 'Read from your file' : 'Read from your photo') : 'Found in your paste'}</span>
+            {checkCount(checks) > 0 && <span style={{ color: color.cautionInk }}>{` · ${checkCount(checks)} to check`}</span>}
           </div>
           <div style={{ marginTop: 12 }}>
             <label htmlFor="add-item" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: color.bodyStrong, marginBottom: 6 }}>
@@ -609,10 +626,10 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
               )}
             </div>
           ) : (
-            <Row label="Total" value={money(parsed.amount ?? 0)} mono />
+            <Row label="Total" value={money(parsed.amount ?? 0)} mono check={checks.amount && checkWords('amount', checks.amount)} />
           )}
           {!dateTyped ? (
-            <Row label="Bought" value={fmtDate(fromISODate(parsed.purchasedOn))} mono />
+            <Row label="Bought" value={fmtDate(fromISODate(parsed.purchasedOn))} mono check={checks.purchasedOn && checkWords('purchasedOn', checks.purchasedOn)} />
           ) : (
             <div style={{ margin: '4px 0 10px' }}>
               <label htmlFor="add-bought" style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>
@@ -905,19 +922,34 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
   );
 }
 
-function Row({ label, value, mono, accent }: { label: string; value: string; mono: boolean; accent?: boolean }) {
+/**
+ * One figure on the card. `check`, when the read was unsure of it: a mark
+ * beside the figure and the reason under it, so the person knows which of
+ * the rows to look at — see lib/confidence.ts.
+ */
+function Row({ label, value, mono, accent, check }: { label: string; value: string; mono: boolean; accent?: boolean; check?: string }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 9 }}>
-      <span style={{ color: color.muted, fontSize: 13 }}>{label}</span>
-      <span
-        style={{
-          fontWeight: 600, fontSize: 14, textAlign: 'right',
-          fontFamily: mono ? font.figures : undefined,
-          color: accent ? color.accentInk : undefined,
-        }}
-      >
-        {value}
-      </span>
+    <div data-check={check ? label : undefined} style={{ marginTop: 9 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+        <span style={{ color: color.muted, fontSize: 13 }}>{label}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          {check && (
+            <span style={{ fontSize: 11.5, fontWeight: 600, color: color.cautionInk, background: color.caution, borderRadius: radius.chip, padding: '2px 7px' }}>
+              Check
+            </span>
+          )}
+          <span
+            style={{
+              fontWeight: 600, fontSize: 14, textAlign: 'right',
+              fontFamily: mono ? font.figures : undefined,
+              color: accent ? color.accentInk : undefined,
+            }}
+          >
+            {value}
+          </span>
+        </span>
+      </div>
+      {check && <div style={{ fontSize: 12.5, color: color.cautionInk, marginTop: 3, textAlign: 'right' }}>{check}</div>}
     </div>
   );
 }

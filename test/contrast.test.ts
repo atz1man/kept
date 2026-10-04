@@ -69,6 +69,13 @@ describe('text on the accent fills', () => {
   });
 });
 
+describe('the mark on a figure to check', () => {
+  it('reads on its own ground and on the card', () => {
+    expect(contrast(color.cautionInk, color.caution)).toBeGreaterThanOrEqual(AA_TEXT);
+    expect(contrast(color.cautionInk, color.white)).toBeGreaterThanOrEqual(AA_TEXT);
+  });
+});
+
 describe('the destructive action', () => {
   it('white reads on the danger fill — the erase-everything confirm', () => {
     expect(contrast(color.white, color.danger)).toBeGreaterThanOrEqual(AA_TEXT);

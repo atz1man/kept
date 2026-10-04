@@ -51,6 +51,14 @@ export const color = {
   dangerChipBg: 'rgba(217,45,32,0.10)',
   onInkDanger: '#FF9C8F',
 
+  /**
+   * "Check this": a figure the read was unsure of, on the Add card. Amber, so
+   * it is neither the accent (press me) nor red (a deadline is close) — it
+   * asks for a look, not an action. 6.6:1 for the ink on its ground.
+   */
+  caution: '#FFF1D6',
+  cautionInk: '#7A4B00',
+
   border: 'rgba(20,22,26,0.12)',
   borderHair: 'rgba(20,22,26,0.07)',
   borderSoft: 'rgba(20,22,26,0.15)',

@@ -33,7 +33,7 @@ function toPng(g: Gray, name: string): string {
 const worker = await createWorker('eng', OEM.LSTM_ONLY, { langPath: new URL('../../node_modules/@tesseract.js-data/eng/4.0.0_best_int', import.meta.url).pathname, cachePath: TMP });
 const readerOf = (path: string): Reader => async (how) => {
   await worker.setParameters({ thresholding_method: how === 'global' ? '0' : '2' });
-  return (await worker.recognize(path)).data.text;
+  return { text: (await worker.recognize(path)).data.text, unsure: [] };
 };
 const read = (path: string) => readBestOf(readerOf(path), TODAY);
 function score(ocr: string, m: (typeof meta)[number]) {
@@ -52,10 +52,10 @@ for (const m of meta) {
   // As taken: what scan.ts did before — the whole photo, stretched.
   const { flat, asTaken, paper } = readable(g);
   const asTakenPath = toPng(asTaken, 'a.png');
-  const a = score(await read(asTakenPath), m);
+  const a = score((await read(asTakenPath)).text, m);
   // Now: exactly what scan.ts does — flattened first, the photo as taken where that falls short.
   const found = Array.isArray(paper) ? { quad: paper } : { none: paper };
-  const b = flat ? score(await readFlattenedOrAsTaken(readerOf(toPng(flat, 'b.png')), readerOf(asTakenPath), TODAY), m) : a;
+  const b = flat ? score((await readFlattenedOrAsTaken(readerOf(toPng(flat, 'b.png')), readerOf(asTakenPath), TODAY)).text, m) : a;
   const n = (s: typeof a) => Number(s.store) + Number(s.total) + Number(s.day);
   const t = (tally[m.pose] ??= { asTaken: 0, flat: 0, n: 0, found: 0 });
   t.asTaken += n(a); t.flat += n(b); t.n += 3; t.found += 'quad' in found ? 1 : 0;
