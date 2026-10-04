@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { color, font, shadow } from '../../tokens';
+import { color, font, radius, shadow } from '../../tokens';
 import { LogoMark } from '../../app/components/Icons';
 
 export const WRAP: CSSProperties = { maxWidth: 1160, margin: '0 auto', padding: '0 28px' };
@@ -14,7 +14,7 @@ export function Eyebrow({ children, onInk }: { children: ReactNode; onInk?: bool
 
 export function SectionTitle({ children, maxWidth = 620 }: { children: ReactNode; maxWidth?: number }) {
   return (
-    <h2 style={{ fontFamily: font.display, fontSize: 'clamp(30px, 4vw, 40px)', fontWeight: 600, letterSpacing: '-0.03em', margin: '14px 0 0', maxWidth, lineHeight: 1.1 }}>
+    <h2 style={{ fontFamily: font.display, fontSize: 'clamp(30px, 4vw, 40px)', fontWeight: 700, letterSpacing: '-0.03em', margin: '14px 0 0', maxWidth, lineHeight: 1.1 }}>
       {children}
     </h2>
   );
@@ -64,10 +64,11 @@ export function Card({ children, emphasised = true, style }: { children: ReactNo
   return (
     <div
       style={{
-        background: color.white,
-        border: `1px solid ${emphasised ? color.borderSoft : color.borderHair}`,
-        borderRadius: 14,
-        boxShadow: emphasised ? shadow.raised : undefined,
+        // As the app draws its cards: an emphasised one floats on a soft
+        // shadow, the rest sit in the grey card colour — neither outlined.
+        background: emphasised ? color.white : color.surfaceAlt,
+        borderRadius: radius.cardLg,
+        boxShadow: emphasised ? shadow.raisedLg : undefined,
         ...style,
       }}
     >

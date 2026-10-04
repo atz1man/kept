@@ -2,6 +2,7 @@ import { color, radius } from '../../tokens';
 import { daysBetween, fmtDate, fmtDateLong, fromISODate, relativeAgo } from '../../lib/dates';
 import { COMING_UP_DAYS, comingUp } from '../../lib/coming-up';
 import { Pressable } from '../components/Pressable';
+import { Avatar } from '../components/Avatar';
 import { assess } from '../../lib/policy-feed';
 import type { PolicyUpdate, Receipt } from '../../lib/types';
 
@@ -20,7 +21,8 @@ interface Props {
  * item is a headline for one person and an alarm for another, and only the
  * device knows which.
  */
-const sectionLabel = { fontSize: 13, fontWeight: 600, color: color.muted, margin: '20px 4px 10px' } as const;
+/** A section's heading, as Home sets one: big and black. */
+const sectionLabel = { fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em', color: color.ink, margin: '24px 4px 10px' } as const;
 
 /** "currys.co.uk" from the full address — the part a person recognises. */
 function hostOf(url: string): string {
@@ -53,7 +55,7 @@ export function Watch({ updates, receipts, today, watching, onOpen }: Props) {
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 2px 4px' }}>
         <span className="k-pulse" style={{ width: 8, height: 8, borderRadius: 999, background: color.accent }} />
-        <h1 tabIndex={-1} style={{ fontSize: 24, fontWeight: 600, margin: 0 }}>Watch</h1>
+        <h1 tabIndex={-1} style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.03em', margin: 0 }}>Watch</h1>
       </div>
 
       {/* Every dated thing ahead, across every receipt, in one list. Each date
@@ -77,21 +79,25 @@ export function Watch({ updates, receipts, today, watching, onOpen }: Props) {
                 <Pressable
                   onClick={() => onOpen(c.receiptId)}
                   aria-label={`${fmtDate(c.date)}, ${when}: ${c.what}. ${r.store}, ${r.item}${c.demo ? ' (sample)' : ''}`}
+                  className="k-row-plain"
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px', background: color.white,
+                    // A statement row, as the list on Home draws one: the shop
+                    // on the left, the date where the amount would sit.
+                    display: 'flex', alignItems: 'center', gap: 13, padding: '13px 16px', background: color.surfaceAlt,
                     border: 0, borderRadius: 0, textAlign: 'left',
                   }}
                 >
-                  <span style={{ width: 64, flexShrink: 0, textAlign: 'left', whiteSpace: 'nowrap' }}>
-                    <span style={{ display: 'block', fontWeight: 600, fontSize: 15 }}>{fmtDate(c.date)}</span>
-                    <span style={{ display: 'block', fontSize: 11.5, color: n <= 3 ? color.danger : color.muted, fontWeight: n <= 3 ? 600 : 500, marginTop: 2 }}>{when}</span>
-                  </span>
+                  <Avatar store={r.store} cat={r.cat} size={40} />
                   <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'block', fontWeight: 550, fontSize: 14.5, color: color.ink }}>{c.what}</span>
-                    <span style={{ display: 'block', fontSize: 12.5, color: color.muted, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <span style={{ display: 'block', fontWeight: 600, fontSize: 15, color: color.ink }}>{c.what}</span>
+                    <span style={{ display: 'block', fontSize: 13, color: color.muted, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {c.demo && 'sample · '}
                       {r.store} · {r.item}
                     </span>
+                  </span>
+                  <span style={{ flexShrink: 0, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <span style={{ display: 'block', fontWeight: 700, fontSize: 15, letterSpacing: '-0.01em' }}>{fmtDate(c.date)}</span>
+                    <span style={{ display: 'block', fontSize: 12.5, color: n <= 3 ? color.danger : color.muted, fontWeight: n <= 3 ? 600 : 500, marginTop: 2 }}>{when}</span>
                   </span>
                 </Pressable>
               </li>
