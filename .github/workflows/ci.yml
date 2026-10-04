@@ -1,9 +1,9 @@
 # CI for kept.
 #
-# Two jobs, split by what they need. The fast one is pure logic, strict types
-# and a build — no browser, so it fails in seconds rather than minutes when it
-# fails at all. The other serves the built app and runs eight sweeps against a
-# real Chromium. Each of those sweeps found genuine defects the day it was
+# Three jobs, split by what they need. The fast one is pure logic, strict
+# types and a build — no browser, so it fails in seconds rather than minutes
+# when it fails at all. The second serves the built app and runs eight sweeps
+# against a real Chromium. The third compiles the iPhone app on a Mac. Each of those sweeps found genuine defects the day it was
 # written, which is why they are gates and not a ritual someone remembers to
 # perform.
 name: ci
@@ -116,3 +116,40 @@ jobs:
       # anything calls it.
       - name: An unproven policy feed does not reach the store
         run: npm run feed:wiring
+
+  # The iPhone app, compiled. Nothing else here ever builds the native half:
+  # the browser job runs the web bundle with the bridge stubbed, so a Swift
+  # error, a pod that does not resolve or a plugin missing from the Podfile
+  # looks exactly like a browser — and the iOS app was being written with no
+  # Mac in reach. This answers the one question a Linux box cannot: does the
+  # app as committed compile for iOS. It builds for the simulator without
+  # signing, so it needs no Apple account and no secret, and says nothing
+  # about running on a device — that still needs one.
+  ios:
+    name: ios
+    runs-on: macos-15
+    # A cold CocoaPods install and an Xcode build are about ten minutes.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - name: Build the iOS web bundle
+        run: npm run build:ios
+      - name: Sync it into the Xcode project, and install the pods
+        run: npx cap sync ios
+      - name: The Podfile cap sync wrote is the one committed
+        # `ios-plugins.test.ts` reads the committed Podfile; if sync would
+        # change it, that test was reading something the build does not use.
+        run: git diff --exit-code -- ios/App/Podfile
+      - name: Compile for the simulator, unsigned
+        run: |
+          xcodebuild -workspace ios/App/App.xcworkspace -scheme App \
+            -configuration Debug -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tail -40
+          exit ${PIPESTATUS[0]}
