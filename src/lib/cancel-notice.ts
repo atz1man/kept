@@ -1,6 +1,5 @@
-import { REFUND_CHASE_DAYS } from './alerts';
 import { addDays, daysBetween, fmtDateLong, fromISODate } from './dates';
-import { COOLING_OFF_DAYS, RETURN_AFTER_CANCEL_DAYS } from './legal';
+import { COOLING_OFF_DAYS, REFUND_CHASE_DAYS, RETURN_AFTER_CANCEL_DAYS } from './legal';
 import { money } from './money';
 import type { Receipt } from './types';
 

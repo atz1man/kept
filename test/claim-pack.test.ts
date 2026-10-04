@@ -80,6 +80,19 @@ describe('deadlines', () => {
     expect(deadlineState(find(online({ purchasedOn: iso(-20), arrivedOn: iso(-19) }), 'Last day to cancel for any reason')!)).toBe('passed');
   });
 
+  it('date the presumption of a fault to its last day, as section 19(14) counts it', () => {
+    // "The period of six months beginning with the day on which the goods were
+    // delivered": handed over on 15 January, the last presumed day is 14 July.
+    // The pack dated it 15 July, and on the 15th still called it open.
+    const r = counter({ purchasedOn: '2026-01-15', status: 'kept', keptOn: '2026-01-20' });
+    const presumption = (today: Date) => claimPack(r, today).timeline.find((e) => /s\.19\(14\)/.test(e.detail ?? ''))!;
+    expect(toISODate(presumption(new Date(2026, 6, 14)).on)).toBe('2026-07-14');
+    expect(presumption(new Date(2026, 6, 14)).passed).toBe(false);
+    expect(presumption(new Date(2026, 6, 15)).passed).toBe(true);
+    // Named as the last day it holds, like the timeline's other deadlines.
+    expect(presumption(new Date(2026, 6, 15)).label).toBe('Last day a fault is presumed there from the start');
+  });
+
   it('offer no right to cancel on something bought over a counter', () => {
     expect(labels(counter())).not.toContain('Last day to cancel for any reason');
   });

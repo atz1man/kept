@@ -597,6 +597,19 @@ describe('an edit forgets only what it made stale', () => {
   it('forgets nothing when neither clock moves', () => {
     expect(edit({ ...covered, item: 'Stand mixer' }).sort()).toEqual([...said].sort());
   });
+
+  it('re-arms the reminder about the right to reject when the day it came moves, and only then', () => {
+    // The right runs from the day it came; the shop's window here, and the
+    // guarantee, from the day it was bought. Corrected to delivered three days
+    // after it was bought, only the right to reject moves.
+    const withReject = [...said, 'a:reject'];
+    const editFrom = (r: typeof covered) =>
+      reducer(base({ receipts: [covered, receipt('b')], alertsSent: withReject }), { type: 'update', receipt: r }, TODAY).alertsSent;
+    expect(editFrom({ ...covered, distance: true, arrivedOn: '2026-08-10' }).sort()).toEqual([...said].sort());
+    expect(editFrom({ ...covered, item: 'Stand mixer' }).sort()).toEqual([...withReject].sort());
+    // Saying the day it came was the day it was bought moves nothing.
+    expect(editFrom({ ...covered, distance: true, arrivedOn: covered.purchasedOn }).sort()).toEqual([...withReject].sort());
+  });
 });
 
 describe('sent back, waiting for the refund', () => {

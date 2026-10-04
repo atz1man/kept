@@ -22,8 +22,29 @@ describe('which remedy today falls in', () => {
   });
 
   it('is a repair with the fault presumed, up to the last day of the presumption', () => {
-    expect(remedyOn(addMonths(TODAY, -PRESUMED_FAULT_MONTHS))).toBe('repair-presumed');
+    // Section 19(14): "the period of six months beginning with the day on
+    // which the goods were delivered". Beginning WITH it, so delivered on 15
+    // January, the last day is 14 July. This test had a 28 February delivery
+    // still presumed on 28 August: the first day after the six months.
+    const delivered = new Date(2026, 0, 15);
+    expect(faultAdvice(counter(delivered), new Date(2026, 6, 14)).remedy).toBe('repair-presumed');
+    expect(faultAdvice(counter(delivered), new Date(2026, 6, 15)).remedy).toBe('repair');
+    expect(remedyOn(addMonths(TODAY, -PRESUMED_FAULT_MONTHS))).toBe('repair');
+    expect(remedyOn(addDays(addMonths(TODAY, -PRESUMED_FAULT_MONTHS), 1))).toBe('repair-presumed');
     expect(remedyOn(addDays(addMonths(TODAY, -PRESUMED_FAULT_MONTHS), -1))).toBe('repair');
+  });
+
+  it('counts the six months as whole calendar months, at either end of one', () => {
+    // From 1 March: March to August, so 31 August is presumed and 1 September
+    // is not. (Stepping back a day and on six months says 28 August.)
+    const march = counter(new Date(2026, 2, 1));
+    expect(faultAdvice(march, new Date(2026, 7, 31)).remedy).toBe('repair-presumed');
+    expect(faultAdvice(march, new Date(2026, 8, 1)).remedy).toBe('repair');
+    // From 31 August there is no 31 February, and the six months run to the
+    // end of it. (The same date six months on, less a day, says the 27th.)
+    const august = counter(new Date(2026, 7, 31));
+    expect(faultAdvice(august, new Date(2027, 1, 28)).remedy).toBe('repair-presumed');
+    expect(faultAdvice(august, new Date(2027, 2, 1)).remedy).toBe('repair');
   });
 
   it('is a repair the buyer has to prove, up to the limitation period, and then nothing', () => {
@@ -77,6 +98,16 @@ describe('the letter', () => {
     expect(letter).toContain('(section 19(14))');
     expect(letter).toContain('(section 24)');
     expect(letter).not.toContain('section 22');
+  });
+
+  it('cites the presumption on its last day, and not the day after', () => {
+    // Delivered 15 January: six months beginning with that day end on 14 July.
+    // Written on 15 July, the letter told the shop the fault was presumed.
+    const kettle = counter(new Date(2026, 0, 15));
+    expect(faultLetter(kettle, new Date(2026, 6, 14), 'It stopped heating')).toContain('(section 19(14))');
+    const after = faultLetter(kettle, new Date(2026, 6, 15), 'It stopped heating')!;
+    expect(after).toContain('(section 23)');
+    expect(after).not.toContain('19(14)');
   });
 
   it('does not claim the presumption once it has gone', () => {

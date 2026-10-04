@@ -136,6 +136,27 @@ export function addMonths(d: Date, months: number): Date {
 }
 
 /**
+ * The last day of a period of `months` calendar months BEGINNING WITH
+ * `first`: that day counts as the first of the period, as a statute means
+ * when it says "beginning with".
+ *
+ * The day before the same date `months` on, so six months beginning with 15
+ * January end on 14 July, and beginning with 1 March on 31 August. Where the
+ * month reached has no such date, as six months on from 31 August reach a
+ * February with no 31st, the period runs to the end of that month: there is no
+ * day "before" a date that does not exist, and the later reading is the one
+ * that never ends a right early.
+ *
+ * Not `addMonths(addDays(first, -1), months)`, which reads the same and agrees
+ * on most days: from 1 March it steps back to 28 February and lands on 28
+ * August, three days short of six months.
+ */
+export function lastDayOfMonthsBeginning(first: Date, months: number): Date {
+  const same = addMonths(first, months);
+  return same.getDate() === first.getDate() ? addDays(same, -1) : same;
+}
+
+/**
  * Short form, with the year only when it is not this year.
  *
  * IKEA's 365-day window puts the deadline a year out, and "bought 14 Feb ·

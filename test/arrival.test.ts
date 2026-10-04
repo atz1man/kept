@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { reducer, type AppState } from '../src/app/state';
-import { alertKey } from '../src/lib/alerts';
+import { alertKey, dueAlerts, REJECT_NOTICE_DAYS } from '../src/lib/alerts';
 import { addDays, toISODate } from '../src/lib/dates';
+import { REJECT_DAYS } from '../src/lib/legal';
 import { toPence } from '../src/lib/money';
 import { ARRIVAL_ASK_DAYS, awaitingArrival, derive } from '../src/lib/receipts';
 import { DEFAULT_SETTINGS } from '../src/lib/storage';
@@ -73,6 +74,19 @@ describe('"It arrived today"', () => {
     const r = ordered(26);
     const s = reducer(state(r, [alertKey('a', 'soon'), alertKey('a', 'today')]), { type: 'arrived', id: 'a' }, TODAY);
     expect(s.alertsSent).toEqual([]);
+  });
+
+  it('forgets the reminder about the right to reject too, which now runs from today', () => {
+    // An IKEA sofa ordered 27 days ago: told the right to reject ended "no
+    // earlier than" three days from now. It comes today, so the right runs
+    // thirty days from today, and the shop's year-long window does not move.
+    const sofa = ordered(27, { store: 'IKEA', item: 'Sofa', windowDays: 365 });
+    const s = reducer(state(sofa, [alertKey('a', 'reject')]), { type: 'arrived', id: 'a' }, TODAY);
+    expect(s.alertsSent).toEqual([]);
+    // Said again three days before the real end, and not before.
+    const due = (n: number) => dueAlerts(s.receipts, addDays(TODAY, n), 7, new Set(s.alertsSent)).map((a) => a.rung);
+    expect(due(REJECT_DAYS - REJECT_NOTICE_DAYS - 1)).toEqual([]);
+    expect(due(REJECT_DAYS - REJECT_NOTICE_DAYS)).toEqual(['reject']);
   });
 
   it('does nothing to a receipt that has arrived, or was bought over a counter', () => {
