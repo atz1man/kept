@@ -157,6 +157,13 @@ textarea:focus { outline: 2px solid #1F6B4E; box-shadow: 0 0 0 4px #ffffff !impo
 @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
 .k-fade { animation: fadeUp .35s ease both; }
+/* Money back: the tick lands with a little overshoot and a ring of dots
+   leaves it once. Played once, never looped; under reduced motion both jump
+   to their end, where the dots are gone and the tick is at rest. */
+@keyframes popIn { 0% { opacity: 0; transform: scale(.4); } 60% { opacity: 1; transform: scale(1.12); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes burst { from { opacity: 1; transform: translate(0, 0) scale(1); } to { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(.4); } }
+.k-pop { animation: popIn .5s cubic-bezier(.2,.8,.3,1.2) .1s both; }
+.k-burst { animation: burst .9s ease-out .2s both; }
 .k-pulse { animation: pulseDot 1.6s ease infinite; }
 
 /*

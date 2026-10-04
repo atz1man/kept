@@ -86,7 +86,7 @@ export function Wordmark({ size = 24 }: { size?: number }) {
   );
 }
 
-const stroke = {
+const STROKE = {
   fill: 'none' as const,
   stroke: color.ink,
   strokeWidth: 1.5,
@@ -95,8 +95,9 @@ const stroke = {
 };
 
 /** Category tile icons — 1.5px line work, one per receipt category. */
-export function CatIcon({ cat }: { cat: Category }) {
+export function CatIcon({ cat, stroke: ink = color.ink }: { cat: Category; stroke?: string }) {
   const common = { width: 20, height: 20, viewBox: '0 0 20 20', 'aria-hidden': true } as const;
+  const stroke = { ...STROKE, stroke: ink };
   switch (cat) {
     case 'audio':
       return (

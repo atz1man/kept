@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_URGENT_DAYS, heroCount, urgency } from '../src/lib/urgency';
+import { DEFAULT_URGENT_DAYS, heroCount, urgency, windowRemaining } from '../src/lib/urgency';
 
 describe('the default urgent threshold', () => {
   it('is a week, which is what the rung it drives is called', () => {
@@ -71,5 +71,22 @@ describe('the boundaries of the ladder, which nothing pinned', () => {
   it('respects a warning distance the person changed', () => {
     expect(urgency(14, 14).level).toBe('soon');
     expect(urgency(15, 14).level).toBe('relaxed');
+  });
+});
+
+describe('how much of the window is left', () => {
+  it('still shows a day on the last day, and nothing the day after', () => {
+    expect(windowRemaining(0, 30)).toBeCloseTo(1 / 30);
+    expect(windowRemaining(-1, 30)).toBe(0);
+  });
+
+  it('is full on the first day and never more than full', () => {
+    expect(windowRemaining(29, 30)).toBe(1);
+    expect(windowRemaining(90, 30)).toBe(1);
+  });
+
+  it('does not divide by a window of nothing', () => {
+    expect(windowRemaining(0, 0)).toBe(1);
+    expect(Number.isFinite(windowRemaining(-3, 0))).toBe(true);
   });
 });

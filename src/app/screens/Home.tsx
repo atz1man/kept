@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
-import { color, font, radius, shadow } from '../../tokens';
+import { category, color, font, radius, shadow } from '../../tokens';
 import { addDays, fmtDate, fmtDateNear, fromISODate } from '../../lib/dates';
 import { money, sumPence } from '../../lib/money';
 import { awaitingArrival, bucket, settledRows, coverLine, derive, refundOf, everyReturnInTime, countsAsMoney, stillReturnablePence, timelineDots } from '../../lib/receipts';
 import { search, searchStatus, shouldOfferSearch } from '../../lib/search';
 import { midSentence } from '../../lib/words';
 import { TAGLINE_LEAD } from '../../lib/brand';
-import { heroCount, urgency } from '../../lib/urgency';
+import { heroCount, urgency, windowRemaining } from '../../lib/urgency';
 import type { Receipt } from '../../lib/types';
-import { ArrowRight, Logo, LogoDashed, Tick, Wordmark } from '../components/Icons';
+import { ArrowRight, CatIcon, Logo, LogoDashed, Tick, Wordmark } from '../components/Icons';
 import { Pressable } from '../components/Pressable';
 import { ReceiptRow } from '../components/ReceiptRow';
 import { refundChase } from '../../lib/refund-chase';
@@ -514,6 +514,14 @@ function HeroCard({ receipt, today, stillReturnable, keptBack, onOpen }: {
         <span style={{ fontSize: 12.5, color: color.muted, fontWeight: 500 }}>
           {closed ? 'Window closed' : 'Next to close'}
         </span>
+        {/* The kind of thing, in the colour its row in the list wears, so the
+            eye matches the card to the row below without reading either. */}
+        <span
+          aria-hidden="true"
+          style={{ marginLeft: 'auto', width: 34, height: 34, borderRadius: 9, display: 'grid', placeItems: 'center', background: category[receipt.cat].tint }}
+        >
+          <CatIcon cat={receipt.cat} stroke={category[receipt.cat].ink} />
+        </span>
       </div>
       {/* No wrap: the count and the sentence share a baseline, and the
           sentence wraps inside its own column rather than dropping below a
@@ -533,6 +541,20 @@ function HeroCard({ receipt, today, stillReturnable, keptBack, onOpen }: {
           ? `${receipt.store} · the shop’s window shut on ${fmtDateNear(d.deadline, today)} — your legal rights may not have`
           : `${receipt.store} · ${money(receipt.amount)} back if it goes back by ${fmtDateNear(d.deadline, today)}`}
       </div>
+      {/* How much of the window is spent, as a bar that fills towards the
+          deadline in the colour the count is in. Decorative: the number and
+          the date above already say it in words. */}
+      {!closed && (
+        <div data-window-bar aria-hidden="true" style={{ height: 6, borderRadius: radius.pill, background: color.surfaceAlt, marginTop: 12, overflow: 'hidden' }}>
+          <div
+            style={{
+              height: '100%', borderRadius: radius.pill, background: d.daysLeft <= 3 ? color.dangerDot : color.accent,
+              width: `${Math.max(4, Math.round((1 - windowRemaining(d.daysLeft, receipt.windowDays)) * 100))}%`,
+              transition: 'width .6s ease',
+            }}
+          />
+        </div>
+      )}
       {/* The way forward as a quiet line of its own, not a slab of colour:
           the whole card is the button, and the number already says how
           urgent it is. */}
