@@ -112,9 +112,13 @@ export function Landing() {
       {/* Hero */}
       <section style={{ ...WRAP, padding: '48px 28px 72px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(340px, 100%), 1fr))', gap: 56, alignItems: 'center' }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: `1px solid ${color.border}`, borderRadius: radius.chip, padding: '7px 14px', fontSize: 13, fontWeight: 600, color: color.bodyStrong, background: color.white, marginBottom: 26, flexWrap: 'wrap' }}>
+          {/* The words wrap BESIDE the dot, in their own box. With the text
+              as a bare flex item and the row allowed to wrap, a line too long
+              for a phone moved the whole sentence below the dot and left the
+              dot alone on a line of its own. */}
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, maxWidth: '100%', boxSizing: 'border-box', borderRadius: radius.pill, padding: '8px 14px', fontSize: 13, fontWeight: 600, color: color.bodyStrong, background: color.surfaceAlt, marginBottom: 26 }}>
             <span style={{ width: 8, height: 8, borderRadius: 999, background: color.accent, flexShrink: 0 }} />
-            No account · no cloud · no one sees your receipts
+            <span style={{ minWidth: 0 }}>No account · no cloud · no one sees your receipts</span>
           </div>
           <h1 style={{ fontFamily: font.display, fontSize: 'clamp(38px, 5.4vw, 58px)', fontWeight: 600, lineHeight: 1.08, letterSpacing: '-0.03em', margin: 0 }}>
             Know every return deadline before it passes.
@@ -283,7 +287,7 @@ export function Landing() {
 
       </main>
 
-      <footer style={{ borderTop: '1px solid rgba(20,22,26,0.1)', padding: 28 }}>
+      <footer style={{ borderTop: '1px solid rgba(10,10,18,0.1)', padding: 28 }}>
         <div style={{ maxWidth: 1160, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, color: color.muted, gap: 14, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Logo size={20} />

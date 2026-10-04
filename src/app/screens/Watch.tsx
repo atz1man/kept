@@ -112,8 +112,9 @@ export function Watch({ updates, receipts, today, watching, onOpen }: Props) {
             <li
               key={u.id}
               style={{
-                listStyle: 'none', background: color.white,
-                border: `1px solid ${affectsYou ? color.borderSoft : color.borderHair}`,
+                // A soft card, as the rest of the app draws one; one that
+                // touches a receipt you hold says so in its own words below.
+                listStyle: 'none', background: color.surfaceAlt,
                 borderRadius: radius.card, padding: 16,
               }}
             >

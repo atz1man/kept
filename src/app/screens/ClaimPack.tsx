@@ -221,7 +221,7 @@ export function ClaimPack({ receipt, today, onBack }: { receipt: Receipt; today:
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section style={{ background: color.white, border: `1px solid ${color.borderHair}`, borderRadius: radius.cardLg, padding: '14px 16px', marginTop: 12 }}>
+    <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, padding: '14px 16px', marginTop: 12 }}>
       <h2 style={{ fontSize: 13, fontWeight: 600, color: color.muted, margin: '0 0 10px' }}>{title}</h2>
       {children}
     </section>

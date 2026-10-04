@@ -99,7 +99,7 @@ export function Onboarding({ step, onNext, onSkip }: Props) {
               key={i}
               style={{
                 width: i === step ? 22 : 8, height: 8, borderRadius: 999,
-                background: i === step ? color.accent : 'rgba(20,22,26,0.18)', transition: 'all .25s',
+                background: i === step ? color.accent : 'rgba(10,10,18,0.18)', transition: 'all .25s',
               }}
             />
           ))}
@@ -145,7 +145,7 @@ function StepArt({ step }: { step: number }) {
       <rect x="40" y="11" width="58" height="6" rx="3" fill={color.ink} opacity="0.75" />
       <rect x="40" y="22" width="92" height="5" rx="2.5" fill={color.muted} opacity="0.35" />
       <rect x="190" y="11" width="36" height="6" rx="3" fill={color.ink} opacity="0.75" />
-      <text x="226" y="29" textAnchor="end" fontSize="8.5" fontWeight="600" fill={urgent ? color.danger : color.muted} fontFamily="Instrument Sans, sans-serif">{days}</text>
+      <text x="226" y="29" textAnchor="end" fontSize="8.5" fontWeight="600" fill={urgent ? color.danger : color.muted} fontFamily={font.ui}>{days}</text>
     </g>
   );
 
@@ -169,8 +169,8 @@ function StepArt({ step }: { step: number }) {
         <circle r="38" fill={color.white} stroke={color.borderHair} strokeWidth="5" />
         <circle r="38" fill="none" stroke={stroke} strokeWidth="5" strokeLinecap="round"
           strokeDasharray="239" strokeDashoffset={offset} transform="rotate(-90)" />
-        <text y="6" textAnchor="middle" fontSize="19" fontWeight="600" fill={color.ink} fontFamily="Instrument Sans, sans-serif">{days}</text>
-        <text y="64" textAnchor="middle" fontSize="10" fontWeight="500" fill={color.muted} fontFamily="Instrument Sans, sans-serif">{label}</text>
+        <text y="6" textAnchor="middle" fontSize="19" fontWeight="600" fill={color.ink} fontFamily={font.ui}>{days}</text>
+        <text y="64" textAnchor="middle" fontSize="10" fontWeight="500" fill={color.muted} fontFamily={font.ui}>{label}</text>
       </g>
     );
     return (

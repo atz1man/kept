@@ -523,7 +523,8 @@ await sweepInto(lp, 'rights');
     text: getComputedStyle(document.body).color,
   }));
   const CANVAS = 'rgb(255, 255, 255)';
-  const INK = 'rgb(20, 22, 26)';
+  // `color.ink`, #0A0A12, as styles.css sets it on body.
+  const INK = 'rgb(10, 10, 18)';
   if (seen.scheme !== 'light') {
     deviceProblems.push(`the root declares colour-scheme "${seen.scheme}", so the native date pickers, scrollbars and overscroll follow the OS instead of the app`);
   }

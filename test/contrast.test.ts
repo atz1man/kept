@@ -69,6 +69,30 @@ describe('text on the accent fills', () => {
   });
 });
 
+describe('the hero', () => {
+  /** A translucent rgba() token laid over a solid hex ground, as the browser composites it. */
+  const over = (glass: string, ground: string) => {
+    const [r, g, b, a] = glass.match(/[\d.]+/g)!.map(Number);
+    const base = [1, 3, 5].map((i) => parseInt(ground.slice(i, i + 2), 16));
+    return `#${[r, g, b].map((v, i) => Math.round(v * a + base[i] * (1 - a)).toString(16).padStart(2, '0')).join('')}`;
+  };
+
+  it('white and the soft text read on its lightest stop', () => {
+    expect(contrast(color.white, color.heroEnd)).toBeGreaterThanOrEqual(AA_TEXT);
+    expect(contrast(color.onHeroSoft, color.heroEnd)).toBeGreaterThanOrEqual(AA_TEXT);
+  });
+
+  it('a chip on it keeps white text above AA where the gradient is lightest', () => {
+    expect(contrast(color.white, over(color.onHeroChip, color.heroEnd))).toBeGreaterThanOrEqual(AA_TEXT);
+  });
+
+  it('the light glass is decoration only: under white text it would not pass', () => {
+    // Stated so that the day someone puts a chip back on it, the reason it
+    // fails is already written down.
+    expect(contrast(color.white, over(color.onHeroGlass, color.heroEnd))).toBeLessThan(AA_TEXT);
+  });
+});
+
 describe('the mark on a figure to check', () => {
   it('reads on its own ground and on the card', () => {
     expect(contrast(color.cautionInk, color.caution)).toBeGreaterThanOrEqual(AA_TEXT);

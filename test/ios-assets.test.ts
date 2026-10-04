@@ -30,11 +30,12 @@ const near = (got: number[], want: number[]) =>
   want.every((v, i) => Math.abs(got[i] - v) <= 2);
 
 /*
- * The tile is a gradient from #25805E to #17573F with a soft light at the
- * top, so no one pixel of it is #1F6B4E. What every pixel of it IS is the
- * brand green: green well above red and blue, and neither white nor ink.
+ * The tile is a gradient from #5B4CF5 to #3626CF with a soft light at the
+ * top, so no one pixel of it is the accent #4636E8. What every pixel of it IS
+ * is the brand indigo: blue well above red and green, and neither white nor
+ * ink.
  */
-const tileGreen = (px: number[]) => px[1] - px[0] > 40 && px[1] - px[2] > 15 && px[1] < 180 && px[1] > 60;
+const tileIndigo = (px: number[]) => px[2] - px[1] > 100 && px[2] - px[0] > 60 && px[2] > 150;
 
 /*
  * Looked for across a region rather than at one guessed pixel. A hardcoded
@@ -44,7 +45,7 @@ const tileGreen = (px: number[]) => px[1] - px[0] > 40 && px[1] - px[2] > 15 && 
  */
 const hasMark = (image: { width: number; height: number }, box: [number, number, number, number], ink: number[] | 'tile' = MARK) => {
   const [x0, y0, x1, y1] = box;
-  const is = (px: number[]) => (ink === 'tile' ? tileGreen(px) : near(px, ink));
+  const is = (px: number[]) => (ink === 'tile' ? tileIndigo(px) : near(px, ink));
   for (let y = y0; y < y1; y += 4) {
     for (let x = x0; x < x1; x += 4) if (is(pixelAt(image, x, y))) return true;
   }
@@ -64,21 +65,21 @@ describe('the app icon', () => {
     expect(icon.channels).toBe(3);
   });
 
-  it('has square corners, in kept green — not rounded, and not a vendor logo', () => {
+  it('has square corners, in kept indigo — not rounded, and not a vendor logo', () => {
     /*
      * One assertion doing two jobs, and both matter. iOS masks the icon itself,
      * so a corner that is transparent or white means the artwork was rounded
      * first and will be rounded twice. And the placeholder this replaced had
-     * WHITE corners, so a green corner is also the check that it is gone.
+     * WHITE corners, so an indigo corner is also the check that it is gone.
      */
     for (const [x, y] of [[0, 0], [1023, 0], [0, 1023], [1023, 1023]]) {
       const px = pixelAt(icon, x, y);
-      expect(tileGreen(px), `corner ${x},${y} was ${px}`).toBe(true);
+      expect(tileIndigo(px), `corner ${x},${y} was ${px}`).toBe(true);
     }
   });
 
   it('actually has the mark on it, rather than being a blank square', () => {
-    // Without this, every check above passes on a solid green rectangle.
+    // Without this, every check above passes on a solid indigo rectangle.
     expect(hasMark(icon, [200, 100, 850, 900])).toBe(true);
   });
 });
@@ -111,7 +112,7 @@ describe('the launch screen', () => {
   });
 
   it('has the mark on it, centred, rather than a plain empty field', () => {
-    // Looked for by the tile's green: the launch screen is white now, so the
+    // Looked for by the tile's indigo: the launch screen is white now, so the
     // mark's own white is everywhere on it and would prove nothing.
     expect(CANVAS).toEqual(MARK);
     const s = decodePng(SPLASHES[0]);

@@ -223,8 +223,12 @@ results['a changed policy is announced on the receipts list'] =
   await alertCtx.close();
 }
 
-// Swipe the urgent row left past the commit threshold.
+// Swipe the urgent row left past the commit threshold. Brought into view
+// first, as a thumb would: below the balance and the quick actions the list
+// starts under the fold, and a drag at off-screen coordinates touches nothing.
 const row = page.getByRole('button', { name: /Currys, JBL/ });
+await row.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+await page.waitForTimeout(150);
 const box = await row.boundingBox();
 const y = box.y + box.height / 2;
 await page.mouse.move(box.x + box.width - 40, y);
@@ -983,6 +987,41 @@ for (const cancel of [false, true]) {
     stored.some((r) => r.item === 'No7 serum' && r.amount === 5496 - 1298 && r.lines === 2);
   if (!results['a basket is split by its own lines, in one tap']) problems.push(`lines: ${JSON.stringify({ card: card.slice(0, 80), offered, stored })}`);
   await lCtx.close();
+}
+
+/*
+ * The quick actions under the balance each start the Add screen doing the
+ * thing they name, within the same tap — so a browser still counts the file
+ * picker as something the person asked for — and only once: coming back to
+ * Add later from the tab bar does not open a picker nobody asked for.
+ */
+{
+  const qCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const qp = await qCtx.newPage();
+  await qp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await qp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  const chooserFrom = async (name) => {
+    const chooser = qp.waitForEvent('filechooser', { timeout: 3000 }).catch(() => null);
+    await qp.getByRole('button', { name }).click();
+    const c = await chooser;
+    return c ? await c.element().evaluate((el) => `${el.id}|${el.accept}`) : null;
+  };
+  const scan = await chooserFrom('Scan a receipt');
+  await qp.getByRole('button', { name: 'Receipts', exact: true }).click();
+  const upload = await chooserFrom('Upload a PDF or email');
+  await qp.getByRole('button', { name: 'Receipts', exact: true }).click();
+  await qp.getByRole('button', { name: 'Paste an order email' }).click();
+  await qp.waitForTimeout(200);
+  const pasteFocused = await qp.evaluate(() => document.activeElement?.id === 'paste');
+  // Back to Add from the tab bar: no picker this time.
+  await qp.getByRole('button', { name: 'Receipts', exact: true }).click();
+  const again = qp.waitForEvent('filechooser', { timeout: 1500 }).then(() => true).catch(() => false);
+  await qp.getByRole('button', { name: 'Add a receipt' }).click();
+  const reopened = await again;
+  results['each quick action starts Add doing what it says, once'] =
+    scan === 'add-photo|image/*' && /^add-file\|.*application\/pdf/.test(upload ?? '') && pasteFocused && !reopened;
+  if (!results['each quick action starts Add doing what it says, once']) problems.push(`quick actions: ${JSON.stringify({ scan, upload, pasteFocused, reopened })}`);
+  await qCtx.close();
 }
 
 /*
@@ -2495,8 +2534,8 @@ results['a delivery date in the paste is read, not asked for'] =
   const lastDay = await ring(/ASOS, Running shoes/);
   const longGone = await ring(/Argos, Toaster/);
   results['the ring still shows something on the last day'] =
-    // The danger red, #B42318: the number sits on a white card now, not ink.
-    lastDay.drawn > 1 && lastDay.numberColour === 'rgb(180, 35, 24)' &&
+    // The danger red, `color.danger` (#C2261C): the number sits on a white card now, not ink.
+    lastDay.drawn > 1 && lastDay.numberColour === 'rgb(194, 38, 28)' &&
     // And nothing once the window has actually gone, rather than sweeping backwards.
     longGone.drawn <= 0;
   await lastCtx.close();
@@ -2600,7 +2639,7 @@ results['a delivery date in the paste is read, not asked for'] =
    * page itself holds, rather than against a number written here that would go
    * stale with the seed.
    */
-  const footer = /(£[\d,]+\.\d\d) still returnable/.exec(shown);
+  const footer = /(£[\d,]+\.\d\d)/.exec(await backlogPage.locator('[data-balance="returnable"]').innerText().catch(() => ''));
   const sums = await backlogPage.evaluate(() => {
     // Real receipts only: the samples stop counting towards a total the moment
     // a real receipt exists (`countsAsMoney`), and there are two here.
@@ -3369,6 +3408,10 @@ await landing.locator('iframe[title="kept — live app demo"]').scrollIntoViewIf
 await landing.waitForTimeout(600);
 const demo = landing.frameLocator('iframe[title="kept — live app demo"]');
 const demoRow = demo.getByRole('button', { name: /Currys, JBL/ });
+// And the row into the middle of the demo's own screen: the app opens on its
+// balance, so the list starts below the fold inside the frame too.
+await demoRow.evaluate((el) => el.scrollIntoView({ block: 'center' })).catch(() => {});
+await landing.waitForTimeout(300);
 const demoBox = await demoRow.boundingBox();
 if (demoBox) {
   const y = demoBox.y + demoBox.height / 2;

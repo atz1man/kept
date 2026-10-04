@@ -3,12 +3,13 @@
  * with no signal (the whole point is a deadline you can check anywhere), and
  * the privacy notice promises nobody else sees your receipts — a font request
  * to a third party on every launch is a request that says when you opened it.
- * One family, shipped as a variable font, covers 400–700.
+ * One family, shipped as a variable font, covers 100–900 (OFL; licence
+ * beside it in public/fonts).
  */
 @font-face {
-  font-family: 'Instrument Sans';
-  src: url('/fonts/instrument-sans.woff2') format('woff2');
-  font-weight: 400 700;
+  font-family: 'Geist';
+  src: url('/fonts/geist.woff2') format('woff2');
+  font-weight: 100 900;
   font-style: normal;
   font-display: swap;
 }
@@ -38,8 +39,8 @@ html {
 body {
   margin: 0;
   background: #FFFFFF;
-  font-family: 'Instrument Sans', system-ui, -apple-system, sans-serif;
-  color: #14161A;
+  font-family: 'Geist', system-ui, -apple-system, sans-serif;
+  color: #0A0A12;
   -webkit-font-smoothing: antialiased;
   /* Tabular figures everywhere: money and day counts line up in a column,
      the way a statement does. */
@@ -48,11 +49,11 @@ body {
 
 svg { display: block; flex-shrink: 0; }
 
-a { color: #14161A; text-decoration: none; }
+a { color: #0A0A12; text-decoration: none; }
 /* The accent as text (`color.accentInk`), which clears AA on every light
    ground. A hover colour is a state the contrast sweep cannot see, so it is
    held to a token here rather than chosen by eye. */
-a:hover { color: #1A5C43; }
+a:hover { color: #3B2BD6; }
 /* A link inside a line of text is told apart by more than its colour: the
    muted line and the ink link are too close to rely on hue alone (WCAG
    1.4.1, axe's link-in-text-block). */
@@ -60,16 +61,16 @@ a:hover { color: #1A5C43; }
    a flat 402px cap, which left grey strips down both sides of a Pro Max. */
 .k-frame { max-width: 100%; }
 @media (min-width: 600px) {
-  .k-frame { max-width: 430px; box-shadow: 0 0 0 1px rgba(20,22,26,0.08); }
+  .k-frame { max-width: 430px; box-shadow: 0 0 0 1px rgba(10,10,18,0.08); }
 }
 
 .k-group {
   display: flex; flex-direction: column; margin: 0; padding: 0;
-  background: #ffffff; border: 1px solid rgba(20,22,26,0.09); border-radius: 14px; overflow: hidden;
+  background: #F4F5F8; border-radius: 22px; overflow: hidden;
 }
-.k-group > li + li { border-top: 1px solid rgba(20,22,26,0.07); }
-/* A grouped list, the way a phone's own settings and wallets draw one: one
-   card, rows divided by a hairline. Each receipt used to be a card of its
+.k-group > li + li { border-top: 1px solid rgba(10,10,18,0.06); }
+/* A grouped list, the way a bank app draws a statement: one soft card, no
+   border, rows divided by a hairline. Each receipt used to be a card of its
    own, and a screen of separate rounded boxes is most of what read as toy. */
 
 .k-inline-links a { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
@@ -98,7 +99,7 @@ a:hover { color: #1A5C43; }
  * Two colours, because one cannot work everywhere.
  *
  * WCAG 2.1 SC 1.4.11 asks 3:1 of a focus indicator, and axe does not check
- * it. The green outline carries every light ground (5:1 or better) and a
+ * it. The indigo outline carries every light ground (5:1 or better) and a
  * white halo carries the few ink surfaces left — the toasts and the photo
  * viewer — where green alone measures 2.8:1. tokens.test.ts checks that at
  * least one part clears 3:1 on every ground the app paints.
@@ -108,49 +109,51 @@ a:hover { color: #1A5C43; }
  * on exactly the buttons that matter most.
  */
 :focus-visible {
-  outline: 2.5px solid #1F6B4E;
+  outline: 2.5px solid #4636E8;
   outline-offset: 2px;
   box-shadow: 0 0 0 5px #ffffff !important;
   border-radius: 4px;
 }
 
 /*
- * Buttons with depth. The primary is the brand green given a light source: a
- * gradient from the tile's top green to its bottom one, a hairline highlight
- * along the top edge, and a soft shadow in its own hue. The secondary is
- * crisp white on a hairline with the lightest lift. Flat fills read as a
- * template; this is the difference people describe as "polished" without
- * being able to say why.
+ * Buttons are pills, the way a money app draws the thing to press. The
+ * primary is the accent given a light source — a gradient from the tile's
+ * top indigo to its bottom one, a hairline highlight along the top edge, and
+ * a soft glow in its own hue. The secondary keeps the ground each site gives
+ * it — white on the page, white on a grey panel — and only takes the shape:
+ * a grey pill was tried, and on the grey panels it vanished into its ground.
  *
- * Stated here once rather than at each of forty call sites. A disabled
+ * Stated here once rather than at each of sixty call sites, which is why the
+ * radius is !important: each site still carries the inline radius it had,
+ * and an inline style beats any stylesheet rule that is not. A disabled
  * control is drawn flat, because depth says "press me".
  */
+.k-primary, .k-secondary { border-radius: 999px !important; }
 .k-primary:not(:disabled) {
-  background-image: linear-gradient(#25805E, #185A41) !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 1px 2px rgba(24,90,65,0.26), 0 4px 12px rgba(24,90,65,0.16);
-  text-shadow: 0 1px 0 rgba(20,22,26,0.12);
+  background-image: linear-gradient(#5B4CF5, #3626CF) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 1px 2px rgba(54,38,207,0.30), 0 6px 18px rgba(54,38,207,0.24);
 }
-.k-primary:not(:disabled):hover { background-image: linear-gradient(#1F6B4E, #185A41) !important; }
-.k-primary:not(:disabled):active { background-image: linear-gradient(#185A41, #185A41) !important; box-shadow: inset 0 1px 2px rgba(20,22,26,0.2); }
+.k-primary:not(:disabled):hover { background-image: linear-gradient(#4636E8, #3626CF) !important; }
+.k-primary:not(:disabled):active { background-image: linear-gradient(#3626CF, #3626CF) !important; box-shadow: inset 0 1px 2px rgba(10,10,18,0.2); }
 .k-secondary:not(:disabled) {
-  box-shadow: 0 1px 2px rgba(20,22,26,0.06), 0 1px 0 rgba(20,22,26,0.02);
+  box-shadow: 0 1px 2px rgba(10,10,18,0.05), 0 2px 8px rgba(10,10,18,0.05);
 }
-.k-secondary:not(:disabled):active { background: #EEEEEA !important; box-shadow: none; }
+.k-secondary:not(:disabled):active { background: #E8EAF0 !important; box-shadow: none; }
 /* Pressed, everything gives a little; reduced motion keeps it still. */
-.k-primary:not(:disabled):active, .k-secondary:not(:disabled):active { transform: scale(0.985); }
+.k-primary:not(:disabled):active, .k-secondary:not(:disabled):active { transform: scale(0.97); }
 @media (prefers-reduced-motion: reduce) {
   .k-primary:active, .k-secondary:active { transform: none; }
 }
 /* The focus ring after the depth, so its white halo is not overwritten. */
 .k-primary:focus-visible, .k-secondary:focus-visible { box-shadow: 0 0 0 5px #ffffff !important; }
 
-.k-row-white:hover { background: #FAFAF8; }
-.k-row-plain:hover { background: #FAFAF8; }
-.k-banner:hover { background: #FAFAF8 !important; }
-.k-soft:hover { background: #E4E4DE !important; }
+.k-row-white:hover { background: #E8EAF0; }
+.k-row-plain:hover { background: #E8EAF0; }
+.k-banner:hover { background: #E2E0FF !important; }
+.k-soft:hover { background: #E8EAF0 !important; }
 .k-ink:hover { background: #000 !important; }
 
-textarea:focus { outline: 2px solid #1F6B4E; box-shadow: 0 0 0 4px #ffffff !important; }
+textarea:focus { outline: 2px solid #4636E8; box-shadow: 0 0 0 4px #ffffff !important; }
 
 @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes pulseDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
@@ -234,4 +237,4 @@ textarea:focus { outline: 2px solid #1F6B4E; box-shadow: 0 0 0 4px #ffffff !impo
   border: 0;
 }
 
-::selection { background: #E2F0E8; color: #14161A; }
+::selection { background: #EEEDFF; color: #0A0A12; }

@@ -232,21 +232,21 @@ async function sweep(width, seedState, label, steps, { blockFonts = false, expec
      * It is not hypothetical. The service worker precaches the typeface in
      * SHELL, and it calls skipWaiting, so it controls the page from the first
      * load — a cached font answered from the worker is a font this route never
-     * sees. It is intercepted today, measured: `Instrument Sans:error` blocked
-     * against `Instrument Sans:loaded` allowed. What has no guarantee is that it
+     * sees. It is intercepted today, measured: `Geist:error` blocked
+     * against `Geist:loaded` allowed. What has no guarantee is that it
      * stays intercepted, and the failure would be silent — the widest state
      * this app ships in, reported as swept and never entered.
      *
      * The same reliance bit `feed:wiring`, in the other direction: a request
      * the WORKER made, sometimes routed and sometimes not.
      */
-    const fellBack = await page.evaluate(() => !document.fonts.check('16px "Instrument Sans"'));
+    const fellBack = await page.evaluate(() => !document.fonts.check('16px "Geist"'));
     if (!fellBack) {
       failures.push({
         label,
         width,
         kind: 'the webfont block did not take',
-        detail: 'Instrument Sans still loaded, so this pass swept the ordinary state twice',
+        detail: 'Geist still loaded, so this pass swept the ordinary state twice',
       });
     }
   }

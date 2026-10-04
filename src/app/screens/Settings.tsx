@@ -144,7 +144,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
     <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px' }}>
       <h1 tabIndex={-1} style={{ fontSize: 24, fontWeight: 600, padding: '10px 2px 14px', margin: 0 }}>Settings</h1>
 
-      <section style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, padding: 18 }}>
+      <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, padding: 18 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ width: 7, height: 7, borderRadius: 999, background: color.accent }} />
           <span style={{ fontWeight: 600, fontSize: 15 }}>Private by design</span>
@@ -222,7 +222,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
           <div
             style={{
               marginTop: 10, padding: '10px 13px', borderRadius: 12, fontSize: 12.5, lineHeight: 1.5,
-              background: 'rgba(217,45,32,0.10)', color: color.ink,
+              background: 'rgba(229,55,43,0.10)', color: color.ink,
             }}
           >
             <div style={{ fontWeight: 600 }}>
@@ -242,7 +242,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
             role="status"
             style={{
               marginTop: 10, padding: '10px 13px', borderRadius: 12, fontSize: 12.5, fontWeight: 600, lineHeight: 1.5,
-              background: backupNote.tone === 'ok' ? color.accentSoft : 'rgba(217,45,32,0.10)',
+              background: backupNote.tone === 'ok' ? color.accentSoft : 'rgba(229,55,43,0.10)',
               color: backupNote.tone === 'ok' ? color.ink : color.danger,
             }}
           >
@@ -252,7 +252,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
       </section>
 
       {selling && free && (
-        <section style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, padding: 18, marginTop: 12 }}>
+        <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, padding: 18, marginTop: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
             <span style={{ fontWeight: 600, fontSize: 15 }}>Free plan</span>
             <span style={{ fontFamily: font.figures, fontSize: 12, color: color.muted }}>
@@ -290,7 +290,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
           and no reason to doubt they were being billed. They are not: say so
           where the price used to be, not only in the sheet they tapped past. */}
       {selling && !free && (
-        <section style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, padding: 18, marginTop: 12 }}>
+        <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, padding: 18, marginTop: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
             <span style={{ fontWeight: 600, fontSize: 15 }}>Unlocked</span>
             <span style={{ fontFamily: font.figures, fontSize: 12, color: color.muted }}>
@@ -304,7 +304,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
         </section>
       )}
 
-      <section style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, marginTop: 12, overflow: 'hidden' }}>
+      <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, marginTop: 12, overflow: 'hidden' }}>
         {/* The row and its caveat share one block, so the separator falls below
             both rather than striking through the explanation. */}
         <div style={{ borderBottom: `1px solid ${color.borderHair}` }}>
@@ -364,7 +364,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
       {/* The samples, on their own: Erase everything was the only way to be
           rid of all of them, and it takes the real receipts too. */}
       {receipts.some((r) => r.demo) && (
-        <section style={{ background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.cardLg, marginTop: 12, padding: 18 }}>
+        <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, marginTop: 12, padding: 18 }}>
           <div style={{ fontWeight: 600, fontSize: 15 }}>Sample receipts</div>
           <p style={{ fontSize: 13, color: color.muted, lineHeight: 1.55, marginTop: 6, marginBottom: 0 }}>
             The receipts marked sample show what kept does. Removing them leaves your own receipts exactly as they are.
@@ -378,7 +378,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
         </section>
       )}
 
-      <section style={{ background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.cardLg, marginTop: 12, padding: 18 }}>
+      <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, marginTop: 12, padding: 18 }}>
         <div style={{ fontWeight: 600, fontSize: 15 }}>Erase everything</div>
         <p style={{ fontSize: 13, color: color.muted, lineHeight: 1.55, marginTop: 6, marginBottom: 0 }}>
           {confirmingWipe
@@ -423,7 +423,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
         )}
       </section>
 
-      <section style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, marginTop: 12, padding: '15px 18px' }}>
+      <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, marginTop: 12, padding: '15px 18px' }}>
         <label htmlFor="urgent" style={{ fontSize: 14, fontWeight: 600, display: 'block' }}>
           Call it urgent under
         </label>
@@ -492,7 +492,7 @@ function Toggle({ label, detail, value, disabled, separator = true, onChange }: 
           <span
             style={{
               width: 16, height: 16, borderRadius: 999, background: color.white,
-              boxShadow: '0 1px 2px rgba(20,22,26,0.2)',
+              boxShadow: '0 1px 2px rgba(10,10,18,0.2)',
               transform: `translateX(${value ? 16 : 0}px)`, transition: 'transform .2s',
             }}
           />

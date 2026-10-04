@@ -214,12 +214,12 @@ export function PlusGlyph({ size = 18, stroke: s = color.ink }: { size?: number;
   );
 }
 
-export function CameraGlyph() {
+export function CameraGlyph({ size = 18, stroke: s = color.ink }: { size?: number; stroke?: string } = {}) {
   return (
-    <svg width="18" height="16" viewBox="0 0 18 16" aria-hidden="true">
-      <rect x="1" y="3.5" width="16" height="11" rx="2.5" fill="none" stroke={color.ink} strokeWidth="1.6" />
-      <path d="M6 3.5L7.2 1h3.6L12 3.5" fill="none" stroke={color.ink} strokeWidth="1.6" />
-      <circle cx="9" cy="9" r="3" fill="none" stroke={color.ink} strokeWidth="1.6" />
+    <svg width={size} height={(size * 16) / 18} viewBox="0 0 18 16" aria-hidden="true">
+      <rect x="1" y="3.5" width="16" height="11" rx="2.5" fill="none" stroke={s} strokeWidth="1.6" />
+      <path d="M6 3.5L7.2 1h3.6L12 3.5" fill="none" stroke={s} strokeWidth="1.6" />
+      <circle cx="9" cy="9" r="3" fill="none" stroke={s} strokeWidth="1.6" />
     </svg>
   );
 }

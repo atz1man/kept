@@ -505,8 +505,8 @@ for (const [label, go] of [
  *
  * axe does not check focus-indicator contrast (WCAG 2.1 SC 1.4.11 asks 3:1),
  * and the ring was once yellow alone at 1.72:1 on the cream the app was then
- * made of. It is two colours: a green outline, and a white halo under it that
- * keeps the green readable on the green buttons themselves. The halo is a
+ * made of. It is two colours: an accent outline, and a white halo under it that
+ * keeps the accent readable on the accent buttons themselves. The halo is a
  * `box-shadow`, which an INLINE `boxShadow` beats: the raised buttons carry a
  * shadow inline, so the ring was absent on exactly the buttons that matter
  * most until the rule was marked important. A token-level check cannot see that; only asking the
@@ -534,13 +534,14 @@ for (let i = 0; i < 40; i += 1) {
       what: (el.textContent ?? el.tagName).trim().slice(0, 30),
       // Both halves, by the colours the tokens define.
       hasHalo: /rgb\(255,\s*255,\s*255\)/.test(cs.boxShadow) && /5px/.test(cs.boxShadow),
-      hasOutline: /rgb\(31,\s*107,\s*78\)/.test(cs.outlineColor) && parseFloat(cs.outlineWidth) >= 2,
+      // `color.accent`, #4636E8 — the outline styles.css draws.
+      hasOutline: /rgb\(70,\s*54,\s*232\)/.test(cs.outlineColor) && parseFloat(cs.outlineWidth) >= 2,
     };
   });
   if (!seen) continue;
   ringsSeen += 1;
   if (!seen.hasHalo || !seen.hasOutline) {
-    ringless.push([`focus ring on "${seen.what}"`, `white halo ${seen.hasHalo ? 'yes' : 'MISSING'}, green outline ${seen.hasOutline ? 'yes' : 'MISSING'}`]);
+    ringless.push([`focus ring on "${seen.what}"`, `white halo ${seen.hasHalo ? 'yes' : 'MISSING'}, accent outline ${seen.hasOutline ? 'yes' : 'MISSING'}`]);
   }
 }
 // A pass over nothing focusable would report a clean ring on no elements.
