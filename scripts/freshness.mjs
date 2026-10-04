@@ -32,6 +32,7 @@
  *   - a deploy, one online launch, then no signal;
  *   - a deploy whose download drops one request, then no signal;
  *   - a signal that connects and never answers;
+ *   - a tab left open across a deploy, then a file chosen in it;
  *   - and a feed signature that changes.
  *
  * Each runs in its own browser profile, against a server on the same port, so
@@ -267,13 +268,19 @@ async function buildDeploy() {
  *
  * Each step runs in its own browser profile (its own worker, its own caches)
  * against a server on the same port, so nothing carries over between them.
- * Every wait is on a condition, never a sleep standing in for one.
+ * Every wait is on a condition, never a sleep standing in for one, except the
+ * last step's, which is proving a negative and says so.
  */
 const FIRST_VISIT = 'a first visit, never reloaded, opens with the network gone';
 const AFTER_DEPLOY = 'after a deploy and one online launch, the new version opens with the network gone';
 const DROPPED = 'a deploy whose download drops one request leaves the installed version opening offline';
 const LIE_FI = `on a signal that connects and never answers, the app is on screen within ${LIE_FI_BUDGET_MS / 1000} s`;
+const OPEN_TAB = 'a tab left open across a deploy still reads a file';
+const TAKEN_OVER = 'and once the new version has taken that tab over, a file reloads it into a working app';
+const NOT_KEPT = 'nothing a server answered for a missing file is kept as that file';
+const STAYS = 'offline with no newer version to go to, a file it cannot read does not reload the app away';
 
+const ORDER = 'Argos order\nOrder date: 1 October 2026\n1 x Kettle £24.99\nTotal £24.99\n';
 const deployErrors = [];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -332,6 +339,48 @@ async function onlyCache(page, name) {
     if (keys.length === 1 && keys[0] === name) return true;
     await sleep(250);
   }
+  return false;
+}
+
+/**
+ * Choose a file on the Add screen and say what became of it: 'read' when its
+ * text reached the paste box in this same document, 'reloaded' when the
+ * document was replaced, 'neither' when it did neither in ten seconds. With
+ * `refusalEnds`, the app saying it could not read the file is an answer too
+ * ('refused'); without it, that message is not final — a reload follows it.
+ */
+async function chooseFile(page, { refusalEnds = false } = {}) {
+  await page.evaluate(() => {
+    window.__keptSameDocument = true;
+  });
+  await page.getByRole('button', { name: 'Add a receipt' }).first().click();
+  await page
+    .locator('input[type=file][accept*="pdf"]')
+    .setInputFiles({ name: 'order.txt', mimeType: 'text/plain', buffer: Buffer.from(ORDER) });
+  return page
+    .waitForFunction(
+      (refusalEnds) => {
+        if (!window.__keptSameDocument) return 'reloaded';
+        if (document.getElementById('paste')?.value?.includes('Kettle')) return 'read';
+        return refusalEnds && /couldn.t read that file/.test(document.body.innerText) ? 'refused' : false;
+      },
+      refusalEnds,
+      { timeout: 10000, polling: 100 },
+    )
+    .then((handle) => handle.jsonValue(), () => 'neither');
+}
+
+/** "It works, or at worst reloads into a working app" — and working means the file reads there. */
+async function worksAfter(page, outcome, step) {
+  if (outcome === 'read') return true;
+  if (outcome === 'reloaded') {
+    const again = (await shows(page, 5000)) ? await chooseFile(page) : 'no library after the reload';
+    if (again === 'read') return true;
+    problems.push(`${step}: reloaded, then the file came to ${again}`);
+    return false;
+  }
+  const said = await page.evaluate(() => document.querySelector('main')?.innerText ?? '').catch(() => '');
+  problems.push(`${step}: neither read nor reloaded${/couldn.t read that file/i.test(said) ? ' — "kept couldn\'t read that file"' : ''}`);
   return false;
 }
 
@@ -422,6 +471,84 @@ async function acrossDeploys() {
     results[LIE_FI] = await shows(page, LIE_FI_BUDGET_MS);
     if (!results[LIE_FI]) problems.push(`${LIE_FI}: nothing after ${Date.now() - started}ms`);
   });
+
+  // The deploy lands while the app stays open — phones resume an app rather
+  // than reload it — and the next thing asked of it is a lazily loaded piece.
+  await step([OPEN_TAB], async (context) => {
+    await serve('dist');
+    const page = await install(context, { reload: true });
+    await stopServer();
+    await serve(DEPLOY_B);
+    results[OPEN_TAB] = await worksAfter(page, await chooseFile(page), OPEN_TAB);
+  });
+
+  // The same, after the new version's worker has taken the old tab over —
+  // which it does the moment the app is opened anywhere else, because it
+  // claims every page. The old tab's pieces are then in nobody's cache and on
+  // nobody's server, and only a reload can save it.
+  await step([TAKEN_OVER, NOT_KEPT], async (context) => {
+    await serve('dist');
+    const page = await install(context, { reload: true });
+    await stopServer();
+    await serve(DEPLOY_B);
+    const elsewhere = await context.newPage();
+    await elsewhere.goto(`${ORIGIN}/app/`, { waitUntil: 'load' });
+    const took = await onlyCache(page, cacheB);
+    await elsewhere.close();
+    if (!took) throw new Error('the new worker never took the open tab over');
+    results[TAKEN_OVER] = await worksAfter(page, await chooseFile(page), TAKEN_OVER);
+    // The server answered the old name with its index page, and a 200. Kept as
+    // the script, it would answer every later ask for it — from the cache, first.
+    const kept = await page.evaluate(async () => {
+      const out = [];
+      for (const name of await caches.keys()) {
+        const cache = await caches.open(name);
+        for (const req of await cache.keys()) {
+          const path = new URL(req.url).pathname;
+          const type = (await cache.match(req)).headers.get('content-type') ?? '';
+          if (path !== '/app/' && type.startsWith('text/html')) out.push(`${path} kept as ${type}`);
+        }
+      }
+      return out;
+    });
+    results[NOT_KEPT] = kept.length === 0;
+    for (const k of kept) problems.push(`${NOT_KEPT}: ${k}`);
+  });
+
+  /*
+   * The reload's guard, asked in the direction that would hurt: with no
+   * worker at all (a browser that will not run one) and no network, the piece
+   * cannot load and there is NO newer version anywhere. A reload there trades
+   * a working screen for the browser's error page, on the train. The failure
+   * the screen already explains is the right answer.
+   *
+   * Proving a negative, so it waits a fixed while after the failure appears —
+   * the decision is made from one fetch that a dead network refuses at once,
+   * so a reload would have begun well inside it.
+   */
+  await step(
+    [STAYS],
+    async (context) => {
+      await serve('dist');
+      const page = await context.newPage();
+      await page.goto(`${ORIGIN}/app/`, { waitUntil: 'load' });
+      await page.getByRole('button', { name: 'Skip' }).click({ timeout: 5000 }).catch(() => {});
+      if (!(await shows(page, 5000))) throw new Error('the app never showed its library');
+      await goOffline([STAYS]);
+      const outcome = await chooseFile(page, { refusalEnds: true });
+      if (outcome !== 'refused') {
+        problems.push(`${STAYS}: the file came to ${outcome}`);
+        results[STAYS] = false;
+        return;
+      }
+      await sleep(1500);
+      results[STAYS] =
+        (await page.evaluate(() => window.__keptSameDocument === true).catch(() => false)) &&
+        (await page.getByText(/couldn.t read that file/).isVisible().catch(() => false));
+      if (!results[STAYS]) problems.push(`${STAYS}: the screen did not stay`);
+    },
+    { serviceWorkers: 'block' },
+  );
 
   results['and no page errors across the deploys'] = deployErrors.length === 0;
   problems.push(...deployErrors);

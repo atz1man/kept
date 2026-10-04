@@ -88,9 +88,15 @@ async function precache() {
 
 /**
  * Whether a response is the kind of file that was asked for. HTML is this
- * app's shell and nothing else: a server with no file at a path usually
- * answers with its index page and a 200, and that page must never be
- * precached as one of the app's files.
+ * app's shell and nothing else.
+ *
+ * A server that has no file at a path usually answers with its index page —
+ * vite preview does, with a 200, and so do most static hosts set up for an
+ * app. So after a deploy, a tab still open on the old build asked for its old
+ * `documents-….js`, got the new `index.html` with a 200, and this worker
+ * cached that page AS the script. The import failed with "kept couldn't read
+ * that file", and failed again on every try, because the cache now answered
+ * first. Measured: `/assets/documents-M14BQAN-.js cached as text/html`.
  *
  * Deliberately no stricter than that. Demanding a JavaScript type for `.js`
  * would refuse a host that serves `.mjs` as octet-stream — and here a refusal
@@ -197,7 +203,7 @@ function launch(event) {
 function networkFirst(req, path) {
   return fetch(req)
     .then((res) => {
-      if (res.ok) {
+      if (res.ok && fits(path, res)) {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(path, copy));
       }
@@ -231,13 +237,14 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Everything else — hashed bundles, fonts, icons — is immutable per URL, so
-  // cache first and fill on miss.
+  // cache first and fill on miss. Only with the file that was asked for: see
+  // `fits`.
   event.respondWith(
     fromCache(req).then(
       (hit) =>
         hit ??
         fetch(req).then((res) => {
-          if (res.ok && res.type === 'basic') {
+          if (res.ok && res.type === 'basic' && fits(url.pathname, res)) {
             const copy = res.clone();
             caches.open(CACHE).then((c) => c.put(req, copy));
           }
