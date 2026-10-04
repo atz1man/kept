@@ -1,0 +1,13 @@
+{
+  "name": "@kept/purchases",
+  "version": "1.0.0",
+  "private": true,
+  "description": "kept's one-off unlock on iOS: sold through the App Store with StoreKit 2, verified on the device.",
+  "license": "UNLICENSED",
+  "author": "kept",
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    }
+  }
+}

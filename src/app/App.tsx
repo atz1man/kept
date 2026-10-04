@@ -26,11 +26,17 @@ import { Home } from './screens/Home';
 import { Onboarding } from './screens/Onboarding';
 import { Settings } from './screens/Settings';
 import { Watch } from './screens/Watch';
-import { quotaFull, useApp } from './state';
+import { offerOf, quotaFull, useApp } from './state';
+import { useAppStore } from './purchases';
 import { backTarget, screenDepth } from './back';
 
 export function App() {
   const { state, dispatch, today, saveFailed } = useApp();
+  // What a tap on a price does: the App Store's own sheet on iPhone, and on
+  // the web the sheet that says nothing is charged (lib/pricing.ts `Offer`).
+  const offer = offerOf(state);
+  const appStore = useAppStore(dispatch, state.embedded);
+  const upgrade = offer.kind === 'app-store' ? appStore.buy : () => dispatch({ type: 'upgrade-ask' });
 
   /*
    * The phone's own Back. One history entry per level (`screenDepth`), pushed
@@ -493,7 +499,10 @@ export function App() {
           trackedTotal={money(sumPence(state.receipts.filter(countsAsMoney(state.receipts)).map((r) => r.amount)))}
           updates={state.updates}
           onSave={(receipt) => dispatch({ type: 'add', receipt })}
-          onUpgrade={() => dispatch({ type: 'upgrade-ask' })}
+          onUpgrade={upgrade}
+          offer={offer}
+          store={state.store}
+          onRestorePurchase={appStore.restore}
           start={addStart}
           onStarted={() => setAddStart(undefined)}
         />
@@ -513,8 +522,11 @@ export function App() {
             wipe();
             dispatch({ type: 'wipe' });
           }}
-          onUpgrade={() => dispatch({ type: 'upgrade-ask' })}
+          onUpgrade={upgrade}
           onChange={(patch) => dispatch({ type: 'settings', patch })}
+          offer={offer}
+          store={state.store}
+          onRestorePurchase={appStore.restore}
         />
       )}
 
@@ -587,7 +599,8 @@ export function App() {
         />
       )}
 
-      {state.upgrading && (
+      {/* The web's sheet only: on iPhone the App Store shows its own. */}
+      {state.upgrading && offer.kind === 'web' && (
         <UpgradeNotice
           onUnlock={() => dispatch({ type: 'settings', patch: { plan: 'pro' } })}
           onCancel={() => dispatch({ type: 'upgrade-cancel' })}

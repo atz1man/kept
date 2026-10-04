@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { COOLING_OFF_DAYS, REJECT_DAYS, RETURN_AFTER_CANCEL_DAYS } from '../src/lib/legal';
 import { WARRANTY_NOTICE_DAYS } from '../src/lib/alerts';
 import { STORE_COUNT, STORE_POLICIES, TABLE_CHECKED_ON } from '../src/lib/stores';
+import { FREE_TIER_LIMIT } from '../src/lib/quota';
+import { UNLOCK_PRODUCT_ID } from '../src/lib/app-store';
 
 /**
  * The App Store listing, held to the app it describes.
@@ -20,7 +22,7 @@ import { STORE_COUNT, STORE_POLICIES, TABLE_CHECKED_ON } from '../src/lib/stores
 const ROOT = join(__dirname, '..');
 const listing = JSON.parse(readFileSync(join(ROOT, 'store', 'listing.json'), 'utf8')) as {
   name: string; subtitle: string; promotionalText: string; description: string; keywords: string;
-  reviewNotes: string;
+  reviewNotes: string; price: string;
   privacy: { tracking: boolean; dataCollected: boolean; statement: string };
   urls: Record<string, string>;
 };
@@ -184,3 +186,35 @@ function sourceFiles(dir: string): string[] {
     return statSync(p).isDirectory() ? sourceFiles(p) : /\.tsx?$/.test(name) ? [p] : [];
   });
 }
+
+describe('what it costs', () => {
+  /*
+   * The listing said "no in-app purchases in this version" once the build
+   * sold one. Guideline 2.3.2 asks a listing to say what costs extra, and a
+   * reviewer who reads "none" and then finds a price has found the listing
+   * untrue. So each claim about the purchase is held to the constant it
+   * restates.
+   */
+  it('says there is an in-app purchase, and nowhere that there is none', () => {
+    expect(listing.price).toMatch(/in-app purchase/i);
+    for (const field of [listing.price, listing.description, listing.reviewNotes]) {
+      expect(field).not.toMatch(/no in-app purchases|no paid features/i);
+    }
+  });
+
+  it('states the free tier the app enforces', () => {
+    expect(listing.description).toContain(`up to ${FREE_TIER_LIMIT} open receipts`);
+    expect(listing.reviewNotes).toContain(`${FREE_TIER_LIMIT} open receipts`);
+    expect(listing.reviewNotes).toContain(`once ${FREE_TIER_LIMIT} are open`);
+  });
+
+  it('gives the reviewer the product id the app asks for, and where Restore is', () => {
+    expect(listing.reviewNotes).toContain(UNLOCK_PRODUCT_ID);
+    expect(listing.reviewNotes).toContain('Restore purchase');
+  });
+
+  it('promises what the unlock is: paid once, no subscription', () => {
+    expect(listing.description).toMatch(/paid once/i);
+    expect(listing.description).toMatch(/no subscription/i);
+  });
+});

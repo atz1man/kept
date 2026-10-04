@@ -12,6 +12,7 @@ account, a decision, or an address only you can give.
 | ☐ | Register the App ID, then `npm run bundle-id uk.co.yourname.kept` | **you** | APN-21 |
 | ☐ | A contact address for privacy questions → `CONTACT_EMAIL` in `src/lib/brand.ts` | **you** | the page shows a red notice until it is set |
 | ☐ | Your domain → replace `REPLACE_ME` in `store/listing.json` | **you** | |
+| ☐ | The Paid Applications Agreement, with bank and tax details | **you** | App Store Connect → Business. Until it is active the App Store sells nothing, even to a sandbox tester, and the app shows no price and no cap (see section 4b) |
 
 Then `npm run preflight`. It reads every placeholder above out of the files they
 live in and stays red until each is filled; the retailer-table check in section 3
@@ -30,7 +31,7 @@ is on it too. Green before you Archive — `test/preflight.test.ts` holds the ch
 
 | | Step | Who | Where |
 |---|---|---|---|
-| ✅ | No prices or unlocks in the iOS build (guideline 3.1.1) | done | `src/lib/pricing.ts`, APN-18 |
+| ✅ | The unlock is sold only through In-App Purchase, with Restore purchase beside it (3.1.1) | done | `packages/purchases` (StoreKit 2, verified on the device), decisions in `src/lib/app-store.ts`. `test/app-store.test.ts` pins every outcome, and `npm run ios` buys, cancels, waits for Ask to Buy, restores, refunds and goes offline on the bundle that ships. Where the App Store sells nothing, the app shows no price and no cap (APN-18) |
 | ✅ | iPhone only — no iPad layout to be judged on (2.4.1) | done | `test/ios-device-family.test.ts` |
 | ✅ | A privacy policy page, served by the app and linked from Settings (5.1.1) | done | `/privacy/` |
 | ✅ | No invented ratings or testimonials on the marketing page | done | APN-17 |
@@ -46,10 +47,23 @@ is on it too. Green before you Archive — `test/preflight.test.ts` holds the ch
 | | Step | Who | Where |
 |---|---|---|---|
 | ✅ | Name, subtitle, promotional text, description, keywords, review notes | done | `store/listing.json`, held by `test/store-listing.test.ts` |
-| ✅ | Privacy answers: **Data Not Collected**, no tracking | done | matches `PrivacyInfo.xcprivacy` |
+| ✅ | Privacy answers: **Data Not Collected**, no tracking | done | matches `PrivacyInfo.xcprivacy`. The purchase does not change this, as far as this repository can tell: Apple takes the payment and kept has no server to receive anything about it. The privacy page says so under "Buying the unlock". Confirm against Apple's current guidance when you answer |
 | ✅ | Screenshot storyboard at 1290 × 2796 — four shots (deadlines, the two clocks, a pasted order, a scanned till receipt), from the iOS bundle booted as native, UK locale | done | `npm run build:ios && npm run store:screenshots`. They show the seed's retailer data, so they wait on APN-16 like the listing does |
 | ☐ | Retake the screenshots in the Simulator, for the real status bar | **you** (Mac) | `xcrun simctl io booted screenshot` |
 | ☐ | Age rating questionnaire → 4+ | **you** | App Store Connect |
+
+## 4b. The in-app purchase
+
+| | Step | Who | Where |
+|---|---|---|---|
+| ☐ | In Xcode, Signing & Capabilities → + Capability → **In-App Purchase**, on the App target | **you** (Mac) | Nothing in the repository changes when you add it, so nothing here can check it |
+| ☐ | Create it: **Non-Consumable**, Product ID **`kept.unlimited`** exactly, reference name "Unlimited receipts" | **you** | App Store Connect → your app → In-App Purchases. The id is in `src/lib/app-store.ts` and `ios/App/Kept.storekit`, and Apple never lets an id be used twice, so a typo cannot be fixed by deleting it |
+| ☐ | Price **£9.99** with the **United Kingdom** as the base country, so it matches the web's `UNLOCK.price`; Apple sets the other countries from it | **you** | The app shows whatever price the App Store sends for the person's country, so nothing in the code changes |
+| ☐ | English (UK): display name "Unlimited receipts", description "No limit on receipts. Paid once." | **you** | The same words as `ios/App/Kept.storekit` |
+| ☐ | Family Sharing: off unless you decide otherwise | **you** — a decision | `Kept.storekit` has it off. Turning it on later cannot be undone |
+| ☐ | A review screenshot of where it is sold (Settings, the free plan), and add the purchase to the app version you submit. The first in-app purchase has to go with a version | **you** | The version page → In-App Purchases and Subscriptions |
+| ☐ | A Sandbox tester; on a phone, buy, Restore purchase, and refund (Settings → App Store → Sandbox Account → Manage) | **you** (device) | Users and Access → Sandbox. TestFlight purchases are sandbox too, so testers are never charged |
+| ☐ | Optional: buy without App Store Connect, in the Simulator. Drag `ios/App/Kept.storekit` into the Xcode project with no target ticked, then Product → Scheme → Edit Scheme → Run → Options → StoreKit Configuration. Debug → StoreKit → Manage Transactions refunds, approves Ask to Buy and fails a purchase on demand | **you** (Mac) | |
 
 ## 5. Ship
 
@@ -62,4 +76,4 @@ is on it too. Green before you Archive — `test/preflight.test.ts` holds the ch
 
 - **Do I need an account?** No — everything is on the device.
 - **Where does the data go?** Nowhere; the one download carries nothing about the person.
-- **Are there purchases?** Not in this version.
+- **Are there purchases?** One, "Unlimited receipts", paid once. It is under Settings → Unlock unlimited, with Restore purchase directly below it.
