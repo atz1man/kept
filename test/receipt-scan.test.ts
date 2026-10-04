@@ -157,7 +157,7 @@ describe('two looks at one photo', () => {
     const asked: Thresholding[] = [];
     const read = async (how: Thresholding) => {
       asked.push(how);
-      return answers[how] ?? '';
+      return { text: answers[how] ?? '', unsure: [] };
     };
     return { asked, read };
   };
@@ -171,21 +171,21 @@ describe('two looks at one photo', () => {
 
   it('reads a good photo once, the way it always has', async () => {
     const r = reader({ global: COMPLETE, local: NO_DATE });
-    expect(await readBestOf(r.read, TODAY)).toBe(COMPLETE);
+    expect((await readBestOf(r.read, TODAY)).text).toBe(COMPLETE);
     expect(r.asked).toEqual(['global']);
   });
 
   it('looks again, locally, when the first read missed something, and keeps the better', async () => {
     const r = reader({ global: SHADOWED, local: COMPLETE });
-    expect(await readBestOf(r.read, TODAY)).toBe(COMPLETE);
+    expect((await readBestOf(r.read, TODAY)).text).toBe(COMPLETE);
     expect(r.asked).toEqual(['global', 'local']);
   });
 
   it('keeps the first read when the second finds no more', async () => {
     // A tie goes to the global read: the local one is the one measured being
     // confidently wrong on faint thermal print.
-    expect(await readBestOf(reader({ global: NO_DATE, local: OTHER_NO_DATE }).read, TODAY)).toBe(NO_DATE);
-    expect(await readBestOf(reader({ global: NO_DATE, local: SHADOWED }).read, TODAY)).toBe(NO_DATE);
+    expect((await readBestOf(reader({ global: NO_DATE, local: OTHER_NO_DATE }).read, TODAY)).text).toBe(NO_DATE);
+    expect((await readBestOf(reader({ global: NO_DATE, local: SHADOWED }).read, TODAY)).text).toBe(NO_DATE);
   });
 });
 
@@ -212,30 +212,30 @@ describe('the flattened read, and the photo as taken behind it', () => {
   const reader = (text: string) => {
     const read = Object.assign(async () => {
       read.calls += 1;
-      return text;
+      return { text, unsure: [] };
     }, { calls: 0 });
     return read;
   };
 
   it('reads only the photo as taken when no paper was found', async () => {
     const asTaken = reader(FULL);
-    expect(await readFlattenedOrAsTaken(null, asTaken, TODAY_)).toBe(FULL);
+    expect((await readFlattenedOrAsTaken(null, asTaken, TODAY_)).text).toBe(FULL);
     expect(asTaken.calls).toBe(1);
   });
 
   it('never reads the photo as taken when the flattened read found everything', async () => {
     const flat = reader(FULL);
     const asTaken = reader(NO_TOTAL);
-    expect(await readFlattenedOrAsTaken(flat, asTaken, TODAY_)).toBe(FULL);
+    expect((await readFlattenedOrAsTaken(flat, asTaken, TODAY_)).text).toBe(FULL);
     expect(asTaken.calls).toBe(0);
   });
 
   it('falls back to the photo as taken where flattening lost something it has', async () => {
     // The shadow case: the "paper" was the lit half, and the total was cropped off.
-    expect(await readFlattenedOrAsTaken(reader(NO_TOTAL), reader(FULL), TODAY_)).toBe(FULL);
+    expect((await readFlattenedOrAsTaken(reader(NO_TOTAL), reader(FULL), TODAY_)).text).toBe(FULL);
   });
 
   it('keeps the flattened read on a tie — it is the one with the receipt straight', async () => {
-    expect(await readFlattenedOrAsTaken(reader(NO_TOTAL), reader('BOOTS\n29/09/2026\nThanks'), TODAY_)).toBe(NO_TOTAL);
+    expect((await readFlattenedOrAsTaken(reader(NO_TOTAL), reader('BOOTS\n29/09/2026\nThanks'), TODAY_)).text).toBe(NO_TOTAL);
   });
 });

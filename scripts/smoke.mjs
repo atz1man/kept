@@ -1025,6 +1025,32 @@ for (const cancel of [false, true]) {
 }
 
 /*
+ * A figure the read was unsure of is marked on the card, and only that one.
+ * A paste with no total line gives the largest figure as the total — a guess
+ * — and the card says so beside it; a paste with a total line marks nothing.
+ */
+{
+  const cCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const cp = await cCtx.newPage();
+  await cp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await cp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await cp.getByRole('button', { name: 'Add a receipt' }).click();
+  await cp.locator('#paste').fill('Argos\nOrder date: 21 September 2026\nKettle £29.00\nToaster £19.00\nDelivery £3.95');
+  await cp.getByRole('button', { name: 'Read it' }).click();
+  await cp.waitForTimeout(300);
+  const guessed = await cp.locator('[data-check]').allInnerTexts().catch(() => []);
+  const head = await cp.getByText(/to check$/).first().innerText().catch(() => '');
+  await cp.locator('#paste').fill('Argos\nOrder date: 21 September 2026\nKettle £29.00\nOrder total: £29.00');
+  await cp.getByRole('button', { name: 'Read it' }).click();
+  await cp.waitForTimeout(300);
+  const labelled = await cp.locator('[data-check]').count();
+  results['a guessed total is marked to check, and a labelled one is not'] =
+    guessed.length === 1 && /Total/.test(guessed[0]) && /£29\.00/.test(guessed[0]) && /largest figure/.test(guessed[0]) && /1 to check/.test(head) && labelled === 0;
+  if (!results['a guessed total is marked to check, and a labelled one is not']) problems.push(`check: ${JSON.stringify({ guessed, head, labelled })}`);
+  await cCtx.close();
+}
+
+/*
  * Store credit. A return that ended in credit rather than money had no way
  * to be said, and credit that lapses unspent is money lost as surely as a
  * missed window. It can be marked, dated from the credit note, and taken back.

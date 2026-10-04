@@ -46,6 +46,19 @@ export interface ParsedReceipt {
    * returned and the parts that will be kept, without typing them again.
    */
   lines: { item: string; pence: Pence }[];
+  /**
+   * How each figure was found — read off a label, or the best of several
+   * candidates. What the Add card marks for checking (see lib/confidence.ts):
+   * a total that is merely the largest figure on the page, or one date picked
+   * from several with nothing naming it the order date, is a guess the card
+   * presented exactly as it presented a labelled fact.
+   */
+  how: {
+    /** 'label': a total line; 'named': "total" with a product name before it; 'largest': no total line. */
+    amount: 'label' | 'named' | 'largest' | null;
+    /** 'label': an order-date label; 'only': the one past date there is; 'latest': the newest of several. */
+    purchasedOn: 'label' | 'only' | 'latest' | null;
+  };
 }
 
 export type ParseOutcome =
@@ -121,19 +134,33 @@ const LABELLED_TOTAL = new RegExp(
  */
 const AS_A_LABEL = /(?:^|\b(?:order|grand|basket|bag|cart|your|the|final|new|estimated|invoice|payment|purchase|transaction|sale|receipt)\s+)$/i;
 
+/*
+ * Nor is a count or a stray mark a name. A till prints the number of items
+ * before its balance line ("3 BALANCE DUE 14.20"), and a camera reads a rule
+ * or a smudge as a lone letter ("J TOTAL £1,448.00"); a product's name is
+ * neither a bare number nor one character. Measured over 132 photos, these
+ * two were every "named" total that was in fact the total.
+ */
+const NOT_A_NAME = /^(?:\d+|[a-z])$/i;
+
 function readsAsLabel(text: string, at: number): boolean {
   const lineStart = Math.max(text.lastIndexOf('\n', at - 1), -1) + 1;
   const before = text.slice(lineStart, at).split(/[·|:—–]|\s-\s/).pop() ?? '';
-  return AS_A_LABEL.test(before.replace(/^\W+/, ''));
+  const words = before.replace(/^\W+/, '').split(/\s+/).filter(Boolean);
+  while (words.length > 0 && NOT_A_NAME.test(words[0])) words.shift();
+  return AS_A_LABEL.test(words.length > 0 ? `${words.join(' ')} ` : '');
 }
 
-function pickAmount(text: string): Pence | null {
+type Picked<T, H> = { value: T; how: H } | null;
+
+function pickAmount(text: string): Picked<Pence, 'label' | 'named' | 'largest'> {
   const labelled = [...text.matchAll(LABELLED_TOTAL)];
-  const chosen = labelled.find((m) => readsAsLabel(text, m.index!)) ?? labelled[0];
-  if (chosen) return toPence(parseFloat(chosen[1].replace(/,/g, '')));
+  const asLabel = labelled.find((m) => readsAsLabel(text, m.index!));
+  const chosen = asLabel ?? labelled[0];
+  if (chosen) return { value: toPence(parseFloat(chosen[1].replace(/,/g, ''))), how: asLabel ? 'label' : 'named' };
   const all = amountsIn(text);
   if (all.length === 0) return null;
-  return Math.max(...all);
+  return { value: Math.max(...all), how: 'largest' };
 }
 
 /** A date found in the paste, and where it sat — the position is what lets a
@@ -285,7 +312,7 @@ const NOT_A_PURCHASE_AFTER = new RegExp(`^[ \\t]*[([–—-]?[ \\t]*(?:${OTHER_C
  * the 12th. A future date cannot be a purchase that has already happened, so
  * those are out first whatever introduces them.
  */
-function pickDate(text: string, today: Date): Date | null {
+function pickDate(text: string, today: Date): Picked<Date, 'label' | 'only' | 'latest'> {
   const past = datesIn(text, today)
     .filter((hit) => daysBetween(today, hit.date) <= 0)
     .sort((a, b) => a.index - b.index);
@@ -297,7 +324,7 @@ function pickDate(text: string, today: Date): Date | null {
   // negative distance, and the shipping line above "Order date" becomes the
   // purchase. See the last describe in parse.test.ts.
   const labelled = past.find((hit) => labels.some((end) => hit.index >= end && hit.index - end <= LABEL_REACH));
-  if (labelled) return labelled.date;
+  if (labelled) return { value: labelled.date, how: 'label' };
 
   const newest = (hits: DateHit[]) => hits.reduce((best, hit) => (hit.date > best ? hit.date : best), hits[0].date);
   const plain = past.filter(
@@ -305,7 +332,12 @@ function pickDate(text: string, today: Date): Date | null {
       !NOT_A_PURCHASE.test(text.slice(Math.max(0, hit.index - 40), hit.index)) &&
       !NOT_A_PURCHASE_AFTER.test(text.slice(hit.index + hit.length)),
   );
-  return newest(plain.length > 0 ? plain : past);
+  // One date that is not announced as something else, however often it is
+  // printed: a till slip's only date is the day of the sale, and "Ordered:"
+  // beside a delivery date is the order. Nothing there was a choice between
+  // candidates, so nothing there is a guess.
+  if (new Set(plain.map((hit) => hit.date.getTime())).size === 1) return { value: plain[0].date, how: 'only' };
+  return { value: newest(plain.length > 0 ? plain : past), how: 'latest' };
 }
 
 /**
@@ -726,12 +758,14 @@ export function parseReceiptText(raw: string, today: Date = new Date()): ParseOu
   const text = deliveredRelative(gbpAsPounds(raw), today);
 
   const policy = pickStore(text);
-  const amount = pickAmount(text);
+  const total = pickAmount(text);
+  const amount = total?.value ?? null;
   // Neither a shop nor a price means there is nothing to build a deadline
   // from — better to say so than to save a receipt made of assumptions.
   if (!policy && amount === null) return { ok: false, reason: 'nothing-found' };
 
-  const date = pickDate(text, today);
+  const picked = pickDate(text, today);
+  const date = picked?.value ?? null;
   const arrived = pickArrival(text, today, date);
   const dispatched = pickDispatch(text, today, date);
   return {
@@ -748,6 +782,7 @@ export function parseReceiptText(raw: string, today: Date = new Date()): ParseOu
       item: pickItem(text, policy),
       orderRef: pickOrderRef(text),
       lines: pickLines(text, policy, amount),
+      how: { amount: total?.how ?? null, purchasedOn: picked?.how ?? null },
     },
   };
 }

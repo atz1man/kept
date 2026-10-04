@@ -126,16 +126,43 @@ export function fieldsFound(ocr: string, today: Date): number {
  * once, where the single read had found nothing, which is why nothing is saved
  * before the person has checked what was read.
  */
-export async function readBestOf(read: (how: Thresholding) => Promise<string>, today: Date): Promise<string> {
+export async function readBestOf(read: Reader, today: Date): Promise<Reading> {
   const first = await read('global');
-  const firstFound = fieldsFound(first, today);
+  const firstFound = fieldsFound(first.text, today);
   if (firstFound === 3) return first;
   const second = await read('local');
-  return fieldsFound(second, today) > firstFound ? second : first;
+  return fieldsFound(second.text, today) > firstFound ? second : first;
 }
 
+/**
+ * What one read of a picture produced: the text, and every word the reader
+ * scored under `UNSURE_BELOW`, with its score. Those travel with the text so
+ * the Add card can mark a figure read off them for checking (see
+ * lib/confidence.ts) — the reader knew it was guessing, and the card used to
+ * present its guess exactly as it presented a clear print.
+ */
+export interface Reading {
+  text: string;
+  unsure: readonly UnsureWord[];
+}
+
+export interface UnsureWord {
+  text: string;
+  /** The reader's own score, 0–100. */
+  confidence: number;
+  /**
+   * The line the word was read on, as the reader read it. A till prints the
+   * paid figure three times — the item, the TOTAL, the card — and a doubt
+   * about the card line's copy is no doubt about the total.
+   */
+  line?: string;
+}
+
+/** Words scored at or above this are not carried: no rule in lib/confidence.ts looks that high. */
+export const UNSURE_BELOW = 90;
+
 /** One way of reading one picture — global or local thresholding — as `readBestOf` asks for it. */
-export type Reader = (how: Thresholding) => Promise<string>;
+export type Reader = (how: Thresholding) => Promise<Reading>;
 
 /**
  * The receipt laid flat, read first; the photo as it was taken, read too only
@@ -152,13 +179,13 @@ export type Reader = (how: Thresholding) => Promise<string>;
  * this can only ever find more than it did. On a tie the flattened read
  * stands, since it was the one with the receipt straight.
  */
-export async function readFlattenedOrAsTaken(flat: Reader | null, asTaken: Reader, today: Date): Promise<string> {
+export async function readFlattenedOrAsTaken(flat: Reader | null, asTaken: Reader, today: Date): Promise<Reading> {
   if (!flat) return readBestOf(asTaken, today);
   const first = await readBestOf(flat, today);
-  const firstFound = fieldsFound(first, today);
+  const firstFound = fieldsFound(first.text, today);
   if (firstFound === 3) return first;
   const second = await readBestOf(asTaken, today);
-  return fieldsFound(second, today) > firstFound ? second : first;
+  return fieldsFound(second.text, today) > firstFound ? second : first;
 }
 
 /**
