@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { alertKey, dueAlerts, pruneSent, REFUND_CHASE_DAYS, supersededKeys, WARRANTY_NOTICE_DAYS } from '../src/lib/alerts';
+import { alertKey, dueAlerts, inheritedKeys, movedRungs, pruneSent, REFUND_CHASE_DAYS, supersededKeys, WARRANTY_NOTICE_DAYS } from '../src/lib/alerts';
 import { addDays, addMonths, fmtDate, toISODate } from '../src/lib/dates';
 import { toPence } from '../src/lib/money';
 import { refundChase } from '../src/lib/refund-chase';
@@ -212,6 +212,41 @@ describe('the sent list does not grow forever', () => {
   it('does not trip over an id containing a colon', () => {
     const odd = closingIn(2, { id: 'r:1:2' });
     expect(pruneSent([alertKey('r:1:2', 'soon')], [odd])).toEqual(['r:1:2:soon']);
+  });
+});
+
+describe('what a receipt made from another has already been told', () => {
+  // A part split off, or the one that came home from a swap: made with the
+  // original's dates, so the reminders about those days were already given.
+  const from = closingIn(2, { warranty: { months: 12 } });
+  const said = (['week', 'soon', 'today', 'closed', 'warranty', 'reject', 'refund', 'credit', 'fault'] as const).map((rung) => alertKey('r1', rung));
+
+  it('is every reminder about a clock the two share, under the new id', () => {
+    expect(inheritedKeys(said, from, { ...from, id: 'r2' }, TODAY).sort()).toEqual(
+      ['r2:closed', 'r2:reject', 'r2:soon', 'r2:today', 'r2:warranty', 'r2:week'],
+    );
+    // Only what was said: nothing is marked said that never was.
+    expect(inheritedKeys([alertKey('r1', 'week')], from, { ...from, id: 'r2' }, TODAY)).toEqual(['r2:week']);
+  });
+
+  it('is never the refund, credit or fault reminder, whose clocks belong to the one receipt', () => {
+    expect(inheritedKeys(said, from, { ...from, id: 'r2' }, TODAY).filter((k) => /:(refund|credit|fault)$/.test(k))).toEqual([]);
+  });
+
+  it('is nothing about a clock that ends on another day', () => {
+    // A longer window: the shop's reminders are owed again, the others not.
+    expect(inheritedKeys(said, from, { ...from, id: 'r2', windowDays: 60 }, TODAY).sort()).toEqual(['r2:reject', 'r2:warranty']);
+    // Came later than it was bought: the right to reject runs later.
+    expect(inheritedKeys(said, from, { ...from, id: 'r2', arrivedOn: toISODate(addDays(TODAY, -1)) }, TODAY)).not.toContain('r2:reject');
+    // A longer guarantee.
+    expect(inheritedKeys(said, from, { ...from, id: 'r2', warranty: { months: 24 } }, TODAY)).not.toContain('r2:warranty');
+  });
+
+  it('is decided by the comparison an edit forgets by', () => {
+    const later = { ...from, windowDays: 60 };
+    expect(movedRungs(from, later, TODAY)).toEqual(['week', 'soon', 'today', 'closed']);
+    expect(movedRungs(from, { ...from, item: 'Scarf' }, TODAY)).toEqual([]);
+    expect(movedRungs(undefined, from, TODAY)).toEqual(['week', 'soon', 'today', 'closed', 'warranty', 'reject']);
   });
 });
 

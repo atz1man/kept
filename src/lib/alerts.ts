@@ -1,4 +1,4 @@
-import { addDays, daysBetween, fmtDate, fromISODate } from './dates';
+import { addDays, daysBetween, fmtDate, fromISODate, toISODate } from './dates';
 import { REPLY_DAYS } from './fault-letter';
 import { REFUND_CHASE_DAYS, REJECT_DAYS } from './legal';
 import { money } from './money';
@@ -388,4 +388,48 @@ export function supersededKeys(alert: DeadlineAlert): string[] {
 export function pruneSent(sent: readonly string[], receipts: readonly Receipt[]): string[] {
   const live = new Set(receipts.map((r) => r.id));
   return sent.filter((k) => live.has(k.slice(0, k.lastIndexOf(':'))));
+}
+
+/**
+ * The clocks a receipt carries in its own dates, each with the reminders that
+ * are about it and the day it ends: the shop's window, the guarantee and the
+ * right to reject. Not the refund, the credit or the fault letter: each of
+ * those clocks starts with something done to one receipt (posting it back,
+ * being given credit, writing the letter) and has its own reducer case.
+ */
+const DATED_CLOCKS: readonly { rungs: readonly AlertRung[]; ends: (r: Receipt, today: Date) => string }[] = [
+  { rungs: LADDER, ends: (r, today) => toISODate(derive(r, today).deadline) },
+  { rungs: ['warranty'], ends: (r, today) => { const w = derive(r, today).warranty; return w ? toISODate(w.ends) : ''; } },
+  { rungs: ['reject'], ends: (r) => toISODate(rejectEnds(r)) },
+];
+
+/**
+ * The reminders whose clock ends on a different day on `after` than on
+ * `before`, so what was said about them is about a day that has gone: what an
+ * edit makes stale. Every dated clock's, where there is no `before`.
+ */
+export function movedRungs(before: Receipt | undefined, after: Receipt, today: Date): AlertRung[] {
+  return DATED_CLOCKS.filter((c) => !before || c.ends(before, today) !== c.ends(after, today)).flatMap((c) => c.rungs);
+}
+
+/**
+ * What was already said about `from`, said under `to`'s id: for a receipt
+ * made out of another, a part split off a basket or the one that came home
+ * from a swap.
+ *
+ * Both are made with the original's dates, so the reminders about those
+ * clocks were already given, about the same days. The new receipt had none
+ * of the keys, and said them all again: a basket's "Today is the last day",
+ * shown that morning, came back the moment a shirt was split out of it, and a
+ * swapped TV's "The saved window has passed" came back for the replacement.
+ * Only the clocks the two share, decided by the comparison `update` forgets
+ * by, so the two rules cannot come apart: a clock that ends on another day
+ * is owed its reminders, and the refund, credit and fault ones are never
+ * carried.
+ */
+export function inheritedKeys(sent: readonly string[], from: Receipt, to: Receipt, today: Date): string[] {
+  const moved = new Set(movedRungs(from, to, today));
+  return DATED_CLOCKS.flatMap((c) => c.rungs)
+    .filter((rung) => !moved.has(rung) && sent.includes(alertKey(from.id, rung)))
+    .map((rung) => alertKey(to.id, rung));
 }

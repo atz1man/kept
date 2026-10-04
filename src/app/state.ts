@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useState } from 'react';
-import { alertKey, pruneSent, rejectEnds, remindedBeforeWindow } from '../lib/alerts';
+import { alertKey, inheritedKeys, movedRungs, pruneSent, remindedBeforeWindow } from '../lib/alerts';
 import { planAlerts } from '../lib/schedule';
 import { isNative } from '../lib/mirror';
 import { cleanupPhotos } from '../lib/photos';
@@ -275,6 +275,9 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
           ...state.receipts.map((x) => (x.id === r.id ? { ...x, status: 'returned' as const, returnedOn: toISODate(today), exchanged: true as const } : x)),
           swapIn,
         ],
+        // The original's dates, so what was already said about them is not
+        // said again about the one that came home (`inheritedKeys`).
+        alertsSent: [...new Set([...state.alertsSent, ...inheritedKeys(state.alertsSent, r, swapIn, today)])],
         screen: 'detail',
         selId: swapIn.id,
         justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null,
@@ -300,6 +303,9 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       return {
         ...state,
         receipts: [...state.receipts.map((x) => (x.id === r.id ? rest : x)), part],
+        // The basket's clocks are the part's, and what was said about them
+        // was said about the part as well (`inheritedKeys`).
+        alertsSent: [...new Set([...state.alertsSent, ...inheritedKeys(state.alertsSent, r, part, today)])],
         screen: 'detail',
         selId: part.id,
         justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null,
@@ -699,16 +705,6 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
        * was never reminded about again; and moving the RETURN deadline used
        * to forget the guarantee reminder too, so it could arrive twice.
        */
-      const before = state.receipts.find((r) => r.id === action.receipt.id);
-      const id = action.receipt.id;
-      const coverEnd = (r: Receipt) => {
-        const w = derive(r, today).warranty;
-        return w ? toISODate(w.ends) : '';
-      };
-      const moved =
-        !before ||
-        toISODate(derive(before, today).deadline) !== toISODate(derive(action.receipt, today).deadline);
-      const coverMoved = !before || coverEnd(before) !== coverEnd(action.receipt);
       /*
        * And the right to reject, which runs from the day it came, so "It
        * arrived today" or a corrected date moves it. Its reminder stayed
@@ -716,13 +712,14 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
        * ordered on 1 September was told on the 28th that the right ended "no
        * earlier than 1 Oct", came on the 30th, and nothing was due on 27
        * October, three days before its right really ended.
+       *
+       * Which clocks moved is `movedRungs`: the comparison a split or a swap
+       * carries its reminders by, so what an edit forgets and what a new
+       * receipt inherits are decided by one rule.
        */
-      const rejectMoved = !before || toISODate(rejectEnds(before)) !== toISODate(rejectEnds(action.receipt));
-      const forget = new Set<string>([
-        ...(moved ? (['week', 'soon', 'today', 'closed'] as const).map((rung) => alertKey(id, rung)) : []),
-        ...(coverMoved ? [alertKey(id, 'warranty')] : []),
-        ...(rejectMoved ? [alertKey(id, 'reject')] : []),
-      ]);
+      const before = state.receipts.find((r) => r.id === action.receipt.id);
+      const id = action.receipt.id;
+      const forget = new Set(movedRungs(before, action.receipt, today).map((rung) => alertKey(id, rung)));
       return {
         ...state,
         alertsSent: forget.size > 0 ? state.alertsSent.filter((k) => !forget.has(k)) : state.alertsSent,
