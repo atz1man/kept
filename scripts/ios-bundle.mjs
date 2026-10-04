@@ -749,7 +749,7 @@ if (!/Deadline alerts/.test(settingsText)) {
     return { c, p, errs };
   };
   const tab = async (p, name) => {
-    await p.getByRole('button', { name, exact: true }).click().catch(() => {});
+    await p.getByRole('button', { name, exact: true }).click({ timeout: 5000 }).catch(() => {});
     await p.waitForTimeout(400);
   };
   const body = (p) => p.evaluate(() => document.body.innerText);
@@ -760,11 +760,11 @@ if (!/Deadline alerts/.test(settingsText)) {
     return at < 0 ? text.slice(0, 160) : text.slice(Math.max(0, at - 40), at + 160);
   };
   const pasteOne = async (p) => {
-    await p.getByRole('button', { name: 'Add a receipt' }).click().catch(() => {});
+    await p.getByRole('button', { name: 'Add a receipt' }).click({ timeout: 5000 }).catch(() => {});
     await p.waitForTimeout(300);
     const when = new Date(Date.now() - 86_400_000).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
     await p.locator('#paste').fill(`Thanks for your Argos order\nOrder date: ${when}\nToaster\nTotal £24.99`);
-    await p.getByRole('button', { name: 'Read it' }).click().catch(() => {});
+    await p.getByRole('button', { name: 'Read it' }).click({ timeout: 5000 }).catch(() => {});
     await p.waitForTimeout(400);
   };
   const buyButton = (p, price = '£9.99') => p.getByRole('button', { name: `Unlock unlimited · ${price} once`, exact: true });
@@ -807,7 +807,7 @@ if (!/Deadline alerts/.test(settingsText)) {
       if (!/no limit on receipts now/.test(after)) {
         failures.push({ what: 'a purchase made at the cap was not acknowledged where it was made', saw: after.slice(0, 200) });
       }
-      await save.click().catch(() => {});
+      await save.click({ timeout: 5000 }).catch(() => {});
       await p.waitForTimeout(600);
       const count = await p.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.length);
       if (count !== 11) failures.push({ what: 'the receipt being added when the cap lifted could not then be saved', saw: `${count} receipts` });
@@ -851,7 +851,7 @@ if (!/Deadline alerts/.test(settingsText)) {
     const run = await boot({ price: '£9.99', purchase: ending });
     const { p } = run;
     await tab(p, 'Settings');
-    await buyButton(p).click().catch(() => {});
+    await buyButton(p).click({ timeout: 5000 }).catch(() => {});
     await p.waitForTimeout(600);
     const note = await noteOf(p);
     if ((await plan(p)) !== 'free') failures.push({ what: `${what} unlocked the app`, saw: `plan ${await plan(p)}` });
@@ -866,7 +866,7 @@ if (!/Deadline alerts/.test(settingsText)) {
     const run = await boot({ price: '£9.99', purchase: 'pending' });
     const { p } = run;
     await tab(p, 'Settings');
-    await buyButton(p).click().catch(() => {});
+    await buyButton(p).click({ timeout: 5000 }).catch(() => {});
     await p.waitForTimeout(600);
     const waiting = await noteOf(p);
     if (!/Waiting for approval/.test(waiting) || (await plan(p)) !== 'free') {
@@ -888,7 +888,7 @@ if (!/Deadline alerts/.test(settingsText)) {
     const run = await boot({ price: '£9.99', restoreFinds: 'owned' });
     const { p } = run;
     await tab(p, 'Settings');
-    await p.getByRole('button', { name: 'Restore purchase', exact: true }).click().catch(() => {});
+    await p.getByRole('button', { name: 'Restore purchase', exact: true }).click({ timeout: 5000 }).catch(() => {});
     await p.waitForTimeout(700);
     const t = await body(p);
     if ((await plan(p)) !== 'pro' || !/Restored/.test(t)) failures.push({ what: 'Restore purchase did not bring back a purchase the App Store holds', saw: `plan ${await plan(p)} · ${near(t, 'Restore')}` });
@@ -899,7 +899,7 @@ if (!/Deadline alerts/.test(settingsText)) {
     const run = await boot({ price: '£9.99' });
     const { p } = run;
     await tab(p, 'Settings');
-    await p.getByRole('button', { name: 'Restore purchase', exact: true }).click().catch(() => {});
+    await p.getByRole('button', { name: 'Restore purchase', exact: true }).click({ timeout: 5000 }).catch(() => {});
     await p.waitForTimeout(700);
     const note = await noteOf(p);
     if ((await plan(p)) !== 'free' || !/no unlock on this Apple ID/.test(note)) {
@@ -943,7 +943,7 @@ if (!/Deadline alerts/.test(settingsText)) {
     if ((await p.getByRole('button', { name: 'Unlock unlimited to save this' }).count()) !== 1 || (await buyButton(p).count()) !== 1) {
       failures.push({ what: 'going offline lifted the cap, which makes airplane mode the way to unlimited', saw: (await body(p)).slice(0, 200) });
     } else {
-      await buyButton(p).click().catch(() => {});
+      await buyButton(p).click({ timeout: 5000 }).catch(() => {});
       await p.waitForTimeout(600);
       const note = await noteOf(p);
       if (!/Couldn’t reach the App Store/.test(note)) failures.push({ what: 'an offline purchase did not say the App Store could not be reached', saw: note || '(nothing said)' });

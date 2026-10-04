@@ -44,7 +44,7 @@ export function UnlockOffer({
           disabled={waiting}
           aria-busy={store.busy === 'buying'}
           style={{
-            display: 'block', width: '100%', marginTop: 16, padding: 14, minHeight: 44, textAlign: 'center',
+            marginTop: 16, padding: 14, minHeight: 44, textAlign: 'center',
             background: color.accent, color: color.white, border: 0, borderRadius: radius.control,
             fontWeight: 600, fontSize: 15, opacity: waiting ? 0.7 : 1,
             ...buttonStyle,
@@ -63,7 +63,7 @@ export function UnlockOffer({
             disabled={waiting}
             aria-busy={store.busy === 'restoring'}
             style={{
-              display: 'block', width: '100%', minHeight: 44, marginTop: 4, background: 'transparent', border: 0,
+              minHeight: 44, marginTop: 4, background: 'transparent', border: 0,
               color: color.accentInk, fontWeight: 600, fontSize: 13, textAlign: 'center', opacity: waiting ? 0.7 : 1,
             }}
           >

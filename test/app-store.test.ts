@@ -121,6 +121,8 @@ describe('what the answers decide', () => {
     expect(planAfter('pro', 'unknown')).toBe('pro');
     expect(planAfter('free', 'none')).toBe('free');
     expect(planAfter('free', 'revoked')).toBe('free');
+    // And silence never unlocks: an unverified or garbled answer is `unknown`.
+    expect(planAfter('free', 'unknown')).toBe('free');
   });
 
   it('remembers the App Store’s price until it says otherwise', () => {
@@ -239,8 +241,10 @@ describe('the reducer, as StoreKit answers', () => {
   it('changes nothing at all on an answer that decides nothing', () => {
     // The same object, so a launch that confirms what was stored writes nothing.
     for (const ownership of ['none', 'unknown'] as const) {
-      const s = base('pro');
-      expect(reducer(s, { type: 'store-ownership', ownership }, today)).toBe(s);
+      for (const plan of ['free', 'pro'] as const) {
+        const s = base(plan);
+        expect(reducer(s, { type: 'store-ownership', ownership }, today), `${plan} + ${ownership}`).toBe(s);
+      }
     }
     const owned = base('pro');
     expect(reducer(owned, { type: 'store-ownership', ownership: 'owned' }, today)).toBe(owned);

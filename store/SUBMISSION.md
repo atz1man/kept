@@ -56,6 +56,7 @@ is on it too. Green before you Archive — `test/preflight.test.ts` holds the ch
 
 | | Step | Who | Where |
 |---|---|---|---|
+| ☐ | In Xcode, Signing & Capabilities → + Capability → **In-App Purchase**, on the App target | **you** (Mac) | Nothing in the repository changes when you add it, so nothing here can check it |
 | ☐ | Create it: **Non-Consumable**, Product ID **`kept.unlimited`** exactly, reference name "Unlimited receipts" | **you** | App Store Connect → your app → In-App Purchases. The id is in `src/lib/app-store.ts` and `ios/App/Kept.storekit`, and Apple never lets an id be used twice, so a typo cannot be fixed by deleting it |
 | ☐ | Price **£9.99** with the **United Kingdom** as the base country, so it matches the web's `UNLOCK.price`; Apple sets the other countries from it | **you** | The app shows whatever price the App Store sends for the person's country, so nothing in the code changes |
 | ☐ | English (UK): display name "Unlimited receipts", description "No limit on receipts. Paid once." | **you** | The same words as `ios/App/Kept.storekit` |

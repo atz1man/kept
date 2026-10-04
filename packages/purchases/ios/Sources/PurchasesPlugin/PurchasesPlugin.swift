@@ -88,7 +88,7 @@ public class PurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
                     "canPay": AppStore.canMakePayments
                 ])
             } catch {
-                call.reject(error.localizedDescription, Self.reason(error))
+                call.reject(error.localizedDescription, PurchasesPlugin.reason(error))
             }
         }
     }
@@ -133,7 +133,7 @@ public class PurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
                     call.resolve(["outcome": "failed", "reason": "unknown"])
                 }
             } catch {
-                let why = Self.reason(error)
+                let why = PurchasesPlugin.reason(error)
                 call.resolve(["outcome": why == "cancelled" ? "cancelled" : "failed", "reason": why])
             }
         }
@@ -187,7 +187,7 @@ public class PurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
                 try await AppStore.sync()
                 call.resolve(["outcome": "synced"])
             } catch {
-                let why = Self.reason(error)
+                let why = PurchasesPlugin.reason(error)
                 call.resolve(["outcome": why == "cancelled" ? "cancelled" : "failed", "reason": why])
             }
         }
