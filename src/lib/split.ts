@@ -48,14 +48,39 @@ export function canSplit(r: Receipt): boolean {
   return (r.status === 'active' || r.status === 'kept') && r.amount > 1;
 }
 
+/**
+ * The receipt with one listed line taken off it — the first that matches the
+ * part's name and price — and with no list at all once fewer than two
+ * remain: one line left is the receipt itself, and offering to split a
+ * receipt into itself is offering nothing. And where exactly one is left,
+ * the rest IS that thing, so it takes that thing's name: the receipt was
+ * named after the first thing on it, and splitting that thing out left the
+ * rest still calling itself by the name of what had gone. A part named by
+ * hand that matches no line leaves the list as it was.
+ */
+function withoutLine(r: Receipt, item: string, pence: number): Receipt {
+  if (!r.lines) return r;
+  const at = r.lines.findIndex((l) => l.item === item && l.pence === pence);
+  if (at < 0) return r;
+  const lines = [...r.lines.slice(0, at), ...r.lines.slice(at + 1)];
+  const { lines: _gone, ...rest } = r;
+  if (lines.length >= 2) return { ...rest, lines };
+  return lines.length === 1 ? { ...rest, item: lines[0].item } : rest;
+}
+
+/** The listed things the split panel can offer: those dearer than nothing and cheaper than the whole. */
+export function splittableLines(r: Receipt): { item: string; pence: number }[] {
+  return (r.lines ?? []).filter((l) => validSplit(r, l.item, l.pence));
+}
+
 export function splitReceipt(r: Receipt, item: string, pence: number, newId: string): { rest: Receipt; part: Receipt } {
   const {
     faultClaim: _f, returnRef: _t, sentOn: _s, returnedOn: _r, refunded: _p, credit: _c,
     ...shared
   } = r as Receipt & { cancelledOn?: string; exchanged?: true; swappedFrom?: string };
-  const { cancelledOn: _n, exchanged: _x, swappedFrom: _w, ...clean } = shared as typeof shared & { cancelledOn?: string; exchanged?: true; swappedFrom?: string };
+  const { cancelledOn: _n, exchanged: _x, swappedFrom: _w, lines: _l, ...clean } = shared as typeof shared & { cancelledOn?: string; exchanged?: true; swappedFrom?: string };
   return {
-    rest: { ...r, amount: r.amount - pence },
+    rest: { ...withoutLine(r, item, pence), amount: r.amount - pence },
     part: { ...(clean as Receipt), id: newId, item, amount: pence, splitFrom: r.id },
   };
 }

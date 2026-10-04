@@ -950,6 +950,42 @@ for (const cancel of [false, true]) {
 }
 
 /*
+ * A basket, split by its own lines. The order lists three things; the card
+ * says so before saving, and on the receipt "Split this receipt" offers each
+ * as one tap — the name and price the order gave, not typed again — and the
+ * part that comes out is that thing at that price, with the rest's total
+ * down by the same.
+ */
+{
+  const lCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const lp = await lCtx.newPage();
+  await lp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await lp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await lp.getByRole('button', { name: 'Add a receipt' }).click();
+  await lp.locator('#paste').fill('Boots\nThanks for your order\nOrder date: 21 September 2026\nNo7 serum £29.99\nToothbrush heads £12.98\nSPF 50 £11.99\nOrder total: £54.96');
+  await lp.getByRole('button', { name: 'Read it' }).click();
+  await lp.waitForTimeout(300);
+  const card = await lp.locator('[data-lines]').innerText().catch(() => '');
+  await lp.getByRole('button', { name: 'Save receipt' }).click();
+  await lp.waitForTimeout(400);
+  await lp.getByRole('button', { name: /^Boots, No7 serum/ }).first().click();
+  await lp.waitForTimeout(300);
+  await lp.getByRole('button', { name: 'Split this receipt' }).first().click();
+  const offered = await lp.locator('[data-split-lines] button').allInnerTexts().catch(() => []);
+  await lp.getByRole('button', { name: /^Split out Toothbrush heads/ }).click().catch(() => {});
+  await lp.waitForTimeout(400);
+  const part = await lp.locator('main').innerText();
+  const stored = await lp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.filter((r) => r.store === 'Boots' && !r.demo).map((r) => ({ item: r.item, amount: r.amount, lines: (r.lines ?? []).length })));
+  results['a basket is split by its own lines, in one tap'] =
+    /3 things on this receipt/.test(card) && offered.length === 3 &&
+    /Toothbrush heads/.test(part) && /£12\.98/.test(part) &&
+    stored.some((r) => r.item === 'Toothbrush heads' && r.amount === 1298 && r.lines === 0) &&
+    stored.some((r) => r.item === 'No7 serum' && r.amount === 5496 - 1298 && r.lines === 2);
+  if (!results['a basket is split by its own lines, in one tap']) problems.push(`lines: ${JSON.stringify({ card: card.slice(0, 80), offered, stored })}`);
+  await lCtx.close();
+}
+
+/*
  * Store credit. A return that ended in credit rather than money had no way
  * to be said, and credit that lapses unspent is money lost as surely as a
  * missed window. It can be marked, dated from the credit note, and taken back.

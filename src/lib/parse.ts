@@ -39,6 +39,13 @@ export interface ParsedReceipt {
    * a returns form, a chat window and the letter to the shop all ask for.
    */
   orderRef: string | null;
+  /**
+   * The things on the receipt and what each cost, where it lists several —
+   * empty for a single item or where the list does not hold together (see
+   * `pickLines`). What lets a basket be split into the parts that will be
+   * returned and the parts that will be kept, without typing them again.
+   */
+  lines: { item: string; pence: Pence }[];
 }
 
 export type ParseOutcome =
@@ -614,6 +621,49 @@ function pickItem(text: string, store: StorePolicy | null): string | null {
   return null;
 }
 
+/** A receipt with more lines than this is a statement, not a basket worth splitting. */
+export const MAX_LINES = 30;
+
+/**
+ * Each thing the receipt lists and its price, or nothing.
+ *
+ * A line is a thing when it carries a £ figure and none of the words that
+ * mark money about the order (totals, delivery, VAT, payment, savings) — the
+ * same test `pickItem` uses for its last-resort guess — and its figure is
+ * not a deduction: a "-£3.00" Clubcard line is money off, not a thing. The
+ * price is the line's LAST figure, which on a quantity line ("2 x Socks
+ * £3.00 £6.00") is what the line cost.
+ *
+ * Then the list has to hold together, or none of it is offered. At least
+ * two things, or there is nothing to split; no thing dearer than the whole
+ * receipt; and, where the total is known, the things adding up to somewhere
+ * near it — within a third either way, which allows for multibuy savings
+ * and a delivery charge but not for a list that has picked up a promotion
+ * banner and a "you saved" line as purchases. A wrong list here would put a
+ * made-up price on a receipt someone then returns; no list costs a typed one.
+ */
+function pickLines(text: string, store: StorePolicy | null, total: Pence | null): { item: string; pence: Pence }[] {
+  const storeWords = store ? [store.name, ...store.aliases].map((w) => w.toLowerCase()) : [];
+  const out: { item: string; pence: Pence }[] = [];
+  for (const segment of text.split(/\n|·/)) {
+    if (!/£\s?\d/.test(segment) || NOT_AN_ITEM.test(segment)) continue;
+    if (/(?:-\s?£|£\s?-)\s?\d/.test(segment)) continue;
+    const prices = amountsIn(segment);
+    const pence = prices[prices.length - 1];
+    if (!pence) continue;
+    const item = cleanItem(segment.replace(/^\s*(?:qty\s*:?\s*)?\d{1,2}\s*[x×]\s+/i, ''), 'shorten');
+    if (!item || storeWords.includes(item.toLowerCase())) continue;
+    out.push({ item, pence });
+  }
+  if (out.length < 2 || out.length > MAX_LINES) return [];
+  if (total !== null) {
+    if (out.some((l) => l.pence > total)) return [];
+    const sum = out.reduce((a, l) => a + l.pence, 0);
+    if (sum < total * (2 / 3) || sum > total * (4 / 3)) return [];
+  }
+  return out;
+}
+
 /*
  * "GBP 59.99" and "45.99 GBP", as a retailer that sells in several currencies
  * writes its prices, read as the £ figures they are. Every reader below looks
@@ -697,6 +747,7 @@ export function parseReceiptText(raw: string, today: Date = new Date()): ParseOu
       windowDays: policy?.windowDays ?? UNKNOWN_STORE_WINDOW_DAYS,
       item: pickItem(text, policy),
       orderRef: pickOrderRef(text),
+      lines: pickLines(text, policy, amount),
     },
   };
 }
