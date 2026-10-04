@@ -60,6 +60,24 @@ describe('the right to reject, in its last days', () => {
     expect(rejectWatched(r(0, 28), TODAY)).toBeNull();
   });
 
+  it('is raised on a short shop window too, whose ladder said its last weeks before', () => {
+    // Currys gives fourteen days. Bought 27 days ago, its window shut on day
+    // 14 and every rung of the ladder has been said; the right to reject a
+    // fault ends in three days. The gap was measured one way only, and this
+    // receipt got nothing on day 27 while IKEA's got its alert.
+    const ladder = new Set((['week', 'soon', 'today', 'closed'] as const).map((rung) => alertKey('a', rung)));
+    const currys = r(REJECT_DAYS - REJECT_NOTICE_DAYS, 14, { store: 'Currys' });
+    expect(rungs([currys], ladder)).toEqual(['reject']);
+    expect(dueAlerts([currys], TODAY, 7, ladder)[0].title).toBe('3 days left to reject it if it’s faulty');
+  });
+
+  it('is left to the ladder a week either side of the shop’s deadline, and no nearer', () => {
+    // 30 − gap: the shop's window shut a week before the right ends, so it is
+    // watched. One day more and "closed" lands in the same days: left to it.
+    expect(rejectWatched(r(0, REJECT_DAYS - REJECT_GAP_DAYS), TODAY)).not.toBeNull();
+    expect(rejectWatched(r(0, REJECT_DAYS - REJECT_GAP_DAYS + 1), TODAY)).toBeNull();
+  });
+
   it('is raised for a kept receipt whatever its shop window, which has left the ladder', () => {
     expect(rungs([r(REJECT_DAYS - 1, 28, { status: 'kept', keptOn: iso(-10) })])).toEqual(['reject']);
   });
@@ -99,6 +117,11 @@ describe('the right to reject, in its last days', () => {
     expect(list[0].what).toBe('Last day to reject it if it’s faulty');
     expect(comingUp([r(10, 365, { distance: true })], TODAY).find((c) => c.kind === 'reject')?.what).toBe('Last day to reject it if it’s faulty (or later)');
   });
+
+  it('is listed after a short shop window’s own last day, not instead of it', () => {
+    const list = comingUp([r(10, 14, { store: 'Currys' })], TODAY);
+    expect(list.map((c) => [c.kind, toISODate(c.date)])).toEqual([['return', iso(4)], ['reject', iso(REJECT_DAYS - 10)]]);
+  });
 });
 
 describe('the right to reject, lodged with iOS', () => {
@@ -118,5 +141,16 @@ describe('the right to reject, lodged with iOS', () => {
   it('is not lodged again once shown, nor where the shop’s ladder covers those days', () => {
     expect(planAlerts([bought()], FUTURE, 7, new Set([alertKey('a', 'reject')])).map((p) => p.rung)).not.toContain('reject');
     expect(planAlerts([bought({ windowDays: 30 })], FUTURE, 7, new Set()).map((p) => p.rung)).not.toContain('reject');
+  });
+
+  it('is lodged on a short shop window too, after the last of the ladder', () => {
+    // Currys' fourteen days: the ladder is lodged for days 7 to 15, and the
+    // right to reject, which nothing else mentions, for 9am on day 27.
+    const plan = planAlerts([bought({ store: 'Currys', windowDays: 14 })], FUTURE, 7, new Set());
+    expect(plan.map((p) => p.rung)).toEqual(['week', 'soon', 'today', 'closed', 'reject']);
+    const at = addDays(FUTURE, REJECT_DAYS - REJECT_NOTICE_DAYS);
+    at.setHours(FIRE_HOUR, 0, 0, 0);
+    expect(plan[4].at.getTime()).toBe(at.getTime());
+    expect(plan[4].title).toBe('3 days left to reject it if it’s faulty');
   });
 });

@@ -1,5 +1,5 @@
 import { addDays, addMonths, daysBetween, fmtDateLong, fromISODate } from './dates';
-import { PRESUMED_FAULT_MONTHS, REJECT_DAYS } from './legal';
+import { PRESUMED_FAULT_MONTHS, presumedFaultEnds, REJECT_DAYS } from './legal';
 import { money } from './money';
 import type { Receipt } from './types';
 
@@ -61,7 +61,9 @@ function handedOver(r: Receipt): { from: Date; hedged: boolean } {
 export function faultAdvice(r: Receipt, today: Date): FaultAdvice {
   const { from, hedged } = handedOver(r);
   const rejectEnds = addDays(from, REJECT_DAYS);
-  const presumedEnds = addMonths(from, PRESUMED_FAULT_MONTHS);
+  // Six months BEGINNING WITH the day it came (s.19(14)), so not the same
+  // count as section 24(10)'s, below, which starts the day after.
+  const presumedEnds = presumedFaultEnds(from);
   const claimEnds = addMonths(from, CLAIM_YEARS * 12);
   const until = (d: Date, capital = false) => `${capital ? 'U' : 'u'}ntil ${hedged ? 'at least ' : ''}${fmtDateLong(d)}`;
   const counted = hedged ? ' Counted from the day you ordered; if it arrived later, add that date with Edit and this moves.' : '';

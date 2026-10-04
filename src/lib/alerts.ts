@@ -1,8 +1,9 @@
-import { addDays, daysBetween, fmtDate, fromISODate } from './dates';
+import { addDays, daysBetween, fmtDate, fromISODate, toISODate } from './dates';
 import { REPLY_DAYS } from './fault-letter';
-import { REJECT_DAYS } from './legal';
+import { REFUND_CHASE_DAYS, REJECT_DAYS } from './legal';
 import { money } from './money';
 import { derive, refundOf } from './receipts';
+import { refundIsStatutory } from './refund-chase';
 import { windowChecked } from './stores';
 import type { Receipt } from './types';
 import { possessive } from './words';
@@ -32,12 +33,11 @@ export type ReturnRung = 'week' | 'soon' | 'today' | 'closed';
 export type AlertRung = ReturnRung | 'reject' | 'warranty' | 'refund' | 'credit' | 'fault';
 
 /**
- * How long after something went back it is worth asking whether the money
- * came. Fourteen days is the Consumer Contracts Regulations' limit for
- * refunding a cancelled online order once the goods are back (reg. 34), and a
- * common shop promise besides; after it, a missing refund is worth chasing.
+ * When a refund is asked about: reg. 34's fortnight, defined in legal.ts with
+ * the statute's other periods and exported here too, where the scheduler, the
+ * Coming up list and the screens have always imported it from.
  */
-export const REFUND_CHASE_DAYS = 14;
+export { REFUND_CHASE_DAYS };
 
 /**
  * Whether an alert already sent was a reminder BEFORE the shop's window shut.
@@ -98,13 +98,30 @@ export function warrantyWatched(r: Receipt): boolean {
 export const REJECT_NOTICE_DAYS = 3;
 
 /**
- * How much earlier than the shop's own window the right to reject has to end
- * before it earns an alert of its own. Our number. Inside a week of the
- * shop's deadline the ladder is already talking about this receipt, and a
- * second alert about the same days is the kind that gets notifications
- * switched off.
+ * How far from the shop's own deadline, before it or after it, the right to
+ * reject has to end before it earns an alert of its own. Our number. Inside a
+ * week of the shop's deadline the ladder is already talking about this
+ * receipt, and a second alert about the same days is the kind that gets
+ * notifications switched off.
+ *
+ * Either side, because the ladder's days sit on both sides of the deadline:
+ * "week" before it, "closed" the morning after. At a week's gap, with the
+ * default seven-day warning, the morning this reminder is lodged for is at
+ * least three days from every rung's, whichever way round the two clocks are.
  */
 export const REJECT_GAP_DAYS = 7;
+
+/**
+ * The last day of the 30-day right to reject, as its reminder counts it.
+ *
+ * From the day it came, as the Act counts it; for an online order nobody has
+ * said arrived, the order date, which can only be earlier — so the alert comes
+ * early rather than late, and says "no earlier than". One count for the alert
+ * and for the reducer, which forgets the reminder when this day moves.
+ */
+export function rejectEnds(r: Receipt): Date {
+  return addDays(fromISODate(r.arrivedOn ?? r.purchasedOn), REJECT_DAYS);
+}
 
 /**
  * The day the 30-day right to reject ends, when that day deserves its own
@@ -118,20 +135,29 @@ export const REJECT_GAP_DAYS = 7;
  *
  * Kept receipts are watched whatever the shop's window: they have left the
  * return ladder, and "is it working?" is the one question left worth asking
- * before the right lapses. Active ones only when the right ends well before
- * the shop's window. Never a sample, and never once a fault letter has gone:
- * that has its own clock and its own follow-up. The 14-day right to cancel
- * gets none — where the shop's window is longer it already covers a change of
- * mind, and where it is shorter the ladder is already speaking.
+ * before the right lapses. Active ones only when the right ends at least a
+ * week away from the shop's deadline, on either side of it. Never a sample,
+ * and never once a fault letter has gone: that has its own clock and its own
+ * follow-up. The 14-day right to cancel gets none — where the shop's window
+ * is longer it already covers a change of mind, and where it is shorter the
+ * ladder is already speaking.
+ *
+ * Either side, not only before. The gap was measured one way, as if every
+ * shop gave longer than thirty days, so a SHORTER window silenced the right
+ * as well: Currys', Apple's, Samsung's and Selfridges' fourteen days, and
+ * Debenhams', Boohoo's and PrettyLittleThing's twenty-one. Their ladder says
+ * its last the morning after the shop's day — "If it turns out to be faulty,
+ * you still have rights" — and the first of those rights to lapse then went a
+ * week or two later with nothing said. Measured: bought 27 days ago and still
+ * on the list, a Currys, Apple or Debenhams receipt raised nothing on the web
+ * and had nothing lodged with iOS, while an IKEA one was told it had three
+ * days left.
  */
 export function rejectWatched(r: Receipt, today: Date): { ends: Date; hedged: boolean } | null {
   if (r.demo || r.faultClaim) return null;
   if (r.status !== 'active' && r.status !== 'kept') return null;
-  // From the day it came, as the Act counts it; for an online order nobody
-  // has said arrived, the order date, which can only be earlier — so the
-  // alert comes early rather than late, and says "no earlier than".
-  const ends = addDays(fromISODate(r.arrivedOn ?? r.purchasedOn), REJECT_DAYS);
-  if (r.status === 'active' && daysBetween(ends, derive(r, today).deadline) < REJECT_GAP_DAYS) return null;
+  const ends = rejectEnds(r);
+  if (r.status === 'active' && Math.abs(daysBetween(ends, derive(r, today).deadline)) < REJECT_GAP_DAYS) return null;
   return { ends, hedged: r.distance && r.arrivedOn === undefined };
 }
 
@@ -215,12 +241,14 @@ export function copyFor(rung: AlertRung, r: Receipt, daysLeft: number, deadline:
     }
     case 'refund':
       // `deadline` is the day it went back; `daysLeft` is unused. The legal
-      // limit is stated only where it applies — a cancelled distance order —
-      // and never as a promise about any other shop's terms.
+      // limit is stated only where it applies — a cancelled distance order,
+      // by the one test the late panel, the letter and the claim pack use —
+      // and never as a promise about any other shop's terms. It tested
+      // `r.distance`, which is every online order however late it went back.
       return {
         title: 'Has the refund come through?',
         body: `${what} — it went back on ${fmtDate(deadline)}.${
-          r.distance ? ` For an online order, the shop has ${REFUND_CHASE_DAYS} days from getting it back to refund you.` : ''
+          refundIsStatutory(r) ? ` For an online order, the shop has ${REFUND_CHASE_DAYS} days from getting it back to refund you.` : ''
         } If the money has not arrived, chase it.`,
       };
     case 'credit':
@@ -360,4 +388,48 @@ export function supersededKeys(alert: DeadlineAlert): string[] {
 export function pruneSent(sent: readonly string[], receipts: readonly Receipt[]): string[] {
   const live = new Set(receipts.map((r) => r.id));
   return sent.filter((k) => live.has(k.slice(0, k.lastIndexOf(':'))));
+}
+
+/**
+ * The clocks a receipt carries in its own dates, each with the reminders that
+ * are about it and the day it ends: the shop's window, the guarantee and the
+ * right to reject. Not the refund, the credit or the fault letter: each of
+ * those clocks starts with something done to one receipt (posting it back,
+ * being given credit, writing the letter) and has its own reducer case.
+ */
+const DATED_CLOCKS: readonly { rungs: readonly AlertRung[]; ends: (r: Receipt, today: Date) => string }[] = [
+  { rungs: LADDER, ends: (r, today) => toISODate(derive(r, today).deadline) },
+  { rungs: ['warranty'], ends: (r, today) => { const w = derive(r, today).warranty; return w ? toISODate(w.ends) : ''; } },
+  { rungs: ['reject'], ends: (r) => toISODate(rejectEnds(r)) },
+];
+
+/**
+ * The reminders whose clock ends on a different day on `after` than on
+ * `before`, so what was said about them is about a day that has gone: what an
+ * edit makes stale. Every dated clock's, where there is no `before`.
+ */
+export function movedRungs(before: Receipt | undefined, after: Receipt, today: Date): AlertRung[] {
+  return DATED_CLOCKS.filter((c) => !before || c.ends(before, today) !== c.ends(after, today)).flatMap((c) => c.rungs);
+}
+
+/**
+ * What was already said about `from`, said under `to`'s id: for a receipt
+ * made out of another, a part split off a basket or the one that came home
+ * from a swap.
+ *
+ * Both are made with the original's dates, so the reminders about those
+ * clocks were already given, about the same days. The new receipt had none
+ * of the keys, and said them all again: a basket's "Today is the last day",
+ * shown that morning, came back the moment a shirt was split out of it, and a
+ * swapped TV's "The saved window has passed" came back for the replacement.
+ * Only the clocks the two share, decided by the comparison `update` forgets
+ * by, so the two rules cannot come apart: a clock that ends on another day
+ * is owed its reminders, and the refund, credit and fault ones are never
+ * carried.
+ */
+export function inheritedKeys(sent: readonly string[], from: Receipt, to: Receipt, today: Date): string[] {
+  const moved = new Set(movedRungs(from, to, today));
+  return DATED_CLOCKS.flatMap((c) => c.rungs)
+    .filter((rung) => !moved.has(rung) && sent.includes(alertKey(from.id, rung)))
+    .map((rung) => alertKey(to.id, rung));
 }

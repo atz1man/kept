@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { reducer, type AppState } from '../src/app/state';
+import { dueAlerts, supersededKeys } from '../src/lib/alerts';
 import { readReceipt } from '../src/lib/backup';
-import { toISODate } from '../src/lib/dates';
+import { addDays, toISODate } from '../src/lib/dates';
 import { toPence } from '../src/lib/money';
 import { recoveredPence, refundOf } from '../src/lib/receipts';
 import { DEFAULT_SETTINGS } from '../src/lib/storage';
@@ -72,5 +73,29 @@ describe('swapping it for another', () => {
     expect(readReceipt(JSON.parse(JSON.stringify(find(s, 'a'))))?.exchanged).toBe(true);
     expect(readReceipt(JSON.parse(JSON.stringify(find(s, 'swapin'))))?.swappedFrom).toBe('a');
     expect(readReceipt({ ...receipt('x'), exchanged: true })?.exchanged).toBeUndefined();
+  });
+
+  it('does not tell the one that came home what was already said about the one that went back', () => {
+    // A TV whose 14 days had passed: "closed" was shown and recorded, as the
+    // app records it. Swapped for another on day 20, the replacement keeps
+    // the same dates, and said it all again.
+    const tv = receipt('a', { store: 'Currys', item: 'TV', purchasedOn: toISODate(addDays(TODAY, -20)), windowDays: 14 });
+    const shown = dueAlerts([tv], TODAY, 7, new Set());
+    expect(shown.map((a) => a.rung)).toEqual(['closed']);
+    const told = reducer(state([tv]), { type: 'alerted', keys: shown.flatMap((a) => [a.key, ...supersededKeys(a)]) }, TODAY);
+    const s = swap(told);
+    expect(dueAlerts(s.receipts, TODAY, 7, new Set(s.alertsSent))).toEqual([]);
+  });
+
+  it('carries what was said about the original’s clocks, and not about its fault letter', () => {
+    const said = ['a:week', 'a:soon', 'a:today', 'a:closed', 'a:warranty', 'a:reject', 'a:fault'];
+    const original = receipt('a', { warranty: { months: 12 }, faultClaim: { sentOn: '2026-08-25' } });
+    const s = swap({ ...state([original]), alertsSent: said });
+    expect(s.alertsSent.filter((k) => k.startsWith('swapin:')).sort()).toEqual(
+      ['swapin:closed', 'swapin:reject', 'swapin:soon', 'swapin:today', 'swapin:warranty', 'swapin:week'],
+    );
+    // A new receipt from the shop: dated again, and its reminders are owed.
+    const redated = reducer(s, { type: 'update', receipt: { ...find(s, 'swapin'), purchasedOn: toISODate(TODAY) } }, TODAY);
+    expect(redated.alertsSent.filter((k) => k.startsWith('swapin:'))).toEqual([]);
   });
 });

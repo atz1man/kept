@@ -413,9 +413,15 @@ describe('the months when a fault is the shop’s to disprove', () => {
    * were all alike — when in the first six months the shop has to disprove the
    * fault and after them the buyer has to prove it.
    */
-  const reject = (r: Receipt) => find(legalRights(r, TODAY, false), 'Consumer Rights Act');
-  /** Bought over a counter so the dates are exact; `n` days before the six months end. */
-  const counterWith = (n: number) => ({ ...inStore, purchasedOn: toISODate(addMonths(addDays(TODAY, n), -PRESUMED_FAULT_MONTHS)) });
+  const reject = (r: Receipt, today = TODAY) => find(legalRights(r, today, false), 'Consumer Rights Act');
+  /**
+   * Bought over a counter so the dates are exact; `n` days before the six
+   * months end. Section 19(14)'s six months begin WITH the day it came, so
+   * they end the day before the same date six months on: it was bought six
+   * months before the day after. (This helper said six months before the day
+   * itself, the old count, a day too long.)
+   */
+  const counterWith = (n: number) => ({ ...inStore, purchasedOn: toISODate(addMonths(addDays(TODAY, n + 1), -PRESUMED_FAULT_MONTHS)) });
 
   it('is Parliament’s number', () => {
     expect(PRESUMED_FAULT_MONTHS).toBe(6);
@@ -428,10 +434,16 @@ describe('the months when a fault is the shop’s to disprove', () => {
   });
 
   it('is still said on its last day, and not the day after', () => {
-    expect(reject(counterWith(0)).body).toMatch(/\(0 days left\), a fault is taken/);
-    expect(reject(counterWith(-1)).body).not.toMatch(/a fault is taken/);
+    // "The period of six months beginning with the day on which the goods
+    // were delivered" (s.19(14)): handed over on 15 January, the last day is
+    // 14 July. This read "Until 15 Jul (0 days left)" on the 15th. Dated,
+    // because no six months end on TODAY, 28 August 2026: from 28 February
+    // they end on the 27th, and from 1 March on the 31st.
+    const kettle = { ...inStore, purchasedOn: '2026-01-15' };
+    expect(reject(kettle, new Date(2026, 6, 14)).body).toMatch(/ Until 14 Jul \(0 days left\), a fault is taken/);
+    expect(reject(kettle, new Date(2026, 6, 15)).body).not.toMatch(/a fault is taken/);
     // The repair right outlasts it, and still says so.
-    expect(reject(counterWith(-1)).body).toContain('six years in England and Wales');
+    expect(reject(kettle, new Date(2026, 6, 15)).body).toContain('six years in England and Wales');
   });
 
   it('is not added to a right to reject that is still live', () => {
@@ -442,7 +454,10 @@ describe('the months when a fault is the shop’s to disprove', () => {
     const ordered = { ...online, purchasedOn: ago(60) };
     expect(reject(ordered).body).toMatch(/Until at least .+, a fault is taken to have been there when it arrived/);
     const arrived = { ...ordered, arrivedOn: ago(50) };
-    const ends = addMonths(addDays(TODAY, -50), PRESUMED_FAULT_MONTHS);
+    // Arrived 9 July 2026: six months beginning with it end on 8 January
+    // 2027. (This was worked out as the same date six months on: a day long.)
+    expect(arrived.arrivedOn).toBe('2026-07-09');
+    const ends = new Date(2027, 0, 8);
     const left = Math.round((ends.getTime() - TODAY.getTime()) / 86_400_000);
     expect(reject(arrived).body).toContain(`(${left} days left), a fault is taken`);
   });

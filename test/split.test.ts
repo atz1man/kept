@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { reducer, type AppState } from '../src/app/state';
+import { dueAlerts, supersededKeys } from '../src/lib/alerts';
 import { readReceipt } from '../src/lib/backup';
+import { addDays, toISODate } from '../src/lib/dates';
 import { toPence } from '../src/lib/money';
 import { canSplit, readSplit, splitReceipt, validSplit } from '../src/lib/split';
 import { DEFAULT_SETTINGS } from '../src/lib/storage';
@@ -82,5 +84,26 @@ describe('splitting a part out', () => {
   it('is carried in a backup', () => {
     const { part } = splitReceipt(basket(), 'Hairdryer', 2500, 'b');
     expect(readReceipt(JSON.parse(JSON.stringify(part)))?.splitFrom).toBe('a');
+  });
+
+  it('does not say again, about the part, the last day already said about the basket', () => {
+    // On the basket's last day "Today is the last day" was shown and recorded,
+    // as the app records it. Splitting a part out raised it again for the
+    // part, about the same day, the moment the part opened.
+    const lastDay = basket({ purchasedOn: toISODate(addDays(TODAY, -35)) });
+    const shown = dueAlerts([lastDay], TODAY, 7, new Set());
+    expect(shown.map((a) => a.rung)).toEqual(['today']);
+    const told = reducer(state([lastDay]), { type: 'alerted', keys: shown.flatMap((a) => [a.key, ...supersededKeys(a)]) }, TODAY);
+    const s = reducer(told, { type: 'split', id: 'a', item: 'Hairdryer', pence: 2500, newId: 'b' }, TODAY);
+    expect(dueAlerts(s.receipts, TODAY, 7, new Set(s.alertsSent))).toEqual([]);
+  });
+
+  it('carries what was said about the basket’s own clocks, and nothing about its ending', () => {
+    const said = ['a:week', 'a:soon', 'a:warranty', 'a:reject', 'a:fault', 'a:credit', 'a:refund', 'c:week'];
+    const s = reducer({ ...state([basket()]), alertsSent: said }, { type: 'split', id: 'a', item: 'Hairdryer', pence: 2500, newId: 'b' }, TODAY);
+    expect(s.alertsSent.filter((k) => k.startsWith('b:')).sort()).toEqual(['b:reject', 'b:soon', 'b:warranty', 'b:week']);
+    // The basket keeps its own, and nothing is said twice in the list.
+    expect(s.alertsSent.slice(0, said.length)).toEqual(said);
+    expect(new Set(s.alertsSent).size).toBe(s.alertsSent.length);
   });
 });
