@@ -13,7 +13,7 @@ import { createWorker, OEM } from 'tesseract.js';
 // @ts-expect-error a JS helper
 import { decodePng, writeOpaquePng } from '../png.mjs';
 import { readable, toGray, type Gray } from '../../src/lib/flatten';
-import { readFlattenedOrAsTaken, fromScan, type Reader } from '../../src/lib/receipt-scan';
+import { readFlattenedOrAsTaken, fromScan, UNSURE_BELOW, type Reader } from '../../src/lib/receipt-scan';
 import { parseReceiptText } from '../../src/lib/parse';
 import { toCheck } from '../../src/lib/confidence';
 
@@ -40,7 +40,8 @@ const readerOf = (path: string): Reader => async (how) => {
   const ws: Word[] = [];
   for (const b of data.blocks ?? []) for (const p of b.paragraphs) for (const l of p.lines) for (const w of l.words) ws.push({ text: w.text, confidence: w.confidence, line: l.text.trim() });
   words.set(data.text, ws);
-  return data.text;
+  // The words the app would carry, exactly as scan.ts collects them.
+  return { text: data.text, unsure: ws.filter((w) => w.confidence < UNSURE_BELOW) };
 };
 const digits = (s: string) => s.replace(/[^0-9]/g, '');
 /** The lowest confidence among words carrying any of these digit runs. */
@@ -55,14 +56,14 @@ for (const m of meta) {
   const png = decodePng(`${DIR}/${m.file}`);
   const rgba = png.data.length === png.width * png.height * 4 ? png.data : (() => { const o = new Uint8Array(png.width * png.height * 4); for (let i = 0, j = 0; i < png.data.length; i += 3, j += 4) { o[j] = png.data[i]; o[j + 1] = png.data[i + 1]; o[j + 2] = png.data[i + 2]; o[j + 3] = 255; } return o; })();
   const { flat, asTaken } = readable(toGray(rgba, png.width, png.height));
-  const ocr = await readFlattenedOrAsTaken(flat ? readerOf(toPng(flat, 'b.png')) : null, readerOf(toPng(asTaken, 'a.png')), TODAY);
+  const { text: ocr } = await readFlattenedOrAsTaken(flat ? readerOf(toPng(flat, 'b.png')) : null, readerOf(toPng(asTaken, 'a.png')), TODAY);
   const ws = words.get(ocr) ?? [];
   reads.push({ file: m.file, ocr, words: ws, total: Math.round(parseFloat(m.total.replace(/[£,]/g, '')) * 100), day: m.day });
   const out = parseReceiptText(fromScan(ocr), TODAY);
   const pence = Math.round(parseFloat(m.total.replace(/[£,]/g, '')) * 100);
   if (!out.ok) { rows.push({ file: m.file, field: 'total', right: false, how: null, conf: null, marked: false }, { file: m.file, field: 'day', right: false, how: null, conf: null, marked: false }); continue; }
   const v = out.value;
-  const marks = toCheck(v, ws.filter((w) => w.confidence < 90));
+  const marks = toCheck(v, ws.filter((w) => w.confidence < UNSURE_BELOW));
   const amountDigits = v.amount === null ? [] : [digits((v.amount / 100).toFixed(2))];
   const [y, mo, d] = v.purchasedOn.split('-');
   rows.push({ file: m.file, field: 'total', right: v.amount === pence, how: v.how.amount, conf: lowest(ws, amountDigits), marked: marks.amount !== undefined });
