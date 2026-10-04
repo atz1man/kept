@@ -13,6 +13,7 @@ import { discardSetAside, setAsideData, URGENT_DAYS_MAX, URGENT_DAYS_MIN, type S
 import { sellsPaidTiers, UNLOCK } from '../../lib/pricing';
 import { countedAgainstQuota, FREE_TIER_LIMIT } from '../../lib/quota';
 import { Pressable } from '../components/Pressable';
+import { SupportDetails } from '../components/SupportDetails';
 
 interface Props {
   settings: SettingsShape;
@@ -461,6 +462,13 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, on
             {settings.urgentDays} days
           </span>
         </div>
+      </section>
+
+      {/* The version, and what to send when something goes wrong. Shown, not
+          just copied: the person reads every line before it leaves. */}
+      <section aria-labelledby="support-title" style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, marginTop: 12, padding: 18 }}>
+        <h2 id="support-title" style={{ fontWeight: 600, fontSize: 15, margin: '0 0 8px' }}>Help and support</h2>
+        <SupportDetails receipts={receipts} />
       </section>
 
       <p style={{ fontSize: 11, color: color.muted, textAlign: 'center', marginTop: 16, lineHeight: 1.6 }}>

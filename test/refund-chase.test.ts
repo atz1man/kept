@@ -1,4 +1,7 @@
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import { Detail } from '../src/app/screens/Detail';
 import { REFUND_CHASE_DAYS } from '../src/lib/alerts';
 import { addDays, toISODate } from '../src/lib/dates';
 import { REPLY_DAYS } from '../src/lib/fault-letter';
@@ -81,6 +84,36 @@ describe('the letter', () => {
   it('says what the panel above it says about the law', () => {
     expect(refundChaseLine(refundChase(posted(20, 25), TODAY)!)).toContain('cancellation period');
     expect(refundChaseLine(refundChase(posted(20, 60), TODAY)!)).not.toContain('cancellation');
+  });
+});
+
+describe('the receipt’s own screen, while the refund is awaited', () => {
+  /*
+   * Rendered, not read. The "Sent back" card told every online order that
+   * "the shop has 14 days from getting it back", and on a return the
+   * regulations do not cover, the late panel under it said only "Ask the shop
+   * to refund you": one screen, one receipt, two answers. It now asks the
+   * same question the late panel does.
+   */
+  const noop = () => {};
+  const screen = (r: Receipt) =>
+    renderToStaticMarkup(createElement(Detail, {
+      receipt: r, today: TODAY, urgentDays: 7, onBack: noop, onEdit: noop, onPack: noop, onReturn: noop, onUnreturn: noop,
+      onExchange: noop, onUnexchange: noop, onKeep: noop, onUnkeep: noop, onSend: noop, onUnsend: noop, onSetRefund: noop,
+      onSetReturnRef: noop, onSetCredit: noop, onCreditSpent: noop, onFaultSent: noop, onFaultUnsent: noop, onCancelSent: noop,
+      onCancelUnsent: noop, onArrived: noop, onDelete: noop, onSplit: noop, onUnsplit: null, splitFromReceipt: null,
+    })).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+
+  it('states the shop’s fourteen days only where the regulations give them', () => {
+    // Sent back 20 days after the order: outside the cancellation period.
+    const outside = screen(posted(20, 40));
+    expect(outside).toContain('Ask the shop to refund you');
+    expect(outside).toMatch(/Waiting for the refund\. If it has not arrived by .+, chase it\./);
+    expect(outside).not.toMatch(/days from getting it back/);
+    // Five days after it: inside, and the card and the late panel both say so.
+    const inside = screen(posted(20, 25));
+    expect(inside).toContain(`chase it — for an online order, the shop has ${REFUND_CHASE_DAYS} days from getting it back.`);
+    expect(inside).toContain('cancellation period, so the shop had');
   });
 });
 

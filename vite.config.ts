@@ -95,7 +95,18 @@ function serveOcrFiles(): Plugin {
   };
 }
 
+/**
+ * The version a person can quote to support, from package.json — and only
+ * that. Not the git commit: stamping the commit would change the bundle's
+ * bytes on every commit, docs-only ones included, and the service worker's
+ * cache name is derived from those bytes, so every user would re-download a
+ * byte-identical app. The build itself is identified at runtime from that
+ * cache name instead (see lib/support.ts).
+ */
+const VERSION = (JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8')) as { version: string }).version;
+
 export default defineConfig({
+  define: { __KEPT_VERSION__: JSON.stringify(VERSION) },
   plugins: [react(), stampServiceWorker(), serveOcrFiles()],
   server: { port: 5183 },
   build: {

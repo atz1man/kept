@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { alertKey, dueAlerts, pruneSent, REFUND_CHASE_DAYS, supersededKeys, WARRANTY_NOTICE_DAYS } from '../src/lib/alerts';
-import { addDays, addMonths, toISODate } from '../src/lib/dates';
+import { alertKey, dueAlerts, inheritedKeys, movedRungs, pruneSent, REFUND_CHASE_DAYS, supersededKeys, WARRANTY_NOTICE_DAYS } from '../src/lib/alerts';
+import { addDays, addMonths, fmtDate, toISODate } from '../src/lib/dates';
 import { toPence } from '../src/lib/money';
+import { refundChase } from '../src/lib/refund-chase';
 import { seedReceipts } from '../src/lib/seed';
 import { derive } from '../src/lib/receipts';
 import type { Receipt } from '../src/lib/types';
@@ -214,6 +215,41 @@ describe('the sent list does not grow forever', () => {
   });
 });
 
+describe('what a receipt made from another has already been told', () => {
+  // A part split off, or the one that came home from a swap: made with the
+  // original's dates, so the reminders about those days were already given.
+  const from = closingIn(2, { warranty: { months: 12 } });
+  const said = (['week', 'soon', 'today', 'closed', 'warranty', 'reject', 'refund', 'credit', 'fault'] as const).map((rung) => alertKey('r1', rung));
+
+  it('is every reminder about a clock the two share, under the new id', () => {
+    expect(inheritedKeys(said, from, { ...from, id: 'r2' }, TODAY).sort()).toEqual(
+      ['r2:closed', 'r2:reject', 'r2:soon', 'r2:today', 'r2:warranty', 'r2:week'],
+    );
+    // Only what was said: nothing is marked said that never was.
+    expect(inheritedKeys([alertKey('r1', 'week')], from, { ...from, id: 'r2' }, TODAY)).toEqual(['r2:week']);
+  });
+
+  it('is never the refund, credit or fault reminder, whose clocks belong to the one receipt', () => {
+    expect(inheritedKeys(said, from, { ...from, id: 'r2' }, TODAY).filter((k) => /:(refund|credit|fault)$/.test(k))).toEqual([]);
+  });
+
+  it('is nothing about a clock that ends on another day', () => {
+    // A longer window: the shop's reminders are owed again, the others not.
+    expect(inheritedKeys(said, from, { ...from, id: 'r2', windowDays: 60 }, TODAY).sort()).toEqual(['r2:reject', 'r2:warranty']);
+    // Came later than it was bought: the right to reject runs later.
+    expect(inheritedKeys(said, from, { ...from, id: 'r2', arrivedOn: toISODate(addDays(TODAY, -1)) }, TODAY)).not.toContain('r2:reject');
+    // A longer guarantee.
+    expect(inheritedKeys(said, from, { ...from, id: 'r2', warranty: { months: 24 } }, TODAY)).not.toContain('r2:warranty');
+  });
+
+  it('is decided by the comparison an edit forgets by', () => {
+    const later = { ...from, windowDays: 60 };
+    expect(movedRungs(from, later, TODAY)).toEqual(['week', 'soon', 'today', 'closed']);
+    expect(movedRungs(from, { ...from, item: 'Scarf' }, TODAY)).toEqual([]);
+    expect(movedRungs(undefined, from, TODAY)).toEqual(['week', 'soon', 'today', 'closed', 'warranty', 'reject']);
+  });
+});
+
 describe('the demo set never interrupts', () => {
   it('raises no alert, however urgent it looks', () => {
     // A notification is not a demonstration. Grant permission on a fresh
@@ -329,6 +365,27 @@ describe('a refund still to come', () => {
     expect(refunds([sentAgo(14)])[0].body).toMatch(/For an online order, the shop has 14 days from getting it back/);
     expect(refunds([sentAgo(14, { distance: false })])[0].body).not.toMatch(/online order/);
     expect(refunds([sentAgo(14)])[0].body).toMatch(/^Zara · Wool coat — it went back on .+\. .*If the money has not arrived, chase it\.$/);
+  });
+
+  it('states it only for an online order cancelled in time, by the test the receipt’s screen uses', () => {
+    // An ASOS order that came on 1 September and went back on the 20th, under
+    // ASOS's own 28 days: the cancellation period ended on the 15th, so reg.
+    // 34 does not apply. The late panel said "Ask the shop to refund you" and
+    // this reminder said the shop "has 14 days from getting it back".
+    const today = new Date(2026, 9, 4);
+    const asos = (over: Partial<Receipt> = {}): Receipt => ({
+      id: 'asos', store: 'ASOS', item: 'Coat', cat: 'clothing', amount: toPence(80),
+      purchasedOn: '2026-08-30', arrivedOn: '2026-09-01', windowStartsOn: '2026-09-01', windowDays: 28,
+      policy: 'p', distance: true, status: 'sent', sentOn: '2026-09-20', ...over,
+    });
+    const body = (r: Receipt) => dueAlerts([r], today, URGENT, none).find((a) => a.rung === 'refund')!.body;
+    expect(refundChase(asos(), today)!.statutory).toBe(false);
+    expect(body(asos())).toBe(`ASOS · Coat — it went back on ${fmtDate(new Date(2026, 8, 20))}. If the money has not arrived, chase it.`);
+    // Notice given on the 10th, inside the period, and the parcel posted
+    // after it: the regulations do apply, and the reminder says so.
+    const noticed = asos({ cancelledOn: '2026-09-10' });
+    expect(refundChase(noticed, today)!.statutory).toBe(true);
+    expect(body(noticed)).toMatch(/ For an online order, the shop has 14 days from getting it back to refund you\. /);
   });
 
   it('is never about a sample', () => {

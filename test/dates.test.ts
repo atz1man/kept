@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, addMonths, currentDay, daysBetween, fmtDate, fmtDateNear, fmtDatesTogether, fromISODate, relativeAgo, startOfDay, toISODate } from '../src/lib/dates';
+import { addDays, addMonths, currentDay, daysBetween, fmtDate, fmtDateNear, fmtDatesTogether, fromISODate, lastDayOfMonthsBeginning, relativeAgo, startOfDay, toISODate } from '../src/lib/dates';
 
 /**
  * This suite runs under TZ=America/New_York on purpose (see package.json).
@@ -139,6 +139,38 @@ describe('addMonths — the unit warranties are quoted in', () => {
 
   it('goes backwards too', () => {
     expect(toISODate(addMonths(new Date(2026, 0, 15), -2))).toBe('2025-11-15');
+  });
+});
+
+describe('lastDayOfMonthsBeginning — a period that counts its first day', () => {
+  // "Six months beginning with the day on which the goods were delivered"
+  // (Consumer Rights Act 2015, s.19(14)): the day itself is the first of them.
+  const last = (y: number, m: number, d: number, months = 6) => toISODate(lastDayOfMonthsBeginning(new Date(y, m - 1, d), months));
+
+  it('ends the day before the same date, months on', () => {
+    expect(last(2026, 1, 15)).toBe('2026-07-14');
+    expect(last(2026, 1, 15, 1)).toBe('2026-02-14');
+  });
+
+  it('ends at the end of the month before, from the first of a month', () => {
+    // Six whole months, March to August. Stepping back to 28 February and on
+    // six months, as `addMonths(addDays(d, -1), 6)` does, says 28 August.
+    expect(last(2026, 3, 1)).toBe('2026-08-31');
+    expect(last(2028, 3, 1)).toBe('2028-08-31');
+    expect(last(2026, 5, 1)).toBe('2026-10-31');
+  });
+
+  it('runs to the end of a month that has no such date', () => {
+    // No 31 February, nor 30th or 29th in 2027: the period runs to the end of it.
+    expect(last(2026, 8, 31)).toBe('2027-02-28');
+    expect(last(2026, 8, 29)).toBe('2027-02-28');
+    expect(last(2026, 3, 31)).toBe('2026-09-30');
+    // A leap year has 29 February: from the 31st it is the last day, and from
+    // the 29th the same date exists, so the period ends the day before it.
+    expect(last(2027, 8, 31)).toBe('2028-02-29');
+    expect(last(2027, 8, 29)).toBe('2028-02-28');
+    // Where the same date does exist, the day before it, as anywhere else.
+    expect(last(2026, 8, 28)).toBe('2027-02-27');
   });
 });
 
