@@ -1,6 +1,7 @@
-import { color, font, shadow, radius } from '../../tokens';
+import { color, font, gradient, shadow, radius } from '../../tokens';
 import { Pressable } from '../components/Pressable';
 import { Logo, Wordmark } from '../components/Icons';
+import { Avatar } from '../components/Avatar';
 import { isNative } from '../../lib/mirror';
 
 /*
@@ -67,16 +68,11 @@ export function Onboarding({ step, onNext, onSkip }: Props) {
       </div>
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
-        <div
-          style={{
-            height: 190, borderRadius: 16, overflow: 'hidden',
-            border: `1px solid ${color.borderHair}`, marginBottom: 26,
-          }}
-        >
-          <StepArt step={step} />
+        <div style={{ height: 190, borderRadius: radius.cardLg, overflow: 'hidden', marginBottom: 26, background: color.surfaceAlt }}>
+          {step === 0 ? <FirstArt /> : <StepArt step={step} />}
         </div>
 
-        <h1 tabIndex={-1} style={{ fontFamily: font.display, fontSize: 28, fontWeight: 600, lineHeight: 1.15, letterSpacing: '-0.6px', margin: 0 }}>
+        <h1 tabIndex={-1} style={{ fontFamily: font.display, fontSize: 30, fontWeight: 700, lineHeight: 1.12, letterSpacing: '-0.03em', margin: 0 }}>
           {current.title}
         </h1>
         <p style={{ fontSize: 15.5, lineHeight: 1.6, color: color.body, marginTop: 14, marginBottom: 0 }}>{body}</p>
@@ -129,70 +125,90 @@ export function Onboarding({ step, onNext, onSkip }: Props) {
  * as a placeholder waiting for a photographer. Swap in real photography by
  * replacing this component; nothing else changes.
  */
+/**
+ * The first screen's picture is the product itself, at small scale: the
+ * balance the home screen opens on, and two rows of the list beneath it —
+ * built from the same pieces, so it can never drift from what the app looks
+ * like. HTML rather than an SVG drawing because it carries words, and the
+ * contrast sweep measures words against the colour declared behind them:
+ * the card declares the gradient's lightest stop, as the real one does.
+ */
+function FirstArt() {
+  const row = (store: string, cat: 'audio' | 'kitchen', item: string, amount: string, days: string, urgent: boolean) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 9, background: color.white, borderRadius: 14, padding: '7px 10px' }}>
+      <Avatar store={store} cat={cat} size={26} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 11.5, fontWeight: 650, lineHeight: 1.2 }}>{store}</div>
+        <div style={{ fontSize: 10, color: color.muted, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item}</div>
+      </div>
+      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+        <div style={{ fontFamily: font.figures, fontSize: 11.5, fontWeight: 700, lineHeight: 1.2 }}>{amount}</div>
+        <div style={{ fontSize: 10, fontWeight: 600, color: urgent ? color.danger : color.muted, lineHeight: 1.2 }}>{days}</div>
+      </div>
+    </div>
+  );
+  return (
+    <div role="img" aria-label="Receipts gathered in one place, with what is still returnable at the top" style={{ height: '100%', boxSizing: 'border-box', padding: 12, display: 'flex', flexDirection: 'column', gap: 7 }}>
+      <div aria-hidden="true" style={{ backgroundColor: color.heroEnd, backgroundImage: gradient.hero, color: color.white, borderRadius: 16, padding: '10px 13px' }}>
+        <div style={{ fontSize: 10, fontWeight: 600, color: color.onHeroSoft }}>Still returnable</div>
+        <div style={{ fontFamily: font.figures, fontSize: 24, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.1 }}>
+          £153<span style={{ fontSize: 15 }}>.99</span>
+        </div>
+      </div>
+      <div aria-hidden="true">{row('Currys', 'audio', 'Headphones', '£89.00', '2 days left', true)}</div>
+      <div aria-hidden="true">{row('Argos', 'kitchen', 'Stand mixer', '£64.99', '9 days left', false)}</div>
+    </div>
+  );
+}
+
 function StepArt({ step }: { step: number }) {
   // The viewBox aspect deliberately matches the 190px-tall frame's own: with
   // `slice`, a squarer viewBox is scaled up to cover and the top and bottom of
   // the drawing are cropped away — which is how the first pass lost the tops
   // of the receipts.
   const common = { width: '100%', height: '100%', viewBox: '0 0 356 190', preserveAspectRatio: 'xMidYMid slice' } as const;
-  // Drawn as the product rather than as cartoons: miniature rows, rings and
-  // a phone in the app's own thin lines and colours. The first pass drew
-  // chunky tickets and clock hands, which read as a children's app.
-  const row = (y: number, days: string, urgent: boolean) => (
-    <g transform={`translate(60 ${y})`}>
-      <rect width="236" height="38" rx="9" fill={color.white} stroke={color.borderHair} />
-      <rect x="9" y="8" width="22" height="22" rx="6" fill={color.surfaceAlt} />
-      <rect x="40" y="11" width="58" height="6" rx="3" fill={color.ink} opacity="0.75" />
-      <rect x="40" y="22" width="92" height="5" rx="2.5" fill={color.muted} opacity="0.35" />
-      <rect x="190" y="11" width="36" height="6" rx="3" fill={color.ink} opacity="0.75" />
-      <text x="226" y="29" textAnchor="end" fontSize="8.5" fontWeight="600" fill={urgent ? color.danger : color.muted} fontFamily={font.ui}>{days}</text>
-    </g>
-  );
-
-  if (step === 0) {
-    // Receipts, gathered into one list.
-    return (
-      <svg {...common} role="img" aria-label="Receipts, gathered in one place">
-        <rect width="356" height="190" fill={color.surfaceAlt} />
-        {row(34, '2 days left', true)}
-        {row(78, '9 days left', false)}
-        {row(122, '21 days left', false)}
-      </svg>
-    );
-  }
-
   if (step === 1) {
     // Two clocks, one further through its window than the other: the shop's
     // and the law's, which is the promise the screen is making.
     const ring = (x: number, label: string, days: string, offset: number, stroke: string) => (
       <g transform={`translate(${x} 86)`}>
-        <circle r="38" fill={color.white} stroke={color.borderHair} strokeWidth="5" />
-        <circle r="38" fill="none" stroke={stroke} strokeWidth="5" strokeLinecap="round"
+        <circle r="38" fill={color.white} stroke={color.surfaceDeep} strokeWidth="7" />
+        <circle r="38" fill="none" stroke={stroke} strokeWidth="7" strokeLinecap="round"
           strokeDasharray="239" strokeDashoffset={offset} transform="rotate(-90)" />
-        <text y="6" textAnchor="middle" fontSize="19" fontWeight="600" fill={color.ink} fontFamily={font.ui}>{days}</text>
+        <text y="7" textAnchor="middle" fontSize="22" fontWeight="700" fill={stroke} fontFamily={font.figures}>{days}</text>
         <text y="64" textAnchor="middle" fontSize="10" fontWeight="500" fill={color.muted} fontFamily={font.ui}>{label}</text>
       </g>
     );
     return (
       <svg {...common} role="img" aria-label="Two countdown clocks running side by side">
-        <rect width="356" height="190" fill={color.surfaceAlt} />
         {ring(124, 'The shop’s window', '2', 205, color.danger)}
         {ring(232, 'Your legal right', '18', 96, color.accent)}
       </svg>
     );
   }
 
-  // A phone that keeps its own contents.
+  // A phone that keeps its own contents: the app's balance on its screen,
+  // behind a lock. Shapes only on the gradient — words there would be text
+  // the contrast sweep measures against the page, not the paint.
   return (
     <svg {...common} role="img" aria-label="A phone holding its receipts behind a lock">
-      <rect width="356" height="190" fill={color.surfaceAlt} />
-      <rect x="136" y="22" width="84" height="146" rx="16" fill={color.white} stroke={color.borderSoft} strokeWidth="1.2" />
-      <rect x="165" y="30" width="26" height="4" rx="2" fill={color.borderSoft} />
-      <circle cx="178" cy="95" r="24" fill={color.accentSoft} />
-      <rect x="168" y="94" width="20" height="15" rx="3.5" fill="none" stroke={color.accent} strokeWidth="1.8" />
-      <path d="M172 94v-4a6 6 0 0112 0v4" fill="none" stroke={color.accent} strokeWidth="1.8" />
-      <rect x="152" y="134" width="52" height="5" rx="2.5" fill={color.muted} opacity="0.35" />
-      <rect x="160" y="145" width="36" height="5" rx="2.5" fill={color.muted} opacity="0.25" />
+      <defs>
+        <linearGradient id="ob-hero" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor={color.heroTop} />
+          <stop offset="0.58" stopColor={color.heroMid} />
+          <stop offset="1" stopColor={color.heroEnd} />
+        </linearGradient>
+      </defs>
+      <rect x="128" y="16" width="100" height="160" rx="20" fill={color.white} stroke={color.borderSoft} strokeWidth="1.2" />
+      <rect x="166" y="23" width="24" height="4" rx="2" fill={color.borderSoft} />
+      <rect x="137" y="36" width="82" height="50" rx="11" fill="url(#ob-hero)" />
+      <rect x="145" y="46" width="30" height="4" rx="2" fill={color.white} opacity="0.7" />
+      <rect x="145" y="56" width="46" height="10" rx="3" fill={color.white} />
+      <rect x="145" y="72" width="22" height="6" rx="3" fill={color.white} opacity="0.35" />
+      <circle cx="178" cy="120" r="21" fill={color.accentSoft} />
+      <rect x="169" y="119" width="18" height="14" rx="3.5" fill="none" stroke={color.accent} strokeWidth="1.8" />
+      <path d="M172.5 119v-4a5.5 5.5 0 0111 0v4" fill="none" stroke={color.accent} strokeWidth="1.8" />
+      <rect x="152" y="152" width="52" height="5" rx="2.5" fill={color.muted} opacity="0.3" />
     </svg>
   );
 }
