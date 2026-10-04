@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fieldsFound, fromScan, readBestOf, scanFailure, type Thresholding } from '../src/lib/receipt-scan';
+import { fieldsFound, fromScan, readBestOf, scanFailure, type Thresholding, readFlattenedOrAsTaken } from '../src/lib/receipt-scan';
 import { parseReceiptText } from '../src/lib/parse';
 
 /**
@@ -201,5 +201,41 @@ describe('why a scan failed', () => {
   it('is the photo when the reader could be reached', () => {
     expect(scanFailure(true, false)).toBe('unreadable');
     expect(scanFailure(true, true)).toBe('unreadable');
+  });
+});
+
+describe('the flattened read, and the photo as taken behind it', () => {
+  const TODAY_ = new Date(2026, 8, 30);
+  const FULL = 'BOOTS\nTOTAL 19.99\n29/09/2026';
+  const NO_TOTAL = 'BOOTS\n29/09/2026';
+  /** A reader that always says `text`, and counts how often it was asked. */
+  const reader = (text: string) => {
+    const read = Object.assign(async () => {
+      read.calls += 1;
+      return text;
+    }, { calls: 0 });
+    return read;
+  };
+
+  it('reads only the photo as taken when no paper was found', async () => {
+    const asTaken = reader(FULL);
+    expect(await readFlattenedOrAsTaken(null, asTaken, TODAY_)).toBe(FULL);
+    expect(asTaken.calls).toBe(1);
+  });
+
+  it('never reads the photo as taken when the flattened read found everything', async () => {
+    const flat = reader(FULL);
+    const asTaken = reader(NO_TOTAL);
+    expect(await readFlattenedOrAsTaken(flat, asTaken, TODAY_)).toBe(FULL);
+    expect(asTaken.calls).toBe(0);
+  });
+
+  it('falls back to the photo as taken where flattening lost something it has', async () => {
+    // The shadow case: the "paper" was the lit half, and the total was cropped off.
+    expect(await readFlattenedOrAsTaken(reader(NO_TOTAL), reader(FULL), TODAY_)).toBe(FULL);
+  });
+
+  it('keeps the flattened read on a tie — it is the one with the receipt straight', async () => {
+    expect(await readFlattenedOrAsTaken(reader(NO_TOTAL), reader('BOOTS\n29/09/2026\nThanks'), TODAY_)).toBe(NO_TOTAL);
   });
 });
