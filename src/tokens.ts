@@ -51,8 +51,15 @@ export const color = {
   heroEnd: '#2453E6',
   /** Secondary text on the hero. 4.8:1 on its lightest stop. */
   onHeroSoft: '#E9E7FF',
-  /** The glass behind a chip or a round action on the hero. */
+  /** Light on the hero's glass: the decorative discs. Never under text. */
   onHeroGlass: 'rgba(255,255,255,0.16)',
+  /**
+   * The glass under a chip on the hero: the gradient's own midnight, a
+   * quarter strength. White glass was tried first and lifted the lightest
+   * stop to 4.44:1 under white text — the contrast sweep found it. This one
+   * deepens it instead: 8.3:1 there, measured in test/contrast.test.ts.
+   */
+  onHeroChip: 'rgba(15,11,61,0.25)',
 
   /** Secondary text. 5.0:1 on the deepest neutral, 6.1:1 on white. */
   muted: '#5F6270',

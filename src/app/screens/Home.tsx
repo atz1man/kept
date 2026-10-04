@@ -596,7 +596,7 @@ function Balance({ returnable, keptBack, live, dueThisWeek, samples }: {
   returnable: number; keptBack: number; live: number; dueThisWeek: number; samples: boolean;
 }) {
   const [pounds, pence] = splitMoney(returnable);
-  const chip = { fontSize: 12.5, fontWeight: 600, color: color.white, background: color.onHeroGlass, borderRadius: radius.pill, padding: '6px 11px', whiteSpace: 'nowrap' as const };
+  const chip = { fontSize: 12.5, fontWeight: 600, color: color.white, background: color.onHeroChip, borderRadius: radius.pill, padding: '6px 11px', whiteSpace: 'nowrap' as const };
   return (
     <section
       className="k-fade"
