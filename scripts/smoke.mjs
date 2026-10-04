@@ -2977,6 +2977,63 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
   results['a receipt half in shadow is read too'] =
     shadeFound && /Boots/.test(shadeCard) && /£42\.97/.test(shadeCard) && /21 Sep/.test(shadeCard);
   /*
+   * A receipt that came as a FILE: a PDF e-receipt, and an order email saved
+   * out of a mail app. The PDF is one of the unit suite's fixtures — a real
+   * PDF with a real text layer — opened through the same control a person
+   * uses, so pdf.js, its worker and the parser are exercised together, and
+   * pdf.js's worker must come from this app like the OCR reader's files do.
+   */
+  {
+    let ownPdf = 0;
+    scanPage.on('request', (r) => { if (new URL(r.url()).pathname.includes('pdf')) ownPdf += new URL(r.url()).origin === ORIGIN ? 1 : 0; });
+    const before = elsewhere.length;
+    await scanPage.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+    await scanPage.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+    await scanPage.getByRole('button', { name: 'Add a receipt' }).click();
+    await scanPage.waitForTimeout(300);
+    const pdf = readFileSync(new URL('../test/fixtures/documents/john-lewis-delivered-vat-line-before-the-total.pdf', import.meta.url));
+    await scanPage.setInputFiles('#add-file', { name: 'e-receipt.pdf', mimeType: 'application/pdf', buffer: pdf });
+    const pdfFound = await scanPage.getByText('Read from your file', { exact: true }).waitFor({ timeout: 30_000 }).then(() => true).catch(() => false);
+    const pdfCard = pdfFound ? await scanPage.locator('main').innerText() : '';
+    const pdfItem = pdfFound ? await scanPage.inputValue('#add-item').catch(() => '') : '';
+    results['a PDF e-receipt is read on the device'] =
+      pdfFound && /John Lewis/.test(pdfCard) && /£349\.00/.test(pdfCard) && /2 Sep/.test(pdfCard) && /Sony WH-1000XM6/.test(pdfItem);
+    results['and its reader is this app’s own'] = ownPdf > 0 && elsewhere.length === before;
+    if (!results['a PDF e-receipt is read on the device']) problems.push(`pdf read: ${pdfFound ? pdfCard.slice(0, 300).replace(/\n/g, ' | ') : 'no card'} · item=${pdfItem}`);
+
+    // A saved order email: the HTML part only, quoted-printable, the figure in
+    // its own table cell — the shape an order email takes on disk.
+    const eml = [
+      'From: "Currys" <orders@mail.example>',
+      'Subject: Thanks for your order',
+      'Date: Mon, 21 Sep 2026 10:00:00 +0100',
+      'MIME-Version: 1.0',
+      'Content-Type: text/html; charset="utf-8"',
+      'Content-Transfer-Encoding: quoted-printable',
+      '',
+      '<html><body><table><tr><td>Thanks for your order - 21/09/2026</td></tr>',
+      '<tr><td>1 x Russell Hobbs kettle</td><td>=C2=A339.99</td></tr>',
+      '<tr><td>Total</td><td align=3D"right">=C2=A329.99</td></tr></table></body></html>',
+      '',
+    ].join('\r\n');
+    await scanPage.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+    await scanPage.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+    await scanPage.getByRole('button', { name: 'Add a receipt' }).click();
+    await scanPage.waitForTimeout(300);
+    await scanPage.setInputFiles('#add-file', { name: 'order.eml', mimeType: 'message/rfc822', buffer: Buffer.from(eml) });
+    const emlFound = await scanPage.getByText('Read from your file', { exact: true }).waitFor({ timeout: 15_000 }).then(() => true).catch(() => false);
+    const emlCard = emlFound ? await scanPage.locator('main').innerText() : '';
+    results['a saved order email is read on the device'] = emlFound && /Currys/.test(emlCard) && /£29\.99/.test(emlCard) && /21 Sep/.test(emlCard);
+    if (!results['a saved order email is read on the device']) problems.push(`eml read: ${emlFound ? emlCard.slice(0, 300).replace(/\n/g, ' | ') : 'no card'}`);
+
+    // And a file that is no receipt says so, rather than reading nothing.
+    await scanPage.setInputFiles('#add-file', { name: 'song.bin', mimeType: 'application/octet-stream', buffer: Buffer.from([0, 1, 2, 3, 4, 5, 6, 7, 0, 0]) });
+    results['a file that is no receipt is named as such'] = await scanPage
+      .getByText('That file is none of those', { exact: false })
+      .waitFor({ timeout: 5000 }).then(() => true).catch(() => false);
+  }
+
+  /*
    * Offline, a scan either works or says the connection is why it did not.
    *
    * Whether it works depends on the browser. The reader's worker fetches its
