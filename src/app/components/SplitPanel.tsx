@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { color, radius } from '../../tokens';
 import { money } from '../../lib/money';
-import { readSplit } from '../../lib/split';
+import { readSplit, splittableLines } from '../../lib/split';
 import type { Receipt } from '../../lib/types';
 import { Field, inputStyle } from './Field';
 import { Pressable } from './Pressable';
@@ -35,6 +35,30 @@ export function SplitPanel({ receipt, onSplit }: { receipt: Receipt; onSplit: (i
         Take one thing out as its own receipt, with the same shop and dates, so it can go back or stay on its own. The
         rest of the {money(receipt.amount)} stays here.
       </div>
+      {/* What the receipt itself listed, each one tap — the name and price the
+          receipt gave, rather than typed again from it. */}
+      {splittableLines(receipt).length > 0 && (
+        <div data-split-lines style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: color.bodyStrong, marginBottom: 6 }}>On this receipt</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {splittableLines(receipt).map((l, i) => (
+              <Pressable
+                key={`${l.item}-${i}`}
+                className="k-row-white k-secondary"
+                onClick={() => onSplit(l.item, l.pence)}
+                style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, minHeight: 44, padding: '8px 12px',
+                  background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, textAlign: 'left', fontSize: 14,
+                }}
+              >
+                <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>Split out {l.item}</span>
+                <span style={{ fontWeight: 600, flexShrink: 0 }}>{money(l.pence)}</span>
+              </Pressable>
+            ))}
+          </div>
+          <div style={{ fontSize: 12.5, color: color.muted, marginTop: 8 }}>Or name a part yourself:</div>
+        </div>
+      )}
       <Field id="split-item" label="What is it?">
         {(p) => <input {...p} value={item} onChange={(e) => setItem(e.target.value)} style={inputStyle(false)} />}
       </Field>

@@ -60,6 +60,15 @@ export interface Receipt {
    * form, a chat window and the letter to the shop all ask for.
    */
   orderRef?: string;
+  /**
+   * The things the receipt listed and what each cost, as read when it was
+   * added — only where it listed several that hold together (`pickLines` in
+   * parse.ts). What the split panel offers to take out in one tap, so a
+   * basket becomes the parts that go back and the parts that stay without
+   * the person typing names and prices the receipt already gave. Absent for
+   * a single thing, a typed-in receipt, and every receipt from before this.
+   */
+  lines?: { item: string; pence: number }[];
   policy: string;
   /**
    * Whether this was a DISTANCE purchase — ordered online, by phone, or away

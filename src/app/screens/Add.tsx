@@ -163,7 +163,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
   const typeItIn = () => {
     setParsed({
       store: null, policy: null, amount: null, purchasedOn: toISODate(today), dateFound: false,
-      arrivedOn: null, dispatchedOn: null, windowDays: UNKNOWN_STORE_WINDOW_DAYS, item: null, orderRef: null,
+      arrivedOn: null, dispatchedOn: null, windowDays: UNKNOWN_STORE_WINDOW_DAYS, item: null, orderRef: null, lines: [],
     });
     setError(false);
     setTypedIn(true);
@@ -410,6 +410,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       windowDays: effectiveWindow,
       ...(distance && arrivedOn ? { arrivedOn } : {}),
       ...(parsed.orderRef ? { orderRef: parsed.orderRef } : {}),
+      ...(!typedIn && parsed.lines.length ? { lines: parsed.lines } : {}),
       policy: policyFor(store, effectiveWindow, inForce?.changedOn, distance),
       distance,
       gotcha: policy?.gotcha,
@@ -647,6 +648,18 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
             </div>
           )}
           {parsed.orderRef && <Row label="Order number" value={parsed.orderRef} mono />}
+          {/* A basket: what it listed, so the person sees the parts are known
+              and where to take one out — the receipt's own screen, once saved. */}
+          {!typedIn && parsed.lines.length > 0 && (
+            <div data-lines style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${color.borderHair}` }}>
+              <div style={{ fontSize: 13, color: color.muted }}>
+                {parsed.lines.length} things on this receipt — split any of them out later to return it on its own.
+              </div>
+              {parsed.lines.map((l, i) => (
+                <Row key={`${l.item}-${i}`} label={l.item} value={money(l.pence)} mono />
+              ))}
+            </div>
+          )}
           {windowTyped ? (
             <div style={{ margin: '4px 0 10px' }}>
               <label htmlFor="add-window" style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>

@@ -317,7 +317,8 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         ...state,
         receipts: state.receipts
           .filter((x) => x.id !== part.id)
-          .map((x) => (x.id === from.id ? { ...x, amount: x.amount + part.amount } : x)),
+          // Back on the list it came off, where there still is one.
+          .map((x) => (x.id === from.id ? { ...x, amount: x.amount + part.amount, ...(x.lines ? { lines: [...x.lines, { item: part.item, pence: part.amount }] } : {}) } : x)),
         alertsSent: pruneSent(state.alertsSent, state.receipts.filter((x) => x.id !== part.id)),
         screen: 'detail',
         selId: from.id,

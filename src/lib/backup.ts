@@ -1,5 +1,6 @@
 import { fromISODate, toISODate } from './dates';
 import { MAX_AMOUNT_PENCE, MAX_ORDER_REF, MAX_WINDOW_DAYS } from './draft';
+import { MAX_LINES } from './parse';
 import { canonicalStoreName } from './stores';
 import { readReturnRef } from './refund-chase';
 import type { Category, Receipt, ReceiptStatus, Warranty } from './types';
@@ -174,6 +175,19 @@ export function readReceipt(raw: unknown, fromOutside = false): Receipt | null {
     })(),
     ...(isStr(r.gotcha) ? { gotcha: fromOutside ? trim(r.gotcha, MAX_NOTE) : r.gotcha } : {}),
     ...(isStr(r.orderRef) ? { orderRef: trim(r.orderRef, MAX_ORDER_REF) } : {}),
+    // The listed things: each a named thing for less than the whole, or it is
+    // dropped — a line no split could take out is a suggestion that fails.
+    ...(() => {
+      if (!Array.isArray(r.lines)) return {};
+      const lines = (r.lines as unknown[])
+        .slice(0, MAX_LINES)
+        .filter((l): l is { item: string; pence: number } =>
+          typeof l === 'object' && l !== null && isStr((l as { item?: unknown }).item) &&
+          Number.isInteger((l as { pence?: unknown }).pence) && (l as { pence: number }).pence > 0 && (l as { pence: number }).pence < (r.amount as number))
+        .map((l) => ({ item: fromOutside ? trim(l.item, MAX_ITEM) : l.item, pence: l.pence }))
+        .filter((l) => l.item.trim().length > 0);
+      return lines.length ? { lines } : {};
+    })(),
     status: r.status as ReceiptStatus,
     ...(r.returnedOn !== undefined ? { returnedOn: r.returnedOn as string } : {}),
     ...(refunded !== undefined ? { refunded } : {}),
