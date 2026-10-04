@@ -124,7 +124,7 @@ describe('adopting another tab’s state', () => {
 
   it('falls back to the list when the open receipt was deleted elsewhere', () => {
     // Otherwise the detail screen renders nothing at all.
-    for (const screen of ['detail', 'edit'] as const) {
+    for (const screen of ['detail', 'edit', 'pack'] as const) {
       const s = base({ screen, selId: 'a' });
       const synced = reducer(s, { type: 'sync', state: {
         version: 1, receipts: [receipt('b')], updates: [], onboardingSeen: true,
@@ -227,6 +227,12 @@ describe('the selection survives the trip to edit and back', () => {
   it('keeps the receipt when going from detail to edit', () => {
     const s = reducer(base({ screen: 'detail', selId: 'a' }), { type: 'go', screen: 'edit' }, TODAY);
     expect(s.selId).toBe('a');
+  });
+
+  it('keeps it on the way to the claim pack and back', () => {
+    const there = reducer(base({ screen: 'detail', selId: 'a' }), { type: 'go', screen: 'pack' }, TODAY);
+    expect(there.selId).toBe('a');
+    expect(reducer(there, { type: 'go', screen: 'detail' }, TODAY).selId).toBe('a');
   });
 
   it('keeps it coming back from edit to detail', () => {

@@ -206,6 +206,14 @@ await page.getByRole('button', { name: /Zara, Wool-blend/ }).click();
 await page.waitForTimeout(400);
 await audit(page, 'receipt detail · distance purchase', findings);
 
+// The claim pack for it: a timeline with two kinds of dot, the hedged
+// dates of an order not yet marked arrived, and the rights at full length.
+await page.getByRole('button', { name: /^Claim pack/ }).click();
+await page.waitForTimeout(400);
+await audit(page, 'claim pack · distance purchase', findings);
+await page.getByRole('button', { name: 'Back', exact: true }).click();
+await page.waitForTimeout(300);
+
 // Its edit form, which is where the "Arrived on" field lives — only a
 // delivered order has one, and the seeded receipt these sweeps open by default
 // was bought over a counter, so nothing would ever have rendered it.
@@ -469,6 +477,8 @@ await focusPage.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
 for (const [label, go] of [
   ['onboarding → home', async () => focusPage.getByRole('button', { name: 'Skip' }).click()],
   ['home → a receipt', async () => focusPage.getByRole('button', { name: /Currys, JBL/ }).click()],
+  ['receipt → claim pack', async () => focusPage.getByRole('button', { name: /^Claim pack/ }).click()],
+  ['claim pack → back', async () => focusPage.getByRole('button', { name: 'Back', exact: true }).click()],
   ['receipt → edit', async () => focusPage.getByRole('button', { name: 'Edit', exact: true }).click()],
   ['edit → back', async () => focusPage.getByRole('button', { name: 'Cancel' }).click()],
   ['receipt → watch tab', async () => focusPage.getByRole('button', { name: /^Watch/ }).click()],

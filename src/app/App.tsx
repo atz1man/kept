@@ -19,6 +19,7 @@ import { UndoBar } from './components/UndoBar';
 import { UpgradeNotice } from './components/UpgradeNotice';
 import { Add } from './screens/Add';
 import { Celebrate } from './screens/Celebrate';
+import { ClaimPack } from './screens/ClaimPack';
 import { Detail } from './screens/Detail';
 import { Edit } from './screens/Edit';
 import { Home } from './screens/Home';
@@ -438,6 +439,7 @@ export function App() {
           urgentDays={settings.urgentDays}
           onBack={() => dispatch({ type: 'go', screen: 'home' })}
           onEdit={() => dispatch({ type: 'go', screen: 'edit' })}
+          onPack={() => dispatch({ type: 'go', screen: 'pack' })}
           onReturn={() => dispatch({ type: 'return', id: selected.id })}
           onUnreturn={() => dispatch({ type: 'unreturn', id: selected.id })}
           onExchange={() => dispatch({ type: 'exchange', id: selected.id, newId: makeReceiptId() })}
@@ -463,6 +465,10 @@ export function App() {
           onCancelUnsent={() => dispatch({ type: 'cancel-unsent', id: selected.id })}
           onDelete={() => dispatch({ type: 'delete', id: selected.id })}
         />
+      )}
+
+      {screen === 'pack' && selected && (
+        <ClaimPack receipt={selected} today={today} onBack={() => dispatch({ type: 'go', screen: 'detail' })} />
       )}
 
       {screen === 'edit' && selected && (
