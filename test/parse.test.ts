@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { addDays, toISODate } from '../src/lib/dates';
 import { money } from '../src/lib/money';
-import { parseReceiptText, UNKNOWN_STORE_WINDOW_DAYS } from '../src/lib/parse';
+import { compiledAliasPatterns, parseReceiptText, UNKNOWN_STORE_WINDOW_DAYS } from '../src/lib/parse';
 
 const TODAY = new Date(2026, 7, 28); // Friday 28 August 2026
 
@@ -713,6 +713,23 @@ describe('what an order email actually looks like', () => {
       parse(`Argos order\n${run}\nTotal £20.00`);
       expect(performance.now() - started).toBeLessThan(2000);
     }
+  });
+
+  it('compiles a shop name\'s pattern once, and only for a shop the paste mentions', () => {
+    /*
+     * Each of the 163 aliases' patterns was built again on every read: 128 ms
+     * for the first "Read it" on a desktop, the better part of a second on a
+     * phone. Now a paste that does not contain an alias never builds its
+     * pattern, and one that does builds it once for the life of the app.
+     */
+    const before = compiledAliasPatterns();
+    parse('Thanks for shopping with Bloggs Hardware\nOrder date: 1 September 2026\n1 x Hammer £12.99\nTotal £12.99');
+    expect(compiledAliasPatterns() - before).toBeLessThan(5);
+    const email = 'Your John Lewis order\nOrder date: 1 September 2026\nLamp £45.00\nTotal £45.00';
+    expect(parse(email).store).toBe('John Lewis');
+    const once = compiledAliasPatterns();
+    expect(parse(email).store).toBe('John Lewis');
+    expect(compiledAliasPatterns()).toBe(once);
   });
 
   describe('"delivered today", read against the email, never the paste', () => {
