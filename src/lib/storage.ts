@@ -1,3 +1,4 @@
+import { readPrice } from './app-store';
 import { readReceipt } from './backup';
 import { chooseSource, holdMirrorWrites, isNative, mirrorWritesHeld, readMirrorWithin, releaseMirrorWrites, writeMirror } from './mirror';
 import { erasePhotos } from './photos';
@@ -41,8 +42,22 @@ const SCHEMA_VERSION = 1;
 
 export interface Settings {
   urgentDays: number;
-  /** The free tier caps the library; the paid tiers do not. */
+  /**
+   * The free tier caps the library; the unlock does not. On the web this is
+   * the local flag the free unlock sets. On iPhone only StoreKit sets it: a
+   * verified purchase makes it 'pro' and a refund makes it 'free'
+   * (lib/app-store.ts). It is stored so a paying customer is not shown the
+   * cap while the App Store is still being asked.
+   */
   plan: 'free' | 'pro';
+  /**
+   * The unlock's price at the App Store's last answer, as Apple wrote it for
+   * this storefront, or null when it has never answered or does not sell the
+   * unlock here. It keeps the offer, and the cap, in place while the App Store
+   * cannot be reached, so going offline is not a way round the cap
+   * (`offerFor` in lib/pricing.ts).
+   */
+  appStorePrice: string | null;
   deadlineAlerts: boolean;
   policyWatch: boolean;
   /**
@@ -81,6 +96,7 @@ export const URGENT_DAYS_MAX = 21;
 export const DEFAULT_SETTINGS: Settings = {
   urgentDays: DEFAULT_URGENT_DAYS,
   plan: 'free',
+  appStorePrice: null,
   deadlineAlerts: true,
   policyWatch: true,
   remindersExplained: false,
@@ -150,6 +166,7 @@ function readSettings(raw: unknown): Settings {
   return {
     urgentDays: urgent,
     plan: s.plan === 'pro' ? 'pro' : 'free',
+    appStorePrice: readPrice(s.appStorePrice),
     deadlineAlerts: bool(s.deadlineAlerts, DEFAULT_SETTINGS.deadlineAlerts),
     policyWatch: bool(s.policyWatch, DEFAULT_SETTINGS.policyWatch),
     remindersExplained: bool(s.remindersExplained, DEFAULT_SETTINGS.remindersExplained),

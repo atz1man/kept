@@ -1,3 +1,5 @@
+import type { Shelf } from './app-store';
+
 /**
  * What the product costs, in one place.
  *
@@ -32,24 +34,55 @@ export interface Unlock {
 export const UNLOCK: Unlock = { price: '£9.99', suffix: ' once' };
 
 /**
- * Whether this build may offer a paid tier at all.
+ * What this build may offer, and at what price.
  *
- * Not on iOS, until StoreKit exists (APN-18). Guideline 3.1.1 requires
- * In-App Purchase for anything that unlocks a feature, and these tiers unlock
- * a local flag with no payment at all — honest on the web, where the sheet
- * says plainly that nothing was charged, and a likely rejection on the App
- * Store, where a priced button that bypasses IAP reads as circumventing it
- * whatever it actually does.
+ * - `web`: the browser's unlock. It flips a local flag with no payment, and
+ *   the sheet in front of it says plainly that nothing is charged
+ *   (`UpgradeNotice`).
+ * - `app-store`: the iPhone's unlock, sold through In-App Purchase. Guideline
+ *   3.1.1 requires that for anything that unlocks a feature, and before
+ *   StoreKit the iOS build offered nothing at all (APN-18). The price is the
+ *   App Store's own, for the person's storefront: a hard-coded "£9.99" would be
+ *   wrong in every other country and could disagree with the sheet Apple shows
+ *   next. It is null only while the App Store has not answered and nothing is
+ *   remembered.
+ * - `none`: nothing to buy: no StoreKit, or the App Store does not sell the
+ *   unlock here.
  *
- * And no CAP where there is nothing to buy. A limit with no way past it is not
- * a free tier, it is a wall: someone would add their eleventh receipt and be
- * told to "go unlimited" by an app with no way to let them. So on iOS the
- * library is unlimited, which is also where APN-34 was leaning — cap features,
- * not the library.
- *
- * A decision, not a fact about the world: the day StoreKit lands, this is the
- * function that changes, and every surface that sells or limits reads it.
+ * Where there is nothing to buy there is no CAP either. A limit with no way
+ * past it is not a free tier, it is a wall: someone would add their eleventh
+ * receipt and be told to "go unlimited" by an app with no way to let them.
+ * Every surface that sells or limits reads this one decision.
  */
-export function sellsPaidTiers(native: boolean): boolean {
-  return !native;
+export type Offer =
+  | { kind: 'web'; price: string }
+  | { kind: 'app-store'; price: string | null; canPay: boolean }
+  | { kind: 'none' };
+
+/**
+ * The offer for this build.
+ *
+ * `remembered` is the App Store's price at its last answer (`rememberedPrice`
+ * in lib/app-store.ts). It keeps the offer, and so the cap, in place while the
+ * App Store cannot be asked: otherwise airplane mode would lift the cap. Where
+ * the App Store has never answered, nothing is remembered and nothing is
+ * capped: a first launch offline is not the moment to put up a wall.
+ */
+export function offerFor(native: boolean, shelf: Shelf, remembered: string | null): Offer {
+  if (!native) return { kind: 'web', price: UNLOCK.price };
+  if (shelf.kind === 'for-sale') return { kind: 'app-store', price: shelf.price, canPay: shelf.canPay };
+  if ((shelf.kind === 'asking' || shelf.kind === 'unreachable') && remembered !== null) {
+    return { kind: 'app-store', price: remembered, canPay: true };
+  }
+  return { kind: 'none' };
+}
+
+/** Whether the free tier's cap applies: only where there is a way past it. */
+export function capsLibrary(offer: Offer): boolean {
+  return offer.kind !== 'none';
+}
+
+/** The words on the button, priced: one string, so every surface says it the same way. */
+export function unlockLabel(price: string | null): string {
+  return price === null ? 'Unlock unlimited' : `Unlock unlimited · ${price}${UNLOCK.suffix}`;
 }
