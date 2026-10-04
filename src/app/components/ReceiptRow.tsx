@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { color, font } from '../../tokens';
+import { category, color, font } from '../../tokens';
 import { money } from '../../lib/money';
 import type { Receipt } from '../../lib/types';
 import type { Urgency } from '../../lib/urgency';
@@ -120,12 +120,12 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
       >
         <div
           style={{
-            width: 36, height: 36, borderRadius: 9, background: color.surfaceAlt,
+            width: 36, height: 36, borderRadius: 9, background: category[receipt.cat].tint,
             display: 'flex', alignItems: 'center',
             justifyContent: 'center', flexShrink: 0,
           }}
         >
-          <CatIcon cat={receipt.cat} />
+          <CatIcon cat={receipt.cat} stroke={category[receipt.cat].ink} />
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>

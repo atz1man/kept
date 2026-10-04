@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { color, font, radius, shadow } from '../../tokens';
+import { category, color, font, radius, shadow } from '../../tokens';
 import { winCardLine } from '../win-card';
 import { money, type Pence } from '../../lib/money';
 import { LogoChecked } from '../components/Icons';
@@ -35,6 +35,21 @@ interface Props {
   undoShowing?: boolean;
 }
 
+
+/**
+ * The dots that leave the tick, once: ten, evenly round a circle, in the
+ * category inks and the accent — the colours the list already wears, so the
+ * moment belongs to the same app rather than to a confetti library.
+ */
+const BURST = (() => {
+  const fills = [color.accent, category.audio.ink, category.kitchen.ink, category.clothing.ink, category.beauty.ink, category.furniture.ink];
+  return Array.from({ length: 10 }, (_, i) => {
+    const a = (i / 10) * Math.PI * 2;
+    const r = i % 2 ? 40 : 58;
+    return { dx: Math.round(Math.cos(a) * r), dy: Math.round(Math.sin(a) * r), fill: fills[i % fills.length] };
+  });
+})();
+
 export function Celebrate({ amount, cost, store, inTime, recovered, shared, line, onShare, onSetRefund, onDone, undoShowing = false }: Props) {
   const [correcting, setCorrecting] = useState(false);
   return (
@@ -48,7 +63,21 @@ export function Celebrate({ amount, cost, store, inTime, recovered, shared, line
     <div className="k-fade" style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', padding: `6px 20px ${undoShowing ? 196 : 104}px` }}>
       <div style={{ flex: '1 0 auto', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <div style={{ background: color.white, color: color.ink, borderRadius: radius.heroLg, padding: '28px 24px', border: `1px solid ${color.borderHair}`, boxShadow: shadow.raisedLg, position: 'relative', overflow: 'hidden' }}>
-          <LogoChecked />
+          <span style={{ position: 'relative', display: 'inline-block' }}>
+            <span className="k-pop" style={{ display: 'inline-block' }}><LogoChecked /></span>
+            {BURST.map(({ dx, dy, fill }, i) => (
+              <span
+                key={i}
+                aria-hidden="true"
+                className="k-burst"
+                style={{
+                  position: 'absolute', left: 'calc(50% - 4px)', top: 'calc(50% - 4px)', width: 8, height: 8,
+                  borderRadius: radius.pill, background: fill, pointerEvents: 'none',
+                  ['--dx' as string]: `${dx}px`, ['--dy' as string]: `${dy}px`,
+                }}
+              />
+            ))}
+          </span>
           <h1 tabIndex={-1} style={{ fontSize: 14, color: color.muted, fontWeight: 600, margin: '14px 0 0' }}>
             Money back
           </h1>

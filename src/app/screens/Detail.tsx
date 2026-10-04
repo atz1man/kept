@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { color, font, radius, shadow } from '../../tokens';
+import { category, color, font, radius, shadow } from '../../tokens';
 import { addDays, daysBetween, fmtDateLong, fmtDatesTogether, fromISODate } from '../../lib/dates';
 import { firstToClose, firstToCloseLine, LEGAL_DISCLAIMER, legalRights } from '../../lib/legal';
 import { REFUND_CHASE_DAYS } from '../../lib/alerts';
@@ -8,8 +8,8 @@ import { asksForGuarantee, awaitingArrival, derive, refundOf } from '../../lib/r
 import type { Receipt } from '../../lib/types';
 import { clockFor, findStore, shopCheckedOn, windowChecked } from '../../lib/stores';
 import { returnsPageFor } from '../../lib/returns-pages';
-import { urgency } from '../../lib/urgency';
-import { ChevronLeft, ReceiptGlyph, Warning } from '../components/Icons';
+import { urgency, windowRemaining } from '../../lib/urgency';
+import { CatIcon, ChevronLeft, ReceiptGlyph, Warning } from '../components/Icons';
 import { Pressable } from '../components/Pressable';
 import { ReceiptPhoto } from '../components/ReceiptPhoto';
 import { CancelPanel } from '../components/CancelPanel';
@@ -81,7 +81,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
    * beside an empty grey track, with no red anywhere on it. There is still a
    * day left on the last day, and the ring now says so — thinly.
    */
-  const remaining = Math.max(0, Math.min(1, (d.daysLeft + 1) / receipt.windowDays));
+  const remaining = windowRemaining(d.daysLeft, receipt.windowDays);
   /*
    * A settled receipt — returned or kept — has no clock. The ring went on
    * counting down in urgency red ("closed", "RETURN BY", "3 days left")
@@ -168,7 +168,14 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
           * pieces of text, not the size of the screen.
           */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ minWidth: 0, flex: '1 1 60%' }}>
+          <div style={{ minWidth: 0, flex: '1 1 60%', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+           <span
+             aria-hidden="true"
+             style={{ width: 42, height: 42, flexShrink: 0, borderRadius: 11, display: 'grid', placeItems: 'center', background: category[receipt.cat].tint }}
+           >
+             <CatIcon cat={receipt.cat} stroke={category[receipt.cat].ink} />
+           </span>
+           <div style={{ minWidth: 0 }}>
             <h1 tabIndex={-1} style={{ fontSize: 21, fontWeight: 600, margin: 0 }}>{receipt.store}</h1>
             <div style={{ fontSize: 14, color: color.muted, marginTop: 3 }}>{receipt.item}</div>
             {receipt.orderRef && (
@@ -176,6 +183,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
                 Order {receipt.orderRef}
               </div>
             )}
+           </div>
           </div>
           <div style={{ fontFamily: font.figures, fontSize: 26, fontWeight: 600, color: color.ink }}>
             {money(receipt.amount)}

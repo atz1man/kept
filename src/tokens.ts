@@ -61,6 +61,26 @@ export const color = {
 } as const;
 
 /**
+ * A colour per kind of thing, for the small tile beside each receipt.
+ *
+ * Every row drew the same grey square, so a list of twelve receipts was
+ * twelve identical grey squares and a person found the coat by reading.
+ * A tint per category lets the eye find the kind before the name — the way
+ * a bank app colours its spending categories — without becoming a second
+ * urgency signal: red stays reserved for a deadline, so no tint here is red,
+ * and none is the accent green the buttons use. Soft grounds, deep inks;
+ * each ink is 5.7:1 or better on its own tint, measured.
+ */
+export const category = {
+  audio: { tint: '#E7EEFB', ink: '#2A55A8' },
+  kitchen: { tint: '#FCEEE2', ink: '#9A4510' },
+  clothing: { tint: '#F2E9FA', ink: '#6A3D9C' },
+  beauty: { tint: '#FBE8EF', ink: '#A12F5B' },
+  furniture: { tint: '#E9F2E3', ink: '#43652A' },
+  other: { tint: color.surfaceAlt, ink: color.ink },
+} as const;
+
+/**
  * The three type roles, each with ONE fallback stack.
  *
  * These tokens existed and nothing used them: forty-eight font-family

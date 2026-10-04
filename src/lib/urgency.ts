@@ -52,3 +52,16 @@ export function heroCount(daysLeft: number): { count: string; word: string } {
   if (daysLeft === 1) return { count: '1', word: 'day left to return your' };
   return { count: String(daysLeft), word: 'days left to return your' };
 }
+
+/**
+ * How much of the shop's window is left, 0 to 1, for the ring on a receipt
+ * and the bar on the home card — one rule, so the two cannot disagree.
+ *
+ * Counted INCLUSIVE of today: `daysLeft` is 0 on the last day the thing can
+ * go back, and there is still a day left on it, so the ring is thin rather
+ * than empty on exactly the day it matters most. Clamped at both ends: a
+ * receipt past its deadline draws nothing rather than sweeping backwards.
+ */
+export function windowRemaining(daysLeft: number, windowDays: number): number {
+  return Math.max(0, Math.min(1, (daysLeft + 1) / Math.max(1, windowDays)));
+}
