@@ -2,10 +2,11 @@
  * Whether a field the Add card marks "check" is the field that came out
  * wrong. Reads every photo shoot.mjs took exactly as scan.ts does, then for
  * the total and the purchase date records: right or wrong, how the parser
- * found it, and the lowest confidence tesseract gave the words it was read
- * from. Prints the two tables the marks were chosen from.
+ * found it, the lowest confidence tesseract gave the words it was read from,
+ * and whether lib/confidence.ts — the app's own rule, called here rather than
+ * copied — marks it. Prints the tables the marks were chosen from.
  *
- *   npx vite-node scripts/scan-bench/confidence.ts
+ *   OUT=<dir with meta.json and the photos> npx vite-node scripts/scan-bench/confidence.ts
  */
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { createWorker, OEM } from 'tesseract.js';
@@ -14,6 +15,7 @@ import { decodePng, writeOpaquePng } from '../png.mjs';
 import { readable, toGray, type Gray } from '../../src/lib/flatten';
 import { readFlattenedOrAsTaken, fromScan, type Reader } from '../../src/lib/receipt-scan';
 import { parseReceiptText } from '../../src/lib/parse';
+import { toCheck } from '../../src/lib/confidence';
 
 const DIR = process.env.OUT ?? new URL('./out', import.meta.url).pathname;
 const TMP = `${DIR}/tmp`;
@@ -29,14 +31,14 @@ function toPng(g: Gray, name: string): string {
   return path;
 }
 
-type Word = { text: string; confidence: number };
+type Word = { text: string; confidence: number; line: string };
 const words = new Map<string, Word[]>();
 const worker = await createWorker('eng', OEM.LSTM_ONLY, { langPath: new URL('../../node_modules/@tesseract.js-data/eng/4.0.0_best_int', import.meta.url).pathname, cachePath: TMP });
 const readerOf = (path: string): Reader => async (how) => {
   await worker.setParameters({ thresholding_method: how === 'global' ? '0' : '2' });
   const { data } = await worker.recognize(path, {}, { text: true, blocks: true });
   const ws: Word[] = [];
-  for (const b of data.blocks ?? []) for (const p of b.paragraphs) for (const l of p.lines) for (const w of l.words) ws.push({ text: w.text, confidence: w.confidence });
+  for (const b of data.blocks ?? []) for (const p of b.paragraphs) for (const l of p.lines) for (const w of l.words) ws.push({ text: w.text, confidence: w.confidence, line: l.text.trim() });
   words.set(data.text, ws);
   return data.text;
 };
@@ -47,7 +49,7 @@ function lowest(ws: Word[], needles: string[]): number | null {
   return hit.length ? Math.min(...hit.map((w) => w.confidence)) : null;
 }
 
-const rows: { file: string; field: string; right: boolean; how: string | null; conf: number | null }[] = [];
+const rows: { file: string; field: string; right: boolean; how: string | null; conf: number | null; marked: boolean }[] = [];
 const reads: { file: string; ocr: string; words: Word[]; total: number; day: string }[] = [];
 for (const m of meta) {
   const png = decodePng(`${DIR}/${m.file}`);
@@ -58,20 +60,24 @@ for (const m of meta) {
   reads.push({ file: m.file, ocr, words: ws, total: Math.round(parseFloat(m.total.replace(/[£,]/g, '')) * 100), day: m.day });
   const out = parseReceiptText(fromScan(ocr), TODAY);
   const pence = Math.round(parseFloat(m.total.replace(/[£,]/g, '')) * 100);
-  if (!out.ok) { rows.push({ file: m.file, field: 'total', right: false, how: null, conf: null }, { file: m.file, field: 'day', right: false, how: null, conf: null }); continue; }
+  if (!out.ok) { rows.push({ file: m.file, field: 'total', right: false, how: null, conf: null, marked: false }, { file: m.file, field: 'day', right: false, how: null, conf: null, marked: false }); continue; }
   const v = out.value;
+  const marks = toCheck(v, ws.filter((w) => w.confidence < 90));
   const amountDigits = v.amount === null ? [] : [digits((v.amount / 100).toFixed(2))];
   const [y, mo, d] = v.purchasedOn.split('-');
-  rows.push({ file: m.file, field: 'total', right: v.amount === pence, how: v.how.amount, conf: lowest(ws, amountDigits) });
-  rows.push({ file: m.file, field: 'day', right: v.dateFound && v.purchasedOn === m.day, how: v.how.purchasedOn, conf: v.dateFound ? lowest(ws, [`${d}${mo}`, `${d}${mo}${y.slice(2)}`, d.padStart(2, '0')]) : null });
+  rows.push({ file: m.file, field: 'total', right: v.amount === pence, how: v.how.amount, conf: lowest(ws, amountDigits), marked: marks.amount !== undefined });
+  rows.push({ file: m.file, field: 'day', right: v.dateFound && v.purchasedOn === m.day, how: v.how.purchasedOn, conf: v.dateFound ? lowest(ws, [`${d}${mo}`, `${d}${mo}${y.slice(2)}`, d.padStart(2, '0')]) : null, marked: marks.purchasedOn !== undefined });
   const r = rows.slice(-2);
-  console.log(m.file.padEnd(48), r.map((x) => `${x.field}:${x.right ? 'ok ' : 'BAD'} ${String(x.how).padEnd(7)} ${x.conf === null ? '  -' : x.conf.toFixed(0).padStart(3)}`).join('   '));
+  console.log(m.file.padEnd(48), r.map((x) => `${x.field}:${x.right ? 'ok ' : 'BAD'} ${String(x.how).padEnd(7)} ${x.conf === null ? '  -' : x.conf.toFixed(0).padStart(3)}${x.marked ? ' CHECK' : '      '}`).join('   '));
 }
 await worker.terminate();
 writeFileSync(`${DIR}/confidence.json`, JSON.stringify(rows, null, 1));
 writeFileSync(`${DIR}/reads.json`, JSON.stringify(reads));
 
 for (const field of ['total', 'day']) {
+  // A field the parser never found is asked for outright, so it is not counted here.
+  const found = rows.filter((r) => r.field === field && r.how !== null);
+  console.log(`\n${field}: the app marks ${found.filter((r) => !r.right && r.marked).length} of ${found.filter((r) => !r.right).length} wrong, and ${found.filter((r) => r.right && r.marked).length} of ${found.filter((r) => r.right).length} right`);
   const fr = rows.filter((r) => r.field === field && r.how !== null);
   const byHow = new Map<string, { right: number; wrong: number }>();
   for (const r of fr) { const t = byHow.get(r.how!) ?? { right: 0, wrong: 0 }; t[r.right ? 'right' : 'wrong']++; byHow.set(r.how!, t); }

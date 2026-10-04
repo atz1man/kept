@@ -498,7 +498,9 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       {parsed && (
         <div className="k-fade" style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.cardLg, padding: 18, marginTop: 16, boxShadow: shadow.raised }}>
           <div style={{ fontFamily: font.figures, fontSize: 11, letterSpacing: 0, color: color.accentInk, fontWeight: 600 }}>
-            {typedIn ? 'Type it in' : scannedText !== null && text === scannedText ? (readFrom === 'file' ? 'Read from your file' : 'Read from your photo') : 'Found in your paste'}
+            {/* Its own element: where the card's findings came from is one
+                fact, how many of them to check is another. */}
+            <span>{typedIn ? 'Type it in' : scannedText !== null && text === scannedText ? (readFrom === 'file' ? 'Read from your file' : 'Read from your photo') : 'Found in your paste'}</span>
             {checkCount(checks) > 0 && <span style={{ color: color.cautionInk }}>{` · ${checkCount(checks)} to check`}</span>}
           </div>
           <div style={{ marginTop: 12 }}>

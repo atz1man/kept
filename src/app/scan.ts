@@ -116,7 +116,7 @@ export async function readReceiptPhoto(file: Blob, today: Date, onProgress?: Sca
       // `blocks` for the per-word scores; the text is the same either way.
       const { data } = await worker.recognize(canvas, {}, { text: true, blocks: true });
       const unsure = (data.blocks ?? []).flatMap((b) =>
-        b.paragraphs.flatMap((p) => p.lines.flatMap((l) => l.words.filter((w) => w.confidence < UNSURE_BELOW).map((w) => ({ text: w.text, confidence: w.confidence })))),
+        b.paragraphs.flatMap((p) => p.lines.flatMap((l) => l.words.filter((w) => w.confidence < UNSURE_BELOW).map((w) => ({ text: w.text, confidence: w.confidence, line: l.text.trim() })))),
       );
       return { text: data.text, unsure };
     };

@@ -70,6 +70,18 @@ describe('what the card asks to be checked', () => {
     expect(toCheck(p, [{ text: '19.99', confidence: TOTAL_UNSURE_BELOW }]).amount).toBeUndefined();
   });
 
+  it('marks a total only for a doubt on the line it was read from, not on another copy of the figure', () => {
+    // A till prints the paid figure three times. Found on a crisp rendered
+    // receipt in the smoke sweep: the VISA line's copy scored low, and the
+    // total, read cleanly off its own TOTAL line, was marked.
+    const p = parse(fromScan('ARGOS\nKENWOOD MIXER 199.99\nTOTAL 199.99\nVISA 199.99\n26/09/2026 14:32'));
+    expect(toCheck(p, [{ text: '199.99', confidence: 70, line: 'VISA 199.99' }]).amount).toBeUndefined();
+    expect(toCheck(p, [{ text: '199.99', confidence: 70, line: 'KENWOOD MIXER 199.99' }]).amount).toBeUndefined();
+    expect(toCheck(p, [{ text: '199.99', confidence: 70, line: 'TOTAL 199.99' }]).amount).toBe('unclear-print');
+    // What a blur leaves of the label still names the line.
+    expect(toCheck(p, [{ text: '199.99', confidence: 70, line: 'TOT 199.99' }]).amount).toBe('unclear-print');
+  });
+
   it('does not mark a total because some OTHER word was unclear', () => {
     const p = parse(fromScan('BOOTS\nTOTAL 19.99\n29/09/2026'));
     expect(toCheck(p, [{ text: 'BOOTS', confidence: 10 }, { text: '4.99', confidence: 10 }]).amount).toBeUndefined();

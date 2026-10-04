@@ -150,6 +150,12 @@ export interface UnsureWord {
   text: string;
   /** The reader's own score, 0–100. */
   confidence: number;
+  /**
+   * The line the word was read on, as the reader read it. A till prints the
+   * paid figure three times — the item, the TOTAL, the card — and a doubt
+   * about the card line's copy is no doubt about the total.
+   */
+  line?: string;
 }
 
 /** Words scored at or above this are not carried: no rule in lib/confidence.ts looks that high. */

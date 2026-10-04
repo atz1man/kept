@@ -38,10 +38,23 @@ export const DATE_UNSURE_BELOW = 60;
 
 const digits = (s: string) => s.replace(/\D/g, '');
 
-/** Whether any word the reader was unsure of, under `below`, carries this run of digits. */
-function readOffUnsure(unsure: readonly UnsureWord[], run: string, below: number): boolean {
-  return run.length >= 3 && unsure.some((w) => w.confidence < below && digits(w.text).includes(run));
+/**
+ * Whether a word the reader was unsure of, under `below`, carries this run of
+ * digits — and, where `onLine` is given, was read on a line it matches.
+ */
+function readOffUnsure(unsure: readonly UnsureWord[], run: string, below: number, onLine?: RegExp): boolean {
+  return run.length >= 3 && unsure.some((w) => w.confidence < below && digits(w.text).includes(run) && (!onLine || w.line === undefined || onLine.test(w.line)));
 }
+
+/*
+ * The line a total is read off, as a camera reads it: "TOTAL", "BALANCE DUE",
+ * or what is left of them through a blur ("TOT", "ANCE DUE"). A till prints
+ * the paid figure on the item line and the card line too, and the reader can
+ * doubt one copy and not another — a crisp receipt's "VISA 199.99" scored
+ * low marked a total read cleanly off its own line, which is the false alarm
+ * that found this rule.
+ */
+const TOTAL_LINE = /tot|due|bal/i;
 
 export function toCheck(p: ParsedReceipt, unsure: readonly UnsureWord[] = []): Checks {
   const out: Checks = {};
@@ -52,7 +65,7 @@ export function toCheck(p: ParsedReceipt, unsure: readonly UnsureWord[] = []): C
     if (!addsUp) {
       if (p.how.amount === 'largest') out.amount = 'largest-figure';
       else if (p.how.amount === 'named') out.amount = 'named-total';
-      else if (readOffUnsure(unsure, digits((p.amount / 100).toFixed(2)), TOTAL_UNSURE_BELOW)) out.amount = 'unclear-print';
+      else if (readOffUnsure(unsure, digits((p.amount / 100).toFixed(2)), TOTAL_UNSURE_BELOW, TOTAL_LINE)) out.amount = 'unclear-print';
     }
   }
   if (p.dateFound) {
