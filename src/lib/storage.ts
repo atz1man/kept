@@ -280,6 +280,7 @@ export async function restoreFromMirror(budgetMs?: number): Promise<boolean> {
       if (pending !== null) {
         try {
           store.setItem(KEY, pending);
+          landed = true;
           void writeMirror(pending);
         } catch {
           // As any failed save: the live store refused it.
@@ -379,15 +380,35 @@ export function discardSetAside(): void {
 /** The latest save held back during a late mirror read; see `save`. */
 let heldLive: string | null = null;
 
+/** Whether the last save put what was on screen into the store; see `savedToStore`. */
+let landed = true;
+
+/**
+ * Whether the store holds what is on screen — asked before anything throws the
+ * page away, because a reload loads the store, not the screen.
+ *
+ * Not the same as what `save` returns. A save held back during a late mirror
+ * read answers true, so the failure banner does not claim a loss that has not
+ * happened, and it has still not reached the store: a reload then would lose
+ * it. False there, false after a failed write, true once a write lands.
+ */
+export function savedToStore(): boolean {
+  return landed;
+}
+
 export function save(state: KeptState): boolean {
   const store = storage();
+  landed = false;
   if (!store) return false;
   try {
     const next = JSON.stringify(state);
     // Skip an identical write. Adopting another tab's state sets this state,
     // which would otherwise write straight back what was just read — churning
     // the quota for nothing.
-    if (store.getItem(KEY) === next) return true;
+    if (store.getItem(KEY) === next) {
+      landed = true;
+      return true;
+    }
     /*
      * Held while a late mirror read may still bring the real library back
      * (see `restoreFromMirror`), in the live store as well as the mirror. The
@@ -401,6 +422,7 @@ export function save(state: KeptState): boolean {
       return true;
     }
     store.setItem(KEY, next);
+    landed = true;
     /*
      * And again, outside the web view, on iOS only. Deliberately not awaited:
      * the reducer saves synchronously and cannot wait, and a mirror that fails
