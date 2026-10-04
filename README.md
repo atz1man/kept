@@ -2329,7 +2329,7 @@ screen, and an unticked second scan that leaves nothing on the disk.
   cancels what is waiting, that a first purchase asks for permission exactly
   once, and that a refusal lodges nothing while Settings says where to
   change it. Each of those has a broken version it names.
-- **Payments.** The one-off unlock (£4.99, once) sets the local plan flag and says plainly
+- **Payments.** The one-off unlock (£9.99, once) sets the local plan flag and says plainly
   that nothing was charged. No card, no billing, nothing to cancel.
 - **Signing the policy feed.** The feed is fetched from the app's own origin,
   validated entry by entry and merged (`lib/policy-feed.ts`), and the download

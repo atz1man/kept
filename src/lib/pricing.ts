@@ -29,7 +29,7 @@ export interface Unlock {
   suffix: string;
 }
 
-export const UNLOCK: Unlock = { price: '£4.99', suffix: ' once' };
+export const UNLOCK: Unlock = { price: '£9.99', suffix: ' once' };
 
 /**
  * Whether this build may offer a paid tier at all.
