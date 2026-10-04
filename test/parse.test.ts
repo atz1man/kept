@@ -715,6 +715,37 @@ describe('what an order email actually looks like', () => {
     }
   });
 
+  it('reads a paste full of spaces, blank lines or repeated words in a moment, not minutes', () => {
+    /*
+     * Measured on main, each with the app frozen while it ran: "Order no" and
+     * 2,000 spaces 3.7 s, and 6,000 spaces more than 20 s (three adjacent \s*
+     * in the order-number rule, cubic); 40,000 blank lines 3.9 s; 40,000
+     * spaces inside a priced line 4.3 s; one 40,000-character line repeating
+     * "total" 1.9 s. Fixed, each is under 50 ms; the bound is ten times that,
+     * so it fails on the slow version and never on a slow machine.
+     */
+    const pastes: [string, string][] = [
+      ['spaces after "Order no"', `Argos\nTotal £5.00\nOrder no${' '.repeat(40_000)}!`],
+      ['spaces inside a priced line', `Argos\nTotal £5.00\nx${' '.repeat(40_000)}y £3.00`],
+      ['blank lines', `Argos\nTotal £5.00${'\n'.repeat(40_000)}x`],
+      ['lines of one space', `Argos\nTotal £5.00\n${' \n'.repeat(20_000)}x`],
+      ['one line saying "total" over and over', `Argos ${'foo total £1 '.repeat(3_100)}`],
+    ];
+    for (const [what, paste] of pastes) {
+      const started = performance.now();
+      const out = parseReceiptText(paste, TODAY);
+      expect(performance.now() - started, what).toBeLessThan(500);
+      // And it still reads what is there.
+      expect(out.ok, what).toBe(true);
+    }
+  });
+
+  it('reads the same with runs of spaces or blank lines as without', () => {
+    const plain = parse('Argos order\nOrder number: 600123456\nOrder date: 1 September 2026\nKettle £24.99\nTotal £24.99');
+    const spaced = parse('Argos   order\n\n\n\nOrder number:      600123456\n \n \nOrder date:\t1 September 2026\nKettle      £24.99\n\n\nTotal      £24.99');
+    expect(spaced).toEqual(plain);
+  });
+
   it('compiles a shop name\'s pattern once, and only for a shop the paste mentions', () => {
     /*
      * Each of the 163 aliases' patterns was built again on every read: 128 ms
