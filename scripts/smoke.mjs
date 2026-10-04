@@ -2508,8 +2508,8 @@ results['a delivery date in the paste is read, not asked for'] =
   const lastDay = await ring(/ASOS, Running shoes/);
   const longGone = await ring(/Argos, Toaster/);
   results['the ring still shows something on the last day'] =
-    // The danger red, #B42318: the number sits on a white card now, not ink.
-    lastDay.drawn > 1 && lastDay.numberColour === 'rgb(180, 35, 24)' &&
+    // The danger red, `color.danger` (#C2261C): the number sits on a white card now, not ink.
+    lastDay.drawn > 1 && lastDay.numberColour === 'rgb(194, 38, 28)' &&
     // And nothing once the window has actually gone, rather than sweeping backwards.
     longGone.drawn <= 0;
   await lastCtx.close();
