@@ -12,10 +12,11 @@ import type { UnsureWord } from './receipt-scan';
  *
  * Each rule here was chosen from a measurement, not by eye: 132 photos of
  * twelve till slips (72 as a hand takes them, 60 under shadow, blur and fading
- * — scripts/scan-bench/confidence.ts) and the order-email corpus. On the
- * damaged photos 9 totals came out wrong; these rules mark all 9, and mark 13
- * of the 51 right ones. On the photos as a hand takes them they mark 2 of 72
- * right totals and none of 68 right dates, and on the email corpus nothing.
+ * — scripts/scan-bench/confidence.ts, which calls this module) and the
+ * order-email corpus. On the damaged photos 9 totals came out wrong; these
+ * rules mark all 9, and mark 9 of the 51 right ones. On the photos as a hand
+ * takes them they mark nothing — none of 72 right totals, none of 68 right
+ * dates — and on the email corpus nothing.
  *
  * Two ideas were measured and dropped, and are recorded so nobody adds them
  * back on intuition. A figure printed twice — the TOTAL line and the card
@@ -31,7 +32,7 @@ export interface Checks {
   purchasedOn?: CheckWhy;
 }
 
-/** A total read off words the reader scored under this is marked. 85: every wrong total in the bench, at 13 of 51 right ones. */
+/** A total read off words the reader scored under this is marked. 85: every wrong total in the bench, at 9 of 51 right ones. */
 export const TOTAL_UNSURE_BELOW = 85;
 /** A date read off words scored under this is marked. Higher marked right dates on clear photos for no wrong one caught. */
 export const DATE_UNSURE_BELOW = 60;
