@@ -22,7 +22,7 @@ const receipt = (id: string, over: Partial<Receipt> = {}): Receipt => ({
 const state = (receipts: Receipt[]): AppState => ({
   version: 1, receipts, updates: [], onboardingSeen: true,
   settings: { ...DEFAULT_SETTINGS }, alertsSent: [],
-  screen: 'detail', selId: receipts[0]?.id ?? null, obStep: 0, celebrating: null, shared: 'no', upgrading: false,
+  screen: 'detail', selId: receipts[0]?.id ?? null, obStep: 0, celebrating: null, shared: 'no', upgrading: false, store: { shelf: { kind: 'asking' }, busy: null, note: null },
   sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null,
 });
 const swap = (s: AppState, id = 'a') => reducer(s, { type: 'exchange', id, newId: 'swapin' }, TODAY);

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { sellsPaidTiers, UNLOCK } from '../src/lib/pricing';
+import { capsLibrary, offerFor, unlockLabel, UNLOCK } from '../src/lib/pricing';
 import { quotaFull, type AppState } from '../src/app/state';
 import { FREE_TIER_LIMIT } from '../src/lib/quota';
 import { DEFAULT_SETTINGS } from '../src/lib/storage';
@@ -51,19 +51,63 @@ describe('what kept costs', () => {
 });
 
 /**
- * What the iOS build sells: nothing, and so it caps nothing (APN-18).
+ * What each build sells, and so what it caps.
  *
- * The tiers unlock a local flag with no payment. Fine on the web, where the
- * sheet says nothing was charged; a guideline 3.1.1 rejection on the App Store.
- * And a cap with no way past it is a wall, so where nothing is sold the
- * library is unlimited. The price half is also checked against the bundle
- * booted as native, in scripts/ios-bundle.mjs; the cap half is checked here,
- * through the same `quotaFull` the add screen reads.
+ * The web sells its free local unlock at the one price. The iPhone app sells
+ * only what the App Store says it sells, at the App Store's price: guideline
+ * 3.1.1 allows nothing else, and before StoreKit it sold nothing (APN-18).
+ * Where nothing is sold there is no cap, because a cap with no way past it is
+ * a wall. And while the App Store cannot be asked, the price it last quoted
+ * keeps the cap standing: otherwise airplane mode would be a way round it.
+ *
+ * The cap half is checked through the same `quotaFull` the add screen reads.
+ * The price half is also checked against the bundle booted as native, with
+ * StoreKit emulated, in scripts/ios-bundle.mjs.
  */
-describe('what the iOS build sells', () => {
-  it('sells the tiers on the web and nothing on iOS', () => {
-    expect(sellsPaidTiers(false)).toBe(true);
-    expect(sellsPaidTiers(true)).toBe(false);
+describe('what each build sells', () => {
+  const forSale = { kind: 'for-sale', price: '£9.99', canPay: true } as const;
+
+  it('sells the web’s unlock at the one price, whatever the App Store says', () => {
+    expect(offerFor(false, { kind: 'absent' }, null)).toEqual({ kind: 'web', price: UNLOCK.price });
+    expect(offerFor(false, forSale, '£9.99')).toEqual({ kind: 'web', price: UNLOCK.price });
+  });
+
+  it('sells on iPhone exactly what the App Store sells, at its price', () => {
+    expect(offerFor(true, forSale, null)).toEqual({ kind: 'app-store', price: '£9.99', canPay: true });
+    // Another storefront's price is shown as Apple wrote it, not as £9.99.
+    expect(offerFor(true, { kind: 'for-sale', price: '9,99 €', canPay: true }, '£9.99')).toEqual({ kind: 'app-store', price: '9,99 €', canPay: true });
+    expect(offerFor(true, { kind: 'for-sale', price: '£9.99', canPay: false }, null)).toEqual({ kind: 'app-store', price: '£9.99', canPay: false });
+  });
+
+  it('sells nothing on iPhone with no StoreKit, or where the App Store does not sell the unlock', () => {
+    // Even with a price remembered: those are answers, not silence.
+    expect(offerFor(true, { kind: 'absent' }, '£9.99')).toEqual({ kind: 'none' });
+    expect(offerFor(true, { kind: 'not-for-sale' }, '£9.99')).toEqual({ kind: 'none' });
+  });
+
+  it('keeps the offer, at the last price, while the App Store cannot be asked', () => {
+    expect(offerFor(true, { kind: 'unreachable' }, '£9.99')).toEqual({ kind: 'app-store', price: '£9.99', canPay: true });
+    expect(offerFor(true, { kind: 'asking' }, '£9.99')).toEqual({ kind: 'app-store', price: '£9.99', canPay: true });
+  });
+
+  it('offers nothing before the App Store has ever answered', () => {
+    expect(offerFor(true, { kind: 'unreachable' }, null)).toEqual({ kind: 'none' });
+    expect(offerFor(true, { kind: 'asking' }, null)).toEqual({ kind: 'none' });
+  });
+
+  it('caps the library exactly where something is offered', () => {
+    expect(capsLibrary({ kind: 'web', price: UNLOCK.price })).toBe(true);
+    expect(capsLibrary({ kind: 'app-store', price: null, canPay: true })).toBe(true);
+    // Purchases switched off still caps: the door is there, and its key is in
+    // Screen Time, which the button's place says.
+    expect(capsLibrary({ kind: 'app-store', price: '£9.99', canPay: false })).toBe(true);
+    expect(capsLibrary({ kind: 'none' })).toBe(false);
+  });
+
+  it('words the button the same way wherever it is', () => {
+    expect(unlockLabel('£9.99')).toBe('Unlock unlimited · £9.99 once');
+    expect(unlockLabel(UNLOCK.price)).toBe(`Unlock unlimited · ${UNLOCK.price}${UNLOCK.suffix}`);
+    expect(unlockLabel(null)).toBe('Unlock unlimited');
   });
 
   const withPlatform = (native: boolean) => {
@@ -75,29 +119,45 @@ describe('what the iOS build sells', () => {
     delete (globalThis as { window?: unknown }).window;
   });
 
-  /** A free library one past the cap, none of it sample data. */
-  const overFull = (): AppState => {
+  /** A library one past the cap, none of it sample data. */
+  const overFull = (over: Partial<AppState> = {}, plan: 'free' | 'pro' = 'free', appStorePrice: string | null = null): AppState => {
     const receipts: Receipt[] = Array.from({ length: FREE_TIER_LIMIT + 1 }, (_, i) => ({
       id: `r${i}`, store: 'Argos', item: `Thing ${i}`, cat: 'kitchen', amount: toPence(10),
       purchasedOn: '2026-08-20', windowDays: 30, policy: 'p', distance: false, status: 'active',
     }));
     return {
       version: 1, receipts, updates: [], onboardingSeen: true,
-      settings: { ...DEFAULT_SETTINGS, plan: 'free' }, alertsSent: [],
-      screen: 'home', selId: null, obStep: 0, celebrating: null, shared: 'no', upgrading: false,
+      settings: { ...DEFAULT_SETTINGS, plan, appStorePrice }, alertsSent: [],
+      screen: 'home', selId: null, obStep: 0, celebrating: null, shared: 'no', upgrading: false, store: { shelf: { kind: 'asking' }, busy: null, note: null },
       sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null,
+      ...over,
     };
   };
 
   it('holds the free cap on the web', () => {
-    // The other half of the pair: without it, "never full" would pass the iOS
-    // case below by breaking the cap everywhere.
+    // The other half of each pair below: without it, "never full" would pass
+    // the iPhone cases by breaking the cap everywhere.
     withPlatform(false);
     expect(quotaFull(overFull())).toBe(true);
   });
 
-  it('caps nothing on iOS, where there is no way past a cap', () => {
+  it('caps nothing on an iPhone with no StoreKit, where there is no way past a cap', () => {
     withPlatform(true);
-    expect(quotaFull(overFull())).toBe(false);
+    expect(quotaFull(overFull({ store: { shelf: { kind: 'absent' }, busy: null, note: null } }))).toBe(false);
+  });
+
+  it('holds the cap on an iPhone where the App Store sells the unlock', () => {
+    withPlatform(true);
+    expect(quotaFull(overFull({ store: { shelf: forSale, busy: null, note: null } }))).toBe(true);
+  });
+
+  it('holds the cap offline on an iPhone the App Store has answered before', () => {
+    withPlatform(true);
+    expect(quotaFull(overFull({ store: { shelf: { kind: 'unreachable' }, busy: null, note: null } }, 'free', '£9.99'))).toBe(true);
+  });
+
+  it('lifts the cap for someone who bought the unlock', () => {
+    withPlatform(true);
+    expect(quotaFull(overFull({ store: { shelf: forSale, busy: null, note: null } }, 'pro', '£9.99'))).toBe(false);
   });
 });

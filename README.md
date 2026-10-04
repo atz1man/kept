@@ -352,7 +352,8 @@ src/lib/          the decision logic — pure, tested, no React
   split.ts        one thing out of a basket, as a receipt of its own on the same clocks
   persist.ts      asking the browser to keep the library, on the web
   quota.ts        what the free tier counts, and when it is full
-  pricing.ts      the one price, and what a tap on it is allowed to claim
+  pricing.ts      the one price, what each build offers, and what a tap on it is allowed to claim
+  app-store.ts    the unlock on iPhone: what StoreKit's answers mean for the plan, and what each outcome says
   storage.ts      localStorage persistence, and the shape a stored state is
   backup.ts       reading a backup file back in, and merging it by id
   save-file.ts    where a backup actually lands — Files on iOS, a download on the web
@@ -1436,6 +1437,69 @@ scrim over the tab bar as a defect, which is what a modal is *for*, so it now
 narrows to the open dialog's own buttons and still fails when those are
 covered.
 
+### The unlock on iPhone
+
+The iPhone app sells unlimited receipts through In-App Purchase. Guideline
+3.1.1 allows nothing else, and until StoreKit the iOS build sold nothing at all
+(APN-18). It is one non-consumable, `kept.unlimited`. `packages/purchases` is
+the native half, in StoreKit 2. It only asks StoreKit and reports what it was
+told; every decision is in `lib/app-store.ts`, because the native half cannot
+run here and an untested branch on this path costs someone money.
+
+**Only a verified transaction unlocks.** StoreKit 2 checks the App Store's
+signature on the phone. An answer that fails the check unlocks nothing and is
+left unfinished, so StoreKit offers it again. There is no server to keep, and
+nothing a proxy rewrites can unlock the app.
+
+**Nothing relocks on silence.** A new phone reports "no purchase" until its
+records arrive. Relocking on that would lock a paying customer out of their
+own library, so only an explicit revocation (a refund, or a family member no
+longer sharing) puts the cap back. Being wrong in that direction costs one
+refunded £9.99. A transaction that arrives outside a purchase call, such as an
+Ask to Buy approval, a purchase on another phone or a refund, comes through
+StoreKit's `Transaction.updates`. The plugin listens from launch and the plan
+follows, with a sentence saying why it moved.
+
+**No wall without a door, and no way round it either.** The cap stands only
+where the App Store sells the unlock. But "offline lifts the cap" would make
+airplane mode the way to unlimited, so the price the App Store last quoted is
+remembered and the cap stands on it. On a first launch offline, before the App
+Store has ever answered, there is no cap. Where Screen Time switches purchases
+off, the button is replaced by where to switch them back on.
+
+**The App Store's price, not ours.** The button shows StoreKit's
+`displayPrice` for the person's storefront ("£9.99", "9,99 €"). A hard-coded
+"£9.99" would be wrong in every other country, and could disagree with the
+sheet Apple shows next.
+
+**Every ending has words, and none of them guesses about money.** A cancelled
+sheet says nothing. A failure says "nothing was charged" only where that is
+certain, which is when the App Store had nothing to sell. A dropped connection
+mid-purchase can still end in a charge, so it says what happens if it did: the
+App Store finishes the transaction and the app unlocks by itself. Restore
+purchase sits directly under the button, which App Review expects for a
+one-off purchase.
+
+`test/app-store.test.ts` pins each of those decisions. It also reads the Swift
+and the TypeScript and checks they agree on every name that crosses the bridge:
+methods, the event, outcomes, states and reasons. A rename on one side would
+otherwise pass every test and fail on the first real purchase. `npm run ios`
+walks it all on the bundle that ships, with StoreKit emulated in the bridge:
+- buying at the cap, then saving the receipt that was waiting;
+- another storefront's price;
+- a cancelled sheet;
+- an unverified purchase;
+- a dropped connection;
+- Screen Time;
+- Ask to Buy, approved later;
+- both kinds of restore;
+- a refund while open, and one found at launch;
+- a slow record on a new phone;
+- offline with a remembered price, and offline on a first launch;
+- nothing on sale.
+`ios/App/Kept.storekit` lets the same flows run in the Simulator without App
+Store Connect (`store/SUBMISSION.md`, section 4b).
+
 ### The date it was already holding
 
 The Add screen asks for the day the parcel landed — both statutory clocks run
@@ -2333,8 +2397,9 @@ screen, and an unticked second scan that leaves nothing on the disk.
   cancels what is waiting, that a first purchase asks for permission exactly
   once, and that a refusal lodges nothing while Settings says where to
   change it. Each of those has a broken version it names.
-- **Payments.** The one-off unlock (£9.99, once) sets the local plan flag and says plainly
-  that nothing was charged. No card, no billing, nothing to cancel.
+- **Payments on the web.** The web's one-off unlock (£9.99, once) sets the local plan flag
+  and says plainly that nothing was charged. No card, no billing, nothing to cancel. The
+  iPhone app sells the real unlock through In-App Purchase; see *The unlock on iPhone*.
 - **Signing the policy feed.** The feed is fetched from the app's own origin,
   validated entry by entry and merged (`lib/policy-feed.ts`), and the download
   is of *all* changes — never a query naming the shops a particular user

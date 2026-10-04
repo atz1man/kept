@@ -49,6 +49,13 @@ describe('the controls it names', () => {
     expect(page).toContain('Erase everything in Settings');
     expect(settings).toContain('Erase everything');
   });
+
+  it('names the restore control by the words on it, and Settings shows it', () => {
+    const offer = readFileSync(join(ROOT, 'src', 'app', 'components', 'UnlockOffer.tsx'), 'utf8');
+    expect(page).toContain('Restore purchase in Settings');
+    expect(offer).toContain("'Restore purchase'");
+    expect(settings).toContain('<UnlockOffer');
+  });
 });
 
 describe('where the iPhone keeps it', () => {

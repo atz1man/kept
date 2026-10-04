@@ -13,7 +13,8 @@ import { readReturnRef } from '../lib/refund-chase';
 import { freshState, load, onExternalChange, save, type KeptState, type Settings } from '../lib/storage';
 import { quotaFull as quotaFullFor } from '../lib/quota';
 import { ONBOARDING_STEPS } from './screens/Onboarding';
-import { sellsPaidTiers } from '../lib/pricing';
+import { capsLibrary, offerFor, type Offer } from '../lib/pricing';
+import { noteFor, ownershipNote, planAfter, rememberedPrice, STORE_ASKING, type Outcome, type Ownership, type Shelf, type StoreView } from '../lib/app-store';
 import type { PolicyUpdate, Receipt, Screen } from '../lib/types';
 
 export interface AppState extends KeptState {
@@ -93,6 +94,8 @@ export interface AppState extends KeptState {
    * that is not true.
    */
   upgrading: boolean;
+  /** The App Store on iPhone: what it sells and what is in flight (lib/app-store.ts). Unused on the web. */
+  store: StoreView;
 }
 
 export type Action =
@@ -140,7 +143,13 @@ export type Action =
   | { type: 'undo-add' }
   | { type: 'shared'; outcome: 'shared' | 'copied' | 'failed' }
   | { type: 'upgrade-ask' }
-  | { type: 'upgrade-cancel' };
+  | { type: 'upgrade-cancel' }
+  /** What the App Store said it sells, this launch. */
+  | { type: 'store-shelf'; shelf: Shelf }
+  /** Whether this Apple ID owns the unlock: at launch, and whenever StoreKit says it changed. */
+  | { type: 'store-ownership'; ownership: Ownership }
+  | { type: 'store-busy'; busy: 'buying' | 'restoring' }
+  | { type: 'store-outcome'; outcome: Outcome };
 
 /**
  * Which screen a launch opens on.
@@ -739,6 +748,29 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       return { ...state, upgrading: true };
     case 'upgrade-cancel':
       return { ...state, upgrading: false };
+    case 'store-shelf':
+      return {
+        ...state,
+        store: { ...state.store, shelf: action.shelf },
+        settings: { ...state.settings, appStorePrice: rememberedPrice(action.shelf, state.settings.appStorePrice) },
+      };
+    case 'store-ownership': {
+      const plan = planAfter(state.settings.plan, action.ownership);
+      if (plan === state.settings.plan) return state;
+      return { ...state, settings: { ...state.settings, plan }, store: { ...state.store, note: ownershipNote(state.settings.plan, plan) } };
+    }
+    case 'store-busy':
+      return { ...state, store: { ...state.store, busy: action.busy, note: null } };
+    case 'store-outcome': {
+      // Only what StoreKit verified unlocks: a purchase, or a restore that
+      // found one. Everything else leaves the plan exactly as it was.
+      const unlocked = action.outcome.kind === 'purchased' || action.outcome.kind === 'restored';
+      return {
+        ...state,
+        settings: unlocked ? { ...state.settings, plan: 'pro' } : state.settings,
+        store: { ...state.store, busy: null, note: noteFor(action.outcome) },
+      };
+    }
     case 'wipe':
       // Everything, including what the app remembers about having spoken:
       // alert keys naming receipts that no longer exist would be a residue of
@@ -868,6 +900,7 @@ export function useApp() {
         celebrating: null,
         shared: 'no',
         upgrading: false,
+        store: STORE_ASKING,
       };
     },
   );
@@ -1008,9 +1041,14 @@ export function useApp() {
   return { state, dispatch: rawDispatch, today, saveFailed };
 }
 
+/** What this build offers, now: the web's unlock, the App Store's, or nothing (lib/pricing.ts). */
+export function offerOf(state: AppState): Offer {
+  return offerFor(isNative(), state.store.shelf, state.settings.appStorePrice);
+}
+
 export function quotaFull(state: AppState): boolean {
-  // No cap where there is nothing to buy — see sellsPaidTiers.
-  return sellsPaidTiers(isNative()) && quotaFullFor(state.receipts, state.settings.plan);
+  // No cap where there is nothing to buy — see offerFor.
+  return capsLibrary(offerOf(state)) && quotaFullFor(state.receipts, state.settings.plan);
 }
 
 export { makeReceiptId };
