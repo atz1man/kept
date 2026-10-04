@@ -31,6 +31,7 @@
  *   - a first visit, never reloaded, then no signal;
  *   - a deploy, one online launch, then no signal;
  *   - a deploy whose download drops one request, then no signal;
+ *   - a signal that connects and never answers;
  *   - and a feed signature that changes.
  *
  * Each runs in its own browser profile, against a server on the same port, so
@@ -61,6 +62,8 @@ const SIG_FILE = `${ROOT}dist/policy-feed.sig`;
 const DEPLOY_B = `${ROOT}dist-freshness-b`;
 /** What the library's heading says — on screen means the app booted and read its store. */
 const HEADING = 'Return deadlines, watched';
+/** How long a launch on a signal that never answers may take to show it. */
+const LIE_FI_BUDGET_MS = 5000;
 
 /** The three the offline half is for — named, so they can be marked unasked. */
 const OFFLINE_CHECKS = [
@@ -269,6 +272,7 @@ async function buildDeploy() {
 const FIRST_VISIT = 'a first visit, never reloaded, opens with the network gone';
 const AFTER_DEPLOY = 'after a deploy and one online launch, the new version opens with the network gone';
 const DROPPED = 'a deploy whose download drops one request leaves the installed version opening offline';
+const LIE_FI = `on a signal that connects and never answers, the app is on screen within ${LIE_FI_BUDGET_MS / 1000} s`;
 
 const deployErrors = [];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -400,6 +404,23 @@ async function acrossDeploys() {
     if (!settled) throw new Error('the new worker never finished installing or failing');
     await goOffline([DROPPED]);
     results[DROPPED] = (await relaunch(page)) && (await bootOn(page)) === bootA;
+  });
+
+  // A connection that is accepted and then carries nothing. Opened as a cold
+  // launch from the home screen: a new window, with nothing already on screen.
+  await step([LIE_FI], async (context) => {
+    await serve('dist');
+    const installed = await install(context, { reload: true });
+    await stopServer();
+    await startOwn(() => {
+      /* accepted; never answered */
+    });
+    await installed.close();
+    const page = await context.newPage();
+    const started = Date.now();
+    page.goto(`${ORIGIN}/app/`, { waitUntil: 'commit', timeout: LIE_FI_BUDGET_MS * 4 }).catch(() => {});
+    results[LIE_FI] = await shows(page, LIE_FI_BUDGET_MS);
+    if (!results[LIE_FI]) problems.push(`${LIE_FI}: nothing after ${Date.now() - started}ms`);
   });
 
   results['and no page errors across the deploys'] = deployErrors.length === 0;

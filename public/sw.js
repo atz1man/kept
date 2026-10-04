@@ -145,8 +145,24 @@ self.addEventListener('activate', (event) => {
  */
 const FRESH = ['/policy-feed.json', '/policy-feed.sig'];
 
+/**
+ * How long a launch waits on the network before opening the copy it holds.
+ *
+ * Network first is right for a launch — it is how a deploy arrives — and it
+ * had no limit. On a signal that connects and then carries nothing (a train
+ * between stations, a shop's back corner) the fetch neither answers nor fails,
+ * and a fallback that waits for it to fail never runs. Measured, with every
+ * file already cached and a server that accepts and never answers: nothing on
+ * screen after 60 seconds. "Offline works" was true only of a network honest
+ * enough to refuse.
+ *
+ * Three seconds is about where a person decides the app is broken. The answer
+ * that arrives later is not wasted: the next launch asks again.
+ */
+const LAUNCH_WAIT_MS = 3000;
+
 /*
- * A launch: the network's answer, and the held shell when there is none.
+ * A launch: the network's answer if it comes in time, the held shell if not.
  *
  * Not written to the cache. The shell this worker holds is the one it
  * precached with the files it names, and that pairing is the point — a shell
@@ -156,7 +172,21 @@ const FRESH = ['/policy-feed.json', '/policy-feed.sig'];
  * worker's cache name is a hash of the shell.
  */
 function launch(event) {
-  return fetch(event.request).catch(() => fromCache('/app/').then((hit) => hit ?? Response.error()));
+  const network = fetch(event.request);
+  return new Promise((resolve) => {
+    const held = () => fromCache('/app/');
+    const timer = setTimeout(() => held().then((hit) => hit && resolve(hit)), LAUNCH_WAIT_MS);
+    network.then(
+      (res) => {
+        clearTimeout(timer);
+        resolve(res);
+      },
+      () => {
+        clearTimeout(timer);
+        held().then((hit) => resolve(hit ?? Response.error()));
+      },
+    );
+  });
 }
 
 /**
@@ -187,7 +217,8 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
 
   // Navigations: network first, so a deployed update is picked up on the
-  // next online launch, with the precached shell behind it for offline.
+  // next online launch, with the precached shell behind it for offline — and
+  // for a network that will not answer at all.
   if (req.mode === 'navigate') {
     event.respondWith(launch(event));
     return;
