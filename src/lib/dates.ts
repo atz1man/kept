@@ -1,5 +1,9 @@
 /**
- * Whole-day arithmetic in the user's own timezone.
+ * Whole-day arithmetic, in calendar days.
+ *
+ * Which day it IS comes from the UK's calendar (`ukDay`), because every window
+ * counted here is a UK retailer's; the arithmetic below then runs on those
+ * days as local-midnight Dates.
  *
  * A return deadline is a CALENDAR fact, not a 24-hour countdown: a receipt
  * bought at 23:50 on the 1st with a 14-day window is returnable all of the
@@ -12,6 +16,45 @@
 
 export function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+const UK_CALENDAR = (() => {
+  try {
+    return new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', year: 'numeric', month: 'numeric', day: 'numeric' });
+  } catch {
+    return null;
+  }
+})();
+
+/**
+ * The calendar day it is in the UK at `now`, as this module's local-midnight Date.
+ *
+ * Every shop in this app is a UK retailer and every window it counts closes at
+ * the end of a UK day, so "today" is the UK's today wherever the phone is. It
+ * was the phone's own: measured, a Next jacket bought on 6 September with 28
+ * days had its last day on Sunday 4 October, and at 04:00 on Monday 5 October
+ * in London a phone set to New York (still 23:00 on the Sunday) said "Today is
+ * the last day" — about a window that had already shut. A person on holiday
+ * west of the UK is told they have hours they do not have; east of it, the
+ * same mistake runs the other way in the morning. At home the two answers are
+ * the same day, so nothing changes for anyone in the UK.
+ *
+ * Read through `Intl`, the platform's own zone tables, so the clocks going
+ * forward and back are the zone database's business rather than an offset
+ * written here. Where a platform cannot name the zone, the phone's own day is
+ * the answer, as it always was.
+ */
+export function ukDay(now: Date): Date {
+  if (!UK_CALENDAR) return startOfDay(now);
+  let year = NaN;
+  let month = NaN;
+  let day = NaN;
+  for (const part of UK_CALENDAR.formatToParts(now)) {
+    if (part.type === 'year') year = Number(part.value);
+    else if (part.type === 'month') month = Number(part.value);
+    else if (part.type === 'day') day = Number(part.value);
+  }
+  return Number.isFinite(year) && Number.isFinite(month) && Number.isFinite(day) ? new Date(year, month - 1, day) : startOfDay(now);
 }
 
 /**
@@ -30,7 +73,7 @@ export function startOfDay(d: Date): Date {
  * about behaviour, in prose, with nothing able to contradict it.
  */
 export function currentDay(current: Date, now: Date): Date {
-  const today = startOfDay(now);
+  const today = ukDay(now);
   return today.getTime() === current.getTime() ? current : today;
 }
 

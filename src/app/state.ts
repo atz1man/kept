@@ -5,7 +5,7 @@ import { embedded } from '../lib/embed';
 import { isNative } from '../lib/mirror';
 import { cleanupPhotos } from '../lib/photos';
 import { onNotificationTap, syncScheduled } from './schedule-native';
-import { currentDay, daysBetween, fromISODate, startOfDay, toISODate } from '../lib/dates';
+import { currentDay, daysBetween, fromISODate, toISODate, ukDay } from '../lib/dates';
 import { collectedShare, sharedTextFrom, strippedShareUrl } from '../lib/share';
 import { canSplit, splitReceipt, validSplit } from '../lib/split';
 import { awaitingArrival, countsAsMoney, deadlineIsFloor, derive, makeReceiptId, refundOf, swapInFate } from '../lib/receipts';
@@ -941,7 +941,7 @@ export function useApp() {
    * comparison is on the calendar day, so this sets state only when the date
    * actually turns over.
    */
-  const [today, setToday] = useState(() => startOfDay(new Date()));
+  const [today, setToday] = useState(() => ukDay(new Date()));
   useEffect(() => {
     const check = () => setToday((current) => currentDay(current, new Date()));
     const onVisible = () => {
