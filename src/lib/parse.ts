@@ -63,6 +63,11 @@ export interface ParsedReceipt {
     amount: 'label' | 'named' | 'largest' | 'part' | 'several' | null;
     /** 'label': an order-date label; 'only': the one past date there is; 'latest': the newest of several. */
     purchasedOn: 'label' | 'only' | 'latest' | null;
+    /**
+     * 'clear': the sender, the heading, or named as the shop; 'mention': only
+     * named in passing; 'several': more than one shop named as surely.
+     */
+    store: 'clear' | 'several' | 'mention' | null;
   };
 }
 
@@ -630,31 +635,88 @@ function pickDispatch(text: string, today: Date, purchased: Date | null): Date |
 }
 
 /**
- * Words that make a mention of a shop a mention of THE SHOP.
- *
- * An order email says "your Boots order" or "boots.com". Something bought
- * elsewhere says "walking boots". Only the ambiguous names need this — see
- * `commonWord` in stores.ts.
+ * The paste as lines, read once: where each line starts, and which lines are
+ * a mail client's header block rather than the email's own words.
  */
-const STORE_CUE = '(?:your|from|at|orders?|receipt|purchased?)';
+interface Doc {
+  text: string;
+  lower: string;
+  lines: string[];
+  /** Where each line starts in `text`. */
+  starts: number[];
+  /** Lines of a mail header block: "From:", "Sent:", "To:", "Subject:"… */
+  header: Set<number>;
+}
+
+const MAIL_HEADER_LINE = /^\s*(?:from|to|cc|bcc|date|sent|subject|reply-to):/i;
+const FROM_LINE = /^\s*from:/i;
+const SUBJECT_LINE = /^\s*subject:/i;
+
+/*
+ * A header block is a "From:" line and the header lines touching it, two or
+ * more together, as Mail, Gmail and Outlook copy them — and as a forwarded
+ * email carries a second one halfway down. One "Date:" line on its own is the
+ * ORDER's date in an order email's own body, and is left to be read.
+ */
+function headerLines(lines: readonly string[]): Set<number> {
+  const out = new Set<number>();
+  for (let i = 0; i < lines.length; i++) {
+    if (out.has(i) || !FROM_LINE.test(lines[i])) continue;
+    let a = i;
+    while (a > 0 && MAIL_HEADER_LINE.test(lines[a - 1])) a--;
+    let b = i;
+    while (b + 1 < lines.length && MAIL_HEADER_LINE.test(lines[b + 1])) b++;
+    if (b > a) for (let k = a; k <= b; k++) out.add(k);
+  }
+  return out;
+}
+
+function readDoc(text: string): Doc {
+  const lines = text.split('\n');
+  const starts: number[] = [];
+  let at = 0;
+  for (const l of lines) {
+    starts.push(at);
+    at += l.length + 1;
+  }
+  return { text, lower: text.toLowerCase(), lines, starts, header: headerLines(lines) };
+}
+
+/** The line a position in the text is on. */
+function lineAt(doc: Doc, index: number): number {
+  let lo = 0;
+  let hi = doc.starts.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (doc.starts[mid] <= index) lo = mid;
+    else hi = mid - 1;
+  }
+  return lo;
+}
+
+/*
+ * Words beside a name that make it THE SHOP rather than a word in a sentence
+ * or a maker on a product: "Receipt from Boots", "shopping at Tesco", "your
+ * Boots order", "boots.com". "Your" alone is not one: "Your Apple iPad is on
+ * its way" from Very and "Your Samsung Galaxy" from Currys named the maker of
+ * the thing as the shop that sold it.
+ */
+const CUE_BEFORE = /\b(?:from|at|with):?\s+$/i;
+const CUE_AFTER = /^(?:\.com|\.co\.uk|['’]s?\s+(?:order|receipt|basket)\b|\s+(?:orders?|receipt|purchase|store|online|account|basket)\b)/i;
+const DOMAIN_AFTER = /^\.(?:com|co\.uk)\b/i;
+
+/*
+ * A line saying who the seller is on a marketplace: "Sold by: Mamas & Papas
+ * Ltd" on an Amazon order. The name there is not the shop the order was
+ * placed with — Amazon's own heading is — and on an order "fulfilled by
+ * Amazon" it is Amazon that takes the return. What a marketplace seller's own
+ * return terms are is not guessed here; the line is simply not read for a
+ * shop.
+ */
+const SOLD_BY = /^\s*(?:sold\s+(?:by|and\s+(?:dispatched|shipped)\s+by)|dispatched\s+from\s+and\s+sold\s+by|ships\s+from\s+and\s+sold\s+by|seller\b|marketplace\s+seller)/i;
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/**
- * Does this text name this shop?
- *
- * On word boundaries, not as a substring: "pineapple print tea towel" was
- * being read as an Apple purchase, and a receipt for a £12 tea towel then
- * carried Apple's 14-day window and Apple's policy sentence.
- *
- * A name that is also an ordinary word needs more than a boundary, because
- * "walking boots" and "next day delivery" clear one comfortably. It has to sit
- * beside something that makes it the shop — the possessive an order email uses
- * about itself, or the shop's own domain. Failing that the parser names no
- * shop at all, which the add screen shows as "Not recognised" against an
- * assumed 28-day window: an assumption the person can see and correct, rather
- * than a wrong retailer they have no reason to doubt.
- */
 /*
  * Each alias's pattern, compiled once for the life of the app.
  *
@@ -666,12 +728,20 @@ const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
  */
 const COMPILED = new Map<string, RegExp>();
 
-function pattern(alias: string, commonWord: boolean): RegExp {
-  const key = `${commonWord ? 'c' : 'p'}:${alias}`;
-  let re = COMPILED.get(key);
+/*
+ * On word boundaries, not as a substring: "pineapple print tea towel" was
+ * being read as an Apple purchase, and a receipt for a £12 tea towel then
+ * carried Apple's 14-day window and Apple's policy sentence. The edges are
+ * letters in any alphabet, not `\b`: JavaScript's `\b` knows only ASCII word
+ * characters, so "bonmarché" could never end on one — the é and the space
+ * after it are both "non-word" — and "& other stories" could never start on
+ * one. Those shops' emails named no shop.
+ */
+function pattern(alias: string): RegExp {
+  let re = COMPILED.get(alias);
   if (!re) {
-    re = compile(alias, commonWord);
-    COMPILED.set(key, re);
+    re = new RegExp(`(?<![\\p{L}\\p{N}])${escape(alias)}(?![\\p{L}\\p{N}])`, 'giu');
+    COMPILED.set(alias, re);
   }
   return re;
 }
@@ -681,56 +751,142 @@ export function compiledAliasPatterns(): number {
   return COMPILED.size;
 }
 
-function mentions(text: string, lower: string, alias: string, commonWord: boolean): boolean {
-  // Every way a pattern can match includes the alias itself, so a paste that
-  // does not contain it, in any case, cannot match. Checked first, as a plain
-  // substring, so a pattern is compiled and run only for a shop that is there.
-  if (!lower.includes(alias.toLowerCase())) return false;
-  return pattern(alias, commonWord).test(text) || (commonWord && isHeading(text, alias));
-}
-
-function compile(alias: string, commonWord: boolean): RegExp {
-  const a = escape(alias);
-  /*
-   * The alias's own edges are letters in any alphabet, not `\b`. JavaScript's
-   * `\b` knows only ASCII word characters, so "bonmarché" could never end on
-   * one — the é and the space after it are both "non-word" — and "& other
-   * stories" could never start on one. Those shops' emails named no shop.
-   */
-  const start = '(?<![\\p{L}\\p{N}])';
-  const end = '(?![\\p{L}\\p{N}])';
-  if (!commonWord) return new RegExp(`${start}${a}${end}`, 'iu');
-  return new RegExp(
-    `(?:\\b${STORE_CUE}\\s+${a}${end}|${start}${a}\\s+(?:${STORE_CUE}|store)\\b|${start}${a}\\.(?:com|co\\.uk))`,
-    'iu',
-  );
-}
-
 /*
- * The shop's name as a whole line at the top of the paste: the logo's text,
- * which is what an order email opens with when it is copied. "NEXT" alone on
- * the first line is the shop in a way that "Next day delivery" is not — the
- * whole line, and only near the top, where a heading sits.
+ * The shop's name as a line near the top of the paste: the logo's text, which
+ * is what an order email opens with when it is copied. "NEXT" alone on the
+ * first line is the shop in a way that "Next day delivery" is not — the whole
+ * line, and only near the top, where a heading sits. A mail header above it
+ * is not counted as part of the heading.
  */
 const HEADING_LINES = 3;
 
-function isHeading(text: string, alias: string): boolean {
-  return text
-    .split('\n')
-    .map((l) => l.trim().toLowerCase())
-    .filter((l) => l.length > 0)
-    .slice(0, HEADING_LINES)
-    .includes(alias.toLowerCase());
+function headingLines(doc: Doc): Set<number> {
+  const out = new Set<number>();
+  for (let i = 0; i < doc.lines.length && out.size < HEADING_LINES; i++) {
+    const l = doc.lines[i].trim();
+    if (!l || doc.header.has(i) || /^-{2,}.*forwarded/i.test(l)) continue;
+    out.add(i);
+  }
+  return out;
 }
 
-function pickStore(text: string): StorePolicy | null {
-  // Longest alias first, so a shop whose name contains another's still
-  // resolves to itself.
-  const lower = text.toLowerCase();
-  for (const { alias, store } of ALIASES_BY_LENGTH) {
-    if (mentions(text, lower, alias, store.commonWord === true)) return store;
+/** A price: what marks a line as an item's, or money about the order. */
+const PRICED = /[£€$]\s?\d/;
+
+/** How many times one name is looked at: the places that decide are near the top. */
+const MAX_MENTIONS = 50;
+
+/** How far either side of a mention its line is read. */
+const NEAR = 80;
+
+/*
+ * Where a mention of a shop sits, as a rank — lower is surer — or null where
+ * it is not a mention of the shop at all.
+ *
+ *   0  the sender: a "From:" line in the mail header, name or domain
+ *   1  the heading: one of the first lines of the email
+ *   2  named as the shop in the body: "your Boots order", "shop at Tesco"
+ *   3  a bare mention in the body — a guess, and marked as one
+ *   4  after the total, as a line of its own or named as the shop — the
+ *      sign-off; a guess, and marked
+ *
+ * And never: a name on a "Sold by" line; a name on an item's line, beside its
+ * price ("Mint Velvet Cable Knit Jumper £89.00" on a John Lewis order); a
+ * name in a sentence after the total — the footer's "family of brands", "find
+ * us next to Dunelm, IKEA and B&Q", "£20 off your next order".
+ *
+ * The first alias found used to win, longest first, so a four-letter maker on
+ * an item line beat a three-letter shop in the heading, and the footer's
+ * "your next order" made a H&M, M&S or B&Q email a Next one.
+ */
+function rankMention(doc: Doc, store: StorePolicy, start: number, end: number, heading: Set<number>, lastBodyLine: number): number | null {
+  const li = lineAt(doc, start);
+  const line = doc.lines[li];
+  const at = start - doc.starts[li];
+  const name = line.slice(at, at + (end - start));
+  if (doc.header.has(li)) {
+    if (FROM_LINE.test(line)) return 0;
+    if (!SUBJECT_LINE.test(line)) return null;
   }
-  return null;
+  if (SOLD_BY.test(line)) return null;
+  // A mention is judged by what stands near it on its line, not by the whole
+  // of a line that may be a pasted page long: each look is bounded, so a paste
+  // naming a shop fifty times on one line costs fifty short reads, not fifty long ones.
+  const before = line.slice(Math.max(0, at - NEAR), at).split(/[·|]/).pop() ?? '';
+  const after = line.slice(at + name.length, at + name.length + NEAR);
+  const segment = `${before}${name}${after.split(/[·|]/)[0]}`;
+  const domain = DOMAIN_AFTER.test(after);
+  const cued = domain || CUE_BEFORE.test(before) || CUE_AFTER.test(after);
+  const whole = line.length <= name.length + NEAR && line.trim().toLowerCase() === name.toLowerCase();
+  const first = li === Math.min(...heading);
+  // The heading is the first line, or a later line of the first few that
+  // STARTS with the name — "ASOS" under "Thanks for your order!", "Boots.com
+  // order confirmation" — not one with the name halfway along, which is how
+  // an item's title reads: "NEW Decathlon Quechua tent" on an eBay order.
+  const top = heading.has(li) && (first || /^\W*$/.test(before));
+  /*
+   * A name that is also an ordinary word needs more than a boundary, because
+   * "walking boots" and "next day delivery" clear one comfortably: it has to
+   * be the heading line, or sit beside a word that makes it the shop. And the
+   * shop writes its own name with a capital — "your next order" in a footer is
+   * not "your Next order".
+   */
+  if (store.commonWord) {
+    if (!cued && !(whole && top)) return null;
+    if (!domain && !(whole && top) && !/\p{Lu}/u.test(name)) return null;
+  }
+  if (li > lastBodyLine) return whole || cued ? 4 : null;
+  if (PRICED.test(segment) && !cued) {
+    // "Argos £12.00" typed in as the first line is the shop and its price;
+    // anywhere else a name beside a price is an item's. Offered, and marked.
+    return first && before.trim() === '' ? 3 : null;
+  }
+  if (top) return 1;
+  return cued ? 2 : 3;
+}
+
+type ShopHow = 'clear' | 'several' | 'mention';
+
+/**
+ * The shop: the surest-placed mention, and how sure that is.
+ *
+ * A shop named only in passing, or one of two named as surely as each other,
+ * is still offered — it is usually right, and the card marks it — but never
+ * stated as plainly as a sender or a heading. Naming no shop is a flagged
+ * assumption on screen ("Not recognised", and an assumed window the person
+ * can see); naming the wrong one, unmarked, is a confident lie.
+ */
+function pickStore(doc: Doc, totalEnd: number | null): { policy: StorePolicy; how: ShopHow } | null {
+  const heading = headingLines(doc);
+  const lastBodyLine = totalEnd === null ? Infinity : lineAt(doc, Math.max(0, totalEnd - 1));
+  const covered: { start: number; end: number; store: StorePolicy }[] = [];
+  const best = new Map<StorePolicy, number>();
+  // Longest alias first, so a shop whose name contains another's still
+  // resolves to itself: a mention inside a longer one belongs to that one.
+  for (const { alias, store } of ALIASES_BY_LENGTH) {
+    // Checked first, as a plain substring, so a pattern is compiled and run
+    // only for a shop that is there.
+    if (!doc.lower.includes(alias.toLowerCase())) continue;
+    let seen = 0;
+    for (const m of doc.text.matchAll(pattern(alias))) {
+      if (++seen > MAX_MENTIONS) break;
+      const start = m.index ?? 0;
+      const end = start + m[0].length;
+      if (covered.some((c) => c.store !== store && start >= c.start && end <= c.end)) continue;
+      covered.push({ start, end, store });
+      const rank = rankMention(doc, store, start, end, heading, lastBodyLine);
+      if (rank === null) continue;
+      const had = best.get(store);
+      if (had === undefined || rank < had) best.set(store, rank);
+    }
+  }
+  // By rank; between equals, the longer name, as the table has always been
+  // read (the map holds them in that order). Equals are marked either way.
+  const ranked = [...best.entries()].sort((a, b) => a[1] - b[1]);
+  if (ranked.length === 0) return null;
+  const [policy, rank] = ranked[0];
+  const rivals = ranked.slice(1).some(([, r]) => r <= Math.max(2, rank));
+  return { policy, how: rivals ? 'several' : rank >= 3 ? 'mention' : 'clear' };
 }
 
 /** The window used when the shop is not one Kept has verified. */
@@ -950,9 +1106,11 @@ function tidy(raw: string): string {
 export function parseReceiptText(raw: string, today: Date = new Date()): ParseOutcome {
   if (!raw.trim()) return { ok: false, reason: 'empty' };
   const text = deliveredRelative(gbpAsPounds(tidy(raw)), today);
+  const doc = readDoc(text);
 
-  const policy = pickStore(text);
   const total = pickAmount(text);
+  const shop = pickStore(doc, total?.end ?? null);
+  const policy = shop?.policy ?? null;
   const amount = total?.value ?? null;
   // Neither a shop nor a price means there is nothing to build a deadline
   // from — better to say so than to save a receipt made of assumptions.
@@ -976,7 +1134,7 @@ export function parseReceiptText(raw: string, today: Date = new Date()): ParseOu
       item: pickItem(text, policy),
       orderRef: pickOrderRef(text),
       lines: pickLines(text, policy, amount),
-      how: { amount: total?.how ?? null, purchasedOn: picked?.how ?? null },
+      how: { amount: total?.how ?? null, purchasedOn: picked?.how ?? null, store: shop?.how ?? null },
     },
   };
 }

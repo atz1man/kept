@@ -888,9 +888,20 @@ describe('what the parse audit found', () => {
    * on their own, because another rule happens to cover the same case there.
    * Each was found by deleting the rule and watching the audit stay green.
    */
+  it('does not take a name off a marketplace "Sold by" line for the shop', () => {
+    const p = parse('Your order has been placed\nOrdered on 20 August 2026\nSold by: Mamas & Papas Ltd\nOrder Total: £45.00');
+    expect(p.store).toBeNull();
+  });
+
   it('takes the last of two totals that disagree, and says so', () => {
     const p = parse('Argos\nTotal £20.00\nTotal £30.00');
     expect(p.amount).toBe(3000);
     expect(p.how.amount).toBe('several');
+  });
+
+  it('does not take "your next order" in any line for Next, and still takes "your Next order"', () => {
+    expect(parse('Pret\nTotal £9.99\nSee you on your next order').store).toBeNull();
+    expect(parse('Pret\nGet 10% off your next order today\nTotal £9.99').store).toBeNull();
+    expect(parse('Thanks for your Next order\nTotal £9.99').store).toBe('Next');
   });
 });

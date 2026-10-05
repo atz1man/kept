@@ -31,11 +31,22 @@ export type CheckWhy =
   | 'unclear-print'
   | 'several-dates'
   | 'several-totals'
-  | 'part-total';
+  | 'part-total'
+  | 'several-shops'
+  | 'shop-in-passing';
 
+/*
+ * The shop is marked too. It never was, and of the audit's 65 order emails
+ * and till slips, 13 named the wrong one — the maker of the thing bought, a
+ * marketplace seller, a sister brand in the footer — every one stated as
+ * plainly as a shop read off the email's own heading. The shop decides the
+ * window and the policy wording quoted at the counter, so a guess at it is
+ * the guess that most needs saying.
+ */
 export interface Checks {
   amount?: CheckWhy;
   purchasedOn?: CheckWhy;
+  store?: CheckWhy;
 }
 
 /** A total read off words the reader scored under this is marked. 85: every wrong total in the bench, at 9 of 51 right ones. */
@@ -82,6 +93,10 @@ export function toCheck(p: ParsedReceipt, unsure: readonly UnsureWord[] = []): C
     if (p.how.purchasedOn === 'latest') out.purchasedOn = 'several-dates';
     else if (readOffUnsure(unsure, `${day}${month}`, DATE_UNSURE_BELOW)) out.purchasedOn = 'unclear-print';
   }
+  if (p.store !== null) {
+    if (p.how.store === 'several') out.store = 'several-shops';
+    else if (p.how.store === 'mention') out.store = 'shop-in-passing';
+  }
   return out;
 }
 
@@ -100,10 +115,14 @@ export function checkWords(field: keyof Checks, why: CheckWhy): string {
       return 'It has more than one total and they disagree, so this is the last one.';
     case 'part-total':
       return 'This total is of the items alone — it may leave out delivery.';
+    case 'several-shops':
+      return 'It names more than one shop, so this is the likeliest.';
+    case 'shop-in-passing':
+      return 'The shop is only named in passing, not as who the email is from.';
   }
 }
 
 /** How many figures are marked, for the line at the top of the card. */
 export function checkCount(c: Checks): number {
-  return Number(c.amount !== undefined) + Number(c.purchasedOn !== undefined);
+  return Number(c.amount !== undefined) + Number(c.purchasedOn !== undefined) + Number(c.store !== undefined);
 }

@@ -108,8 +108,8 @@ describe('what the card asks to be checked', () => {
       expect(checkWords('amount', why).length).toBeGreaterThan(10);
     }
     expect(checkWords('purchasedOn', 'unclear-print')).toMatch(/date/);
-    for (const why of ['several-totals', 'part-total'] as const) {
-      expect(checkWords('amount', why).length).toBeGreaterThan(10);
+    for (const why of ['several-totals', 'part-total', 'several-shops', 'shop-in-passing'] as const) {
+      expect(checkWords(why.includes('shop') ? 'store' : 'amount', why).length).toBeGreaterThan(10);
     }
   });
 });
@@ -129,6 +129,24 @@ describe('a total chosen from several', () => {
 
   it('marks a total that is only of the items, which may leave out delivery', () => {
     expect(toCheck(parse('Argos\nBasket total £50.00')).amount).toBe('part-total');
+  });
+});
+
+describe('the shop', () => {
+  it('marks a shop named only in passing, and two named as surely as each other', () => {
+    expect(toCheck(parse('eBay\nYou paid for your item\nNEW Decathlon tent\nOrder total £50.00')).store).toBe('shop-in-passing');
+    expect(toCheck(parse('Order confirmation from Argos and Currys · Total £20.00')).store).toBe('several-shops');
+  });
+
+  it('does not mark the heading, the sender, or a shop named as the shop', () => {
+    expect(toCheck(parse('Argos\nTotal £20.00')).store).toBeUndefined();
+    expect(toCheck(parse('From: ASOS <orders@asos.com>\nSubject: Thanks\n\nTotal £20.00')).store).toBeUndefined();
+    expect(toCheck(parse('Thanks for shopping at Tesco\nTotal £20.00')).store).toBeUndefined();
+  });
+
+  it('counts a marked shop among the figures to check', () => {
+    expect(checkCount({ store: 'several-shops' })).toBe(1);
+    expect(checkCount({ amount: 'part-total', purchasedOn: 'several-dates', store: 'shop-in-passing' })).toBe(3);
   });
 });
 
