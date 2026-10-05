@@ -61,8 +61,13 @@ export interface ParsedReceipt {
      * surest kind taken.
      */
     amount: 'label' | 'named' | 'largest' | 'part' | 'several' | null;
-    /** 'label': an order-date label; 'only': the one past date there is; 'latest': the newest of several. */
-    purchasedOn: 'label' | 'only' | 'latest' | null;
+    /**
+     * 'label': an order-date label; 'only': the one past date there is;
+     * 'latest': the newest of several; 'other': a dispatch or delivery
+     * notice's date, nothing naming the order's; 'month-first': figures that
+     * also read month first, the other way being the more recent.
+     */
+    purchasedOn: 'label' | 'only' | 'latest' | 'other' | 'month-first' | null;
     /**
      * 'clear': the sender, the heading, or named as the shop; 'mention': only
      * named in passing; 'several': more than one shop named as surely.
@@ -304,6 +309,12 @@ interface DateHit {
    * "12 September 2026" is long enough to reach into the next clause.
    */
   length: number;
+  /**
+   * The same figures read month first, where they read both ways: 10/01/2026
+   * is 10 January here and 1 October in an American shop's email. Set only
+   * for a numeric date whose day and month are both twelve or under and differ.
+   */
+  monthFirst?: Date;
 }
 
 /** Candidate dates in the text, with their positions. */
@@ -322,7 +333,7 @@ function datesIn(text: string, today: Date): DateHit[] {
    * invalid date, and `getMonth()` is NaN, which equals nothing. Both are
    * belt and braces over a check that already holds.
    */
-  const push = (y: number, m: number, d: number, index: number, length: number) => {
+  const push = (y: number, m: number, d: number, index: number, length: number, monthFirst?: Date) => {
     if (m < 0 || m > 11 || d < 1 || d > 31) return;
     // A run of text is one date. "21 Sep 26" is the 21st, day first with the
     // year cut to two digits — and its tail, "Sep 26", also reads month first
@@ -333,7 +344,7 @@ function datesIn(text: string, today: Date): DateHit[] {
     // app reads dates.
     if (found.some((f) => index >= f.index && index + length <= f.index + f.length)) return;
     const dt = new Date(y, m, d);
-    if (dt.getMonth() === m && dt.getDate() === d) found.push({ date: dt, index, length });
+    if (dt.getMonth() === m && dt.getDate() === d) found.push({ date: dt, index, length, ...(monthFirst ? { monthFirst } : {}) });
   };
 
   // "25 Aug", "25 August 2026", "25th Aug"
@@ -358,8 +369,10 @@ function datesIn(text: string, today: Date): DateHit[] {
   // Only the slash was read, and a dotted order date fell back to today: a
   // deadline later than the real one, in the direction that costs money.
   for (const m of text.matchAll(/\b(\d{1,2})([/.-])(\d{1,2})\2(\d{2,4})\b/g)) {
-    const y = Number(m[4]);
-    push(y < 100 ? 2000 + y : y, Number(m[3]) - 1, Number(m[1]), m.index ?? 0, m[0].length);
+    const y = Number(m[4]) < 100 ? 2000 + Number(m[4]) : Number(m[4]);
+    const [day, month] = [Number(m[1]), Number(m[3])];
+    const other = day <= 12 && month <= 12 && day !== month ? new Date(y, day - 1, month) : undefined;
+    push(y, month - 1, day, m.index ?? 0, m[0].length, other);
   }
   // Year first: ISO, and "2026/09/20" or "2026.09.20". Nobody writes the year
   // and then the day, so this form is never ambiguous.
@@ -388,8 +401,13 @@ function resolveYear(raw: string | undefined, month: number, day: number, today:
  * email is full of dates that sit near that word and mean something else —
  * "return your order by 5 Sept" most dangerously of all.
  */
+/*
+ * Paying is buying, so "Payment date", "Paid on" and an invoice's or a
+ * transaction's own date name the day too; "Placed on" is Shopify's and
+ * Next's way of saying "order placed", and "Ordered:" Apple's.
+ */
 const ORDER_DATE_LABEL =
-  /\b(?:order(?:ed)?\s*date|date\s+order(?:ed)?|date\s+of\s+order|order(?:ed)?\s+(?:on|placed)|order\s+placed(?:\s+on)?|purchase(?:d)?\s*(?:date|on)|bought\s+on)\b/gi;
+  /\b(?:order(?:ed)?\s*date|date\s+order(?:ed)?|date\s+of\s+(?:order|purchase)|order(?:ed)?\s+(?:on|placed)|order\s+placed(?:\s+on)?|ordered(?=\s*:)|placed\s+on|purchase(?:d)?\s*(?:date|on)|bought\s+on|(?:payment|invoice|transaction)\s+date|date\s+paid|paid\s+on)\b/gi;
 
 /** How far after its label a date may sit and still belong to it. */
 const LABEL_REACH = 40;
@@ -449,9 +467,12 @@ const NOT_A_PURCHASE_AFTER = new RegExp(`^[ \\t]*[([–—-]?[ \\t]*(?:${OTHER_C
  * the 12th. A future date cannot be a purchase that has already happened, so
  * those are out first whatever introduces them.
  */
-function pickDate(text: string, today: Date): Picked<Date, 'label' | 'only' | 'latest'> {
+type PurchaseHow = 'label' | 'only' | 'latest' | 'other' | 'month-first';
+
+function pickDate(doc: Doc, today: Date): Picked<Date, PurchaseHow> {
+  const { text } = doc;
   const past = datesIn(text, today)
-    .filter((hit) => daysBetween(today, hit.date) <= 0)
+    .filter((hit) => daysBetween(today, hit.date) <= 0 && !inMailHeader(doc, hit.index))
     .sort((a, b) => a.index - b.index);
   if (past.length === 0) return null;
 
@@ -461,21 +482,87 @@ function pickDate(text: string, today: Date): Picked<Date, 'label' | 'only' | 'l
   // negative distance, and the shipping line above "Order date" becomes the
   // purchase. See the last describe in parse.test.ts.
   const labelled = past.find((hit) => labels.some((end) => hit.index >= end && hit.index - end <= LABEL_REACH));
-  if (labelled) return { value: labelled.date, how: 'label' };
+  if (labelled) return { value: labelled.date, how: readsBothWays(labelled, today) ? 'month-first' : 'label' };
 
-  const newest = (hits: DateHit[]) => hits.reduce((best, hit) => (hit.date > best ? hit.date : best), hits[0].date);
+  const newest = (hits: DateHit[]) => hits.reduce((best, hit) => (hit.date > best.date ? hit : best), hits[0]);
   const plain = past.filter(
     (hit) =>
       !NOT_A_PURCHASE.test(text.slice(Math.max(0, hit.index - 40), hit.index)) &&
       !NOT_A_PURCHASE_AFTER.test(text.slice(hit.index + hit.length)),
   );
+  // Every date there is announced as something else — "Delivered on 3
+  // October" on a delivery notice. Still the best evidence of when it was
+  // bought (the order came before it), and still never stated as the order.
+  if (plain.length === 0) return { value: newest(past).date, how: 'other' };
   // One date that is not announced as something else, however often it is
   // printed: a till slip's only date is the day of the sale, and "Ordered:"
   // beside a delivery date is the order. Nothing there was a choice between
   // candidates, so nothing there is a guess.
-  if (new Set(plain.map((hit) => hit.date.getTime())).size === 1) return { value: plain[0].date, how: 'only' };
-  return { value: newest(plain.length > 0 ? plain : past), how: 'latest' };
+  if (new Set(plain.map((hit) => hit.date.getTime())).size === 1) {
+    const only = plain[0];
+    /*
+     * Unless the paste is a dispatch or delivery notice and nothing on it says
+     * which date is the order. "Your order has been dispatched" over a date on
+     * the next line, "delivered to the front porch on Saturday 3 October":
+     * the one date there is the day it left or landed, and it was stated as the
+     * day of purchase, unmarked — the label check above reads 24 characters
+     * back on the same line and the wording was further away than that.
+     *
+     * Not when a LATER date is announced as the dispatch or the delivery:
+     * "Thursday 1 October" above "Dispatched: Friday 2 October" is the order,
+     * because the email has already said which date the dispatch was.
+     */
+    const announcedLater = past.some((hit) => !plain.includes(hit) && hit.date > only.date);
+    if (isNotice(text) && !announcedLater) return { value: only.date, how: 'other' };
+    return { value: only.date, how: readsBothWays(only, today) ? 'month-first' : 'only' };
+  }
+  return { value: newest(plain).date, how: 'latest' };
 }
+
+/*
+ * Wording that makes a paste a dispatch or delivery notice — an event that
+ * happened to the parcel, not the noun on a price line ("Delivery £3.99",
+ * "Free delivery over £50"), which every order confirmation carries.
+ */
+const EVENT_NOTICE =
+  /\b(?:dispatched|despatched|shipped|delivered|out\s+for\s+delivery|on\s+(?:its|the|their)\s+way|(?:has|have)\s+been\s+sent|left\s+(?:our|the)\s+warehouse)\b/gi;
+
+/*
+ * The same words as a promise are not a notice: "we'll email you once it has
+ * been dispatched" is in nearly every order confirmation, and marked its own
+ * order date as a dispatch date's.
+ */
+const NOT_YET = /\b(?:when|once|after|until|as\s+soon\s+as|will|be|before|if)\b[^.!?\n]{0,40}$|['’]ll\b[^.!?\n]{0,40}$/i;
+
+function isNotice(text: string): boolean {
+  for (const m of text.matchAll(EVENT_NOTICE)) {
+    const index = m.index ?? 0;
+    if (!NOT_YET.test(text.slice(Math.max(0, index - 50), index))) return true;
+  }
+  return false;
+}
+
+/*
+ * A date written in figures that reads both ways, where the month-first
+ * reading is the later of the two and has already happened: 10/01/2026 read
+ * on 5 October is 10 January to a UK shop and 1 October to an American one.
+ * The day-first reading is still the one given — this is a UK app — but it is
+ * marked, because a receipt nine months old added today is the less likely
+ * story. A reading that is still to come is no purchase, so it raises nothing.
+ */
+function readsBothWays(hit: DateHit, today: Date): boolean {
+  if (hit.monthFirst === undefined || hit.monthFirst <= hit.date) return false;
+  const ago = -daysBetween(today, hit.monthFirst);
+  return ago >= 0 && ago <= MONTH_FIRST_RECENT;
+}
+
+/*
+ * How recent the month-first reading has to be to raise the question: a
+ * receipt is added soon after it is bought, so the American reading is the
+ * likelier one only when it is recent. Without a bound, every UK slip from
+ * the first twelve days of a month earlier in the year would be marked.
+ */
+const MONTH_FIRST_RECENT = 60;
 
 /**
  * Phrases that name the day the parcel actually landed.
@@ -692,6 +779,19 @@ function lineAt(doc: Doc, index: number): number {
     else hi = mid - 1;
   }
   return lo;
+}
+
+/*
+ * Whether a position is in a mail header — the day the EMAIL was sent, by
+ * whom, to whom. Never the day of purchase, dispatch or delivery: "Date: Sat,
+ * 3 Oct 2026" on a pasted dispatch email was the purchase, and Outlook's
+ * "Sent: Thursday, 1 October" was a Zara coat's dispatch, starting the clock
+ * of a shop that counts from dispatch on the wrong day. The subject is the
+ * email's own words and is read like the body.
+ */
+function inMailHeader(doc: Doc, index: number): boolean {
+  const line = lineAt(doc, index);
+  return doc.header.has(line) && !SUBJECT_LINE.test(doc.lines[line]);
 }
 
 /*
@@ -1116,7 +1216,7 @@ export function parseReceiptText(raw: string, today: Date = new Date()): ParseOu
   // from — better to say so than to save a receipt made of assumptions.
   if (!policy && amount === null) return { ok: false, reason: 'nothing-found' };
 
-  const picked = pickDate(text, today);
+  const picked = pickDate(doc, today);
   const date = picked?.value ?? null;
   const arrived = pickArrival(text, today, date);
   const dispatched = pickDispatch(text, today, date);

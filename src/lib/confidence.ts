@@ -32,6 +32,8 @@ export type CheckWhy =
   | 'several-dates'
   | 'several-totals'
   | 'part-total'
+  | 'notice-date'
+  | 'month-first'
   | 'several-shops'
   | 'shop-in-passing';
 
@@ -91,6 +93,8 @@ export function toCheck(p: ParsedReceipt, unsure: readonly UnsureWord[] = []): C
   if (p.dateFound) {
     const [, month, day] = p.purchasedOn.split('-');
     if (p.how.purchasedOn === 'latest') out.purchasedOn = 'several-dates';
+    else if (p.how.purchasedOn === 'other') out.purchasedOn = 'notice-date';
+    else if (p.how.purchasedOn === 'month-first') out.purchasedOn = 'month-first';
     else if (readOffUnsure(unsure, `${day}${month}`, DATE_UNSURE_BELOW)) out.purchasedOn = 'unclear-print';
   }
   if (p.store !== null) {
@@ -115,6 +119,10 @@ export function checkWords(field: keyof Checks, why: CheckWhy): string {
       return 'It has more than one total and they disagree, so this is the last one.';
     case 'part-total':
       return 'This total is of the items alone — it may leave out delivery.';
+    case 'notice-date':
+      return 'Nothing on it says “order date”, and it reads as a dispatch or delivery notice — this may be when it was sent or arrived.';
+    case 'month-first':
+      return 'Written in figures that also read month first — check the day and the month.';
     case 'several-shops':
       return 'It names more than one shop, so this is the likeliest.';
     case 'shop-in-passing':

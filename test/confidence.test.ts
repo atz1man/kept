@@ -41,11 +41,14 @@ describe('how the parser found each figure', () => {
   });
 
   it('counts a date announced as the delivery as not a candidate', () => {
-    // "Ordered:" is no order-date label the parser knows, but it is the one
-    // date there that is not a delivery, so nothing was chosen between.
-    const p = parse('Apple Store\nOrdered: Sep 19, 2026\nDelivered: Sep 23, 2026\nTotal £229.00');
+    // An unlabelled date, but the one date there that is not a delivery, so
+    // nothing was chosen between. (This used "Ordered:", which was no label
+    // the parser knew; it is one now — Apple writes its order date that way —
+    // so the date is unlabelled here to keep asking the same question.)
+    const p = parse('Apple Store\nSep 19, 2026\nDelivered: Sep 23, 2026\nTotal £229.00');
     expect(p.purchasedOn).toBe('2026-09-19');
     expect(p.how.purchasedOn).toBe('only');
+    expect(parse('Apple Store\nOrdered: Sep 19, 2026\nDelivered: Sep 23, 2026\nTotal £229.00').how.purchasedOn).toBe('label');
   });
 });
 
@@ -108,7 +111,7 @@ describe('what the card asks to be checked', () => {
       expect(checkWords('amount', why).length).toBeGreaterThan(10);
     }
     expect(checkWords('purchasedOn', 'unclear-print')).toMatch(/date/);
-    for (const why of ['several-totals', 'part-total', 'several-shops', 'shop-in-passing'] as const) {
+    for (const why of ['several-totals', 'part-total', 'notice-date', 'month-first', 'several-shops', 'shop-in-passing'] as const) {
       expect(checkWords(why.includes('shop') ? 'store' : 'amount', why).length).toBeGreaterThan(10);
     }
   });
@@ -147,6 +150,26 @@ describe('the shop', () => {
   it('counts a marked shop among the figures to check', () => {
     expect(checkCount({ store: 'several-shops' })).toBe(1);
     expect(checkCount({ amount: 'part-total', purchasedOn: 'several-dates', store: 'shop-in-passing' })).toBe(3);
+  });
+});
+
+describe('a purchase date that may be something else', () => {
+  it('marks the only date on a dispatch or delivery notice that never names the order date', () => {
+    expect(toCheck(parse('Argos\nYour order has been dispatched\n28 September 2026\nTotal £29.99')).purchasedOn).toBe('notice-date');
+  });
+
+  it('does not mark an order date beside a promise to say when it is dispatched', () => {
+    const p = parse("Argos\nThanks for your order - 21/09/2026\nTotal £20.00\nWe'll email you when it's dispatched.");
+    expect(p.purchasedOn).toBe('2026-09-21');
+    expect(toCheck(p).purchasedOn).toBeUndefined();
+  });
+
+  it('marks figures that also read month first when that reading is the recent one', () => {
+    const p = parse('Brooklinen\nOrder date: 09/01/2026\nTotal £36.50');
+    expect(p.purchasedOn).toBe('2026-01-09');
+    expect(toCheck(p).purchasedOn).toBe('month-first');
+    // The other way round reads only one way that has happened.
+    expect(toCheck(parse('Argos\nOrder date: 01/09/2026\nTotal £5.00')).purchasedOn).toBeUndefined();
   });
 });
 
