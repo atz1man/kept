@@ -24,7 +24,7 @@ function browser({ permission = 'granted', framed = false, throws = false } = {}
   const win: Record<string, unknown> = {};
   win.self = win;
   // A frame's `top` is a different object; a CROSS-ORIGIN one throws on the
-  // comparison, which `isEmbedded` reads as the answer rather than an error.
+  // comparison, which `framed` reads as the answer rather than an error.
   win.top = framed ? {} : win;
   if (throws) {
     Object.defineProperty(win, 'top', {

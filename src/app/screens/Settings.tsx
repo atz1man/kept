@@ -20,6 +20,8 @@ import { SupportDetails } from '../components/SupportDetails';
 interface Props {
   settings: SettingsShape;
   receipts: Receipt[];
+  /** The landing page's demo, whose receipts are its own and live only in memory. */
+  embedded: boolean;
   onExport: () => Promise<SaveOutcome>;
   onRestore: (receipts: Receipt[]) => void;
   onWipe: () => void;
@@ -40,7 +42,7 @@ const RESTORE_FAILURES = {
   'nothing-usable': 'That backup’s receipts couldn’t be read — nothing was changed.',
 } as const;
 
-export function Settings({ settings, receipts, onExport, onRestore, onWipe, onClearSamples, onUpgrade, onChange, offer, store, onRestorePurchase }: Props) {
+export function Settings({ settings, receipts, embedded, onExport, onRestore, onWipe, onClearSamples, onUpgrade, onChange, offer, store, onRestorePurchase }: Props) {
   // How current the retailer table is, decided in `tableCheck` so that a date
   // set once cannot go on reassuring people years later.
   const check = tableCheck(new Date());
@@ -83,6 +85,10 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
    * where it is said, beside the backup it most resembles — and handed over as
    * a file, which is the one thing a person can take to somebody who can read
    * it. Forgotten once saved: the file is theirs now.
+   *
+   * Never in the landing page's demo, where the store answers nothing: the
+   * copy here is the real app's, and the demo showed it and then, once it was
+   * saved, threw it away.
    */
   const [setAside, setSetAside] = useState(() => setAsideData());
   const saveSetAside = async () => {
@@ -140,6 +146,21 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
     ];
     setBackupNote({ tone: 'ok', text: `${parts.join(' · ')}. Nothing already here was lost.` });
   };
+
+  /*
+   * What Erase says it will do. In the landing page's demo it clears the demo's
+   * own receipts and nothing on the device, and the sentence has to say so: it
+   * read "This removes all 5 receipts from this device", counting the demo's
+   * samples, above a tap that erased the visitor's real library instead.
+   */
+  const noun = receipts.length === 1 ? 'receipt' : 'receipts';
+  const eraseSays = embedded
+    ? confirmingWipe
+      ? `This clears the ${receipts.length} ${noun} in this demo. Nothing stored on this device is touched, and reloading the page starts the demo again.`
+      : 'Clears the receipts in this demo. Nothing stored on this device is touched.'
+    : confirmingWipe
+      ? `This removes all ${receipts.length} ${noun} from this device. There is no undo — export a backup first if you might want them.`
+      : 'Removes every receipt stored here. Your data is yours; taking it back is part of that.';
 
   const free = settings.plan === 'free';
   // The meter has to count what the cap counts, or it reports a wall the app
@@ -388,9 +409,7 @@ export function Settings({ settings, receipts, onExport, onRestore, onWipe, onCl
       <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, marginTop: 12, padding: 18 }}>
         <div style={{ fontWeight: 600, fontSize: 15 }}>Erase everything</div>
         <p style={{ fontSize: 13, color: color.muted, lineHeight: 1.55, marginTop: 6, marginBottom: 0 }}>
-          {confirmingWipe
-            ? `This removes all ${receipts.length} ${receipts.length === 1 ? 'receipt' : 'receipts'} from this device. There is no undo — export a backup first if you might want them.`
-            : 'Removes every receipt stored here. Your data is yours; taking it back is part of that.'}
+          {eraseSays}
         </p>
         {confirmingWipe ? (
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>

@@ -361,6 +361,7 @@ src/lib/          the decision logic — pure, tested, no React
   save-file.ts    where a backup actually lands — Files on iOS, a download on the web
   mirror.ts       the second copy, outside the web view, that survives a reclaim
   photos.ts       the paper slip on the filesystem, never read
+  embed.ts        whether this page is the landing page's demo, which every store turns away
   brand.ts        the tagline, in the one place all three surfaces read
 src/app/          the nine screens and their chrome
 src/landing/      the marketing page
@@ -655,6 +656,23 @@ deliberate departure, not an oversight:
   had changed what the installed app shows. It runs entirely in memory now:
   fully working, resetting to the designed state on every page load, writing
   nothing.
+
+  That held for what went through the reducer, and for nothing else. A demo
+  screen that called the store directly went straight past it: *Erase
+  everything*, pressed in the demo, wrote an empty library over the visitor's
+  real one — measured, `[Sofa, Kettle, Coat]` became `[]` — under a
+  confirmation counting the demo's five samples. The same demo showed the real
+  set-aside copy and threw it away once saved, set one aside merely by opening
+  over an unreadable store, handed the real library over as a file from its
+  crash screen, installed the service worker from a single visit to the landing
+  page, and, opened on its own outside the frame, raised the origin's
+  notification prompt and notified about a receipt that existed only in the
+  demo. The stores refuse it themselves now: `embed.ts` decides once which page
+  this is, and localStorage, the iPhone's files, the notifications, the worker
+  and the receipt reader's model cache each ask at their own door, so a screen
+  nobody thought to check cannot reach them. `embedded-effects.test.ts` walks
+  every file in `src` for anything that reaches the device and fails on one
+  with nothing in front of it. In the demo, Erase clears the demo, and says so.
 - **The add screen would save an arrival date from before the purchase.** The
   field it was added to has a rule on the edit screen and had none here: the
   browser marked the input invalid and the app read the value and saved it

@@ -13,6 +13,7 @@
  * time someone chooses to scan; the service worker and tesseract's own cache
  * keep them after that.
  */
+import { embedded } from '../lib/embed';
 import { readable, toGray, type Gray } from '../lib/flatten';
 import { readFlattenedOrAsTaken, UNSURE_BELOW, type Reader, type Reading } from '../lib/receipt-scan';
 
@@ -102,6 +103,12 @@ export async function readReceiptPhoto(file: Blob, today: Date, onProgress?: Sca
     // A worker script from this origin rather than a blob wrapping one: the
     // blob route exists for loading the worker from a CDN, which this never does.
     workerBlobURL: false,
+    // tesseract keeps the model it fetched in this origin's IndexedDB, and in
+    // the landing page's demo (see embed.ts) that is the visitor's device:
+    // one scan in the demo left the English model there, measured. 'none'
+    // neither reads that copy nor writes one, so the demo fetches the model
+    // from this app each time instead.
+    cacheMethod: embedded() ? 'none' : 'write',
     logger: (m: { status: string; progress: number }) => {
       if (m.status === 'recognizing text') onProgress?.(m.progress, again);
     },

@@ -1,6 +1,7 @@
 import { useEffect, useReducer, useState } from 'react';
 import { alertKey, inheritedKeys, movedRungs, pruneSent, remindedBeforeWindow } from '../lib/alerts';
 import { planAlerts } from '../lib/schedule';
+import { embedded } from '../lib/embed';
 import { isNative } from '../lib/mirror';
 import { cleanupPhotos } from '../lib/photos';
 import { onNotificationTap, syncScheduled } from './schedule-native';
@@ -21,7 +22,7 @@ export interface AppState extends KeptState {
   screen: Screen;
   /** An order email shared in from another app, waiting for the Add screen. */
   sharedText: string | null;
-  /** True in the landing page's iframe demo: nothing is read or written to disk. */
+  /** True in the landing page's demo, framed or not (see embed.ts): nothing is read or written to disk. */
   embedded: boolean;
   /**
    * The receipt just deleted, held only long enough to offer it back.
@@ -879,28 +880,31 @@ export function useApp() {
     (s: AppState, a: Action) => reducer(s, a, today),
     today,
     (t): AppState => {
-      const persisted = load(t);
       // The landing page embeds this same build in an iframe as its live
       // demo. A visitor who has never opened the app should land on the
       // receipts list there, not on step one of an onboarding flow they
       // cannot see the point of yet.
       const params = typeof location !== 'undefined' ? new URLSearchParams(location.search) : new URLSearchParams();
-      const embedded = params.has('embed');
+      // Asked of embed.ts, which every store asks too, so the screens and the
+      // stores cannot disagree about which page this is.
+      const demo = embedded();
       const incoming = sharedTextFrom(params);
       // The demo on the marketing page is this same build at this same origin,
       // so it was reading and writing the real app's storage: swipe a receipt
       // in the shop window and you had changed what the installed app shows.
       // It runs entirely in memory instead — fully working, resetting to the
-      // designed state on every load, touching nothing.
-      const base = embedded ? freshState(t) : persisted;
+      // designed state on every load — so it has no reason to ask the store,
+      // which turns the demo away in any case (`storage()`). Asking it was
+      // once enough for `load` to set a copy of an unreadable library aside.
+      const base = demo ? freshState(t) : load(t);
       return {
         ...base,
         // A shared order goes straight to Add, whether or not onboarding was
         // ever finished: someone who shared an email is telling you exactly
         // what they came to do.
-        screen: openingScreen({ shared: incoming !== null, onboardingSeen: base.onboardingSeen, embedded }),
+        screen: openingScreen({ shared: incoming !== null, onboardingSeen: base.onboardingSeen, embedded: demo }),
         sharedText: incoming,
-        embedded,
+        embedded: demo,
         justDeleted: null,
         justKept: null, justReturned: null, justSent: null, justAdded: null,
         selId: null,

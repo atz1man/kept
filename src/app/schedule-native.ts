@@ -1,3 +1,4 @@
+import { embedded } from '../lib/embed';
 import { isNative } from '../lib/mirror';
 import type { PlannedAlert } from '../lib/schedule';
 
@@ -55,7 +56,9 @@ export function syncScheduled(plan: readonly PlannedAlert[], mayAsk = true): Pro
 }
 
 async function syncNow(plan: readonly PlannedAlert[], mayAsk: boolean): Promise<boolean> {
-  if (!isNative()) return false;
+  // Nor from the landing page's demo (see embed.ts): what is lodged is the
+  // real app's, and this cancels all of it before lodging anything.
+  if (!isNative() || embedded()) return false;
   try {
     const { LocalNotifications } = await import('@capacitor/local-notifications');
 
@@ -142,7 +145,8 @@ async function syncNow(plan: readonly PlannedAlert[], mayAsk: boolean): Promise<
 export async function onNotificationTap(
   open: (receiptId: string, key: string) => void,
 ): Promise<() => void> {
-  if (!isNative()) return () => {};
+  // A tap on the real app's alert belongs to the real app, not to the demo.
+  if (!isNative() || embedded()) return () => {};
   try {
     const { LocalNotifications } = await import('@capacitor/local-notifications');
     const handle = await LocalNotifications.addListener('localNotificationActionPerformed', (action) => {

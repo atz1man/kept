@@ -4,6 +4,7 @@ import '../styles.css';
 import { App } from './App';
 import { Recovery } from './components/Recovery';
 import { color } from '../tokens';
+import { embedded } from '../lib/embed';
 import { isNative } from '../lib/mirror';
 import { restoreFromMirror, savedToStore } from '../lib/storage';
 import { bootScript, shouldReload } from '../lib/stale-build';
@@ -88,8 +89,15 @@ if (isNative()) {
  * BUNDLE rather than of a cache, and a worker adds a second, staler copy of
  * files that cannot go missing. Nothing is lost by leaving it to the web,
  * where `freshness` tests it properly.
+ *
+ * Nor from the landing page's demo, which is this app at /app/ (see embed.ts).
+ * Somebody who has only read the marketing page has installed nothing, and
+ * this put a worker and its cache on their device regardless. Measured in a
+ * fresh profile: one visit to the landing page, and the origin held a
+ * registration for /app/ and the cache `kept-<build>`.
  */
-if (!isNative() && 'serviceWorker' in navigator) {
+function registerWorker() {
+  if (embedded() || isNative() || !('serviceWorker' in navigator)) return;
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js', { scope: '/app/' }).catch(() => {
       // Offline caching is an enhancement; a registration failure (private
@@ -97,6 +105,7 @@ if (!isNative() && 'serviceWorker' in navigator) {
     });
   });
 }
+registerWorker();
 
 /*
  * A piece of the app that will not load is, on the web, almost always a tab
@@ -112,6 +121,10 @@ if (!isNative() && 'serviceWorker' in navigator) {
 const RELOADED_FROM = 'kept.reloadedFrom';
 
 async function reloadIfOlderThanDeployed() {
+  // Not the landing page's demo, which keeps nothing and starts afresh every
+  // time it is opened, and which must not leave a mark in the tab's session
+  // store either (see embed.ts).
+  if (embedded()) return;
   const onScreen = document.querySelector('script[type="module"][src]')?.getAttribute('src') ?? null;
   let available: string | null = null;
   /*

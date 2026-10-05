@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
@@ -22,6 +22,10 @@ import { describe, expect, it } from 'vitest';
  * It walks the REAL file with the TypeScript parser rather than a regex,
  * because an effect's body is nested arbitrarily and a regex would miss one
  * quietly, which is the failure mode this file exists to prevent.
+ *
+ * The effects turned out to be half of it. The demo erased a real library from
+ * an event handler, which no effect sweep can see, so the second half below
+ * holds the rule at every door to the device instead: see "every door".
  */
 const SOURCE = join(__dirname, '..', 'src', 'app', 'state.ts');
 
@@ -212,5 +216,297 @@ describe('the deadline-alerts switch', () => {
     expect(off, 'the off branch falls through into the planner').toMatch(/\breturn\b/);
     expect(e.text.slice(e.text.indexOf(off) + off.length), 'nothing plans alerts when the switch is on')
       .toContain('planAlerts');
+  });
+});
+
+/**
+ * Every door to the device, and the demo turned away at each one.
+ *
+ * Everything above reads `useEffect` calls in `state.ts`, which is where this
+ * rule was written down and the only place it was kept. The demo erased a real
+ * library anyway, from somewhere this file never looked: an event handler.
+ * Erase everything called `wipe()` straight from App.tsx, the set-aside copy
+ * was read and discarded straight from Settings, and nothing on either path
+ * asked whether this was the demo. Measured on the built app: the visitor's
+ * [Sofa, Kettle, Coat] became []. A sweep over callers is a list of the places
+ * somebody remembered, and the defect is always the caller nobody listed.
+ *
+ * So the rule is held at the other end, where the list is short and does not
+ * grow with the app: the places in `src` that actually reach something the
+ * device keeps. Each must turn the demo away before it reaches through, or sit
+ * in a branch the demo cannot take. A new screen that calls `wipe` is then
+ * safe without knowing it, and a new line that touches localStorage directly
+ * fails here, naming its line.
+ *
+ * What counts as reaching is the one hand-kept part, and a store it does not
+ * name is a store this cannot see. Reading the notification PERMISSION is left
+ * out on purpose, since the switch has to say what the browser will do, and so
+ * are the camera and the document scanner, which keep nothing.
+ */
+const SRC = join(__dirname, '..', 'src');
+
+const sourceFiles = (dir: string): string[] =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
+    d.isDirectory() ? sourceFiles(join(dir, d.name)) : /\.tsx?$/.test(d.name) ? [join(dir, d.name)] : [],
+  );
+
+/** Plugins whose whole business is something the device keeps. */
+const STORE_PLUGINS = new Set(['@capacitor/filesystem', '@capacitor/local-notifications', '@capacitor/preferences']);
+
+/** The web's own stores, reached as globals or off `window`. */
+const WEB_STORES = new Set(['localStorage', 'sessionStorage', 'indexedDB', 'caches']);
+
+/** What this node reaches on the device, or null. */
+function doorOf(n: ts.Node): string | null {
+  if (ts.isIdentifier(n) && WEB_STORES.has(n.text)) {
+    const p = n.parent;
+    // A key being declared is not a reach: `{ localStorage: fake }`.
+    const declared =
+      (ts.isPropertyAssignment(p) || ts.isPropertySignature(p) || ts.isPropertyDeclaration(p) ||
+        ts.isVariableDeclaration(p) || ts.isParameter(p) || ts.isBindingElement(p)) &&
+      p.name === n;
+    return declared ? null : n.text;
+  }
+  if (ts.isPropertyAccessExpression(n)) {
+    const on = n.expression.getText();
+    const name = n.name.text;
+    if (name === 'serviceWorker') return 'the service worker';
+    if (name === 'showNotification') return 'a notification';
+    if (on === 'Notification' && name === 'requestPermission') return 'the notification permission';
+    if (on === 'navigator' && name === 'storage') return 'persistent storage';
+    if (on === 'document' && name === 'cookie') return 'cookies';
+  }
+  if (ts.isNewExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === 'Notification') {
+    return 'a notification';
+  }
+  if (ts.isCallExpression(n)) {
+    const [first] = n.arguments;
+    if (n.expression.kind === ts.SyntaxKind.ImportKeyword && first && ts.isStringLiteral(first) && STORE_PLUGINS.has(first.text)) {
+      return first.text;
+    }
+    const callee = n.expression;
+    const name = ts.isPropertyAccessExpression(callee) ? callee.name.text : ts.isIdentifier(callee) ? callee.text : '';
+    if (name === 'addEventListener' && first && ts.isStringLiteral(first) && first.text === 'storage') {
+      return 'another tab’s writes';
+    }
+  }
+  if (
+    ts.isImportDeclaration(n) &&
+    !n.importClause?.isTypeOnly &&
+    ts.isStringLiteral(n.moduleSpecifier) &&
+    STORE_PLUGINS.has(n.moduleSpecifier.text)
+  ) {
+    return n.moduleSpecifier.text;
+  }
+  return null;
+}
+
+/**
+ * A condition about the demo and the platform, EVALUATED rather than looked
+ * for, for the reason the effects check above gives: `embedded() &&
+ * !isNative()` mentions the demo, and lets it through on a phone.
+ */
+function decides(cond: string, demo: boolean, native: boolean): boolean {
+  const run = new Function('state', 'embedded', 'isNative', 'navigator', `return Boolean(${cond});`) as (
+    state: { embedded: boolean },
+    embedded: () => boolean,
+    isNative: () => boolean,
+    navigator: object,
+  ) => boolean;
+  return run({ embedded: demo }, () => demo, () => native, { serviceWorker: {}, storage: {} });
+}
+
+/** `cond` holds for the demo on both platforms, and does not hold for the real app on at least one. */
+const shutsDemoOut = (cond: string): boolean =>
+  [true, false].every((native) => decides(cond, true, native)) &&
+  ![true, false].every((native) => decides(cond, false, native));
+
+/** A statement that leaves the function: `return`, `throw`, or a block of just one of them. */
+const exits = (s: ts.Statement): boolean =>
+  ts.isReturnStatement(s) || ts.isThrowStatement(s) || (ts.isBlock(s) && s.statements.length === 1 && exits(s.statements[0]));
+
+/** Why nothing turns the demo away before this door, or null when something does. */
+function unguarded(door: ts.Node): string | null {
+  const unreadable: string[] = [];
+  const shuts = (cond: string): boolean => {
+    if (!/\bembedded\b/.test(cond)) return false;
+    try {
+      return shutsDemoOut(cond);
+    } catch {
+      unreadable.push(cond);
+      return false;
+    }
+  };
+  for (let child: ts.Node = door, n = door.parent; n; child = n, n = n.parent) {
+    // Inside a branch the demo cannot take.
+    if (ts.isIfStatement(n)) {
+      const cond = n.expression.getText();
+      if (child === n.thenStatement && shuts(`!(${cond})`)) return null;
+      if (child === n.elseStatement && shuts(cond)) return null;
+    }
+    if (ts.isConditionalExpression(n)) {
+      const cond = n.condition.getText();
+      if (child === n.whenTrue && shuts(`!(${cond})`)) return null;
+      if (child === n.whenFalse && shuts(cond)) return null;
+    }
+    // After a statement that sends the demo away. Only the statements BEFORE
+    // the one holding the door count: a check below the reach is too late.
+    if (ts.isBlock(n)) {
+      for (const s of n.statements) {
+        if (s === child) break;
+        if (ts.isIfStatement(s) && !s.elseStatement && exits(s.thenStatement) && shuts(s.expression.getText())) return null;
+      }
+    }
+  }
+  return unreadable.length
+    ? `its demo check cannot be read on its own; keep it to embedded(), state.embedded and isNative(): ${unreadable.join(' / ')}`
+    : 'nothing turns the demo away before it';
+}
+
+interface Door {
+  file: string;
+  line: number;
+  door: string;
+  /** Why the demo is not turned away, or null when it is. */
+  why: string | null;
+}
+
+function doors(file: string, text: string): Door[] {
+  const sf = ts.createSourceFile(
+    file, text, ts.ScriptTarget.Latest, true, file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+  );
+  const out: Door[] = [];
+  const walk = (n: ts.Node) => {
+    const door = doorOf(n);
+    if (door) out.push({ file, line: sf.getLineAndCharacterOfPosition(n.getStart()).line + 1, door, why: unguarded(n) });
+    ts.forEachChild(n, walk);
+  };
+  walk(sf);
+  return out;
+}
+
+const everyDoor = (): Door[] =>
+  sourceFiles(SRC).flatMap((f) => doors(relative(SRC, f).split('\\').join('/'), readFileSync(f, 'utf8')));
+
+describe('every door to the device', () => {
+  const found = everyDoor();
+
+  it('finds the doors it is meant to be checking', () => {
+    // A sweep over nothing passes silently. These are the stores the app has
+    // today, and each must still be visible to the matcher, so a rename that
+    // hides one from it fails here instead of leaving the rule below green.
+    const seen = new Set(found.map((d) => `${d.door} in ${d.file}`));
+    for (const want of [
+      'localStorage in lib/storage.ts',
+      'another tab’s writes in lib/storage.ts',
+      '@capacitor/filesystem in lib/mirror.ts',
+      '@capacitor/local-notifications in app/notify.ts',
+      '@capacitor/local-notifications in app/schedule-native.ts',
+      'the notification permission in app/notify.ts',
+      'a notification in app/notify.ts',
+      'the service worker in app/notify.ts',
+      'the service worker in app/main.tsx',
+      'persistent storage in app/App.tsx',
+    ]) {
+      expect([...seen], `the sweep no longer sees ${want}`).toContain(want);
+    }
+  });
+
+  it('turns the demo away at every one, before it reaches through', () => {
+    const open = found.filter((d) => d.why !== null).map((d) => `src/${d.file}:${d.line} reaches ${d.door}: ${d.why}`);
+    expect(open).toEqual([]);
+  });
+});
+
+describe('the door sweep, shown code written to fool it', () => {
+  // The matcher is worth only what it can tell apart, so it is shown the
+  // shapes that look guarded and are not, beside the ones that are.
+  const verdict = (text: string) => doors('planted.ts', text).map((d) => d.why === null);
+
+  it('refuses a door with nothing in front of it', () => {
+    expect(verdict(`export function f() { localStorage.setItem('kept.v1', '[]'); }`)).toEqual([false]);
+  });
+
+  it('accepts one the demo is turned away from first', () => {
+    expect(verdict(`export function f() { if (embedded()) return; localStorage.setItem('kept.v1', '[]'); }`)).toEqual([true]);
+  });
+
+  it('refuses a check that comes after the reach', () => {
+    expect(verdict(`export function f() { localStorage.setItem('k', 'v'); if (embedded()) return; }`)).toEqual([false]);
+  });
+
+  it('refuses a check that lets the demo through on a phone', () => {
+    expect(verdict(`export function f() { if (embedded() && !isNative()) return; localStorage.clear(); }`)).toEqual([false]);
+  });
+
+  it('refuses a check that turns everybody away', () => {
+    expect(verdict(`export function f() { if (embedded() || true) return; localStorage.clear(); }`)).toEqual([false]);
+  });
+
+  it('does not count a check made by a caller, which is how the demo erased a library', () => {
+    const planted = `function wipe() { localStorage.removeItem('kept.v1'); }
+      export function onWipe() { if (embedded()) return; wipe(); }`;
+    expect(verdict(planted)).toEqual([false]);
+  });
+
+  it('refuses a store plugin imported where nothing can stand in front of it', () => {
+    expect(verdict(`import { Preferences } from '@capacitor/preferences';`)).toEqual([false]);
+  });
+
+  it('accepts a door in a branch the demo cannot take', () => {
+    expect(verdict(`if (!embedded()) { navigator.serviceWorker.register('/sw.js'); }`)).toEqual([true]);
+    expect(verdict(`const s = embedded() ? null : window.localStorage;`)).toEqual([true]);
+    expect(verdict(`if (embedded()) { show(); } else { localStorage.clear(); }`)).toEqual([true]);
+  });
+
+  it('accepts the check the effects make, read off React state', () => {
+    expect(verdict(`useEffect(() => { if (state.embedded || isNative()) return; void navigator.storage.persist(); }, []);`))
+      .toEqual([true]);
+  });
+
+  it('says so when a check mentions the demo but cannot be read', () => {
+    const [door] = doors('planted.ts', `export function f() { if (embedded() || ready) return; localStorage.clear(); }`);
+    expect(door.why).toMatch(/cannot be read/);
+  });
+});
+
+/**
+ * The receipt reader's own cache.
+ *
+ * tesseract keeps the model it downloads in this origin's IndexedDB, and that
+ * write happens inside the library, so the sweep above cannot see it: no line
+ * of `src` names IndexedDB. Measured on the built app: one scan in the demo
+ * left `./eng.traineddata` in the visitor's IndexedDB. So the option scan.ts
+ * hands the reader is read off the source and evaluated, like the guards.
+ */
+describe('the receipt reader’s own cache', () => {
+  const cacheOption = (): string | null => {
+    const file = join(SRC, 'app', 'scan.ts');
+    const sf = ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true);
+    let found: string | null = null;
+    const walk = (n: ts.Node) => {
+      if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === 'createWorker') {
+        const options = n.arguments[2];
+        if (options && ts.isObjectLiteralExpression(options)) {
+          for (const p of options.properties) {
+            if (ts.isPropertyAssignment(p) && p.name.getText() === 'cacheMethod') found = p.initializer.getText();
+          }
+        }
+      }
+      ts.forEachChild(n, walk);
+    };
+    walk(sf);
+    return found;
+  };
+  const cacheFor = (demo: boolean): unknown =>
+    (new Function('embedded', `return ${cacheOption()};`) as (embedded: () => boolean) => unknown)(() => demo);
+
+  it('finds the option it is meant to be reading', () => {
+    expect(cacheOption(), 'scan.ts does not tell the reader what it may keep').not.toBeNull();
+  });
+
+  it('keeps nothing from the demo, and still keeps the model for the app', () => {
+    expect(cacheFor(true), 'the demo writes the model to the visitor’s device').toBe('none');
+    expect(cacheFor(false), 'the app re-downloads the model for every scan').not.toBe('none');
   });
 });
