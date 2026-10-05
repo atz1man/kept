@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mergeBackup, parseBackup, readReceipt } from '../src/lib/backup';
+import { MAX_BACKUP_BYTES, mergeBackup, parseBackup, readReceipt } from '../src/lib/backup';
 import { MAX_AMOUNT_PENCE, MAX_WINDOW_DAYS } from '../src/lib/draft';
 import { toPence } from '../src/lib/money';
 import { seedReceipts } from '../src/lib/seed';
@@ -33,6 +33,26 @@ describe('rejecting files that are not backups', () => {
   it('accepts a genuinely empty backup', () => {
     // Someone with no receipts exported one. That is a real file, not an error.
     expect(ok(file([]))).toEqual({ receipts: [], skipped: 0 });
+  });
+
+  it('refuses a file larger than the store it would land in', () => {
+    // localStorage holds 5,242,880 characters for the whole app (measured in
+    // Chromium; Safari's is the same five megabytes). Nothing larger can be
+    // held, and saying so before touching anything beats a restore that
+    // reports success and then cannot save.
+    const huge = file([{ ...good, gotcha: 'g'.repeat(MAX_BACKUP_BYTES) }]);
+    expect(parseBackup(huge)).toEqual({ ok: false, reason: 'too-large' });
+    // And an ordinary file is nowhere near it.
+    expect(file(seedReceipts(new Date(2026, 7, 28))).length).toBeLessThan(MAX_BACKUP_BYTES / 500);
+  });
+
+  it('takes a file of exactly that size', () => {
+    // The edge, so neither side of it can move unnoticed.
+    const padded = (n: number) => file([{ ...good, gotcha: 'g'.repeat(n) }]);
+    const exact = padded(MAX_BACKUP_BYTES - padded(0).length);
+    expect(exact).toHaveLength(MAX_BACKUP_BYTES);
+    expect(parseBackup(exact).ok).toBe(true);
+    expect(parseBackup(padded(MAX_BACKUP_BYTES - padded(0).length + 1))).toEqual({ ok: false, reason: 'too-large' });
   });
 
   it('rejects a file whose every row was unreadable', () => {
@@ -310,6 +330,35 @@ describe('what a file may claim about a receipt', () => {
     expect(s.receipts).toHaveLength(1);
     expect(s.receipts[0].store.length).toBeLessThanOrEqual(120);
     expect(s.receipts[0].gotcha).toHaveLength(2000);
+  });
+
+  /*
+   * The two the trimming rule above never reached. A file whose ONE receipt
+   * carried a 6,000,000-character policy restored "1 restored. Nothing already
+   * here was lost." — and the store could not hold it, so the device stopped
+   * saving there and then, and a receipt added afterwards was gone after a
+   * reload. Measured in a real browser.
+   */
+  it('trims a policy sentence to the length of a note', () => {
+    const s = ok(file([{ ...good, policy: 'p'.repeat(3_000_000) }]));
+    expect(s.receipts).toHaveLength(1);
+    expect(s.receipts[0].policy.length).toBeLessThanOrEqual(2000);
+    expect(s.receipts[0].policy).toHaveLength(2000);
+  });
+
+  it('trims a warranty note, in either of the shapes a backup has carried', () => {
+    const asObject = ok(file([{ ...good, warranty: { months: 24, note: 'w'.repeat(3_000_000) } }])).receipts[0];
+    expect(asObject.warranty).toEqual({ months: 24, note: 'w'.repeat(2000) });
+    const asString = ok(file([{ ...good, warranty: 'w'.repeat(3_000_000) }])).receipts[0];
+    expect(asString.warranty).toEqual({ months: 0, note: 'w'.repeat(2000) });
+  });
+
+  it('leaves the device’s own store as it is', () => {
+    // The rule this file states: the app bounds what comes in and never
+    // alters what it already holds. `hydrate` reads through readReceipt too.
+    const long = { ...good, policy: 'p'.repeat(5000), warranty: { months: 24, note: 'w'.repeat(5000) } };
+    expect(readReceipt(long)?.policy).toHaveLength(5000);
+    expect(readReceipt(long)?.warranty?.note).toHaveLength(5000);
   });
 
   it('leaves an ordinary receipt exactly as it was', () => {

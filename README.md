@@ -1981,6 +1981,19 @@ to the samples — it is the same for everyone, but Erase was the way out a bad
 feed was promised, and it is the only exit from a bad feed nobody has thought
 of yet. The cost is the news until the next launch online.
 
+**And two fields the backup's trimming never reached.** The rule above trims
+text from a file and keeps the receipt, but the policy sentence and the
+warranty note were passed through whole. A file with one receipt carrying a
+6,000,000-character policy restored as "1 restored. Nothing already here was
+lost.", then the banner said "This device isn't saving", and a receipt added
+afterwards was gone after a reload. Both are trimmed to the note cap now, from
+a file only. And a file larger than the store it lands in is refused before it
+is read: localStorage holds 5,242,880 characters for the whole app (measured in
+Chromium, which refused one more; Safari's is the same five megabytes), so
+nothing bigger can be held whole, and the five sample receipts export in under
+3 KB. Settings says "That file is too large to be a kept backup — nothing was
+changed."
+
 ### The numbers that are facts, and the numbers that are judgements
 
 A third pass asked something different of the same suite: move every named
