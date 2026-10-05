@@ -628,6 +628,58 @@ if (!/Deadline alerts/.test(settingsText)) {
   if (aerrors.length > 0) failures.push({ what: 'the reminders run raised page errors', saw: aerrors.join(' | ') });
   await actx.close();
 
+  /*
+   * Kept on day 28: a single-shot reminder whose morning has already gone.
+   *
+   * The right to reject is said three days before it ends, and this one ends
+   * in two, so that morning was yesterday. The web raises it the moment the
+   * app opens; iOS was handed nothing, because the scheduler skipped any
+   * morning already past and these rungs have no later one. Now it is lodged
+   * for the next 9am, counted from that morning.
+   */
+  {
+    const lctx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+    await answeringBridge(lctx, { notifications: 'granted' });
+    const lp = await lctx.newPage();
+    const lerrors = [];
+    lp.on('pageerror', (e) => lerrors.push(String(e)));
+    await lp.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
+    await lp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+    const d28 = new Date(Date.now() - 28 * 86_400_000);
+    const on28 = d28.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    await lp.getByRole('button', { name: 'Add a receipt' }).click();
+    await lp.locator('#paste').fill(`Thanks for your Argos order\nOrder date: ${on28}\nTotal £59.99`);
+    await lp.getByRole('button', { name: 'Read it' }).click();
+    await lp.getByRole('button', { name: 'Save receipt' }).click();
+    await lp.waitForTimeout(800);
+    await lp.getByRole('button', { name: /^Argos, Argos purchase/ }).first().click().catch(() => {});
+    await lp.waitForTimeout(400);
+    await lp.getByRole('button', { name: 'I’m keeping it' }).click().catch(() => {});
+    await lp.waitForTimeout(1200);
+    const notes = await lp.evaluate(() => window.__keptNotes().pending);
+    const status = await lp.evaluate(() => (JSON.parse(localStorage.getItem('kept.v1') ?? '{}').receipts ?? []).find((r) => !r.demo)?.status);
+    // The next 9am, from either side of the check, in case it straddles nine.
+    const nextNine = (t) => {
+      const n = new Date(t);
+      const nine = new Date(n.getFullYear(), n.getMonth(), n.getDate(), 9, 0, 0, 0);
+      return nine.getTime() > n.getTime() ? nine : new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1, 9, 0, 0, 0);
+    };
+    const ok = [nextNine(Date.now() - 5000).getTime(), nextNine(Date.now()).getTime()];
+    const got = notes.map((n) => ({ rung: String(n.extra?.key).split(':').pop(), at: new Date(n.schedule?.at).getTime(), title: n.title }));
+    const right = got.length === 1 && got[0].rung === 'reject' && ok.includes(got[0].at);
+    // Two days left today; one tomorrow. The words say the morning's count.
+    const daysThen = right ? Math.round((new Date(d28.getFullYear(), d28.getMonth(), d28.getDate() + 30).getTime() - new Date(new Date(got[0].at).getFullYear(), new Date(got[0].at).getMonth(), new Date(got[0].at).getDate()).getTime()) / 86_400_000) : -1;
+    const words = daysThen === 1 ? '1 day left to reject it if it’s faulty' : `${daysThen} days left to reject it if it’s faulty`;
+    if (status !== 'kept' || !right || got[0].title !== words) {
+      failures.push({
+        what: 'an item kept on day 28 did not have its right to reject lodged for the next 9am, counted from that morning',
+        saw: `status ${status}; ${JSON.stringify(got).slice(0, 300)}`,
+      });
+    }
+    if (lerrors.length > 0) failures.push({ what: 'the late-reminder run raised page errors', saw: lerrors.join(' | ') });
+    await lctx.close();
+  }
+
   // Never asked: iOS asks once, when there is first something worth saying,
   // and then lodges it. Refused: nothing is lodged, and Settings says where to
   // change it rather than showing a switch that does nothing.

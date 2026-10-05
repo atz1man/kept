@@ -1,7 +1,6 @@
-import { addDays, fromISODate, startOfDay } from './dates';
+import { addDays, startOfDay } from './dates';
 import { derive } from './receipts';
-import { alertKey, copyFor, CREDIT_NOTICE_DAYS, creditWatched, faultWatched, REFUND_CHASE_DAYS, REJECT_NOTICE_DAYS, rejectWatched, warrantyWatched, WARRANTY_NOTICE_DAYS, type AlertRung, type ReturnRung } from './alerts';
-import { REPLY_DAYS } from './fault-letter';
+import { alertKey, copyFor, singleShotDue, singleShots, type AlertRung, type ReturnRung } from './alerts';
 import type { Receipt } from './types';
 
 /**
@@ -86,6 +85,12 @@ function at9am(day: Date): Date {
   return d;
 }
 
+/** The first 9am after `now`: today's while it is still ahead, else tomorrow's. */
+function nextNine(now: Date): Date {
+  const today = at9am(now);
+  return today.getTime() > now.getTime() ? today : at9am(addDays(now, 1));
+}
+
 /**
  * Everything worth lodging with the system, soonest first, within the cap.
  *
@@ -104,58 +109,30 @@ export function planAlerts(
 
   for (const r of receipts) {
     /*
-     * The guarantee, a month before it ends, for a receipt still on this
-     * phone whether it is being returned or kept. Years out, usually, and
-     * so it is also the alert most likely to sit behind the 64-slot cap:
-     * that is the right way round, since it is re-planned on every launch
-     * long before its morning comes.
+     * The single-shot rungs — the refund, the guarantee, the right to reject,
+     * the credit and the fault letter — at 9am on their first morning, read
+     * off the same decision `dueAlerts` makes, so the two cannot disagree.
+     *
+     * Or at the NEXT 9am, where that first morning has already gone. Each of
+     * these has one notice day and no ladder after it, so skipping a past
+     * morning skipped the alert for good: a credit note recorded with twenty
+     * days to run, a guarantee added in its last month, an item kept on day
+     * 28 with two days of its right to reject left — every one raised on the
+     * web the moment the app opened, and nothing lodged with iOS at all. It is
+     * lodged only if it will still be true on that morning, by the same test
+     * `dueAlerts` applies on the morning it opens, and its words count the
+     * days left from that morning: a right that ends today is said at 9am if
+     * 9am is still ahead, and not at all once it has gone.
+     *
+     * The guarantee is years out, usually, and so it is also the alert most
+     * likely to sit behind the 64-slot cap: that is the right way round,
+     * since it is re-planned on every launch long before its morning comes.
      */
-    // Gone back: the refund asked about once, at 9am a fortnight on.
-    if (r.status === 'sent' && !r.demo && r.sentOn) {
-      const key = alertKey(r.id, 'refund');
-      const went = fromISODate(r.sentOn);
-      const when = at9am(addDays(went, REFUND_CHASE_DAYS));
-      if (!sent.has(key) && when.getTime() > now.getTime()) {
-        out.push({ key, receiptId: r.id, rung: 'refund', at: when, ...copyFor('refund', r, 0, went) });
-      }
-    }
-    if (warrantyWatched(r)) {
-      const w = derive(r, today).warranty;
-      const key = alertKey(r.id, 'warranty');
-      if (w && !sent.has(key)) {
-        const when = at9am(addDays(w.ends, -WARRANTY_NOTICE_DAYS));
-        if (when.getTime() > now.getTime()) {
-          out.push({ key, receiptId: r.id, rung: 'warranty', at: when, ...copyFor('warranty', r, WARRANTY_NOTICE_DAYS, w.ends) });
-        }
-      }
-    }
-    // The right to reject a fault, at 9am three days before it ends, where
-    // `rejectWatched` says nothing else is covering those days.
-    const reject = rejectWatched(r, today);
-    if (reject) {
-      const key = alertKey(r.id, 'reject');
-      const when = at9am(addDays(reject.ends, -REJECT_NOTICE_DAYS));
-      if (!sent.has(key) && when.getTime() > now.getTime()) {
-        out.push({ key, receiptId: r.id, rung: 'reject', at: when, ...copyFor('reject', r, REJECT_NOTICE_DAYS, reject.ends) });
-      }
-    }
-    // Store credit, at 9am a month before the note says it lapses.
-    if (creditWatched(r)) {
-      const ends = fromISODate(r.credit!.expires!);
-      const key = alertKey(r.id, 'credit');
-      const when = at9am(addDays(ends, -CREDIT_NOTICE_DAYS));
-      if (!sent.has(key) && when.getTime() > now.getTime()) {
-        out.push({ key, receiptId: r.id, rung: 'credit', at: when, ...copyFor('credit', r, CREDIT_NOTICE_DAYS, ends) });
-      }
-    }
-    // The fault letter: asked about at 9am on the day its reply was asked for.
-    if (faultWatched(r)) {
-      const sentOn = fromISODate(r.faultClaim!.sentOn);
-      const key = alertKey(r.id, 'fault');
-      const when = at9am(addDays(sentOn, REPLY_DAYS));
-      if (!sent.has(key) && when.getTime() > now.getTime()) {
-        out.push({ key, receiptId: r.id, rung: 'fault', at: when, ...copyFor('fault', r, 0, sentOn) });
-      }
+    for (const s of singleShots(r, today)) {
+      if (sent.has(s.key)) continue;
+      const when = new Date(Math.max(at9am(s.from).getTime(), nextNine(now).getTime()));
+      if (!singleShotDue(s, when)) continue;
+      out.push({ key: s.key, receiptId: r.id, rung: s.rung, at: when, ...s.copy(when) });
     }
     if (r.status !== 'active') continue;
     // The same rule `dueAlerts` states at length: a notification is not a

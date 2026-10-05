@@ -305,6 +305,81 @@ export function copyFor(rung: AlertRung, r: Receipt, daysLeft: number, deadline:
   }
 }
 
+/** A rung on a clock of its own, rather than one of the return ladder's four. */
+export type SingleShotRung = 'refund' | 'warranty' | 'reject' | 'credit' | 'fault';
+
+/**
+ * One single-shot alert a receipt carries: the days on which it is worth
+ * saying, and its words on any one of them.
+ *
+ * Each of these has one notice day, not a ladder. So there are two ways to
+ * hear it — `dueAlerts`, on any morning the app is opened inside its days,
+ * and `planAlerts`, which lodges it with iOS for 9am — and when those two
+ * paths each spelled out "inside its days" for themselves, they disagreed:
+ * the scheduler knew only the first day, and a receipt recorded after it (a
+ * credit note with three weeks to run, a guarantee added in its last month,
+ * an item kept on day 28) was raised on the web and never on a lock screen.
+ * One decision, read by both, is what makes them say the same thing.
+ */
+export interface SingleShot {
+  rung: SingleShotRung;
+  key: string;
+  /** The first day it is worth saying. */
+  from: Date;
+  /**
+   * The last day it is still true, inclusive — the day the credit, cover or
+   * right still runs to. Null where nothing lapses: a refund not yet seen and
+   * a letter not yet answered stay worth asking about.
+   */
+  until: Date | null;
+  /** The words on `day`, with any days left counted from THAT day. */
+  copy: (day: Date) => { title: string; body: string };
+}
+
+/** Every single-shot alert this receipt carries, whatever the day: when each is due is `singleShotDue`'s. */
+export function singleShots(r: Receipt, today: Date): SingleShot[] {
+  const out: SingleShot[] = [];
+  // Gone back, money not yet seen: asked a fortnight on.
+  if (r.status === 'sent' && !r.demo && r.sentOn) {
+    const went = fromISODate(r.sentOn);
+    out.push({ rung: 'refund', key: alertKey(r.id, 'refund'), from: addDays(went, REFUND_CHASE_DAYS), until: null, copy: () => copyFor('refund', r, 0, went) });
+  }
+  // The guarantee: a month before it ends, through its last day. An ended
+  // guarantee is not announced after the fact: there is nothing left to do
+  // about it. A kept receipt — which has left the return ladder for good —
+  // still has one.
+  if (warrantyWatched(r)) {
+    const w = derive(r, today).warranty;
+    if (w) {
+      const ends = w.ends;
+      out.push({ rung: 'warranty', key: alertKey(r.id, 'warranty'), from: addDays(ends, -WARRANTY_NOTICE_DAYS), until: ends, copy: (day) => copyFor('warranty', r, daysBetween(day, ends), ends) });
+    }
+  }
+  // The right to reject a fault, in its last days, where nothing else is
+  // saying so. On a kept receipt as well as an active one.
+  const reject = rejectWatched(r, today);
+  if (reject) {
+    const { ends } = reject;
+    out.push({ rung: 'reject', key: alertKey(r.id, 'reject'), from: addDays(ends, -REJECT_NOTICE_DAYS), until: ends, copy: (day) => copyFor('reject', r, daysBetween(day, ends), ends) });
+  }
+  // Credit, a month before the note says it lapses, through its last day.
+  if (creditWatched(r)) {
+    const ends = fromISODate(r.credit!.expires!);
+    out.push({ rung: 'credit', key: alertKey(r.id, 'credit'), from: addDays(ends, -CREDIT_NOTICE_DAYS), until: ends, copy: (day) => copyFor('credit', r, daysBetween(day, ends), ends) });
+  }
+  // The fault letter, on the day its fortnight for a reply is up.
+  if (faultWatched(r)) {
+    const sentOn = fromISODate(r.faultClaim!.sentOn);
+    out.push({ rung: 'fault', key: alertKey(r.id, 'fault'), from: addDays(sentOn, REPLY_DAYS), until: null, copy: () => copyFor('fault', r, 0, sentOn) });
+  }
+  return out;
+}
+
+/** Whether a single-shot alert is worth saying on `day`: on or after its first day, and not after its last. */
+export function singleShotDue(s: SingleShot, day: Date): boolean {
+  return daysBetween(s.from, day) >= 0 && (s.until === null || daysBetween(day, s.until) >= 0);
+}
+
 /**
  * @param sent Dedup keys already delivered. Everything in here stays silent.
  */
@@ -316,50 +391,11 @@ export function dueAlerts(
 ): DeadlineAlert[] {
   const out: DeadlineAlert[] = [];
   for (const r of receipts) {
-    // Gone back, money not yet seen: asked once, a fortnight on.
-    if (r.status === 'sent' && !r.demo && r.sentOn) {
-      const went = fromISODate(r.sentOn);
-      const key = alertKey(r.id, 'refund');
-      if (daysBetween(went, today) >= REFUND_CHASE_DAYS && !sent.has(key)) {
-        out.push({ receiptId: r.id, rung: 'refund', key, ...copyFor('refund', r, 0, went) });
-      }
-    }
-    // The guarantee first, and apart: it is on its own clock, and a kept
-    // receipt — which has left the return ladder for good — still has one.
-    if (warrantyWatched(r)) {
-      const w = derive(r, today).warranty;
-      const key = alertKey(r.id, 'warranty');
-      // Inside the notice period and not yet over. An ended guarantee is not
-      // announced after the fact: there is nothing left to do about it.
-      if (w && w.daysLeft >= 0 && w.daysLeft <= WARRANTY_NOTICE_DAYS && !sent.has(key)) {
-        out.push({ receiptId: r.id, rung: 'warranty', key, ...copyFor('warranty', r, w.daysLeft, w.ends) });
-      }
-    }
-    // The right to reject a fault, in its last days, where nothing else is
-    // saying so. On a kept receipt as well as an active one.
-    const reject = rejectWatched(r, today);
-    if (reject) {
-      const left = daysBetween(today, reject.ends);
-      const key = alertKey(r.id, 'reject');
-      if (left >= 0 && left <= REJECT_NOTICE_DAYS && !sent.has(key)) {
-        out.push({ receiptId: r.id, rung: 'reject', key, ...copyFor('reject', r, left, reject.ends) });
-      }
-    }
-    // Credit, a month before the note says it lapses, through its last day.
-    if (creditWatched(r)) {
-      const ends = fromISODate(r.credit!.expires!);
-      const left = daysBetween(today, ends);
-      const key = alertKey(r.id, 'credit');
-      if (left >= 0 && left <= CREDIT_NOTICE_DAYS && !sent.has(key)) {
-        out.push({ receiptId: r.id, rung: 'credit', key, ...copyFor('credit', r, left, ends) });
-      }
-    }
-    // The fault letter, once, on the day its fortnight for a reply is up.
-    if (faultWatched(r)) {
-      const sentOn = fromISODate(r.faultClaim!.sentOn);
-      const key = alertKey(r.id, 'fault');
-      if (daysBetween(sentOn, today) >= REPLY_DAYS && !sent.has(key)) {
-        out.push({ receiptId: r.id, rung: 'fault', key, ...copyFor('fault', r, 0, sentOn) });
+    // The single-shot rungs, each on its own clock: said once, on any
+    // morning inside its days, by the one decision `planAlerts` reads too.
+    for (const s of singleShots(r, today)) {
+      if (!sent.has(s.key) && singleShotDue(s, today)) {
+        out.push({ receiptId: r.id, rung: s.rung, key: s.key, ...s.copy(today) });
       }
     }
     if (r.status !== 'active') continue;
