@@ -21,11 +21,19 @@
  */
 import { spawn } from 'node:child_process';
 import { chromium } from 'playwright';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { reportOnCrash, sayCrash } from './crash-report.mjs';
 import { answeringBridge } from './answering-bridge.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname;
+/*
+ * axe is EVALUATED into a page, as a11y.mjs does it, rather than added as a
+ * <script>: the bundle carries a content security policy (src/lib/csp.ts) that
+ * refuses any script it did not ship, and a script tag added by this harness
+ * is one. Evaluating goes round the policy the way the native side's own
+ * scripts do on a phone, which is what this harness stands in for.
+ */
+const AXE_SOURCE = readFileSync(`${ROOT}node_modules/axe-core/axe.min.js`, 'utf8');
 const VITE_BIN = `${ROOT}node_modules/vite/bin/vite.js`;
 const PORT = Number(process.env.KEPT_IOS_PORT ?? 4188);
 const ORIGIN = `http://localhost:${PORT}`;
@@ -216,7 +224,7 @@ if (!detail.onDetail) {
   }
 
   // axe over the screen the web sweeps cannot reach.
-  await page.addScriptTag({ path: `${ROOT}node_modules/axe-core/axe.min.js` });
+  await page.evaluate(AXE_SOURCE);
   const axe = await page.evaluate(async () => {
     const r = await window.axe.run(document, { resultTypes: ['violations'] });
     return r.violations.map((v) => `${v.id} (${v.nodes.length})`);
@@ -371,7 +379,7 @@ if (!/Deadline alerts/.test(settingsText)) {
     // text is blended toward the white under it — measured, #5E6168 (6.2:1)
     // read as #7A7D82 (4.1:1), a colour nobody sees once the fade is done.
     await np.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))));
-    await np.addScriptTag({ path: `${ROOT}node_modules/axe-core/axe.min.js` });
+    await np.evaluate(AXE_SOURCE);
     const axe = await np.evaluate(async () =>
       (await window.axe.run(document, { resultTypes: ['violations'] })).violations.map((v) => `${v.id} (${v.nodes.length})`),
     );
@@ -671,7 +679,7 @@ if (!/Deadline alerts/.test(settingsText)) {
         failures.push({ what: 'a first purchase asked iOS before explaining, or never explained', saw: `asked ${n.asked}, card ${shown}` });
       } else {
         // axe over the card, which only the native build renders.
-        await pp.addScriptTag({ path: `${ROOT}node_modules/axe-core/axe.min.js` });
+        await pp.evaluate(AXE_SOURCE);
         const axe = await pp.evaluate(async () =>
           (await window.axe.run(document, { resultTypes: ['violations'] })).violations.map((v) => `${v.id} (${v.nodes.length})`),
         );
@@ -786,7 +794,7 @@ if (!/Deadline alerts/.test(settingsText)) {
       failures.push({ what: 'no Restore purchase beside a one-off unlock, which App Review asks for', saw: near(before, 'Unlock') });
     }
     // axe over controls only this build has: the web sweeps never see them.
-    await p.addScriptTag({ path: `${ROOT}node_modules/axe-core/axe.min.js` });
+    await p.evaluate(AXE_SOURCE);
     const axeStore = await p.evaluate(async () => {
       const r = await window.axe.run(document, { resultTypes: ['violations'] });
       return r.violations.map((v) => `${v.id} (${v.nodes.length})`);

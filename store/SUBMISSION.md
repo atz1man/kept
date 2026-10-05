@@ -18,6 +18,12 @@ Then `npm run preflight`. It reads every placeholder above out of the files they
 live in and stays red until each is filled; the retailer-table check in section 3
 is on it too. Green before you Archive — `test/preflight.test.ts` holds the checks.
 
+Once the web app has a host, have it send one response header the build cannot
+write itself: `Content-Security-Policy: frame-ancestors 'self'`. Every page
+already carries the rest of the policy as a `<meta>` (`src/lib/csp.ts`), but a
+`<meta>` cannot say who may put the app in a frame of their own, which is how a
+look-alike page would dress itself in it.
+
 ## 2. The first build
 
 | | Step | Who | Where |

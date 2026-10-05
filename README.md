@@ -362,6 +362,7 @@ src/lib/          the decision logic — pure, tested, no React
   mirror.ts       the second copy, outside the web view, that survives a reclaim
   photos.ts       the paper slip on the filesystem, never read
   embed.ts        whether this page is the landing page's demo, which every store turns away
+  csp.ts          the content security policy every built page carries: this build's scripts, this origin, nothing else
   brand.ts        the tagline, in the one place all three surfaces read
 src/app/          the nine screens and their chrome
 src/landing/      the marketing page

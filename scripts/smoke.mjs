@@ -4086,5 +4086,36 @@ results['erasing clears the disk and does not reseed'] =
 results['nothing is fetched from a third party'] = requestsSeen > 0 && foreign.size === 0;
 results['no console or page errors'] = problems.length === 0;
 
+/*
+ * The content security policy, enforced rather than present (src/lib/csp.ts).
+ * Measured on main, which had none: a <script> added to the running app ran,
+ * and a fetch to another host went out. Asked in a context of its own, after
+ * the checks above, because the refusals it provokes ARE console errors and a
+ * request to another host, and both of those are what the two checks above
+ * exist to catch. The refusals are counted by the browser's own violation
+ * events, so a probe that merely failed — no network here, say — cannot pass
+ * for one the policy stopped.
+ */
+{
+  const probeCtx = await browser.newContext();
+  const probe = await probeCtx.newPage();
+  await probe.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  const csp = await probe.evaluate(async () => {
+    const refused = [];
+    document.addEventListener('securitypolicyviolation', (e) => refused.push(e.effectiveDirective));
+    window.__keptProbe = false;
+    const s = document.createElement('script');
+    s.textContent = 'window.__keptProbe = true';
+    document.head.append(s);
+    await fetch('https://example.com/kept-probe', { mode: 'no-cors' }).catch(() => {});
+    await new Promise((r) => setTimeout(r, 200));
+    return { ran: window.__keptProbe, refused };
+  });
+  results['the app runs no script it did not ship, and reaches no other host'] =
+    csp.ran === false && csp.refused.includes('script-src-elem') && csp.refused.includes('connect-src');
+  if (!results['the app runs no script it did not ship, and reaches no other host']) problems.push(`csp probe: ${JSON.stringify(csp)}`);
+  await probeCtx.close();
+}
+
 await browser.close();
 report();
