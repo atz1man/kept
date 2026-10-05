@@ -71,22 +71,21 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<!-- arm64, not the template's armv7: the deployment target is iOS 13
+	     (project.pbxproj), every iPhone that runs it is 64-bit, and armv7
+	     names an architecture this binary is not built for. -->
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
-		<string>armv7</string>
+		<string>arm64</string>
 	</array>
+	<!-- Portrait only. Every screen is laid out for a phone held upright and
+	     swept at 390 and 402 pixels wide; nothing was designed or checked on
+	     its side. No ~ipad list either: TARGETED_DEVICE_FAMILY is 1 (see
+	     test/ios-device-family.test.ts), so an iPad runs this as an iPhone
+	     app and would never read one. -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
