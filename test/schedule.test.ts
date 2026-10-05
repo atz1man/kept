@@ -225,13 +225,30 @@ describe('a guarantee, lodged a month ahead', () => {
     expect(plan([covered({ demo: true })])).toEqual([]);
   });
 
-  it('is not lodged again once shown, nor for a morning already past', () => {
+  it('is not lodged again once shown, nor once the cover has ended', () => {
     expect(keys(plan([covered()], 7, ['r1:warranty']))).not.toContain('r1:warranty');
-    // Cover ending a fortnight from the REAL today — `planAlerts` measures
-    // "past" against the clock, not the fixture's TODAY — so the notice
-    // morning went a fortnight ago.
-    const late = covered({ purchasedOn: iso(addDays(addMonths(new Date(), -12), 14)) });
-    expect(keys(plan([late]))).not.toContain('r1:warranty');
+    // Cover that ended yesterday by the REAL clock — `planAlerts` measures
+    // "past" against the clock, not the fixture's TODAY. Nothing left to do.
+    const ended = covered({ status: 'kept', keptOn: iso(TODAY), purchasedOn: iso(addDays(addMonths(new Date(), -12), -1)) });
+    expect(keys(plan([ended]))).not.toContain('r1:warranty');
+  });
+
+  it('is lodged for the next 9am when its notice morning has gone but the cover has not', () => {
+    /*
+     * This used to assert the opposite — "nor for a morning already past" —
+     * and so pinned the defect: a guarantee added with a fortnight to run was
+     * raised on the web the morning the app opened and never lodged with iOS,
+     * which is the only path to a lock screen there. schedule-late.test.ts
+     * holds the boundaries against a pinned clock.
+     */
+    const now = new Date();
+    const late = covered({ status: 'kept', keptOn: iso(TODAY), purchasedOn: iso(addDays(addMonths(now, -12), 14)) });
+    const w = plan([late]).find((p) => p.rung === 'warranty')!;
+    expect(w.at.getTime()).toBeGreaterThan(now.getTime());
+    expect(w.at.getTime() - now.getTime()).toBeLessThanOrEqual(86_400_000);
+    expect(w.at.getHours()).toBe(FIRE_HOUR);
+    // Counted from the morning it fires: today's 9am says 14, tomorrow's 13.
+    expect(w.body).toMatch(w.at.getDate() === now.getDate() ? /14 days from now/ : /13 days from now/);
   });
 });
 
