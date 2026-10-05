@@ -4,6 +4,7 @@ import { discardSetAside, hydrate, load, save, onExternalChange, rescueBackup, s
 import { MAX_AMOUNT_PENCE, MAX_WINDOW_DAYS } from '../src/lib/draft';
 import { MAX_UPDATES } from '../src/lib/policy-feed';
 import { toPence } from '../src/lib/money';
+import { parseBackup } from '../src/lib/backup';
 import type { Receipt } from '../src/lib/types';
 
 const TODAY = new Date(2026, 7, 28);
@@ -506,6 +507,27 @@ describe('what a bad launch sets aside', () => {
     const state = load(TODAY);
     expect(state.receipts.map((r) => r.id)).toEqual(['r1']);
     expect(setAsideData()).toBe(raw);
+  });
+
+  it('saves a file that restore reads back, every row it can read and the rest counted', () => {
+    /*
+     * Measured on main: Settings' "Save them as a file" wrote exactly what was
+     * set aside, and restore refused it — "That's a JSON file, but not a kept
+     * backup." The one copy made to keep receipts a build could not read
+     * could not be read back by any build, including the newer one that
+     * wrote them.
+     */
+    const m = memoryStore();
+    use(m);
+    const raw = JSON.stringify({ version: 1, receipts: [good, { ...good, id: 'r2', status: 'sent', sentOn: '2026-09-30' }, { ...good, id: 'r3', status: 'disputed' }] });
+    m.cells.set('kept.v1', raw);
+    save(load(TODAY));
+    const file = setAsideData()!;
+    const restored = parseBackup(file);
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) return;
+    expect(restored.summary.receipts.map((r) => r.id)).toEqual(['r1', 'r2']);
+    expect(restored.summary.skipped).toBe(1);
   });
 
   it('sets nothing aside when everything was read', () => {
