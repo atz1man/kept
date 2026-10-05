@@ -17,6 +17,7 @@
  * the translucent tab bar, which axe declines to judge and reports as
  * "incomplete" rather than pass or fail.
  */
+import './uk-clock.mjs';
 import { chromium } from 'playwright';
 import { reportOnCrash, sayCrash } from './crash-report.mjs';
 import { readFileSync } from 'node:fs';

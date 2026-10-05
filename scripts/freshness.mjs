@@ -44,6 +44,7 @@
  *
  * Needs a build: npm run build && node scripts/freshness.mjs
  */
+import './uk-clock.mjs';
 import { chromium } from 'playwright';
 import { reportOnCrash, sayCrash } from './crash-report.mjs';
 import { spawn } from 'node:child_process';

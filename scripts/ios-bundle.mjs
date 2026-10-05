@@ -19,6 +19,7 @@
  * what the app does when it believes it is native, and that is decidable here.
  * What this CANNOT answer is anything about iOS itself; see the README.
  */
+import './uk-clock.mjs';
 import { spawn } from 'node:child_process';
 import { chromium } from 'playwright';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';

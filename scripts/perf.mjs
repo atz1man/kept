@@ -26,6 +26,7 @@
  * filter column moving by half between two sets of runs is recorded and not
  * explained: it was measured, and nothing in the app plausibly did it.
  */
+import './uk-clock.mjs';
 import { chromium } from 'playwright';
 
 const ORIGIN = process.env.KEPT_ORIGIN ?? 'http://localhost:5183';
@@ -49,7 +50,7 @@ await page.evaluate((count) => {
     d.setDate(d.getDate() - (i % 300));
     return {
       ...base, id: `perf${i}`, store: shops[i % shops.length], item: `Item number ${i}`,
-      purchasedOn: d.toISOString().slice(0, 10), windowDays: 30 + (i % 60),
+      purchasedOn: d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'), windowDays: 30 + (i % 60),
       status: i % 7 === 0 ? 'returned' : 'active',
     };
   });
