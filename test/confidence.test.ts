@@ -235,6 +235,11 @@ describe('a figure the camera misread', () => {
     expect(checkCount(c)).toBe(0);
   });
 
+  it('takes a misread of one field as no doubt about another', () => {
+    // A price "E26.09" has the date's day and month in its figures.
+    expect(toCheck(slip, [], [{ field: 'amount', read: 'E26.09', as: '26.09', proved: false }]).purchasedOn).toBeUndefined();
+  });
+
   it('reads a date corrected without its leading zeros as the same day', () => {
     expect(toCheck(slip, [], [{ field: 'purchasedOn', read: '26/9/2O26', as: '26/9/2026', proved: false }]).purchasedOn).toBe('misread-print');
   });
