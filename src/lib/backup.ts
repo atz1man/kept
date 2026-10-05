@@ -276,7 +276,20 @@ export function parseBackup(text: string): ImportOutcome {
   if (typeof doc !== 'object' || doc === null) return { ok: false, reason: 'not-a-kept-backup' };
 
   const d = doc as Record<string, unknown>;
-  if (d.app !== 'kept' || !Array.isArray(d.receipts)) return { ok: false, reason: 'not-a-kept-backup' };
+  /*
+   * Two shapes are a kept file. The export says so (`app: "kept"`). The copy a
+   * launch sets aside when it finds a row it cannot read (`setAsideData`, which
+   * Settings offers as "Save them as a file") is the store itself — `version`
+   * and `receipts`, no label — and it was refused: measured, the file Settings
+   * saved restored as "That's a JSON file, but not a kept backup." So the one
+   * file made to carry receipts a build could not read could not be read back
+   * by any build, this one or the newer one that wrote them. Every row is
+   * still checked one by one below, so naming the shape lets nothing through
+   * that an export would not.
+   */
+  const exported = d.app === 'kept';
+  const setAside = d.app === undefined && typeof d.version === 'number';
+  if ((!exported && !setAside) || !Array.isArray(d.receipts)) return { ok: false, reason: 'not-a-kept-backup' };
 
   const receipts: Receipt[] = [];
   let skipped = 0;

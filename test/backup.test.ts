@@ -28,6 +28,12 @@ describe('rejecting files that are not backups', () => {
     expect(parseBackup('{"app":"something-else","receipts":[]}')).toEqual({ ok: false, reason: 'not-a-kept-backup' });
     expect(parseBackup('[1,2,3]')).toEqual({ ok: false, reason: 'not-a-kept-backup' });
     expect(parseBackup('null')).toEqual({ ok: false, reason: 'not-a-kept-backup' });
+    // The set-aside copy is recognised by its own shape, and only by it: a
+    // numeric version, no label of another app's, a list of receipts.
+    expect(parseBackup('{"receipts":[]}')).toEqual({ ok: false, reason: 'not-a-kept-backup' });
+    expect(parseBackup('{"version":"1","receipts":[]}')).toEqual({ ok: false, reason: 'not-a-kept-backup' });
+    expect(parseBackup('{"app":"other","version":1,"receipts":[]}')).toEqual({ ok: false, reason: 'not-a-kept-backup' });
+    expect(parseBackup('{"version":1,"receipts":{}}')).toEqual({ ok: false, reason: 'not-a-kept-backup' });
   });
 
   it('accepts a genuinely empty backup', () => {
