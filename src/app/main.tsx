@@ -78,8 +78,13 @@ if (isNative()) {
    * did when it arrived in the address — rather than opening on the library
    * and jumping. See `receiveShare` in public/sw.js for why it no longer
    * arrives in the address.
+   *
+   * Never by the landing page's demo: the worker gives a share to the first
+   * page that asks, so a demo that asked would take an email meant for the
+   * app and show it in the shop window, and the app would open on nothing.
    */
-  void collectShare(navigator.serviceWorker).finally(mount);
+  if (embedded()) mount();
+  else void collectShare(navigator.serviceWorker).finally(mount);
 } else {
   mount();
 }
