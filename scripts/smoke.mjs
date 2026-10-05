@@ -2432,7 +2432,12 @@ results['a file that is not a backup is refused, and nothing is lost'] =
   refused && (await holds('No7 skincare set'));
 
 // An order email shared in from another app must land already read — the
-// three-step strip on the Add screen promises exactly this.
+// three-step strip on the Add screen promises exactly this. Shared by GET, as
+// an app installed under the old manifest still shares: the manifest's own
+// target is a POST now, answered by the service worker so the email never
+// reaches the server, and `freshness` asks that — it runs its own server and
+// can read what arrived there. This is the route that has to keep working
+// for an install the browser has not yet refreshed.
 const shareUrl =
   `${ORIGIN}/app/?title=${encodeURIComponent('Your Currys order')}` +
   `&text=${encodeURIComponent('Order placed 16 Aug 2026\nTotal £129.00')}`;
@@ -3803,11 +3808,13 @@ await landing.close();
 
 // The manifest has to be installable-shaped, because "add it to your home
 // screen" is how the share target and the offline promise are reached at all.
+// A POST target, in a form the worker reads: as a GET the email was sent to
+// the server in the address (see `receiveShare` in public/sw.js).
 const manifest = await page.evaluate(async () => (await fetch('/manifest.webmanifest')).json());
 results['the manifest is installable and declares the share target'] =
   !!manifest.name && !!manifest.start_url && manifest.display === 'standalone' &&
   Array.isArray(manifest.icons) && manifest.icons.some((i) => i.sizes === '512x512') &&
-  manifest.share_target?.method === 'GET';
+  manifest.share_target?.method === 'POST' && manifest.share_target?.enctype === 'multipart/form-data';
 
 /*
  * Offline is deliberately NOT tested here, and this note is the reason.

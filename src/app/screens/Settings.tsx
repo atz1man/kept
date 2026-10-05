@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { color, font, radius } from '../../tokens';
 import { isNative } from '../../lib/mirror';
 import { fmtDateLong, fromISODate } from '../../lib/dates';
-import { mergeBackup, parseBackup } from '../../lib/backup';
+import { MAX_BACKUP_BYTES, mergeBackup, parseBackup } from '../../lib/backup';
 import { backupFilename, saveJsonFile, savedWhere, type SaveOutcome } from '../../lib/save-file';
 import { alertsRow, currentNotifyState, notifyState, requestNotifyPermission, type NotifyState } from '../notify';
 import type { Receipt } from '../../lib/types';
@@ -40,6 +40,7 @@ const RESTORE_FAILURES = {
   'not-json': 'That file isn’t readable — pick the .json file kept exported.',
   'not-a-kept-backup': 'That’s a JSON file, but not a kept backup.',
   'nothing-usable': 'That backup’s receipts couldn’t be read — nothing was changed.',
+  'too-large': 'That file is too large to be a kept backup — nothing was changed.',
 } as const;
 
 export function Settings({ settings, receipts, embedded, onExport, onRestore, onWipe, onClearSamples, onUpgrade, onChange, offer, store, onRestorePurchase }: Props) {
@@ -132,7 +133,9 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, on
   };
 
   const restore = async (file: File) => {
-    const outcome = parseBackup(await file.text());
+    // Asked of the file before it is read, so a huge one is refused without
+    // being pulled into memory first. See MAX_BACKUP_BYTES.
+    const outcome = file.size > MAX_BACKUP_BYTES ? ({ ok: false, reason: 'too-large' } as const) : parseBackup(await file.text());
     if (!outcome.ok) {
       setBackupNote({ tone: 'bad', text: RESTORE_FAILURES[outcome.reason] });
       return;

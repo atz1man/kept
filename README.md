@@ -1108,7 +1108,10 @@ deliberate departure, not an oversight:
   A GET target was chosen over POST so no service worker sits in the path and
   a cold start still works. The payload is stripped from the address bar as
   soon as it is in hand — a reload must not silently re-add the same receipt,
-  and an order email has no business sitting in browser history.
+  and an order email has no business sitting in browser history. (That GET
+  turned out to send the email to the server before any of this ran; it is a
+  POST answered by the service worker now — see "A shared email stays on the
+  phone" below.)
 - **The palette was darkened to meet WCAG AA.** A sweep over every rendered
   text node found ten failing colour pairings across 43 elements: the
   handoff's amber measured 3.0:1 on cream and 2.7:1 on the secondary surface
@@ -1960,6 +1963,37 @@ dates and the deadline with it, and nobody can correct that. Both directions
 are pinned: applying the ceilings to the store fails, and removing them from
 the import path fails.
 
+**And the date the cap sorts by.** `readFeed` checked a date's shape and
+nothing more, so it took `2026-99-99` and `9999-12-31`. The cap keeps the
+newest two hundred by date, so a feed of two hundred entries dated 9999-12-31
+held every place for good: measured in a browser, a genuine signed feed
+published afterwards was never stored, and Erase everything kept the poison
+because it preserved the held news. A date now has to be a real one (the round
+trip `backup.ts` already uses) and no later than tomorrow on the reader's
+calendar: `feed:add` already refuses a future date when the feed is written,
+and the one day is the most any clock runs behind London's. The bound is tight
+on purpose, since whatever it allows is how long one bad feed can crowd out the
+real ones; a phone whose clock is slow refuses a genuine change and takes it on
+a later launch, which is the recoverable direction. `hydrate` reads the stored
+news through the same function, so an install already holding such a feed is
+cleaned at its next launch, and Erase everything now clears the held news back
+to the samples — it is the same for everyone, but Erase was the way out a bad
+feed was promised, and it is the only exit from a bad feed nobody has thought
+of yet. The cost is the news until the next launch online.
+
+**And two fields the backup's trimming never reached.** The rule above trims
+text from a file and keeps the receipt, but the policy sentence and the
+warranty note were passed through whole. A file with one receipt carrying a
+6,000,000-character policy restored as "1 restored. Nothing already here was
+lost.", then the banner said "This device isn't saving", and a receipt added
+afterwards was gone after a reload. Both are trimmed to the note cap now, from
+a file only. And a file larger than the store it lands in is refused before it
+is read: localStorage holds 5,242,880 characters for the whole app (measured in
+Chromium, which refused one more; Safari's is the same five megabytes), so
+nothing bigger can be held whole, and the five sample receipts export in under
+3 KB. Settings says "That file is too large to be a kept backup — nothing was
+changed."
+
 ### The numbers that are facts, and the numbers that are judgements
 
 A third pass asked something different of the same suite: move every named
@@ -2137,6 +2171,52 @@ to fail again when its fix is taken back out.
 It was verified in the smoke suite before that, under a comment saying the
 network was cut completely, and it was not — see the section above for what
 that check was actually proving.
+
+### A shared email stays on the phone
+
+The share target was a GET, chosen so that no service worker sat in the path.
+A GET puts what is shared in the address, so the browser opened
+`/app/?title=…&text=…` and the order email — a name, a home address, an order
+number, what was bought — went to the server in the request line before any of
+the app's code ran. Measured with the worker in control, against a server that
+logs what it receives: `GET /app/?title=Your John Lewis order 40012345&text=Hi
+Jane Smith… 14 Elm Road, Leeds LS6 2AB…`. Stripping the address bar afterwards
+changed history, not what had been sent. The privacy page says there is no
+server that receives your receipts.
+
+The target is a POST in `multipart/form-data` now, and the service worker
+answers it without the network: it reads the form, holds the text in memory,
+and answers `303` to `/app/#shared`. The page sees the mark, asks the worker
+for the text over a message channel before it mounts, and opens Add with it
+exactly as before; the worker hands it over once and keeps no copy, and lets
+go of it after thirty seconds if nobody asks. The text is never in a request
+(the redirected launch asks for plain `/app/`, and a fragment is not sent),
+never in an address, never in a cache and never on disk. A GET carrying the old
+parameters is answered the same way, because an app installed under the old
+manifest goes on sharing by GET until the browser refreshes what it installed.
+
+Without a worker in control the browser sends the POST to the server, and
+nothing in a page can stop a request made before the page exists. The share
+target exists only on an installed app and installing it is opening it, which
+registers the worker, so that is the narrow case of a worker that registered
+and has since gone (site data cleared under an icon left on the home screen, or
+a first install that failed and has not been retried). The email then crosses
+the network in a request body — not an address, and not history — and the page
+reads nothing out of a POST, so the share is lost there rather than read.
+
+An older worker also kept the shared address: before the launch stopped being
+written to the cache, the shell was kept with the URL it was fetched from, and
+Erase everything never reached Cache Storage. Every cache but the current
+worker's is deleted when it takes over, which clears those.
+
+`npm run freshness` shares through the BUILT manifest's own target, the way the
+browser does — a form POST in its enctype, or a GET to its action — against a
+server of its own that records every request line and body, and requires Add to
+open with the email, no line or body to carry any of it, no cache entry or
+address to hold it, a second ask of the worker to get nothing, and the old GET
+route to keep it off the server too. It also plants an older worker's cache
+holding a shared address and requires it gone once the worker takes over. On
+main, the server got the email by both routes.
 
 ### One question about a shop, asked in two places
 

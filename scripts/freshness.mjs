@@ -35,6 +35,9 @@
  *   - a tab left open across a deploy, then a file chosen in it;
  *   - and a feed signature that changes.
  *
+ * And one question about what the worker must NOT do with the network: carry
+ * an order email shared into the app to the server (see `sharing`).
+ *
  * Each runs in its own browser profile, against a server on the same port, so
  * no step inherits another's worker. The deploy is a real second build of the
  * same source with every chunk renamed (see `buildDeploy`).
@@ -554,6 +557,194 @@ async function acrossDeploys() {
   problems.push(...deployErrors);
 }
 
+/*
+ * An order email shared into the app, through the manifest's own share target.
+ *
+ * The target was a GET, so the browser opened `/app/?title=…&text=…` and the
+ * email went to the server in the request line, before any of the app's code
+ * ran — and with this worker in control too, because a launch is network
+ * first. Measured on main: the server logged `GET /app/?title=Your John Lewis
+ * order 40012345&text=Hi Jane Smith… 14 Elm Road, Leeds LS6 2AB…`. The address
+ * bar was cleaned up afterwards, which changed history and not what was sent.
+ *
+ * Asked here because only this sweep runs its own server and so can read what
+ * reached it — every request line AND every body, since a POST that reached
+ * the server would carry the email in its body. The share is made as the
+ * browser makes it: read from the BUILT manifest, a GET to its action or a
+ * form POST in its enctype. So a manifest put back to GET fails here, and so
+ * does a POST target with no worker answering it.
+ *
+ * An app installed under the old manifest goes on sharing by GET until the
+ * browser refreshes what it installed, so that route is asked too; and an
+ * older worker's cache, which kept the shared address on its copy of the
+ * shell, has to be gone once this one takes over.
+ */
+const SHARE_ARRIVES = 'a shared order email opens Add, already read';
+const SHARE_OFF_NETWORK = 'and the server never receives any of it';
+const SHARE_NOWHERE = 'and it is in no cache and no address';
+const SHARE_ONCE = 'and the worker keeps no copy once the page has it';
+const LEGACY_SHARE = 'an app installed when sharing was a GET keeps the email off the server too';
+const OLD_CACHE = 'an older worker’s cache holding a shared address is gone once this one takes over';
+
+const SHARED = {
+  title: 'Your John Lewis order 40012345',
+  text: 'Hi Jane Smith, thanks for your order 40012345.\nDelivering to 14 Elm Road, Leeds LS6 2AB\nOrder placed 1 October 2026\nSony WH-1000XM5 £349.00\nOrder total: £349.00',
+};
+/** Pieces of the email that survive any encoding a request could give them. */
+const SHARED_MARKERS = ['40012345', 'Jane', 'LS6'];
+const carriesEmail = (text) => SHARED_MARKERS.some((m) => text.includes(m));
+
+/** Share as the browser does for this manifest: GET to the action, or a form POST. */
+async function shareInto(page, target, data) {
+  const fields = Object.entries(target.params ?? {})
+    .filter(([field]) => typeof data[field] === 'string')
+    .map(([field, name]) => [name, data[field]]);
+  if ((target.method ?? 'GET').toUpperCase() === 'GET') {
+    await page.goto(`${ORIGIN}${target.action}?${new URLSearchParams(fields)}`, { waitUntil: 'load' });
+    return;
+  }
+  // From a blank page, as a share sheet is not the app: a POST navigation to
+  // the action, which is what the browser sends.
+  await page.goto('about:blank');
+  await Promise.all([
+    page.waitForURL((u) => u.href.startsWith(`${ORIGIN}/app/`), { waitUntil: 'load' }),
+    page.evaluate(({ action, enctype, fields }) => {
+      const form = document.createElement('form');
+      form.method = 'post';
+      form.enctype = enctype;
+      form.action = action;
+      for (const [name, value] of fields) {
+        const box = document.createElement('textarea');
+        box.name = name;
+        box.value = value;
+        form.append(box);
+      }
+      document.body.append(form);
+      form.submit();
+    }, { action: `${ORIGIN}${target.action}`, enctype: target.enctype ?? 'application/x-www-form-urlencoded', fields }),
+  ]);
+}
+
+/** The Add screen holding the email: on screen, in the paste box, and read. */
+const addHolds = (page) =>
+  page
+    .waitForFunction(() => document.getElementById('paste')?.value?.includes('14 Elm Road'), null, { timeout: 10000 })
+    .then(async () => (await page.getByRole('heading', { name: 'Add a receipt' }).isVisible()) && (await page.getByText('Found in your paste').isVisible()))
+    .catch(() => false);
+
+/** Every cached request and response address, for anything shared. */
+const cachedAddresses = (page) =>
+  page.evaluate(async () => {
+    const out = [];
+    for (const name of await caches.keys()) {
+      const cache = await caches.open(name);
+      for (const req of await cache.keys()) {
+        out.push(`${name} ${req.url}`);
+        const res = await cache.match(req);
+        if (res?.url) out.push(`${name} ${res.url} (response)`);
+      }
+    }
+    return out.map(decodeURIComponent);
+  });
+
+/** Ask the worker for a share the way the page does; null when it holds none. */
+const claimAgain = (page) =>
+  page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const worker = navigator.serviceWorker.controller;
+        if (!worker) return resolve('no worker');
+        const channel = new MessageChannel();
+        channel.port1.onmessage = (e) => resolve(e.data);
+        setTimeout(() => resolve('no answer'), 2000);
+        worker.postMessage({ type: 'kept-claim-share' }, [channel.port2]);
+      }),
+  ).catch((e) => `failed: ${e.message.split('\n')[0]}`);
+
+async function sharing() {
+  const target = JSON.parse(readFileSync(`${ROOT}dist/manifest.webmanifest`, 'utf8')).share_target;
+  const before = deployErrors.length;
+  /** What reached the server: method, address and body of every request. */
+  const reached = [];
+  const since = (mark) => reached.slice(mark);
+  const names = [OLD_CACHE, SHARE_ARRIVES, SHARE_OFF_NETWORK, SHARE_NOWHERE, SHARE_ONCE, LEGACY_SHARE];
+
+  await step(names, async (context) => {
+    await startOwn((req, res) => {
+      let body = '';
+      req.setEncoding('utf8');
+      req.on('data', (chunk) => (body += chunk));
+      req.on('end', () => {
+        reached.push(`${req.method} ${req.url} ${body}`);
+        serveFile(`${ROOT}dist`, req, res);
+      });
+    });
+
+    // What a worker from before #120 left: the shell, kept under `/app/`,
+    // carrying the shared address it was fetched from. Planted from a page
+    // outside the worker's scope, before any worker exists here.
+    const planter = await context.newPage();
+    await planter.goto(`${ORIGIN}/privacy/`, { waitUntil: 'load' });
+    const planted = await planter.evaluate(async () => {
+      const res = await fetch('/app/?title=Your%20old%20order%20LEGACY&text=Hi%20Old%20Name');
+      const cache = await caches.open('kept-000000000000');
+      await cache.put('/app/', res);
+      return (await cache.match('/app/'))?.url ?? null;
+    });
+    await planter.close();
+    if (!planted?.includes('LEGACY')) throw new Error(`the older worker's cache could not be planted: ${planted}`);
+
+    const page = await install(context, { reload: true });
+    const took = await onlyCache(page, cacheOf(`${ROOT}dist`));
+    const left = (await cachedAddresses(page)).filter((a) => a.includes('LEGACY'));
+    results[OLD_CACHE] = took && left.length === 0;
+    for (const a of left) problems.push(`${OLD_CACHE}: ${a}`);
+    await page.close();
+
+    // The share, as the manifest declares it.
+    const mark = reached.length;
+    const shared = await context.newPage();
+    await shareInto(shared, target, SHARED);
+    results[SHARE_ARRIVES] = await addHolds(shared);
+    await sleep(500);
+    const leaked = since(mark).filter(carriesEmail);
+    // `> 0`: the launch itself reaches the server, so a log with nothing in it
+    // is a server nobody was watching, not one that heard nothing.
+    results[SHARE_OFF_NETWORK] = since(mark).length > 0 && leaked.length === 0;
+    for (const l of leaked) problems.push(`${SHARE_OFF_NETWORK}: the server got ${l.replace(/\s+/g, ' ').slice(0, 160)}`);
+
+    const kept = (await cachedAddresses(shared)).filter(carriesEmail);
+    const address = shared.url();
+    results[SHARE_NOWHERE] = kept.length === 0 && !carriesEmail(decodeURIComponent(address)) && new URL(address).search === '';
+    for (const k of kept) problems.push(`${SHARE_NOWHERE}: cached ${k.slice(0, 160)}`);
+    if (!results[SHARE_NOWHERE]) problems.push(`${SHARE_NOWHERE}: the address is ${decodeURIComponent(address).slice(0, 160)}`);
+
+    // Handed over once: a second ask gets nothing, and neither does a reload.
+    const again = await claimAgain(shared);
+    await shared.reload({ waitUntil: 'load' });
+    await sleep(600);
+    const refilled = await shared.evaluate(() => document.getElementById('paste')?.value ?? '').catch(() => '');
+    results[SHARE_ONCE] = again === null && !refilled.includes('14 Elm Road');
+    if (!results[SHARE_ONCE]) problems.push(`${SHARE_ONCE}: a second ask answered ${JSON.stringify(again)}; after a reload the paste box held ${refilled.length} characters`);
+    await shared.close();
+
+    // An app installed under the old manifest: a GET carrying the email.
+    const legacyMark = reached.length;
+    const legacy = await context.newPage();
+    await shareInto(legacy, { action: '/app/', method: 'GET', params: { title: 'title', text: 'text', url: 'url' } }, SHARED);
+    const legacyArrived = await addHolds(legacy);
+    await sleep(500);
+    const legacyLeaked = since(legacyMark).filter(carriesEmail);
+    results[LEGACY_SHARE] =
+      legacyArrived && since(legacyMark).length > 0 && legacyLeaked.length === 0 && !carriesEmail(decodeURIComponent(legacy.url()));
+    if (!legacyArrived) problems.push(`${LEGACY_SHARE}: Add did not open with the email`);
+    for (const l of legacyLeaked) problems.push(`${LEGACY_SHARE}: the server got ${l.replace(/\s+/g, ' ').slice(0, 160)}`);
+  });
+
+  results['and no page errors while sharing'] = deployErrors.length === before;
+  problems.push(...deployErrors.slice(before));
+}
+
 const browser = await chromium.launch(EXEC ? { executablePath: EXEC } : {});
 const ctx = await browser.newContext({ viewport: { width: 402, height: 874 } });
 const page = await ctx.newPage();
@@ -683,6 +874,7 @@ try {
   if (secondSig !== 'signature-two') problems.push(`signature after the change: ${secondSig}`);
 
   await acrossDeploys();
+  await sharing();
 } finally {
   writeFileSync(FEED_FILE, original);
   rmSync(SIG_FILE, { force: true });

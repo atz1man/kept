@@ -597,3 +597,55 @@ describe('where a downloaded change came from', () => {
     expect(readFeed({ feed: 'kept-policy', updates: [{ ...entry, demo: true }] }, 'device')).toHaveLength(1);
   });
 });
+
+describe('a date the feed cannot mean', () => {
+  /*
+   * `readFeed` checked a date's SHAPE and nothing else, so it took `2026-99-99`
+   * and `9999-12-31`. The second is the one that bit. The cap keeps the newest
+   * MAX_UPDATES by date, so a feed of two hundred entries dated 9999-12-31 held
+   * every place for good: measured in a real browser, a genuine signed feed
+   * published afterwards was never stored, policy watch was off for that
+   * install from then on, and Erase everything kept the poison too.
+   */
+  const entry = (changedOn: string, id = 'u') =>
+    ({ id, store: 'Currys', changedOn, text: 'Currys changed something.', affectsStores: ['Currys'], source: SOURCE });
+  const asFeed = (updates: unknown[]) => ({ feed: 'kept-policy', updates });
+  const day = (n: number) => toISODate(addDays(TODAY, n));
+
+  it.each([
+    ['a month that does not exist', '2026-99-99'],
+    ['a day the month does not have', '2026-02-31'],
+    ['the end of time', '9999-12-31'],
+  ])('drops an entry dated with %s', (_label, changedOn) => {
+    expect(readFeed(asFeed([entry(changedOn)]), 'network', TODAY)).toEqual([]);
+  });
+
+  it('takes a change dated tomorrow, and nothing later', () => {
+    // The feed is written in UK days and read in the reader's own; no clock on
+    // Earth is more than one calendar day behind London's.
+    expect(readFeed(asFeed([entry(day(1))]), 'network', TODAY)).toHaveLength(1);
+    expect(readFeed(asFeed([entry(day(2))]), 'network', TODAY)).toEqual([]);
+  });
+
+  it('holds the citation’s date to the same rule', () => {
+    const cite = (checkedOn: string) => ({ ...entry(day(0)), source: { url: SOURCE.url, checkedOn } });
+    expect(readFeed(asFeed([cite('2026-02-31')]), 'network', TODAY)).toEqual([]);
+    expect(readFeed(asFeed([cite('9999-12-31')]), 'network', TODAY)).toEqual([]);
+    expect(readFeed(asFeed([cite(day(0))]), 'network', TODAY)).toHaveLength(1);
+  });
+
+  it('lets a genuine change through after a poisoned feed', () => {
+    const poison = Array.from({ length: MAX_UPDATES }, (_, i) => entry('9999-12-31', `poison-${i}`));
+    let held = mergeFeed([], readFeed(asFeed(poison), 'network', TODAY) ?? []);
+    held = mergeFeed(held, readFeed(asFeed([entry(day(0), 'genuine')]), 'network', TODAY) ?? []);
+    expect(held.map((u) => u.id)).toContain('genuine');
+  });
+
+  it('clears poison already held on the device, at the next launch', () => {
+    // `hydrate` reads the stored updates through this same function, so an
+    // install that took the poison before this check existed is cleaned when
+    // it next starts, rather than being stuck with it.
+    const stored = [entry('9999-12-31', 'poison'), entry(day(-3), 'real')];
+    expect(readFeed(asFeed(stored), 'device', TODAY)?.map((u) => u.id)).toEqual(['real']);
+  });
+});

@@ -2,9 +2,14 @@
  * Receiving an order email shared from another app.
  *
  * The Add screen teaches this in three steps — open the order, tap share,
- * pick kept — and until now nothing behind it was listening. A PWA share
- * target delivers the shared content as query parameters, which is all this
- * needs: no service worker in the path, so it survives a cold start.
+ * pick kept — and until now nothing behind it was listening. The share target
+ * was first a GET, which delivered the email as query parameters with no
+ * service worker in the path — and so delivered it to the SERVER too, in the
+ * request line, before this code ran. It is a POST answered by the service
+ * worker now (public/sw.js), which hands the parts to `receiveShare` below;
+ * this function folds them, from there or from an address that still carries
+ * them (an app installed under the old manifest, with no worker in front of
+ * it).
  *
  * The sharing app decides how to split what it sends. Mail clients vary: some
  * put the subject in `title` and the body in `text`, some send everything as
@@ -27,6 +32,76 @@ export function sharedTextFrom(params: URLSearchParams): string | null {
 export const SHARE_PARAMS = ['title', 'text', 'url'] as const;
 
 /**
+ * The mark the service worker sends a share's page to — `/app/#shared` — and
+ * the message that collects it. A fragment, because it is never sent to a
+ * server: the address says a share is waiting and carries none of it.
+ */
+export const SHARED_MARK = '#shared';
+export const CLAIM_SHARE = 'kept-claim-share';
+
+/**
+ * What the worker handed over, as the text the Add screen reads — through
+ * `sharedTextFrom`, so a POSTed share and an addressed one are folded by the
+ * one rule. Anything that is not an object of strings is nothing.
+ */
+export function handedOverText(data: unknown): string | null {
+  if (typeof data !== 'object' || data === null) return null;
+  const parts = data as Record<string, unknown>;
+  const params = new URLSearchParams();
+  for (const k of SHARE_PARAMS) if (typeof parts[k] === 'string') params.set(k, parts[k] as string);
+  return sharedTextFrom(params);
+}
+
+/** Enough of `navigator.serviceWorker` to ask it something; a parameter so it can be tested. */
+export interface ShareSource {
+  controller: { postMessage(message: unknown, transfer: Transferable[]): void } | null;
+}
+
+/**
+ * Collect a shared email from the service worker that received it.
+ *
+ * Over a MessageChannel of its own, so the answer cannot be confused with any
+ * other message. Nothing is retried: the worker gives a share to the first ask
+ * and keeps no copy, and a null here is the honest "nothing waiting". Bounded,
+ * because this runs before the app mounts and a worker that never answers must
+ * not keep the app off the screen; the worker answers in milliseconds.
+ */
+export function receiveShare(source: ShareSource | undefined, waitMs = 2000): Promise<string | null> {
+  const worker = source?.controller;
+  if (!worker) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const channel = new MessageChannel();
+    const timer = setTimeout(() => {
+      channel.port1.close();
+      resolve(null);
+    }, waitMs);
+    channel.port1.onmessage = (e) => {
+      clearTimeout(timer);
+      channel.port1.close();
+      resolve(handedOverText(e.data));
+    };
+    worker.postMessage({ type: CLAIM_SHARE }, [channel.port2]);
+  });
+}
+
+/*
+ * The text collected before the app mounted, for its first state to read.
+ *
+ * Read, not taken: React's StrictMode runs a reducer's initialiser twice in
+ * development, and a value consumed by the first run would be gone for the
+ * one that is kept. It is set once per document, so a reload starts at null.
+ */
+let collected: string | null = null;
+
+export async function collectShare(source: ShareSource | undefined): Promise<void> {
+  collected = await receiveShare(source);
+}
+
+export function collectedShare(): string | null {
+  return collected;
+}
+
+/**
  * The address to leave behind once a shared payload is in hand.
  *
  * A reload must not silently re-add the same receipt, and an order email — a
@@ -43,9 +118,12 @@ export const SHARE_PARAMS = ['title', 'text', 'url'] as const;
  */
 export function strippedShareUrl(href: string): string | null {
   const url = new URL(href);
-  if (!SHARE_PARAMS.some((k) => url.searchParams.has(k))) return null;
+  const marked = url.hash === SHARED_MARK;
+  if (!marked && !SHARE_PARAMS.some((k) => url.searchParams.has(k))) return null;
   for (const k of SHARE_PARAMS) url.searchParams.delete(k);
-  return url.pathname + url.search + url.hash;
+  // The worker's mark goes too: a reload of `#shared` would ask for a share
+  // already handed over, and the address would go on saying one arrived.
+  return url.pathname + url.search + (marked ? '' : url.hash);
 }
 
 /**

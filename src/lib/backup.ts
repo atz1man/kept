@@ -32,7 +32,26 @@ export interface ImportSummary {
 
 export type ImportOutcome =
   | { ok: true; summary: ImportSummary }
-  | { ok: false; reason: 'not-json' | 'not-a-kept-backup' | 'nothing-usable' };
+  | { ok: false; reason: 'not-json' | 'not-a-kept-backup' | 'nothing-usable' | 'too-large' };
+
+/**
+ * The largest file a restore will read: the size of the whole store it lands
+ * in.
+ *
+ * localStorage holds 5,242,880 characters for this app — measured in Chromium,
+ * which refused one more; Safari's is the same five megabytes — and the
+ * receipts, the settings and the policy news all share it. A file bigger than
+ * that cannot be held whole, so restoring it can only end in a device that
+ * stops saving. Measured: a 6 MB file with one receipt restored as "1
+ * restored. Nothing already here was lost.", then "This device isn't saving",
+ * and a receipt added afterwards was gone after a reload. A genuine export is
+ * nowhere near it — the five sample receipts are under 3 KB, so this is room
+ * for thousands — which is why the answer is a refusal rather than a trim.
+ *
+ * Checked before the file is read as well (Settings asks `File.size`), so a
+ * large file is not pulled into memory only to be refused.
+ */
+export const MAX_BACKUP_BYTES = 5 * 1024 * 1024;
 
 const isStr = (v: unknown): v is string => typeof v === 'string' && v.trim().length > 0;
 
@@ -88,12 +107,15 @@ function isISODate(v: unknown): v is string {
  * receipt simply carries no clock — dropping the row, or inventing a length
  * from prose, would both be worse than saying less.
  */
-function readWarranty(raw: unknown): Warranty | undefined {
-  if (isStr(raw)) return { months: 0, note: raw };
+function readWarranty(raw: unknown, fromOutside: boolean): Warranty | undefined {
+  // A note from a file is held to the note cap like every other piece of text
+  // here; from the device's own store it is left exactly as held.
+  const note = (v: string) => (fromOutside ? trim(v, MAX_NOTE) : v);
+  if (isStr(raw)) return { months: 0, note: note(raw) };
   if (typeof raw !== 'object' || raw === null) return undefined;
   const w = raw as Record<string, unknown>;
   if (typeof w.months !== 'number' || !Number.isInteger(w.months) || w.months < 0 || w.months > 1200) return undefined;
-  return { months: w.months, ...(isStr(w.note) ? { note: w.note } : {}) };
+  return { months: w.months, ...(isStr(w.note) ? { note: note(w.note) } : {}) };
 }
 
 /**
@@ -167,10 +189,14 @@ export function readReceipt(raw: unknown, fromOutside = false): Receipt | null {
     ...(r.windowStartsOn !== undefined ? { windowStartsOn: r.windowStartsOn as string } : {}),
     ...(r.arrivedOn !== undefined ? { arrivedOn: r.arrivedOn as string } : {}),
     windowDays: r.windowDays,
-    policy: r.policy,
+    // The sentence that says where the window came from. It was the one piece
+    // of text the trimming rule above never reached, with the warranty note:
+    // a single receipt carrying six million characters of it restored
+    // "successfully" and left the store unable to save anything at all.
+    policy: fromOutside ? trim(r.policy, MAX_NOTE) : r.policy,
     distance,
     ...(() => {
-      const warranty = readWarranty(r.warranty);
+      const warranty = readWarranty(r.warranty, fromOutside);
       return warranty ? { warranty } : {};
     })(),
     ...(isStr(r.gotcha) ? { gotcha: fromOutside ? trim(r.gotcha, MAX_NOTE) : r.gotcha } : {}),
@@ -237,6 +263,10 @@ export function readReceipt(raw: unknown, fromOutside = false): Receipt | null {
 }
 
 export function parseBackup(text: string): ImportOutcome {
+  // Characters, not bytes, here: a character is at least one byte, so a file
+  // that passed Settings' byte check passes this, and any other caller handing
+  // text in directly is held to the same ceiling.
+  if (text.length > MAX_BACKUP_BYTES) return { ok: false, reason: 'too-large' };
   let doc: unknown;
   try {
     doc = JSON.parse(text);
