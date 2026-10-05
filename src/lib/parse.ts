@@ -317,6 +317,22 @@ interface DateHit {
   monthFirst?: Date;
 }
 
+/*
+ * A month as it is written: the name, its three letters, or "Sept". Only the
+ * first three letters of the word used to be looked at, so a till line
+ * "2 MARMITE 250G" was 2 March and "3 DECAF COFFEE" was 3 December — two
+ * dates nobody wrote, and the card marked a real one as a choice between three.
+ */
+const MONTH_WORDS = new Set([
+  'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december',
+  'jan', 'feb', 'mar', 'apr', 'jun', 'jul', 'aug', 'sep', 'sept', 'oct', 'nov', 'dec',
+]);
+
+function monthOf(word: string): number | undefined {
+  const w = word.toLowerCase();
+  return MONTH_WORDS.has(w) ? MONTHS[w.slice(0, 3)] : undefined;
+}
+
 /** Candidate dates in the text, with their positions. */
 function datesIn(text: string, today: Date): DateHit[] {
   const found: DateHit[] = [];
@@ -348,24 +364,23 @@ function datesIn(text: string, today: Date): DateHit[] {
     // both real ones, and with it in the way neither end of the range stood
     // next to the other.
     if (found.some((f) => index < f.index + f.length && index + length > f.index)) return;
-
     const dt = new Date(y, m, d);
     if (dt.getMonth() === m && dt.getDate() === d) found.push({ date: dt, index, length, ...(monthFirst ? { monthFirst } : {}) });
   };
 
-  // "25 Aug", "25 August 2026", "25th Aug"
+  // "25 Aug", "25 August 2026", "25th Aug", "1st of October 2026"
   // A figure followed by ":NN" is a time of day, never a day or a year: "1 Aug
   // 23:10" read 23 as the year 2023, and `mdy` below read it as 23 August.
-  const dmy = /\b(\d{1,2})(?:st|nd|rd|th)?[ .\-/]+([a-z]{3,9})\.?,?(?:[ .\-/]+(\d{2,4})(?!:\d))?\b/gi;
+  const dmy = /\b(\d{1,2})(?:st|nd|rd|th)?(?:\s+of)?[ .\-/]+([a-z]{3,9})\.?,?(?:[ .\-/]+(\d{2,4})(?!:\d))?\b/gi;
   for (const m of text.matchAll(dmy)) {
-    const mon = MONTHS[m[2].slice(0, 3).toLowerCase()];
+    const mon = monthOf(m[2]);
     if (mon === undefined) continue;
     push(resolveYear(m[3], mon, Number(m[1]), today), mon, Number(m[1]), m.index ?? 0, m[0].length);
   }
   // "Aug 25", "August 25, 2026"
   const mdy = /\b([a-z]{3,9})\.?[ .\-/]+(\d{1,2})(?!:\d)(?:st|nd|rd|th)?,?(?:[ .\-/]+(\d{2,4})(?!:\d))?\b/gi;
   for (const m of text.matchAll(mdy)) {
-    const mon = MONTHS[m[1].slice(0, 3).toLowerCase()];
+    const mon = monthOf(m[1]);
     if (mon === undefined) continue;
     push(resolveYear(m[3], mon, Number(m[2]), today), mon, Number(m[2]), m.index ?? 0, m[0].length);
   }
@@ -380,9 +395,15 @@ function datesIn(text: string, today: Date): DateHit[] {
     const other = day <= 12 && month <= 12 && day !== month ? new Date(y, day - 1, month) : undefined;
     push(y, month - 1, day, m.index ?? 0, m[0].length, other);
   }
+  // A till's compact date, "04OCT26": day, month and year with nothing between.
+  for (const m of text.matchAll(/\b(\d{1,2})(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)(\d{2}|\d{4})\b/gi)) {
+    const y = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
+    push(y, MONTHS[m[2].toLowerCase()], Number(m[1]), m.index ?? 0, m[0].length);
+  }
   // Year first: ISO, and "2026/09/20" or "2026.09.20". Nobody writes the year
-  // and then the day, so this form is never ambiguous.
-  for (const m of text.matchAll(/\b(\d{4})([/.-])(\d{1,2})\2(\d{1,2})\b/g)) {
+  // and then the day, so this form is never ambiguous. An ISO timestamp runs
+  // straight on into its time ("2026-10-01T09:15:00"), with no word edge.
+  for (const m of text.matchAll(/\b(\d{4})([/.-])(\d{1,2})\2(\d{1,2})(?=T\d|\b)/g)) {
     push(Number(m[1]), Number(m[3]) - 1, Number(m[4]), m.index ?? 0, m[0].length);
   }
   return found;

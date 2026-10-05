@@ -39,11 +39,25 @@ const LAYOUTS: { name: string; text: string; pence: number | null; on: string }[
   { name: 'Total due today', text: 'Currys\nOrder date 21/09/2026\nTotal due today: £79.00', pence: 7900, on: '2026-09-21' },
   { name: 'price with pence-less', text: 'IKEA\nOrder date 21/09/2026\nTotal £199', pence: 19900, on: '2026-09-21' },
   { name: 'order date US-style label with time', text: 'ASOS\nOrder date: 21 Sep 2026, 14:32\nTotal £40.00', pence: 4000, on: '2026-09-21' },
+  // Three forms the parser audit found unread, each falling back to "not found".
+  { name: 'ordinal with "of"', text: 'Halfords\nOrder placed on Monday 21st of September 2026\nTotal £89.99', pence: 8999, on: '2026-09-21' },
+  { name: 'ISO timestamp', text: 'Uniqlo\nOrder placed: 2026-09-21T09:15:00\nTotal £29.90', pence: 2990, on: '2026-09-21' },
+  { name: 'till date with nothing between', text: 'PRIMARK\nJUMPER £12.00\nTOTAL £12.00\n21SEP26 15:02', pence: 1200, on: '2026-09-21' },
 ]
 
 describe('more order layouts: the total and the day of purchase', () => {
   it('is reading a real set', () => {
     expect(LAYOUTS.length).toBeGreaterThanOrEqual(20);
+  });
+
+  it('does not read a product word that starts like a month as a date', () => {
+    // "2 MARMITE" was 2 March and "3 DECAF" 3 December: the first three
+    // letters were all that was read, and a till slip's one date became a
+    // choice between three.
+    const out = parseReceiptText('TESCO\n2 MARMITE 250G £9.00\n3 DECAF COFFEE £12.00\nTOTAL £21.00\n20/09/2026 18:02', TODAY);
+    if (!out.ok) throw new Error(out.reason);
+    expect(out.value.purchasedOn).toBe('2026-09-20');
+    expect(out.value.how.purchasedOn).toBe('only');
   });
 
   it.each(LAYOUTS.map((l) => [l.name, l] as const))('%s', (_name, l) => {
