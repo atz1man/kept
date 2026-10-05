@@ -16,6 +16,7 @@
     "a11y": "node scripts/a11y.mjs",
     "layout": "node scripts/layout.mjs",
     "perf": "node scripts/perf.mjs",
+    "budget": "node scripts/budget.mjs",
     "agreement": "node scripts/agreement.mjs",
     "freshness": "node scripts/freshness.mjs",
     "build:ios": "vite build --outDir dist-ios && node scripts/ios-entry.mjs",

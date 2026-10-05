@@ -55,6 +55,8 @@ jobs:
         run: npm test
       - name: Build
         run: npx vite build
+      - name: What each page downloads before it paints, within its ceiling
+        run: npm run budget
 
   browser:
     name: browser
