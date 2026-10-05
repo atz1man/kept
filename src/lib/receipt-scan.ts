@@ -16,6 +16,9 @@ import { ALIASES_BY_LENGTH } from './stores';
  * What it will not do is guess. A heading is taken as the shop only when it IS
  * a shop kept knows, word for word; an amount gains a £ only when it sits at
  * the end of a line or beside a money word; nothing is invented to fill a gap.
+ * Where it reads through a misprint — a £ printed as "E", an O in a date, a
+ * shop's name with figures in it — it says so (`Misread`), and the card marks
+ * the field unless the slip's own arithmetic proves the reading.
  */
 
 /** Characters OCR puts where a digit was, and the digit it was. */
@@ -244,7 +247,8 @@ export function readScan(ocr: string): ScanText {
   });
   for (const p of pounds) {
     const line = body[p.line];
-    // Only a total's own figure can be proved by the items: an item's is one of them.
+    // Only a figure on a money line (the total, the card) can be proved by the
+    // items: an item's is one of them.
     const proved = p.letter === 'f' && MONEY_WORD.test(line) && sum === penceOf(p.as);
     misread.push({ field: 'amount', read: p.read, as: p.as, proved, line });
   }
