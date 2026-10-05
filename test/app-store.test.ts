@@ -196,7 +196,7 @@ describe('the reducer, as StoreKit answers', () => {
     version: 1, receipts: [], updates: [], onboardingSeen: true,
     settings: { ...DEFAULT_SETTINGS, plan, appStorePrice }, alertsSent: [],
     screen: 'settings', selId: null, obStep: 0, celebrating: null, shared: 'no', upgrading: false, store: STORE_ASKING,
-    sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null,
+    sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null, restored: null,
   });
   const today = new Date(2026, 9, 4);
 

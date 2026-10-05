@@ -25,7 +25,7 @@ const state = (receipts: Receipt[]): AppState => ({
   version: 1, receipts, updates: [], onboardingSeen: true,
   settings: { ...DEFAULT_SETTINGS }, alertsSent: [],
   screen: 'detail', selId: receipts[0]?.id ?? null, obStep: 0, celebrating: null, shared: 'no', upgrading: false, store: { shelf: { kind: 'asking' }, busy: null, note: null },
-  sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null,
+  sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null, restored: null,
 });
 const find = (s: AppState, id: string) => s.receipts.find((r) => r.id === id)!;
 

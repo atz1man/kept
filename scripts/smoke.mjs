@@ -2076,6 +2076,81 @@ for (const cancel of [false, true]) {
 }
 
 /*
+ * A swap is not taken back over what happened to the one that came home.
+ * "Not swapped after all" removed every receipt the swap had produced,
+ * whatever its state: swap the jeans, get the money back for the second pair,
+ * tap it on the first, and the refund was deleted with the receipt it was on,
+ * with no undo. It is refused now, and the screen says why; once the second
+ * pair is back in hand the swap can be taken back, and that is offered back
+ * from the bar like every other tap that removes a receipt.
+ */
+{
+  const xCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const xp = await xCtx.newPage();
+  await xp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await xp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await xp.waitForTimeout(300);
+  await xp.evaluate(() => {
+    const iso = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    const s = JSON.parse(localStorage.getItem('kept.v1'));
+    s.receipts.push({ id: 'r_jeans', store: 'Next', item: 'Jeans, 32 waist', cat: 'clothing', amount: 4000, purchasedOn: iso(4), windowDays: 28, policy: 'p', distance: false, status: 'active' });
+    localStorage.setItem('kept.v1', JSON.stringify(s));
+  });
+  await xp.reload({ waitUntil: 'networkidle' });
+  await xp.waitForTimeout(300);
+  const stored = () => xp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.filter((r) => r.id === 'r_jeans' || r.swappedFrom === 'r_jeans'));
+  const original = () => xp.getByRole('button', { name: /^Next, Jeans, 32 waist, swapped for another$/ }).first().click({ timeout: 3000 }).catch(() => {});
+  const seen = {};
+  await xp.getByRole('button', { name: /^Next, Jeans/ }).first().click({ timeout: 3000 }).catch(() => {});
+  await xp.waitForTimeout(300);
+  await xp.getByRole('button', { name: 'Swapped it for another' }).click({ timeout: 3000 }).catch(() => {});
+  await xp.waitForTimeout(300);
+  // The second pair goes back for its money.
+  await xp.getByRole('button', { name: 'Got my money back' }).click({ timeout: 3000 }).catch(() => {});
+  await xp.waitForTimeout(400);
+  await xp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await original();
+  await xp.waitForTimeout(300);
+  const said = (await xp.locator('main').innerText().catch(() => '')) ?? '';
+  seen.said = /has gone back since\. To take this swap back, undo that on its own receipt first\./.test(said);
+  // Tapped if it is there, as a person would: the question is what is left.
+  const offered = await xp.getByRole('button', { name: 'Not swapped after all' }).count();
+  if (offered) await xp.getByRole('button', { name: 'Not swapped after all' }).click({ timeout: 3000 }).catch(() => {});
+  await xp.waitForTimeout(300);
+  let rows = await stored();
+  seen.notOffered = offered === 0;
+  seen.refundKept =
+    rows.length === 2 &&
+    rows.some((r) => r.id === 'r_jeans' && r.status === 'returned' && r.exchanged === true) &&
+    rows.some((r) => r.swappedFrom === 'r_jeans' && r.status === 'returned' && r.exchanged !== true);
+  // The way back: the second pair back in hand on its own screen, then the swap.
+  await xp.getByRole('button', { name: 'Open that receipt' }).click({ timeout: 3000 }).catch(() => {});
+  await xp.waitForTimeout(300);
+  await xp.getByRole('button', { name: 'Not actually returned' }).click({ timeout: 3000 }).catch(() => {});
+  await xp.waitForTimeout(300);
+  await xp.getByRole('button', { name: 'Back', exact: true }).click({ timeout: 3000 }).catch(() => {});
+  await xp.waitForTimeout(300);
+  await original();
+  await xp.waitForTimeout(300);
+  await xp.getByRole('button', { name: 'Not swapped after all' }).click({ timeout: 3000 }).catch(() => {});
+  await xp.waitForTimeout(300);
+  rows = await stored();
+  seen.takenBack = rows.length === 1 && rows[0].status === 'active';
+  seen.bar = (await xp.getByRole('status').allTextContents()).some((t) => /Marked Jeans, 32 waist not swapped/.test(t));
+  await xp.getByRole('button', { name: 'Undo', exact: true }).click({ timeout: 3000 }).catch(() => {});
+  await xp.waitForTimeout(300);
+  rows = await stored();
+  seen.undone =
+    rows.length === 2 &&
+    rows.some((r) => r.id === 'r_jeans' && r.status === 'returned' && r.exchanged === true) &&
+    rows.some((r) => r.swappedFrom === 'r_jeans' && r.status === 'active');
+  const ok = Object.values(seen).every(Boolean);
+  results['a swap is not taken back over a refund on the one that came home, and taking one back can be undone'] = ok;
+  if (!ok) problems.push(`unswap: ${JSON.stringify({ ...seen, offered, rows, said: said.slice(0, 200) })}`);
+  await xCtx.close();
+}
+
+/*
  * One thing out of a basket. A receipt holds one item and one amount, and
  * returning one thing from three settled the whole receipt — the two that
  * stayed lost their guarantee reminder and their fault letter with it.
@@ -2409,6 +2484,38 @@ results['restoring an older backup does not undo a refund taken since'] =
   afterReturning?.status === 'returned' &&
   afterRestoring?.status === 'returned' &&
   afterRestoring.returnedOn === afterReturning.returnedOn;
+
+/*
+ * And not the AMOUNT of a refund either, which is where the first fix stopped:
+ * the device kept a receipt's status and three dates and took every other
+ * field from the file, so a £30 refund on the £89 headphones, recorded after
+ * the export, came back from a restore as the whole £89 — under "Nothing
+ * already here was lost". The device's copy of a receipt it holds is the
+ * newer one, all of it (`mergeBackup`), and the note says so.
+ */
+{
+  const seen = {};
+  await page.getByRole('button', { name: 'Receipts', exact: true }).click();
+  await page.waitForTimeout(300);
+  await page.getByRole('button', { name: /Currys, JBL.*returned/ }).first().click({ timeout: 3000 }).catch(() => {});
+  await page.waitForTimeout(300);
+  await page.getByRole('button', { name: 'Not the full amount?' }).click({ timeout: 3000 }).catch(() => {});
+  await page.getByLabel('How much came back?').fill('30', { timeout: 3000 }).catch(() => {});
+  await page.getByRole('button', { name: 'Save', exact: true }).click({ timeout: 3000 }).catch(() => {});
+  await page.waitForTimeout(300);
+  const refund = () => page.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => /JBL/.test(r.item))?.refunded ?? null);
+  seen.partial = (await refund()) === 3000;
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.waitForTimeout(300);
+  await page.setInputFiles('input[type=file]', backupPath);
+  await page.waitForTimeout(600);
+  seen.kept = (await refund()) === 3000;
+  const said = (await page.getByRole('status').allTextContents()).join(' ');
+  seen.said = /already here\. Nothing already here was changed\./.test(said);
+  const ok = Object.values(seen).every(Boolean);
+  results['restoring an older backup keeps a partial refund taken since, and says nothing here changed'] = ok;
+  if (!ok) problems.push(`restore after a partial refund: ${JSON.stringify({ ...seen, said: said.slice(0, 160) })}`);
+}
 
 await page.getByRole('button', { name: 'Receipts', exact: true }).click();
 await page.waitForTimeout(300);

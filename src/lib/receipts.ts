@@ -307,6 +307,63 @@ export function recoveredPence(receipts: readonly Receipt[]): number {
   return sumPence(receipts.filter((r) => r.status === 'returned' && counts(r)).map(refundOf));
 }
 
+/** What has happened to the one a swap brought home, which taking the swap back would erase. */
+export type SwapInFate = 'returned' | 'sent' | 'kept' | 'swapped' | 'split' | 'letter' | 'cancelled';
+
+/**
+ * Why "Not swapped after all" cannot take this swap back, or null when it can.
+ *
+ * Taking a swap back removes the receipt the swap produced: it described an
+ * item that, on this reading, never came. That is only true while nothing has
+ * happened to it. The reducer used to remove every receipt carrying the
+ * original's id, whatever its state. Measured: swap size 8 for size 9, refund
+ * the 9s (£80), then one tap of "Not swapped after all" on the 8s left the 8s
+ * alone and active — money back £80 to £0, the refund deleted, no undo on
+ * offer. A chain of swaps (8 → 9 → 10) left two active receipts for one £80
+ * purchase: the 9s were removed and the 10s stayed, beside the 8s.
+ *
+ * So the swap-in has to be still in hand and untouched: active, with no fault
+ * letter or notice of cancellation sent about it, and not itself split. An
+ * edit (a new receipt's dates, "size 9") does not count — that describes the
+ * thing rather than something that happened to it, and the undo bar gives it
+ * back whole. Refused here for the screen AND in the reducer, so a screen
+ * left open while another tab moved on cannot do it either. The way back is
+ * one receipt at a time: undo what happened to the swap-in on its own screen,
+ * and this one is offered again.
+ */
+export function swapInFate(receipts: readonly Receipt[], id: string): { swapIn: Receipt; fate: SwapInFate } | null {
+  for (const swapIn of receipts.filter((r) => r.swappedFrom === id)) {
+    const fate: SwapInFate | null =
+      swapIn.status === 'returned' ? (swapIn.exchanged ? 'swapped' : 'returned')
+      : swapIn.status === 'sent' ? 'sent'
+      : swapIn.status === 'kept' ? 'kept'
+      : receipts.some((r) => r.splitFrom === swapIn.id) ? 'split'
+      : swapIn.faultClaim ? 'letter'
+      : swapIn.cancelledOn ? 'cancelled'
+      : null;
+    if (fate) return { swapIn, fate };
+  }
+  return null;
+}
+
+/**
+ * Said on the original's screen in place of the button. It names no item: the
+ * swap-in is called what the original was called until somebody edits it, so
+ * naming it would usually read "the Shoes you swapped the Shoes for".
+ */
+export function swapInFateText(fate: SwapInFate): string {
+  const what = {
+    returned: 'The one you swapped it for has gone back since.',
+    sent: 'The one you swapped it for has been sent back since.',
+    kept: 'You’re keeping the one you swapped it for.',
+    swapped: 'The one you swapped it for has been swapped again since.',
+    split: 'The one you swapped it for has been split since.',
+    letter: 'A fault letter has gone to the shop about the one you swapped it for.',
+    cancelled: 'A notice of cancellation has gone about the one you swapped it for.',
+  }[fate];
+  return `${what} To take this swap back, undo that on its own receipt first.`;
+}
+
 /**
  * Whether a receipt's money belongs in a total.
  *
