@@ -545,7 +545,41 @@ const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
  * assumed 28-day window: an assumption the person can see and correct, rather
  * than a wrong retailer they have no reason to doubt.
  */
-function mentions(text: string, alias: string, commonWord: boolean): boolean {
+/*
+ * Each alias's pattern, compiled once for the life of the app.
+ *
+ * There are 163 aliases, every one tried for a shop kept does not know, and
+ * each pattern was built again on every read: 128 ms for the first "Read it"
+ * and 85 ms for the second, measured on a desktop, which is the better part of
+ * a second on a phone, with the screen frozen. The `\p{L}` edges make a
+ * pattern dear to compile and the engine's own cache did not keep them.
+ */
+const COMPILED = new Map<string, RegExp>();
+
+function pattern(alias: string, commonWord: boolean): RegExp {
+  const key = `${commonWord ? 'c' : 'p'}:${alias}`;
+  let re = COMPILED.get(key);
+  if (!re) {
+    re = compile(alias, commonWord);
+    COMPILED.set(key, re);
+  }
+  return re;
+}
+
+/** How many alias patterns have been compiled so far: held by a test to "once each". */
+export function compiledAliasPatterns(): number {
+  return COMPILED.size;
+}
+
+function mentions(text: string, lower: string, alias: string, commonWord: boolean): boolean {
+  // Every way a pattern can match includes the alias itself, so a paste that
+  // does not contain it, in any case, cannot match. Checked first, as a plain
+  // substring, so a pattern is compiled and run only for a shop that is there.
+  if (!lower.includes(alias.toLowerCase())) return false;
+  return pattern(alias, commonWord).test(text) || (commonWord && isHeading(text, alias));
+}
+
+function compile(alias: string, commonWord: boolean): RegExp {
   const a = escape(alias);
   /*
    * The alias's own edges are letters in any alphabet, not `\b`. JavaScript's
@@ -555,12 +589,10 @@ function mentions(text: string, alias: string, commonWord: boolean): boolean {
    */
   const start = '(?<![\\p{L}\\p{N}])';
   const end = '(?![\\p{L}\\p{N}])';
-  if (!commonWord) return new RegExp(`${start}${a}${end}`, 'iu').test(text);
-  return (
-    new RegExp(
-      `(?:\\b${STORE_CUE}\\s+${a}${end}|${start}${a}\\s+(?:${STORE_CUE}|store)\\b|${start}${a}\\.(?:com|co\\.uk))`,
-      'iu',
-    ).test(text) || isHeading(text, alias)
+  if (!commonWord) return new RegExp(`${start}${a}${end}`, 'iu');
+  return new RegExp(
+    `(?:\\b${STORE_CUE}\\s+${a}${end}|${start}${a}\\s+(?:${STORE_CUE}|store)\\b|${start}${a}\\.(?:com|co\\.uk))`,
+    'iu',
   );
 }
 
@@ -584,8 +616,9 @@ function isHeading(text: string, alias: string): boolean {
 function pickStore(text: string): StorePolicy | null {
   // Longest alias first, so a shop whose name contains another's still
   // resolves to itself.
+  const lower = text.toLowerCase();
   for (const { alias, store } of ALIASES_BY_LENGTH) {
-    if (mentions(text, alias, store.commonWord === true)) return store;
+    if (mentions(text, lower, alias, store.commonWord === true)) return store;
   }
   return null;
 }
