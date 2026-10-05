@@ -342,7 +342,13 @@ function datesIn(text: string, today: Date): DateHit[] {
     // deadline counted from it with it. A match lying wholly inside one
     // already found is part of that one; day-first is read first, as a UK
     // app reads dates.
-    if (found.some((f) => index >= f.index && index + length <= f.index + f.length)) return;
+    //
+    // Nor may a match SHARE text with one already found. "Delivery: 2 Oct -
+    // 4 Oct 2026" also reads "Oct - 4" month first, a third date overlapping
+    // both real ones, and with it in the way neither end of the range stood
+    // next to the other.
+    if (found.some((f) => index < f.index + f.length && index + length > f.index)) return;
+
     const dt = new Date(y, m, d);
     if (dt.getMonth() === m && dt.getDate() === d) found.push({ date: dt, index, length, ...(monthFirst ? { monthFirst } : {}) });
   };
@@ -636,31 +642,84 @@ function promised(text: string, labelStart: number, dateIndex: number): boolean 
  * — the order date, so a Zara coat's clock started two days early. Another
  * date's label in between means the date is that label's, not this one's.
  */
+/*
+ * Paying, and an invoice, date the PURCHASE: "Delivery £3.99 · Total £48.99 ·
+ * Payment date: 1 October" read the payment date as the day it was delivered.
+ */
 const ANOTHER_DATE_LABEL =
-  /\b(?:order(?:ed)?|placed|purchased?|bought|deliver(?:ed|y)|arrived|received|dispatch(?:ed)?|despatch(?:ed)?|shipped)\b/i;
+  /\b(?:order(?:ed)?|placed|purchased?|bought|deliver(?:ed|y)|arrived|received|dispatch(?:ed)?|despatch(?:ed)?|shipped|payment|paid|invoice[ds]?|refund(?:ed)?)\b/i;
 
 function claimedByAnother(between: string): boolean {
   return ANOTHER_DATE_LABEL.test(between);
 }
 
+/*
+ * A label does not reach across money. "Delivery £3.99" is a price line, and
+ * a date that follows it two lines down is not the day of delivery; a label
+ * and its date sit together with words between them at most.
+ */
+const MONEY_BETWEEN = /[£€$]\s?\d/;
+
+/*
+ * The estimate written AFTER the date: "Delivery date: Sat 3 Oct 2026
+ * (estimated)". `promised` reads up to the date and so never saw it; this
+ * reads a short way past it, on the same line.
+ */
+const ESTIMATE_AFTER = /^[^\n]{0,20}?\b(?:estimat\w*|expected|approx\w*|est\.)/i;
+
+/*
+ * A window, "Delivery: 2 Oct - 4 Oct 2026", is a promise of a span, not a
+ * day anything happened, and its last day was being read as the arrival.
+ * Both ends of a range are dropped — and the end of one whose start is a
+ * bare day, "2 to 4 October", "2-4 Oct", where the start is no date at all.
+ */
+const RANGE_BETWEEN = /^\s*(?:-|–|—|to|until|and|or)\s*$/i;
+const RANGE_FROM_DAY = /\b\d{1,2}(?:st|nd|rd|th)?\s*(?:-|–|—|to|until|and|or)\s*$/i;
+
+function inRange(hits: readonly DateHit[], text: string): Set<DateHit> {
+  const sorted = [...hits].sort((a, b) => a.index - b.index);
+  const out = new Set<DateHit>();
+  for (const hit of sorted) {
+    if (RANGE_FROM_DAY.test(text.slice(Math.max(0, hit.index - 12), hit.index))) out.add(hit);
+  }
+  for (let i = 1; i < sorted.length; i++) {
+    const [a, b] = [sorted[i - 1], sorted[i]];
+    const between = text.slice(a.index + a.length, b.index);
+    if (between.length <= 12 && RANGE_BETWEEN.test(between)) {
+      out.add(a);
+      out.add(b);
+    }
+  }
+  return out;
+}
+
 function labelledEvents(
-  text: string,
+  doc: Doc,
   today: Date,
   purchased: Date | null,
   label: RegExp,
 ): DateHit[] {
-  const labels = [...text.matchAll(label)].map((m) => ({ end: (m.index ?? 0) + m[0].length, start: m.index ?? 0 }));
+  const { text } = doc;
+  // A label inside a mail header — Outlook's "Sent:" — is the email's, not the parcel's.
+  const labels = [...text.matchAll(label)]
+    .filter((m) => !inMailHeader(doc, m.index ?? 0))
+    .map((m) => ({ end: (m.index ?? 0) + m[0].length, start: m.index ?? 0 }));
   if (labels.length === 0) return [];
-  return datesIn(text, today)
+  const hits = datesIn(text, today);
+  const ranges = inRange(hits, text);
+  return hits
     // A date still to come has not happened, whatever introduces it.
     .filter((hit) => daysBetween(today, hit.date) <= 0)
+    .filter((hit) => !inMailHeader(doc, hit.index) && !ranges.has(hit))
+    .filter((hit) => !ESTIMATE_AFTER.test(text.slice(hit.index + hit.length, hit.index + hit.length + 40)))
     .filter((hit) =>
       labels.some(
         (l) =>
           hit.index >= l.end &&
           hit.index - l.end <= LABEL_REACH &&
           !promised(text, l.start, hit.index) &&
-          !claimedByAnother(text.slice(l.end, hit.index)),
+          !claimedByAnother(text.slice(l.end, hit.index)) &&
+          !MONEY_BETWEEN.test(text.slice(l.end, hit.index)),
       ),
     )
     // A parcel cannot land, or leave, before it is ordered. Such a pair means
@@ -677,8 +736,8 @@ function labelledEvents(
  * between "at least until 27 September" and "27 September". A wrong one is
  * worse than none, so every condition below has to hold.
  */
-function pickArrival(text: string, today: Date, purchased: Date | null): Date | null {
-  const candidates = labelledEvents(text, today, purchased, DELIVERY_DATE_LABEL);
+function pickArrival(doc: Doc, today: Date, purchased: Date | null): Date | null {
+  const candidates = labelledEvents(doc, today, purchased, DELIVERY_DATE_LABEL);
   if (candidates.length === 0) return null;
   // The latest, because an email that mentions delivery twice is describing a
   // redelivery or a second parcel, and the clock the person cares about is the
@@ -712,8 +771,8 @@ const DISPATCH_DATE_LABEL =
  * rather than an event, and until this commit that exact sentence was read as
  * a dispatch.
  */
-function pickDispatch(text: string, today: Date, purchased: Date | null): Date | null {
-  const candidates = labelledEvents(text, today, purchased, DISPATCH_DATE_LABEL);
+function pickDispatch(doc: Doc, today: Date, purchased: Date | null): Date | null {
+  const candidates = labelledEvents(doc, today, purchased, DISPATCH_DATE_LABEL);
   if (candidates.length === 0) return null;
   // The EARLIEST, where `pickArrival` takes the latest. A second dispatch is a
   // second parcel or a replacement, and the clock the shop is running started
@@ -1218,8 +1277,8 @@ export function parseReceiptText(raw: string, today: Date = new Date()): ParseOu
 
   const picked = pickDate(doc, today);
   const date = picked?.value ?? null;
-  const arrived = pickArrival(text, today, date);
-  const dispatched = pickDispatch(text, today, date);
+  const arrived = pickArrival(doc, today, date);
+  const dispatched = pickDispatch(doc, today, date);
   return {
     ok: true,
     value: {
