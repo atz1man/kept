@@ -110,3 +110,16 @@ export const CASES: Case[] = [
   { id: 'E2', kind: 'eml', stress: '.eml from Very, body names "Your Apple Watch"', text: eml('Very <noreply@very.co.uk>', 'Thanks for your order', 'Thu, 01 Oct 2026 10:00:00 +0100', 'Order number: 98765432\nOrder date: 1 October 2026\nYour Apple Watch Series 10 is on its way\nTotal £399.00'), expect: { store: null, pence: 39900, on: '2026-10-01' } },
   { id: 'E3', kind: 'eml', stress: '.eml John Lewis, item Oliver Bonas', text: eml('John Lewis <noreply@johnlewis.co.uk>', 'Your order confirmation', 'Tue, 29 Sep 2026 10:00:00 +0100', 'Order number: 7654321\nOrder date: 29 September 2026\nOliver Bonas ceramic vase £35.00\nOrder total £35.00'), expect: { store: 'John Lewis', pence: 3500, on: '2026-09-29' } },
 ];
+
+/**
+ * Cases written against the camera-misread corrections in `readScan`, each a
+ * place a looser correction would read wrong: a product code that starts with
+ * an E, a slip in euros, a pasted email whose "E1" and "f5" are real text.
+ * Held to the same rule as the audit's cases, beside them rather than among
+ * them, so the audit stays the sixty-five it was measured on.
+ */
+export const MISREAD_GUARDS: Case[] = [
+  { id: 'X1', kind: 'ocr', stress: 'bulb codes E27 and E14 at the start of item lines, no pence after the E', text: 'WICKES\nE27 LED BULB 4.99\nCARD 4.99\n03/10/2026', expect: { store: 'Wickes', pence: 499, on: '2026-10-03' } },
+  { id: 'X2', kind: 'ocr', stress: 'a slip in euros whose € read as E: not a £ total', text: 'NEXT\nDUNDRUM\nT-SHIRT E5.00\nSOCKS E3.00\nTOTAL EUR E8.00\n03/10/2026', expect: { store: 'Next', pence: null, on: '2026-10-03' } },
+  { id: 'X3', kind: 'paste', stress: 'pasted email with "E27", "code E1" and "press f5" as real text', text: 'Your Screwfix order\nOrder date: 3 October 2026\nPhilips LED bulb E27 £4.99\nUse code E1 on your next order\nIf this email does not display, press f5', expect: { store: 'Screwfix', pence: 499, on: '2026-10-03' } },
+];

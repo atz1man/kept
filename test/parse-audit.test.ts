@@ -3,7 +3,7 @@ import { toCheck } from '../src/lib/confidence';
 import { bestReading, emailAsText, htmlToText, readEmail } from '../src/lib/documents';
 import { parseReceiptText } from '../src/lib/parse';
 import { readScan, type Misread } from '../src/lib/receipt-scan';
-import { CASES, type Case } from './fixtures/parse-audit';
+import { CASES, MISREAD_GUARDS, type Case } from './fixtures/parse-audit';
 
 /**
  * The audit's sixty-five cases, held to the rule the Add card depends on: a
@@ -31,6 +31,9 @@ import { CASES, type Case } from './fixtures/parse-audit';
  * true answer or a blank is WRONG.
  */
 const TODAY = new Date(2026, 9, 5);
+
+/** The audit's cases and the guards written against the camera-misread corrections, held to one rule. */
+const ALL: readonly Case[] = [...CASES, ...MISREAD_GUARDS];
 
 type Outcome = 'right' | 'right, marked' | 'marked' | 'blank' | 'WRONG';
 type Field = 'store' | 'total' | 'bought' | 'arrived' | 'dispatched' | 'ref';
@@ -101,10 +104,13 @@ const NOT_RIGHT: Record<string, Partial<Record<Field, Outcome>> | 'nothing found
   // An eBay order whose item title starts with a shop's name: the only shop
   // named, so offered, but marked as named only in passing.
   S10: { store: 'marked' },
-  // Camera misreads — "E" and "f" for £, O for 0, a dropped decimal point,
-  // "B00TS": the scanner's to fix, not the parser's; each is blank or marked.
-  O1: { total: 'blank' },
-  O2: { total: 'marked' },
+  // Camera misreads, read through by `readScan` where that can be done safely.
+  // "E2.65" is read as £2.65 and marked: the items add up to it, which settles
+  // the figure but not whether the E was a £ or a €. "f5.45" (O2) is read as
+  // £5.45 and not marked, because the items less the discount come to exactly
+  // that. O for 0 in the date, a dropped decimal point and "B00TS" are still
+  // the scanner's to fix; each is blank or marked.
+  O1: { total: 'right, marked' },
   O4: { bought: 'blank' },
   O5: { total: 'marked' },
   O8: { store: 'blank' },
@@ -116,6 +122,10 @@ const NOT_RIGHT: Record<string, Partial<Record<Field, Outcome>> | 'nothing found
   // "Dunelm" as the email's last line, after the total: the shop, but only
   // as a sign-off, so marked although right.
   H1: { store: 'right, marked' },
+  // A bulb's "E27" is no £: no total line, so the largest figure, marked.
+  X1: { total: 'right, marked' },
+  // The pasted email's "E27", "code E1" and "f5" stay text; no total line.
+  X3: { total: 'right, marked' },
 };
 
 function expected(c: Case): Partial<Record<Field, Outcome>> | 'nothing found' {
@@ -134,18 +144,19 @@ describe('the audit cases: right, marked, or left blank — never confidently wr
     expect(CASES.length).toBe(65);
     expect(new Set(CASES.map((c) => c.id)).size).toBe(65);
     // Every exception names a case that exists.
-    for (const id of Object.keys(NOT_RIGHT)) expect(CASES.some((c) => c.id === id), id).toBe(true);
+    for (const id of Object.keys(NOT_RIGHT)) expect(ALL.some((c) => c.id === id), id).toBe(true);
+    expect(new Set(ALL.map((c) => c.id)).size).toBe(ALL.length);
   });
 
   it('states no figure wrong without marking it, in any case', () => {
-    const wrong = CASES.flatMap((c) => {
+    const wrong = ALL.flatMap((c) => {
       const got = read(c);
       return got === 'nothing found' ? [] : Object.entries(got).filter(([, o]) => o === 'WRONG').map(([f]) => `${c.id} ${f}`);
     });
     expect(wrong).toEqual([]);
   });
 
-  it.each(CASES.map((c) => [`${c.id} ${c.stress}`, c] as const))('%s', (_name, c) => {
+  it.each(ALL.map((c) => [`${c.id} ${c.stress}`, c] as const))('%s', (_name, c) => {
     expect(read(c)).toEqual(expected(c));
   });
 });

@@ -61,6 +61,66 @@ function poundSigns(line: string): string {
   return line;
 }
 
+/*
+ * A £ the camera read as a letter: "E2.65", "TOTAL f5.45". Thermal print's £
+ * is a looped stroke that OCR returns as an E or an f, and the figure after it
+ * was then not money at all — a slip whose every price read "E" had no total.
+ *
+ * Read as a £ only where a £ would be: the letter alone before a till figure,
+ * nothing else attached, and that figure placed where `poundSigns` would have
+ * given a bare one its £ — ending the line, or beside a money word. So a bulb's
+ * "E10" or "E27" is never touched (no pence), and nor is a letter inside a
+ * word. An "E" is never taken for a £ on a slip that names euros anywhere,
+ * because a € reads as an E at least as readily as a £ does; and even where it
+ * names none, an E-read total is marked (see `toCheck`).
+ */
+const POUND_AS_LETTER = new RegExp(`(^|\\s)([Ef])(-?${TILL_FIGURE})(?=\\s|$)`, 'g');
+const EUROS = /€|\bEUR\b|\beuros?\b/i;
+
+/** A line's £ read as a letter, given back as a £ — and each one noted. */
+function poundAsLetter(line: string, euros: boolean, noted: { read: string; as: string; letter: string }[]): string {
+  const moneyWord = MONEY_WORD.test(line);
+  return line.replace(POUND_AS_LETTER, (whole, sp: string, letter: string, n: string, at: number) => {
+    if (letter === 'E' && euros) return whole;
+    if (!moneyWord && line.slice(at + whole.length).trim() !== '') return whole;
+    noted.push({ read: `${letter}${n}`, as: n, letter });
+    return `${sp}£${n}`;
+  });
+}
+
+/*
+ * The slip's own arithmetic: what its items come to, less its discounts. A
+ * till prints each thing on a line ending in its price, and money off on one
+ * ending in a minus figure ("STAFF DISC -0.50", "PROMO 20.00-"); a line with a
+ * money word on it (the total, the card, the change, the VAT) is not a thing
+ * bought, and a line with a date on it ends in the time. When these add up to
+ * a total the camera half-read, the total is proved — by a dozen other numbers
+ * that would all have had to be misread to agree with it.
+ *
+ * Anything this does not understand makes the sum wrong, never right by
+ * accident: an item with no price, a saving printed without its minus. A
+ * wrong sum proves nothing, and the correction stays marked.
+ */
+const LINE_PRICE = new RegExp(`(?:^|\\s)(-?)£?(-?)(${TILL_FIGURE})(-?)$`);
+const DATED = /\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}/;
+
+function itemsLessDiscounts(lines: readonly string[]): number | null {
+  let sum = 0;
+  let items = 0;
+  for (const line of lines) {
+    if (MONEY_WORD.test(line) || DATED.test(line)) continue;
+    const m = LINE_PRICE.exec(line);
+    if (!m) continue;
+    const pence = Number(m[3].replace(/[,.]/g, ''));
+    sum += m[1] || m[2] || m[4] ? -pence : pence;
+    items += 1;
+  }
+  return items > 0 ? sum : null;
+}
+
+/** "1,448.00" → 144800. */
+const penceOf = (figure: string) => Number(figure.replace(/[-,.]/g, ''));
+
 /**
  * The shop, when a heading names one kept knows. A receipt prints the shop at
  * the top and nowhere else, with none of the "your order" or ".co.uk" that
@@ -97,6 +157,12 @@ export interface Misread {
    * come to exactly this figure — so there is nothing left to check.
    */
   proved: boolean;
+  /**
+   * The line it was read on, as corrected. A till prints the paid figure on
+   * the item line and the card line too; a misread item is no doubt about a
+   * total printed cleanly on its own line.
+   */
+  line?: string;
 }
 
 /** A camera's read of a till receipt: the text the paste parser reads, and what was corrected on the way. */
@@ -120,9 +186,23 @@ export function readScan(ocr: string): ScanText {
     .map((l) => l.replace(/[ \t]+/g, ' ').trim());
   const misread: Misread[] = [];
   const shop = shopHeading(lines);
+  const euros = EUROS.test(ocr);
+  const pounds: { line: number; read: string; as: string; letter: string }[] = [];
   const body = lines
     .filter((l) => l.length > 0)
-    .map((l) => poundSigns(fixMoneyTokens(l)).replace(DUE, 'Total $1'));
+    .map((l, i) => {
+      const noted: { read: string; as: string; letter: string }[] = [];
+      const line = poundSigns(poundAsLetter(fixMoneyTokens(l), euros, noted)).replace(DUE, 'Total $1');
+      for (const n of noted) pounds.push({ ...n, line: i });
+      return line;
+    });
+  const sum = itemsLessDiscounts(body);
+  for (const p of pounds) {
+    const line = body[p.line];
+    // Only a total's own figure can be proved by the items: an item's is one of them.
+    const proved = p.letter === 'f' && MONEY_WORD.test(line) && sum === penceOf(p.as);
+    misread.push({ field: 'amount', read: p.read, as: p.as, proved, line });
+  }
   return { text: [...(shop ? [`Receipt from ${shop}`] : []), ...body].join('\n'), misread };
 }
 

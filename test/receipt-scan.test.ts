@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { fieldsFound, fromScan, readBestOf, scanFailure, type Thresholding, readFlattenedOrAsTaken } from '../src/lib/receipt-scan';
+import { fieldsFound, fromScan, readBestOf, readScan, scanFailure, type Thresholding, readFlattenedOrAsTaken } from '../src/lib/receipt-scan';
+import { toCheck } from '../src/lib/confidence';
 import { parseReceiptText } from '../src/lib/parse';
 
 /**
@@ -139,6 +140,82 @@ TOTAL 24.99
 
   it('takes a shop from the heading only, not from the middle of the receipt', () => {
     expect(fromScan('THE CORNER SHOP\nline\nline\nline\nNext to the station 1.00')).not.toContain('Receipt from');
+  });
+});
+
+/*
+ * What the camera printed with a letter in it, read as what it most likely
+ * was — and handed on as a misread, so the card can mark it unless the slip's
+ * own arithmetic proves it.
+ */
+describe('a £ the camera read as a letter', () => {
+  const checked = (ocr: string) => {
+    const scan = readScan(ocr);
+    const out = parseReceiptText(scan.text, TODAY);
+    if (!out.ok) throw new Error(`did not parse: ${out.reason}`);
+    return { v: out.value, ck: toCheck(out.value, [], scan.misread), scan };
+  };
+
+  it('reads "E" before every price as a £, and marks the total: an E may have been a €', () => {
+    const { v, ck } = checked("SAINSBURY'S\nBANANAS E1.20\nBREAD E1.45\nBALANCE DUE E2.65\n26/09/2026 12:01");
+    expect(v.amount).toBe(265);
+    expect(ck.amount).toBe('misread-print');
+  });
+
+  it('reads "f" on the total as a £, unmarked where the items less the discount come to it', () => {
+    const { v, ck, scan } = checked('TESCO\nCOFFEE 4.50\nMILK 1.45\nSTAFF DISC -0.50\nTOTAL f5.45\n26/09/26 09:12');
+    expect(v.amount).toBe(545);
+    expect(scan.misread).toEqual([{ field: 'amount', read: 'f5.45', as: '5.45', proved: true, line: 'TOTAL £5.45' }]);
+    expect(ck.amount).toBeUndefined();
+  });
+
+  it('marks an "f" total the items do not add up to', () => {
+    // 4.50 + 1.45 is 5.95: the discount line was lost, so nothing proves 5.45.
+    const { v, ck } = checked('TESCO\nCOFFEE 4.50\nMILK 1.45\nTOTAL f5.45\n26/09/26');
+    expect(v.amount).toBe(545);
+    expect(ck.amount).toBe('misread-print');
+  });
+
+  it('takes a discount printed with its minus after the figure as money off', () => {
+    const { ck } = checked('TESCO\nCOFFEE 4.50\nMILK 1.45\nSTAFF DISC 0.50-\nTOTAL f5.45\n26/09/26');
+    expect(ck.amount).toBeUndefined();
+  });
+
+  it('does not count the time printed beside the date as a thing bought', () => {
+    // "09.12" ends its line like a price; the date before it says it is the time.
+    const { v, ck } = checked('TESCO\nCOFFEE 4.50\nMILK 1.45\nSTAFF DISC -0.50\nTOTAL f5.45\n26/09/26 09.12');
+    expect(v.amount).toBe(545);
+    expect(ck.amount).toBeUndefined();
+  });
+
+  it('does not take a misread item for doubt about a total printed cleanly', () => {
+    const { v, ck } = checked('BOOTS\nNO7 SERUM f38.00\nTOTAL 38.00\n26/09/2026');
+    expect(v.amount).toBe(3800);
+    expect(ck.amount).toBeUndefined();
+  });
+
+  it('leaves a bulb code alone: an E with no pence after it is not a £', () => {
+    expect(fromScan('WICKES\nE27 LED BULB 4.99\nE14 CANDLE 3.50\nTOTAL 8.49')).toBe('Receipt from Wickes\nWICKES\nE27 LED BULB £4.99\nE14 CANDLE £3.50\nTOTAL £8.49');
+  });
+
+  it('leaves an E inside a word, or a capital F, alone', () => {
+    expect(fromScan('COFFEE1.20')).toBe('COFFEE1.20');
+    expect(readScan('BEEF F5.00\nTOTAL 5.00').misread).toEqual([]);
+  });
+
+  it('reads an E or f as a £ only where a bare figure would have been given one', () => {
+    // A unit price in the middle of a quantity line, with no money word: the
+    // line's price is the figure at its end.
+    expect(fromScan('2 X E1.50 3.00')).toBe('2 X E1.50 £3.00');
+    expect(fromScan('VISA E2.65 CONTACTLESS')).toBe('VISA £2.65 CONTACTLESS');
+  });
+
+  it('never reads an E as a £ on a slip that names euros', () => {
+    for (const euro of ['TOTAL EUR E8.00', 'TOTAL €8.00', 'PRICES IN EUROS']) {
+      expect(readScan(`NEXT\nT-SHIRT E5.00\nSOCKS E3.00\n${euro}`).text).toContain('T-SHIRT E5.00');
+    }
+    // An f is no €, so it is still read as a £.
+    expect(fromScan('NEXT\nTOTAL EUR f8.00')).toContain('£8.00');
   });
 });
 

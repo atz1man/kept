@@ -84,8 +84,8 @@ const TOTAL_LINE = /tot|due|bal/i;
  * marked unless the slip's own arithmetic proved it. An "E" is never proved:
  * the arithmetic settles the figure, not whether the sign was a £ or a €.
  */
-function misreadAs(misread: readonly Misread[], field: Misread['field'], matches: (as: string) => boolean): boolean {
-  return misread.some((m) => !m.proved && m.field === field && matches(m.as));
+function misreadAs(misread: readonly Misread[], field: Misread['field'], matches: (m: Misread) => boolean): boolean {
+  return misread.some((m) => !m.proved && m.field === field && matches(m));
 }
 
 /** "3/10/2026" → "0310": the day and the month, as `readOffUnsure` compares them. */
@@ -109,20 +109,22 @@ export function toCheck(p: ParsedReceipt, unsure: readonly UnsureWord[] = [], mi
     }
     // Outside the lines' agreement: they settle the figure, not the currency.
     const figure = digits((p.amount / 100).toFixed(2));
-    if (out.amount === undefined && misreadAs(misread, 'amount', (as) => digits(as) === figure)) out.amount = 'misread-print';
+    if (out.amount === undefined && misreadAs(misread, 'amount', (m) => digits(m.as) === figure && (m.line === undefined || TOTAL_LINE.test(m.line)))) {
+      out.amount = 'misread-print';
+    }
   }
   if (p.dateFound) {
     const [, month, day] = p.purchasedOn.split('-');
     if (p.how.purchasedOn === 'latest') out.purchasedOn = 'several-dates';
     else if (p.how.purchasedOn === 'other') out.purchasedOn = 'notice-date';
     else if (p.how.purchasedOn === 'month-first') out.purchasedOn = 'month-first';
-    else if (misreadAs(misread, 'purchasedOn', (as) => dayMonth(as) === `${day}${month}`)) out.purchasedOn = 'misread-print';
+    else if (misreadAs(misread, 'purchasedOn', (m) => dayMonth(m.as) === `${day}${month}`)) out.purchasedOn = 'misread-print';
     else if (readOffUnsure(unsure, `${day}${month}`, DATE_UNSURE_BELOW)) out.purchasedOn = 'unclear-print';
   }
   if (p.store !== null) {
     if (p.how.store === 'several') out.store = 'several-shops';
     else if (p.how.store === 'mention') out.store = 'shop-in-passing';
-    else if (misreadAs(misread, 'store', (as) => as === p.store)) out.store = 'misread-print';
+    else if (misreadAs(misread, 'store', (m) => m.as === p.store)) out.store = 'misread-print';
   }
   return out;
 }
