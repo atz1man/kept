@@ -175,18 +175,49 @@ describe('a window Kept has not checked is not stated as the shop\'s', () => {
   });
 
   it('treats a table shop with a different window typed in as unchecked too', () => {
-    const typed = closing(-1, 45);
+    // Dispatched the day it was ordered, and said so: a date, not a floor.
+    const typed = closing(-1, 45, { windowStartsOn: toISODate(addDays(TODAY, -46)) });
     expect(dueAlerts([typed], TODAY, URGENT, none)[0].title).toBe('The saved window has passed');
   });
 
   it('checks the window for the way it was bought, where the shop has two', () => {
     // Liberty: 14 days in store, 30 online. The 30 is a window Kept has read
     // off Liberty's page, but not for something bought at the counter.
-    const liberty = (windowDays: number, distance: boolean) =>
-      closing(-1, windowDays, { store: 'Liberty', distance, policy: 'Liberty · 14 days from purchase in store; 30 days from delivery for an online order.' });
-    expect(dueAlerts([liberty(30, true)], TODAY, URGENT, none)[0].title).toBe('That window has closed');
+    const liberty = (windowDays: number, distance: boolean, over: Partial<Receipt> = {}) =>
+      closing(-1, windowDays, { store: 'Liberty', distance, policy: 'Liberty · 14 days from purchase in store; 30 days from delivery for an online order.', ...over });
+    // Online, with the day it arrived: Liberty's 30 days counted from it.
+    const arrived = toISODate(addDays(TODAY, -31));
+    expect(dueAlerts([liberty(30, true, { arrivedOn: arrived, windowStartsOn: arrived })], TODAY, URGENT, none)[0].title).toBe('That window has closed');
     expect(dueAlerts([liberty(14, false)], TODAY, URGENT, none)[0].title).toBe('That window has closed');
     expect(dueAlerts([liberty(30, false)], TODAY, URGENT, none)[0].title).toBe('The saved window has passed');
+  });
+
+  it('never says a floor has closed: online, counted from delivery, the arrival never entered', () => {
+    // This test used to pin "That window has closed" on Liberty online with
+    // no arrival date. Liberty counts an online order's 30 days from the day
+    // it ARRIVES, so 31 days from the order is the earliest that window can
+    // have closed, not the day it did: a parcel that took three days had
+    // two left. The window is checked, which is why it got the confident
+    // words; the date is not, which is why it must not.
+    const liberty = closing(-1, 30, { store: 'Liberty', policy: 'Liberty · 14 days from purchase in store; 30 days from delivery for an online order.' });
+    const a = dueAlerts([liberty], TODAY, URGENT, none)[0];
+    expect(a.rung).toBe('closed');
+    expect(a.title).toBe('That window may have closed');
+    expect(a.title).not.toMatch(/has closed/);
+    expect(a.body).toMatch(/counted from your order its 30 days are up, but Liberty counts from delivery, so it may still be open — add the day it arrived to know\./);
+    expect(a.body).toContain('still have rights');
+    // Its last day as counted from the order: the earliest, said as that.
+    const today = dueAlerts([closing(0, 30, { store: 'Liberty', policy: liberty.policy })], TODAY, URGENT, none)[0];
+    expect(today.title).toBe('The window may close today');
+    expect(today.body).toMatch(/goes back today, the earliest its window can close\. Liberty counts from delivery, so it may give longer/);
+  });
+
+  it('says which date settles a floor for a shop that counts from dispatch, and keeps the guess wording', () => {
+    // Zara counts from dispatch, and its window is not one Kept has checked.
+    const a = dueAlerts([closingIn(-1)], TODAY, URGENT, none)[0];
+    expect(a.title).toBe('The saved window may have passed');
+    expect(a.body).toMatch(/Zara counts from dispatch, so it may still be open — add the day it was dispatched to know\. Kept hasn’t checked Zara’s returns policy/);
+    expect(dueAlerts([closingIn(0)], TODAY, URGENT, none)[0].title).toBe('The saved window may end today');
   });
 
   it('keeps the shop\'s own words for a window it has checked, or a cited policy change', () => {
@@ -196,8 +227,10 @@ describe('a window Kept has not checked is not stated as the shop\'s', () => {
     const tesco = (n: number) => closingIn(n, { store: 'Tesco' });
     expect(dueAlerts([tesco(-1)], TODAY, URGENT, none)[0].title).toBe('That window has closed');
     expect(dueAlerts([tesco(2)], TODAY, URGENT, none)[0].body).not.toMatch(/hasn’t checked/);
-    expect(dueAlerts([closingIn(-1)], TODAY, URGENT, none)[0].title).toBe('The saved window has passed');
-    const changed = closing(0, 45, { policy: 'Zara · 45-day return window, from a policy change on 1 August 2026.' });
+    // Zara's dispatch day recorded, so the date is a date and not a floor.
+    const dispatched = (n: number, windowDays = 30) => toISODate(addDays(TODAY, n - windowDays));
+    expect(dueAlerts([closingIn(-1, { windowStartsOn: dispatched(-1) })], TODAY, URGENT, none)[0].title).toBe('The saved window has passed');
+    const changed = closing(0, 45, { windowStartsOn: dispatched(0, 45), policy: 'Zara · 45-day return window, from a policy change on 1 August 2026.' });
     expect(dueAlerts([changed], TODAY, URGENT, none)[0].title).toBe('Today is the last day');
   });
 });

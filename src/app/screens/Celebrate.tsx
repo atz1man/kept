@@ -19,7 +19,7 @@ interface Props {
    * window, which is the harder one and the one most worth celebrating, was
    * congratulated with a sentence that was not true.
    */
-  inTime: boolean;
+  inTime: boolean | null;
   recovered: Pence;
   shared: 'no' | 'shared' | 'copied' | 'failed';
   /** The sentence itself, so a failed copy can still be read and selected. */

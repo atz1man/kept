@@ -61,8 +61,15 @@ describe('deadlines', () => {
     const unknown = online({ purchasedOn: iso(-10) });
     expect(find(unknown, 'Last day to reject a fault for a full refund')!.hedged).toBe(true);
     expect(find(unknown, 'Last day to cancel for any reason')!.hedged).toBe(true);
-    // The shop's own date is the shop's, not a floor.
-    expect(find(unknown, 'The shop’s own return window closes')!.hedged).toBe(false);
+    // The shop's own date is a floor as well, for ASOS: it counts its 28
+    // days from delivery, so from the order they are the earliest. This
+    // line used to say "the shop's own date is the shop's, not a floor",
+    // which was true only of a shop that counts from the till.
+    expect(find(unknown, 'The shop’s own return window closes')!.hedged).toBe(true);
+    // Arrived, and the shop's clock started on that day: a date.
+    expect(find(online({ purchasedOn: iso(-10), arrivedOn: iso(-6), windowStartsOn: iso(-6) }), 'The shop’s own return window closes')!.hedged).toBe(false);
+    // Online from a shop that counts from the order: the order IS its date.
+    expect(find(counter({ distance: true, purchasedOn: iso(-10) }), 'The shop’s own return window closes')!.hedged).toBe(false);
   });
 
   it('never call a floor that has gone by "passed" — the parcel may have come later', () => {

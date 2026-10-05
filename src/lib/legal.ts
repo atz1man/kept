@@ -1,4 +1,5 @@
 import { addDays, daysBetween, fmtDate, fromISODate, lastDayOfMonthsBeginning } from './dates';
+import { deadlineIsFloor } from './receipts';
 import type { Receipt } from './types';
 
 /**
@@ -252,8 +253,9 @@ export function legalRights(r: Receipt, today: Date, storeWindowOpen: boolean): 
  * first to go is the 30-day right to reject — the one that means a full
  * refund for a fault rather than a repair — and nothing said so.
  *
- * `hedged` when the arrival date is unknown and the earliest clock is a legal
- * one: those run from arrival, so the date is a floor and "first" is a
+ * `hedged` when the earliest clock's date is a floor: a legal one with the
+ * arrival date unknown (those run from arrival), or the shop's own when it
+ * counts from delivery or dispatch and that day is unknown. Then "first" is a
  * likelihood, and the screen says so. Ties go to the shop, whose window is the
  * any-reason return and the one a person is usually asking about.
  */
@@ -274,7 +276,10 @@ export function firstToClose(r: Receipt, today: Date, shopDeadline: Date): First
   const live = clocks.filter((c) => daysBetween(today, c.on) >= 0);
   if (live.length === 0) return null;
   const first = live.reduce((a, b) => (daysBetween(b.on, a.on) > 0 ? b : a));
-  return { ...first, hedged: first.which !== 'shop' && !known };
+  // The shop's date is a floor on the same condition every other surface
+  // reads (`deadlineIsFloor`): "Closes first: the shop's own window, 9 Oct"
+  // sat above "the date above is the earliest it can be, never the latest".
+  return { ...first, hedged: first.which === 'shop' ? deadlineIsFloor(r) : !known };
 }
 
 /** The sentence for it, from the same constants as every other one here. */

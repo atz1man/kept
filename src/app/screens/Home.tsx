@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { color, font, gradient, radius, shadow } from '../../tokens';
 import { addDays, fmtDate, fmtDateNear, fromISODate } from '../../lib/dates';
 import { money, sumPence } from '../../lib/money';
-import { awaitingArrival, bucket, settledRows, coverLine, derive, refundOf, everyReturnInTime, countsAsMoney, stillReturnablePence, timelineDots } from '../../lib/receipts';
+import { awaitingArrival, bucket, settledRows, coverLine, deadlineIsFloor, derive, floorClock, floorWords, refundOf, everyReturnInTime, countsAsMoney, stillReturnablePence, timelineDots } from '../../lib/receipts';
 import { search, searchStatus, shouldOfferSearch } from '../../lib/search';
 import { midSentence } from '../../lib/words';
 import { TAGLINE_LEAD } from '../../lib/brand';
@@ -57,8 +57,10 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
   // and it is still the question while you are looking for something.
   const visible = searching ? search(receipts, query) : receipts;
 
-  const { closed, urgent, later, returned, kept, sent } = bucket(visible, today, urgentDays);
-  const active = [...closed, ...urgent, ...later];
+  const { unsure, closed, urgent, later, returned, kept, sent } = bucket(visible, today, urgentDays);
+  // The unsure first: like the closed, their day has gone by on the count
+  // kept has, and unlike them they may still be saved by one date.
+  const active = [...unsure, ...closed, ...urgent, ...later];
   // Whether a sample still counts is decided over EVERY receipt, not the ones
   // a search left visible: the samples stop being money the moment a real
   // receipt exists, whatever is on screen.
@@ -72,7 +74,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
    * still leads while nothing real is live — it says it is one.
    */
   const next = searching ? undefined : (active.find(counts) ?? active[0]);
-  const stillReturnable = stillReturnablePence({ closed, urgent, later, returned, kept, sent }, receipts);
+  const stillReturnable = stillReturnablePence({ unsure, closed, urgent, later, returned, kept, sent }, receipts);
   const keptBack = sumPence(returned.filter(counts).map(refundOf));
   const dots = timelineDots(receipts, today);
   const empty = receipts.length === 0;
@@ -279,6 +281,36 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
               : 'Nothing is waiting to go back.'}
           </div>
         </div>
+      )}
+
+      {/*
+        * Ordered online from a shop that counts from delivery or dispatch,
+        * past the earliest day its window could close, and nobody has said
+        * when it came (`bucket`'s `unsure`, read off `deadlineIsFloor`). These
+        * were under WINDOW CLOSED, and "I'm keeping all" settled them with
+        * the rest. Here instead, with no keep-all — nothing about them is
+        * known to be over — and pointed at the one date that settles each:
+        * the row opens the receipt, whose "Has it arrived?" and Edit take it.
+        */}
+      {unsure.length > 0 && (
+        <>
+          <h2 style={sectionLabel(color.ink)}>May still be open · when did it arrive?</h2>
+          <p style={{ margin: '-4px 4px 10px', fontSize: 13, lineHeight: 1.5, color: color.body }}>{unsureNote(unsure)}</p>
+          <ul className="k-group" data-unsure>
+            {unsure.map((r) => (
+              <ReceiptRow
+                key={r.id}
+                receipt={r}
+                onItsWay={awaitingArrival(r, today)}
+                urgency={urgency(derive(r, today).daysLeft, urgentDays, deadlineIsFloor(r))}
+                emphasised
+                policyChanged={changedIds.has(r.id)}
+                onOpen={() => onOpen(r.id)}
+                onSwipe={() => onSwipe(r.id)}
+              />
+            ))}
+          </ul>
+        </>
       )}
 
       {/* Above "go now or lose it", because these are already lost and the
@@ -492,10 +524,26 @@ function ShowAll({ list, total, hidden, open, onToggle }: { list: string; total:
   );
 }
 
+/**
+ * The line under "May still be open": why, and what settles it. For one
+ * receipt, its shop and its clock; for several, the clocks they share.
+ */
+function unsureNote(unsure: readonly Receipt[]): string {
+  const clocks = new Set(unsure.map((r) => floorClock(r) ?? 'delivery'));
+  const only = clocks.size === 1 ? [...clocks][0] : null;
+  if (unsure.length === 1) {
+    const { countsFrom, addIt } = floorWords(only ?? 'delivery');
+    return `Counted from the order, its window has passed — but ${unsure[0].store} counts from ${countsFrom}, so it may still be open. Open it and ${addIt}.`;
+  }
+  const countsFrom = only ? floorWords(only).countsFrom : 'delivery or dispatch';
+  const addIt = only ? floorWords(only).addIt : 'add the day it arrived or was dispatched';
+  return `Counted from the order, these windows have passed — but these shops count from ${countsFrom}, so they may still be open. Open one and ${addIt}.`;
+}
+
 function HeroCard({ receipt, today, onOpen }: { receipt: Receipt; today: Date; onOpen: () => void }) {
   const d = derive(receipt, today);
-  const { count, word } = heroCount(d.daysLeft);
-  const accent = d.daysLeft <= 3 ? color.danger : color.ink;
+  const floor = floorClock(receipt);
+  const { count, word } = heroCount(d.daysLeft, floor !== null);
   /*
    * The two lines around the headline used to contradict it.
    *
@@ -508,6 +556,10 @@ function HeroCard({ receipt, today, onOpen }: { receipt: Receipt; today: Date; o
    * two of them false.
    */
   const closed = d.daysLeft < 0;
+  // Past a floor (`floorClock`): the day kept counted to has gone, the shop's
+  // own may not have. Said as that, in ink rather than red.
+  const unsure = closed && floor !== null;
+  const accent = d.daysLeft <= 3 && !unsure ? color.danger : color.ink;
 
   return (
     <Pressable
@@ -523,9 +575,9 @@ function HeroCard({ receipt, today, onOpen }: { receipt: Receipt; today: Date; o
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ width: 7, height: 7, borderRadius: 999, background: d.daysLeft <= 3 ? color.dangerDot : color.accent }} />
+        <span style={{ width: 7, height: 7, borderRadius: 999, background: d.daysLeft <= 3 && !unsure ? color.dangerDot : color.accent }} />
         <span style={{ fontSize: 13, color: color.muted, fontWeight: 600 }}>
-          {closed ? 'Window closed' : 'Next to close'}
+          {unsure ? 'May still be open' : closed ? 'Window closed' : 'Next to close'}
         </span>
         {/* The shop, as its row in the list draws it, so the eye matches the
             card to the row below without reading either. */}
@@ -547,7 +599,9 @@ function HeroCard({ receipt, today, onOpen }: { receipt: Receipt; today: Date; o
       <div style={{ fontSize: 13, color: color.muted, marginTop: 8, lineHeight: 1.45 }}>
         {/* As every row says it: a figure about a purchase nobody made is labelled. */}
         {receipt.demo && 'Sample · '}
-        {closed
+        {unsure
+          ? `${receipt.store} · counted from your order its window ended ${fmtDateNear(d.deadline, today)}, but the shop counts from ${floorWords(floor).countsFrom} — ${floorWords(floor).addIt} to know`
+          : closed
           ? `${receipt.store} · the shop’s window shut on ${fmtDateNear(d.deadline, today)} — your legal rights may not have`
           : `${receipt.store} · ${money(receipt.amount)} back if it goes back by ${fmtDateNear(d.deadline, today)}`}
       </div>

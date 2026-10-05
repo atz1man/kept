@@ -1,4 +1,4 @@
-import { derive } from './receipts';
+import { deadlineIsFloor, derive } from './receipts';
 import { canonicalStoreName } from './stores';
 import { MAX_WINDOW_DAYS } from './draft';
 import { midSentence } from './words';
@@ -221,7 +221,7 @@ function impactFor(update: PolicyUpdate, receipt: Receipt, today: Date): Receipt
       kind: 'shorter',
       note:
         `new purchases get ${days} ${unit} less; yours keeps the ${receipt.windowDays} days it was bought under ` +
-        `(${d.daysLeft < 0 ? 'window closed' : `${d.daysLeft} days left`})`,
+        `(${d.daysLeft < 0 ? (deadlineIsFloor(receipt) ? 'window may have closed' : 'window closed') : `${d.daysLeft} days left`})`,
     };
   }
   return {

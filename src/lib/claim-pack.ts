@@ -6,7 +6,7 @@ import { escalation } from './escalate';
 import { faultLetter, REPLY_DAYS } from './fault-letter';
 import { COOLING_OFF_DAYS, LEGAL_DISCLAIMER, legalRights, PRESUMED_FAULT_MONTHS, presumedFaultEnds, REJECT_DAYS, type LegalRight } from './legal';
 import { money } from './money';
-import { derive, refundOf } from './receipts';
+import { deadlineIsFloor, derive, floorClock, floorWords, refundOf } from './receipts';
 import { refundChase } from './refund-chase';
 import type { Receipt } from './types';
 
@@ -127,7 +127,23 @@ export function claimPack(r: Receipt, today: Date): ClaimPack {
   if (r.credit?.spentOn) events.push(happened(r.credit.spentOn, 'Store credit spent'));
   if (r.status === 'kept' && r.keptOn) events.push(happened(r.keptOn, 'Decided to keep it'));
 
-  events.push(deadline(d.deadline, 'The shop’s own return window closes', `${r.windowDays} days, any reason, on the shop’s terms`));
+  /*
+   * The shop's own date is a floor too when the shop counts from delivery or
+   * dispatch and the receipt does not say when that was (`floorClock`), and
+   * it was the one deadline here not marked so: "15 September 2026 — The
+   * shop's own return window closes (passed)" for an Apple order that
+   * arrived on the 4th and had until the 18th, two lines above the
+   * statutory dates the same pack already called "at least".
+   */
+  const floor = floorClock(r);
+  events.push(deadline(
+    d.deadline,
+    'The shop’s own return window closes',
+    floor
+      ? `${r.windowDays} days, any reason, on the shop’s terms — counted here from the order; the shop counts from ${floorWords(floor).countsFrom}`
+      : `${r.windowDays} days, any reason, on the shop’s terms`,
+    floor !== null,
+  ));
   if (r.distance) {
     events.push(deadline(addDays(handover, COOLING_OFF_DAYS), 'Last day to cancel for any reason', `${COOLING_OFF_DAYS} days from arrival — Consumer Contracts Regulations 2013`, hedged));
   }
@@ -192,9 +208,19 @@ function standing(r: Receipt, today: Date, shopDeadline: Date): string[] {
   }
   if (r.sentOn) {
     const margin = daysBetween(fromISODate(r.sentOn), shopDeadline);
+    /*
+     * Late only when the deadline is a date. Past a floor (`deadlineIsFloor`)
+     * is not past the window, and this page goes TO the shop: "after the
+     * shop's own window had closed" about an Apple order sent back thirteen
+     * days after it arrived told the shop that a return made in time was
+     * late. Inside the floor is inside the window whatever the arrival, so
+     * that half still stands.
+     */
     out.push(margin >= 0
       ? `Sent back on ${fmtDateLong(fromISODate(r.sentOn))}, inside the shop’s own ${r.windowDays}-day window.`
-      : `Sent back on ${fmtDateLong(fromISODate(r.sentOn))}, after the shop’s own window had closed.`);
+      : deadlineIsFloor(r)
+        ? `Sent back on ${fmtDateLong(fromISODate(r.sentOn))}.`
+        : `Sent back on ${fmtDateLong(fromISODate(r.sentOn))}, after the shop’s own window had closed.`);
   }
   const chase = refundChase(r, today);
   if (chase?.late) out.push(`The refund is late: it was due by ${fmtDateLong(chase.due)} and has not been recorded.`);
