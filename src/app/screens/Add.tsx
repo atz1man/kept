@@ -199,7 +199,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
     setParsed({
       store: null, policy: null, amount: null, purchasedOn: toISODate(today), dateFound: false,
       arrivedOn: null, dispatchedOn: null, windowDays: UNKNOWN_STORE_WINDOW_DAYS, item: null, orderRef: null, lines: [],
-      how: { amount: null, purchasedOn: null },
+      how: { amount: null, purchasedOn: null, store: null },
     });
     setError(false);
     setTypedIn(true);
@@ -684,7 +684,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
               )}
             </div>
           )}
-          {!typedIn && !correcting && <Row label="Store" value={effectiveStore || 'Not recognised'} mono={false} />}
+          {!typedIn && !correcting && <Row label="Store" value={effectiveStore || 'Not recognised'} mono={false} check={checks.store && checkWords('store', checks.store)} />}
           {totalTyped ? (
             <div style={{ margin: '4px 0 10px' }}>
               <label htmlFor="add-total" style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>

@@ -102,9 +102,17 @@ describe('the policy table agrees with itself', () => {
      * it can never fail for an alias that has stopped appearing in real order
      * emails. Nothing offline can check that.
      */
+    /*
+     * A name that is also an ordinary word is written as a shop writes it,
+     * with its capital: the parser no longer takes "your next order" — every
+     * shop's footer — for a Next order, and so no longer takes "your apple
+     * order" for an Apple one either. The index is what is guarded here, and
+     * the capital changes nothing about which shop an alias resolves to.
+     */
+    const asWritten = (alias: string, common: boolean) => (common ? alias.replace(/(^|\s)(\p{Ll})/gu, (_, sp: string, c: string) => sp + c.toUpperCase()) : alias);
     for (const store of STORE_POLICIES) {
       for (const alias of store.aliases) {
-        const out = parseReceiptText(`Your ${alias} order · Total £20.00 · 20 Aug 2026`, TODAY);
+        const out = parseReceiptText(`Your ${asWritten(alias, store.commonWord === true)} order · Total £20.00 · 20 Aug 2026`, TODAY);
         expect(out.ok, `${alias} parsed nothing`).toBe(true);
         if (out.ok) expect(out.value.store, `"${alias}" resolved to the wrong shop`).toBe(store.name);
       }

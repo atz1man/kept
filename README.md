@@ -448,6 +448,21 @@ deliberate departure, not an oversight:
   nothing, which the add screen shows as "Not recognised" against a window it
   says is assumed — an assumption someone can see and correct beats a
   confident lie.
+- **The paste parser chose between several answers by taking the first.**
+  An audit of 65 order emails, till slips, saved pages and .eml files
+  (`test/fixtures/parse-audit.ts`) found 32 with a figure wrong and stated as
+  plainly as a right one: the first of several totals ("Basket total", "Total
+  Delivery", "Total (2 items)", a product called Total Care), the first shop
+  name in the alias table (a maker on an item line, a marketplace seller, the
+  footer's "your next order"), a dispatch notice's only date as the day of
+  purchase, an estimated delivery prefilled as the day it came, and
+  `£54<sup>98</sup>` as £5,498. Totals are now ranked by what their label
+  says and the last of the surest kind taken; shop names by where they sit
+  (the sender, the heading, named as the shop — never a price line, a "Sold
+  by" line or a footer sentence); mail headers are never a purchase or
+  dispatch date. Where a choice is still a choice, the card marks it — the
+  shop included, which it never did. `test/parse-audit.test.ts` pins every
+  field of every case as right, marked or blank, and none wrong unmarked.
 - **The add screen had no way to name a shop.** It followed from the fix
   above: a parser that refuses to guess leaves the shop blank more often, and
   the only remedy was to save a receipt called "Unknown store" and edit it

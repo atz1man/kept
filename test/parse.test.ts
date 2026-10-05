@@ -881,3 +881,48 @@ describe('the order number', () => {
     expect(ref('Argos\n0345 640 2020\nTotal £10.00')).toBeNull();
   });
 });
+
+describe('what the parse audit found', () => {
+  /*
+   * Single rules the audit's cases (test/parse-audit.test.ts) do not separate
+   * on their own, because another rule happens to cover the same case there.
+   * Each was found by deleting the rule and watching the audit stay green.
+   */
+  it('does not take a name off a marketplace "Sold by" line for the shop', () => {
+    const p = parse('Your order has been placed\nOrdered on 20 August 2026\nSold by: Mamas & Papas Ltd\nOrder Total: £45.00');
+    expect(p.store).toBeNull();
+  });
+
+  it('does not let a delivery label reach across a price to a date', () => {
+    // "Delivery £3.99" is a price line; the date two lines down is not when it came.
+    expect(parse('Uniqlo\nSubtotal £45.00\nDelivery £3.99\nTotal £48.99\n20 August 2026').arrivedOn).toBeNull();
+  });
+
+  it('does not read a delivery window as the day it came, however the window is written', () => {
+    expect(parse('Zara\nOrder date 20/08/2026\nDelivery: 22 Aug - 24 Aug 2026\nTotal £59.99').arrivedOn).toBeNull();
+    expect(parse('Zara\nOrder date 20/08/2026\nDelivery: 22 to 24 August 2026\nTotal £59.99').arrivedOn).toBeNull();
+    expect(parse('Zara\nOrder date 20/08/2026\nDelivery: 22-24 Aug 2026\nTotal £59.99').arrivedOn).toBeNull();
+    // A single day is still read.
+    expect(parse('Zara\nOrder date 20/08/2026\nDelivered: 24 Aug 2026\nTotal £59.99').arrivedOn).toBe('2026-08-24');
+  });
+
+  it('does not read Outlook\'s "Sent:" as a dispatch label for the date below it', () => {
+    // Zara counts from dispatch: a dispatch date here would start its clock.
+    const p = parse('From: ZARA <noreply@zara.com>\nSent: 20 August 2026 10:02\nTo: Sam\n\n20 August 2026\nWool coat £119.00\nTotal £119.00');
+    expect(p.store).toBe('Zara');
+    expect(p.dispatchedOn).toBeNull();
+    expect(p.purchasedOn).toBe('2026-08-20');
+  });
+
+  it('takes the last of two totals that disagree, and says so', () => {
+    const p = parse('Argos\nTotal £20.00\nTotal £30.00');
+    expect(p.amount).toBe(3000);
+    expect(p.how.amount).toBe('several');
+  });
+
+  it('does not take "your next order" in any line for Next, and still takes "your Next order"', () => {
+    expect(parse('Pret\nTotal £9.99\nSee you on your next order').store).toBeNull();
+    expect(parse('Pret\nGet 10% off your next order today\nTotal £9.99').store).toBeNull();
+    expect(parse('Thanks for your Next order\nTotal £9.99').store).toBe('Next');
+  });
+});

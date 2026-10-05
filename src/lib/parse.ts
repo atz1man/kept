@@ -54,10 +54,25 @@ export interface ParsedReceipt {
    * presented exactly as it presented a labelled fact.
    */
   how: {
-    /** 'label': a total line; 'named': "total" with a product name before it; 'largest': no total line. */
-    amount: 'label' | 'named' | 'largest' | null;
-    /** 'label': an order-date label; 'only': the one past date there is; 'latest': the newest of several. */
-    purchasedOn: 'label' | 'only' | 'latest' | null;
+    /**
+     * 'label': a total line; 'named': "total" with a product name beside it;
+     * 'largest': no total line; 'part': only a basket or items total, which
+     * may leave out delivery; 'several': totals that disagree, the last of the
+     * surest kind taken.
+     */
+    amount: 'label' | 'named' | 'largest' | 'part' | 'several' | null;
+    /**
+     * 'label': an order-date label; 'only': the one past date there is;
+     * 'latest': the newest of several; 'other': a dispatch or delivery
+     * notice's date, nothing naming the order's; 'month-first': figures that
+     * also read month first, the other way being the more recent.
+     */
+    purchasedOn: 'label' | 'only' | 'latest' | 'other' | 'month-first' | null;
+    /**
+     * 'clear': the sender, the heading, or named as the shop; 'mention': only
+     * named in passing; 'several': more than one shop named as surely.
+     */
+    store: 'clear' | 'several' | 'mention' | null;
   };
 }
 
@@ -112,9 +127,32 @@ function amountsIn(text: string): Pence[] {
  * before a discount, or a "free delivery over £50" banner.
  */
 const LABELLED_TOTAL = new RegExp(
-  '(?<![a-z])(?<!sub[\\s-])(?<!net\\s)total(?!\\s*(?:savings?|saved|discounts?|vat|tax)\\b)' +
+  '(?<![a-z])(?<!sub[\\s-])(?<!net\\s)total' +
+    /*
+     * Nor a total OF a part of the order: "Total Delivery £4.95", "Total
+     * Goods £120.00", "Total postage". An invoice prints all of these above
+     * its real total, and the first one found was the receipt's price — a
+     * £89.95 order saved as £4.95. A total of the GOODS is kept (as a part,
+     * below); a total of the delivery or the VAT is never the order's.
+     */
+    '(?!\\s*(?:savings?|saved|discounts?|vat|tax|delivery|shipping|postage|p\\s?&\\s?p|packing|carriage)\\b)' +
     '(?![^£\\n]{0,24}\\b(?:before|excl?\\.?|excluding|ex|net|without|pre)\\b)' +
-    '[^£\\n]{0,40}(?:\\n[ \\t]*)?' +
+    // What stands between the word and its figure is read below, so it is kept.
+    // The figure may sit one line down, or two with a blank line between, as a
+    // table pasted cell by cell sets it.
+    '([^£\\n]{0,40})(?:\\n[ \\t]*){0,2}' +
+    POUNDS,
+  'gi',
+);
+
+/*
+ * The money that actually left, in words that do not say "total": "Amount
+ * paid £114.99", "Balance due". Without it a receipt whose only summary line
+ * said this fell back to the largest figure on the page — which on a JD
+ * Sports email was "Win £1,000 of vouchers" in the footer.
+ */
+const PAID_LABEL = new RegExp(
+  '(?<![a-z])(?:amount\\s+(?:paid|due|payable|charged|to\\s+pay)|balance\\s+(?:due|paid)|you\\s+paid)\\b([^£\\n]{0,20})(?:\\n[ \\t]*){0,2}' +
     POUNDS,
   'gi',
 );
@@ -136,10 +174,10 @@ const AS_A_LABEL = /(?:^|\b(?:order|grand|basket|bag|cart|your|the|final|new|est
 
 /*
  * Nor is a count or a stray mark a name. A till prints the number of items
- * before its balance line ("3 BALANCE DUE 14.20"), and a camera reads a rule
- * or a smudge as a lone letter ("J TOTAL £1,448.00"); a product's name is
- * neither a bare number nor one character. Measured over 132 photos, these
- * two were every "named" total that was in fact the total.
+ * before its balance line ("3 BALANCE DUE 14.20", "2 ITEMS TOTAL 34.98"), and
+ * a camera reads a rule or a smudge as a lone letter ("J TOTAL £1,448.00"); a
+ * product's name is neither a bare number nor one character. Measured over 132
+ * photos, these two were every "named" total that was in fact the total.
  */
 const NOT_A_NAME = /^(?:\d+|[a-z])$/i;
 
@@ -154,27 +192,109 @@ const NOT_A_NAME = /^(?:\d+|[a-z])$/i;
  */
 const LABEL_LOOKBACK = 160;
 
-function readsAsLabel(text: string, at: number): boolean {
+/** The words before a "total" on its part of the line, or null when they make it a name. */
+function labelBefore(text: string, at: number): string[] | null {
   const from = Math.max(0, at - LABEL_LOOKBACK);
   const window = text.slice(from, at);
   const newline = window.lastIndexOf('\n');
   const line = newline >= 0 ? window.slice(newline + 1) : from > 0 ? window.replace(/^\S*\s*/, '') : window;
   const before = line.split(/[·|:—–]|\s-\s/).pop() ?? '';
   const words = before.replace(/^\W+/, '').split(/\s+/).filter(Boolean);
-  while (words.length > 0 && NOT_A_NAME.test(words[0])) words.shift();
-  return AS_A_LABEL.test(words.length > 0 ? `${words.join(' ')} ` : '');
+  let counted = false;
+  while (words.length > 0 && NOT_A_NAME.test(words[0])) {
+    counted ||= /^\d+$/.test(words[0]);
+    words.shift();
+  }
+  // "2 ITEMS TOTAL": the count a till prints, not a total of the items alone.
+  if (counted && words.length > 0 && /^items?$/i.test(words[0])) words.shift();
+  return AS_A_LABEL.test(words.length > 0 ? `${words.join(' ')} ` : '') ? words.map((w) => w.toLowerCase()) : null;
+}
+
+/*
+ * What a label says about its figure, read off the words around "total".
+ *
+ * The first labelled total used to win, and an order email prints several:
+ * "Basket total" before delivery, "Total (2 items)" before delivery, "Order
+ * total" before a promotion code, "Order summary: Total" before a voucher —
+ * and then the figure that was charged. In the parser audit's cases
+ * (test/fixtures/parse-audit.ts), eight emails and till slips that say
+ * "total" more than once were saved at the wrong figure, with nothing on the
+ * card to say so. So each total is ranked by what it is:
+ *
+ *   3  the money that left: to pay, paid, payable, due, charged, grand, final
+ *   2  the order's total: plain "Total", "Order total", "Invoice total"
+ *   1  a part of it: a basket, bag or cart total, a total of the items or goods
+ *   0  a product's name: "Total Care mouthwash 500ml £3.50"
+ *
+ * The last of the highest rank wins, because an order email states its totals
+ * in the order the money is worked out and the charged figure comes last.
+ */
+const PAID_WORDS = new Set(['pay', 'paid', 'payable', 'due', 'charged', 'charge', 'owing', 'grand', 'final']);
+const PART_WORDS = new Set(['items', 'item', 'goods', 'products', 'product', 'merchandise', 'basket', 'bag', 'cart', 'lines']);
+/*
+ * Words that may stand between "total" and its figure without making it a
+ * name: "Total to pay", "Total (inc. VAT)", "Total (tax incl.)", "Total due
+ * today", "Total £28.99 GBP". Anything else there — "Total Care mouthwash
+ * 500ml" — is the rest of a product's name, and the line is an item.
+ */
+const TAIL_WORDS = new Set([
+  'to', 'amount', 'inc', 'incl', 'including', 'included', 'vat', 'tax', 'taxes', 'gbp', 'order', 'value', 'sum',
+  'of', 'for', 'the', 'your', 'in', 'uk', 'after', 'with', 'applied', 'and', 'all', 'cost', 'price', 'now', 'today',
+  'is', 'was', 'delivery', 'shipping', 'postage', 'p&p', 'discount', 'discounts', 'savings', 'promo', 'promotions',
+  'vouchers', 'pounds', 'sterling', 'stg', 'summary', 'spend', 'spent', 'be', 'will', 'been', 'has', 'card', 'account',
+  'balance',
+]);
+
+type TotalRank = 0 | 1 | 2 | 3;
+
+function rankTotal(before: string[] | null, tail: string): TotalRank {
+  if (before === null) return 0;
+  const words = [...before, ...tail.toLowerCase().replace(/[^a-z0-9&]+/g, ' ').split(' ').filter(Boolean)];
+  let rank: TotalRank = 2;
+  for (const w of words) {
+    if (/^\d+$/.test(w) || w.length === 1) continue;
+    if (PAID_WORDS.has(w)) rank = 3;
+    else if (PART_WORDS.has(w)) {
+      if (rank === 2) rank = 1;
+    } else if (!TAIL_WORDS.has(w) && !AS_A_LABEL.test(`${w} `)) return 0;
+  }
+  return rank;
 }
 
 type Picked<T, H> = { value: T; how: H } | null;
 
-function pickAmount(text: string): Picked<Pence, 'label' | 'named' | 'largest'> {
-  const labelled = [...text.matchAll(LABELLED_TOTAL)];
-  const asLabel = labelled.find((m) => readsAsLabel(text, m.index!));
-  const chosen = asLabel ?? labelled[0];
-  if (chosen) return { value: toPence(parseFloat(chosen[1].replace(/,/g, ''))), how: asLabel ? 'label' : 'named' };
+/** The figure chosen, and where its line ends — what follows it is the email's footer. */
+type PickedTotal = { value: Pence; how: 'label' | 'named' | 'largest' | 'part' | 'several'; end: number | null } | null;
+
+function pickAmount(text: string): PickedTotal {
+  const found: { value: Pence; rank: TotalRank; index: number; end: number }[] = [];
+  const pence = (m: RegExpMatchArray) => toPence(parseFloat(m[2].replace(/,/g, '')));
+  for (const m of text.matchAll(LABELLED_TOTAL)) {
+    found.push({ value: pence(m), rank: rankTotal(labelBefore(text, m.index!), m[1]), index: m.index!, end: m.index! + m[0].length });
+  }
+  for (const m of text.matchAll(PAID_LABEL)) {
+    found.push({ value: pence(m), rank: 3, index: m.index!, end: m.index! + m[0].length });
+  }
+  const usable = found.filter((t) => t.rank > 0).sort((a, b) => a.index - b.index);
+  if (usable.length > 0) {
+    const top = Math.max(...usable.map((t) => t.rank));
+    const chosen = usable.filter((t) => t.rank === top).pop()!;
+    /*
+     * Still a choice when another total disagrees and the ranking did not
+     * settle it — one of the same rank, or a lesser one printed AFTER the
+     * chosen figure ("Order total £60.00 · Promo -£6.00 · Total £54.00").
+     * The figure stands, and the card marks it.
+     */
+    const disputed = usable.some((t) => t.value !== chosen.value && (t.rank >= chosen.rank || t.index > chosen.index));
+    return { value: chosen.value, how: disputed ? 'several' : chosen.rank === 1 ? 'part' : 'label', end: chosen.end };
+  }
+  if (found.length > 0) {
+    const first = found.sort((a, b) => a.index - b.index)[0];
+    return { value: first.value, how: 'named', end: null };
+  }
   const all = amountsIn(text);
   if (all.length === 0) return null;
-  return { value: Math.max(...all), how: 'largest' };
+  return { value: Math.max(...all), how: 'largest', end: null };
 }
 
 /** A date found in the paste, and where it sat — the position is what lets a
@@ -189,6 +309,28 @@ interface DateHit {
    * "12 September 2026" is long enough to reach into the next clause.
    */
   length: number;
+  /**
+   * The same figures read month first, where they read both ways: 10/01/2026
+   * is 10 January here and 1 October in an American shop's email. Set only
+   * for a numeric date whose day and month are both twelve or under and differ.
+   */
+  monthFirst?: Date;
+}
+
+/*
+ * A month as it is written: the name, its three letters, or "Sept". Only the
+ * first three letters of the word used to be looked at, so a till line
+ * "2 MARMITE 250G" was 2 March and "3 DECAF COFFEE" was 3 December — two
+ * dates nobody wrote, and the card marked a real one as a choice between three.
+ */
+const MONTH_WORDS = new Set([
+  'january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december',
+  'jan', 'feb', 'mar', 'apr', 'jun', 'jul', 'aug', 'sep', 'sept', 'oct', 'nov', 'dec',
+]);
+
+function monthOf(word: string): number | undefined {
+  const w = word.toLowerCase();
+  return MONTH_WORDS.has(w) ? MONTHS[w.slice(0, 3)] : undefined;
 }
 
 /** Candidate dates in the text, with their positions. */
@@ -207,7 +349,7 @@ function datesIn(text: string, today: Date): DateHit[] {
    * invalid date, and `getMonth()` is NaN, which equals nothing. Both are
    * belt and braces over a check that already holds.
    */
-  const push = (y: number, m: number, d: number, index: number, length: number) => {
+  const push = (y: number, m: number, d: number, index: number, length: number, monthFirst?: Date) => {
     if (m < 0 || m > 11 || d < 1 || d > 31) return;
     // A run of text is one date. "21 Sep 26" is the 21st, day first with the
     // year cut to two digits — and its tail, "Sep 26", also reads month first
@@ -216,24 +358,29 @@ function datesIn(text: string, today: Date): DateHit[] {
     // deadline counted from it with it. A match lying wholly inside one
     // already found is part of that one; day-first is read first, as a UK
     // app reads dates.
-    if (found.some((f) => index >= f.index && index + length <= f.index + f.length)) return;
+    //
+    // Nor may a match SHARE text with one already found. "Delivery: 2 Oct -
+    // 4 Oct 2026" also reads "Oct - 4" month first, a third date overlapping
+    // both real ones, and with it in the way neither end of the range stood
+    // next to the other.
+    if (found.some((f) => index < f.index + f.length && index + length > f.index)) return;
     const dt = new Date(y, m, d);
-    if (dt.getMonth() === m && dt.getDate() === d) found.push({ date: dt, index, length });
+    if (dt.getMonth() === m && dt.getDate() === d) found.push({ date: dt, index, length, ...(monthFirst ? { monthFirst } : {}) });
   };
 
-  // "25 Aug", "25 August 2026", "25th Aug"
+  // "25 Aug", "25 August 2026", "25th Aug", "1st of October 2026"
   // A figure followed by ":NN" is a time of day, never a day or a year: "1 Aug
   // 23:10" read 23 as the year 2023, and `mdy` below read it as 23 August.
-  const dmy = /\b(\d{1,2})(?:st|nd|rd|th)?[ .\-/]+([a-z]{3,9})\.?,?(?:[ .\-/]+(\d{2,4})(?!:\d))?\b/gi;
+  const dmy = /\b(\d{1,2})(?:st|nd|rd|th)?(?:\s+of)?[ .\-/]+([a-z]{3,9})\.?,?(?:[ .\-/]+(\d{2,4})(?!:\d))?\b/gi;
   for (const m of text.matchAll(dmy)) {
-    const mon = MONTHS[m[2].slice(0, 3).toLowerCase()];
+    const mon = monthOf(m[2]);
     if (mon === undefined) continue;
     push(resolveYear(m[3], mon, Number(m[1]), today), mon, Number(m[1]), m.index ?? 0, m[0].length);
   }
   // "Aug 25", "August 25, 2026"
   const mdy = /\b([a-z]{3,9})\.?[ .\-/]+(\d{1,2})(?!:\d)(?:st|nd|rd|th)?,?(?:[ .\-/]+(\d{2,4})(?!:\d))?\b/gi;
   for (const m of text.matchAll(mdy)) {
-    const mon = MONTHS[m[1].slice(0, 3).toLowerCase()];
+    const mon = monthOf(m[1]);
     if (mon === undefined) continue;
     push(resolveYear(m[3], mon, Number(m[2]), today), mon, Number(m[2]), m.index ?? 0, m[0].length);
   }
@@ -243,12 +390,20 @@ function datesIn(text: string, today: Date): DateHit[] {
   // Only the slash was read, and a dotted order date fell back to today: a
   // deadline later than the real one, in the direction that costs money.
   for (const m of text.matchAll(/\b(\d{1,2})([/.-])(\d{1,2})\2(\d{2,4})\b/g)) {
-    const y = Number(m[4]);
-    push(y < 100 ? 2000 + y : y, Number(m[3]) - 1, Number(m[1]), m.index ?? 0, m[0].length);
+    const y = Number(m[4]) < 100 ? 2000 + Number(m[4]) : Number(m[4]);
+    const [day, month] = [Number(m[1]), Number(m[3])];
+    const other = day <= 12 && month <= 12 && day !== month ? new Date(y, day - 1, month) : undefined;
+    push(y, month - 1, day, m.index ?? 0, m[0].length, other);
+  }
+  // A till's compact date, "04OCT26": day, month and year with nothing between.
+  for (const m of text.matchAll(/\b(\d{1,2})(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)(\d{2}|\d{4})\b/gi)) {
+    const y = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
+    push(y, MONTHS[m[2].toLowerCase()], Number(m[1]), m.index ?? 0, m[0].length);
   }
   // Year first: ISO, and "2026/09/20" or "2026.09.20". Nobody writes the year
-  // and then the day, so this form is never ambiguous.
-  for (const m of text.matchAll(/\b(\d{4})([/.-])(\d{1,2})\2(\d{1,2})\b/g)) {
+  // and then the day, so this form is never ambiguous. An ISO timestamp runs
+  // straight on into its time ("2026-10-01T09:15:00"), with no word edge.
+  for (const m of text.matchAll(/\b(\d{4})([/.-])(\d{1,2})\2(\d{1,2})(?=T\d|\b)/g)) {
     push(Number(m[1]), Number(m[3]) - 1, Number(m[4]), m.index ?? 0, m[0].length);
   }
   return found;
@@ -273,8 +428,13 @@ function resolveYear(raw: string | undefined, month: number, day: number, today:
  * email is full of dates that sit near that word and mean something else —
  * "return your order by 5 Sept" most dangerously of all.
  */
+/*
+ * Paying is buying, so "Payment date", "Paid on" and an invoice's or a
+ * transaction's own date name the day too; "Placed on" is Shopify's and
+ * Next's way of saying "order placed", and "Ordered:" Apple's.
+ */
 const ORDER_DATE_LABEL =
-  /\b(?:order(?:ed)?\s*date|date\s+order(?:ed)?|date\s+of\s+order|order(?:ed)?\s+(?:on|placed)|order\s+placed(?:\s+on)?|purchase(?:d)?\s*(?:date|on)|bought\s+on)\b/gi;
+  /\b(?:order(?:ed)?\s*date|date\s+order(?:ed)?|date\s+of\s+(?:order|purchase)|order(?:ed)?\s+(?:on|placed)|order\s+placed(?:\s+on)?|ordered(?=\s*:)|placed\s+on|purchase(?:d)?\s*(?:date|on)|bought\s+on|(?:payment|invoice|transaction)\s+date|date\s+paid|paid\s+on)\b/gi;
 
 /** How far after its label a date may sit and still belong to it. */
 const LABEL_REACH = 40;
@@ -334,9 +494,12 @@ const NOT_A_PURCHASE_AFTER = new RegExp(`^[ \\t]*[([–—-]?[ \\t]*(?:${OTHER_C
  * the 12th. A future date cannot be a purchase that has already happened, so
  * those are out first whatever introduces them.
  */
-function pickDate(text: string, today: Date): Picked<Date, 'label' | 'only' | 'latest'> {
+type PurchaseHow = 'label' | 'only' | 'latest' | 'other' | 'month-first';
+
+function pickDate(doc: Doc, today: Date): Picked<Date, PurchaseHow> {
+  const { text } = doc;
   const past = datesIn(text, today)
-    .filter((hit) => daysBetween(today, hit.date) <= 0)
+    .filter((hit) => daysBetween(today, hit.date) <= 0 && !inMailHeader(doc, hit.index))
     .sort((a, b) => a.index - b.index);
   if (past.length === 0) return null;
 
@@ -346,21 +509,87 @@ function pickDate(text: string, today: Date): Picked<Date, 'label' | 'only' | 'l
   // negative distance, and the shipping line above "Order date" becomes the
   // purchase. See the last describe in parse.test.ts.
   const labelled = past.find((hit) => labels.some((end) => hit.index >= end && hit.index - end <= LABEL_REACH));
-  if (labelled) return { value: labelled.date, how: 'label' };
+  if (labelled) return { value: labelled.date, how: readsBothWays(labelled, today) ? 'month-first' : 'label' };
 
-  const newest = (hits: DateHit[]) => hits.reduce((best, hit) => (hit.date > best ? hit.date : best), hits[0].date);
+  const newest = (hits: DateHit[]) => hits.reduce((best, hit) => (hit.date > best.date ? hit : best), hits[0]);
   const plain = past.filter(
     (hit) =>
       !NOT_A_PURCHASE.test(text.slice(Math.max(0, hit.index - 40), hit.index)) &&
       !NOT_A_PURCHASE_AFTER.test(text.slice(hit.index + hit.length)),
   );
+  // Every date there is announced as something else — "Delivered on 3
+  // October" on a delivery notice. Still the best evidence of when it was
+  // bought (the order came before it), and still never stated as the order.
+  if (plain.length === 0) return { value: newest(past).date, how: 'other' };
   // One date that is not announced as something else, however often it is
   // printed: a till slip's only date is the day of the sale, and "Ordered:"
   // beside a delivery date is the order. Nothing there was a choice between
   // candidates, so nothing there is a guess.
-  if (new Set(plain.map((hit) => hit.date.getTime())).size === 1) return { value: plain[0].date, how: 'only' };
-  return { value: newest(plain.length > 0 ? plain : past), how: 'latest' };
+  if (new Set(plain.map((hit) => hit.date.getTime())).size === 1) {
+    const only = plain[0];
+    /*
+     * Unless the paste is a dispatch or delivery notice and nothing on it says
+     * which date is the order. "Your order has been dispatched" over a date on
+     * the next line, "delivered to the front porch on Saturday 3 October":
+     * the one date there is the day it left or landed, and it was stated as the
+     * day of purchase, unmarked — the label check above reads 24 characters
+     * back on the same line and the wording was further away than that.
+     *
+     * Not when a LATER date is announced as the dispatch or the delivery:
+     * "Thursday 1 October" above "Dispatched: Friday 2 October" is the order,
+     * because the email has already said which date the dispatch was.
+     */
+    const announcedLater = past.some((hit) => !plain.includes(hit) && hit.date > only.date);
+    if (isNotice(text) && !announcedLater) return { value: only.date, how: 'other' };
+    return { value: only.date, how: readsBothWays(only, today) ? 'month-first' : 'only' };
+  }
+  return { value: newest(plain).date, how: 'latest' };
 }
+
+/*
+ * Wording that makes a paste a dispatch or delivery notice — an event that
+ * happened to the parcel, not the noun on a price line ("Delivery £3.99",
+ * "Free delivery over £50"), which every order confirmation carries.
+ */
+const EVENT_NOTICE =
+  /\b(?:dispatched|despatched|shipped|delivered|out\s+for\s+delivery|on\s+(?:its|the|their)\s+way|(?:has|have)\s+been\s+sent|left\s+(?:our|the)\s+warehouse)\b/gi;
+
+/*
+ * The same words as a promise are not a notice: "we'll email you once it has
+ * been dispatched" is in nearly every order confirmation, and marked its own
+ * order date as a dispatch date's.
+ */
+const NOT_YET = /\b(?:when|once|after|until|as\s+soon\s+as|will|be|before|if)\b[^.!?\n]{0,40}$|['’]ll\b[^.!?\n]{0,40}$/i;
+
+function isNotice(text: string): boolean {
+  for (const m of text.matchAll(EVENT_NOTICE)) {
+    const index = m.index ?? 0;
+    if (!NOT_YET.test(text.slice(Math.max(0, index - 50), index))) return true;
+  }
+  return false;
+}
+
+/*
+ * A date written in figures that reads both ways, where the month-first
+ * reading is the later of the two and has already happened: 10/01/2026 read
+ * on 5 October is 10 January to a UK shop and 1 October to an American one.
+ * The day-first reading is still the one given — this is a UK app — but it is
+ * marked, because a receipt nine months old added today is the less likely
+ * story. A reading that is still to come is no purchase, so it raises nothing.
+ */
+function readsBothWays(hit: DateHit, today: Date): boolean {
+  if (hit.monthFirst === undefined || hit.monthFirst <= hit.date) return false;
+  const ago = -daysBetween(today, hit.monthFirst);
+  return ago >= 0 && ago <= MONTH_FIRST_RECENT;
+}
+
+/*
+ * How recent the month-first reading has to be to raise the question: a
+ * receipt is added soon after it is bought, so the American reading is the
+ * likelier one only when it is recent. Without a bound, every UK slip from
+ * the first twelve days of a month earlier in the year would be marked.
+ */
+const MONTH_FIRST_RECENT = 60;
 
 /**
  * Phrases that name the day the parcel actually landed.
@@ -434,31 +663,84 @@ function promised(text: string, labelStart: number, dateIndex: number): boolean 
  * — the order date, so a Zara coat's clock started two days early. Another
  * date's label in between means the date is that label's, not this one's.
  */
+/*
+ * Paying, and an invoice, date the PURCHASE: "Delivery £3.99 · Total £48.99 ·
+ * Payment date: 1 October" read the payment date as the day it was delivered.
+ */
 const ANOTHER_DATE_LABEL =
-  /\b(?:order(?:ed)?|placed|purchased?|bought|deliver(?:ed|y)|arrived|received|dispatch(?:ed)?|despatch(?:ed)?|shipped)\b/i;
+  /\b(?:order(?:ed)?|placed|purchased?|bought|deliver(?:ed|y)|arrived|received|dispatch(?:ed)?|despatch(?:ed)?|shipped|payment|paid|invoice[ds]?|refund(?:ed)?)\b/i;
 
 function claimedByAnother(between: string): boolean {
   return ANOTHER_DATE_LABEL.test(between);
 }
 
+/*
+ * A label does not reach across money. "Delivery £3.99" is a price line, and
+ * a date that follows it two lines down is not the day of delivery; a label
+ * and its date sit together with words between them at most.
+ */
+const MONEY_BETWEEN = /[£€$]\s?\d/;
+
+/*
+ * The estimate written AFTER the date: "Delivery date: Sat 3 Oct 2026
+ * (estimated)". `promised` reads up to the date and so never saw it; this
+ * reads a short way past it, on the same line.
+ */
+const ESTIMATE_AFTER = /^[^\n]{0,20}?\b(?:estimat\w*|expected|approx\w*|est\.)/i;
+
+/*
+ * A window, "Delivery: 2 Oct - 4 Oct 2026", is a promise of a span, not a
+ * day anything happened, and its last day was being read as the arrival.
+ * Both ends of a range are dropped — and the end of one whose start is a
+ * bare day, "2 to 4 October", "2-4 Oct", where the start is no date at all.
+ */
+const RANGE_BETWEEN = /^\s*(?:-|–|—|to|until|and|or)\s*$/i;
+const RANGE_FROM_DAY = /\b\d{1,2}(?:st|nd|rd|th)?\s*(?:-|–|—|to|until|and|or)\s*$/i;
+
+function inRange(hits: readonly DateHit[], text: string): Set<DateHit> {
+  const sorted = [...hits].sort((a, b) => a.index - b.index);
+  const out = new Set<DateHit>();
+  for (const hit of sorted) {
+    if (RANGE_FROM_DAY.test(text.slice(Math.max(0, hit.index - 12), hit.index))) out.add(hit);
+  }
+  for (let i = 1; i < sorted.length; i++) {
+    const [a, b] = [sorted[i - 1], sorted[i]];
+    const between = text.slice(a.index + a.length, b.index);
+    if (between.length <= 12 && RANGE_BETWEEN.test(between)) {
+      out.add(a);
+      out.add(b);
+    }
+  }
+  return out;
+}
+
 function labelledEvents(
-  text: string,
+  doc: Doc,
   today: Date,
   purchased: Date | null,
   label: RegExp,
 ): DateHit[] {
-  const labels = [...text.matchAll(label)].map((m) => ({ end: (m.index ?? 0) + m[0].length, start: m.index ?? 0 }));
+  const { text } = doc;
+  // A label inside a mail header — Outlook's "Sent:" — is the email's, not the parcel's.
+  const labels = [...text.matchAll(label)]
+    .filter((m) => !inMailHeader(doc, m.index ?? 0))
+    .map((m) => ({ end: (m.index ?? 0) + m[0].length, start: m.index ?? 0 }));
   if (labels.length === 0) return [];
-  return datesIn(text, today)
+  const hits = datesIn(text, today);
+  const ranges = inRange(hits, text);
+  return hits
     // A date still to come has not happened, whatever introduces it.
     .filter((hit) => daysBetween(today, hit.date) <= 0)
+    .filter((hit) => !inMailHeader(doc, hit.index) && !ranges.has(hit))
+    .filter((hit) => !ESTIMATE_AFTER.test(text.slice(hit.index + hit.length, hit.index + hit.length + 40)))
     .filter((hit) =>
       labels.some(
         (l) =>
           hit.index >= l.end &&
           hit.index - l.end <= LABEL_REACH &&
           !promised(text, l.start, hit.index) &&
-          !claimedByAnother(text.slice(l.end, hit.index)),
+          !claimedByAnother(text.slice(l.end, hit.index)) &&
+          !MONEY_BETWEEN.test(text.slice(l.end, hit.index)),
       ),
     )
     // A parcel cannot land, or leave, before it is ordered. Such a pair means
@@ -475,8 +757,8 @@ function labelledEvents(
  * between "at least until 27 September" and "27 September". A wrong one is
  * worse than none, so every condition below has to hold.
  */
-function pickArrival(text: string, today: Date, purchased: Date | null): Date | null {
-  const candidates = labelledEvents(text, today, purchased, DELIVERY_DATE_LABEL);
+function pickArrival(doc: Doc, today: Date, purchased: Date | null): Date | null {
+  const candidates = labelledEvents(doc, today, purchased, DELIVERY_DATE_LABEL);
   if (candidates.length === 0) return null;
   // The latest, because an email that mentions delivery twice is describing a
   // redelivery or a second parcel, and the clock the person cares about is the
@@ -510,8 +792,8 @@ const DISPATCH_DATE_LABEL =
  * rather than an event, and until this commit that exact sentence was read as
  * a dispatch.
  */
-function pickDispatch(text: string, today: Date, purchased: Date | null): Date | null {
-  const candidates = labelledEvents(text, today, purchased, DISPATCH_DATE_LABEL);
+function pickDispatch(doc: Doc, today: Date, purchased: Date | null): Date | null {
+  const candidates = labelledEvents(doc, today, purchased, DISPATCH_DATE_LABEL);
   if (candidates.length === 0) return null;
   // The EARLIEST, where `pickArrival` takes the latest. A second dispatch is a
   // second parcel or a replacement, and the clock the shop is running started
@@ -520,31 +802,101 @@ function pickDispatch(text: string, today: Date, purchased: Date | null): Date |
 }
 
 /**
- * Words that make a mention of a shop a mention of THE SHOP.
- *
- * An order email says "your Boots order" or "boots.com". Something bought
- * elsewhere says "walking boots". Only the ambiguous names need this — see
- * `commonWord` in stores.ts.
+ * The paste as lines, read once: where each line starts, and which lines are
+ * a mail client's header block rather than the email's own words.
  */
-const STORE_CUE = '(?:your|from|at|orders?|receipt|purchased?)';
+interface Doc {
+  text: string;
+  lower: string;
+  lines: string[];
+  /** Where each line starts in `text`. */
+  starts: number[];
+  /** Lines of a mail header block: "From:", "Sent:", "To:", "Subject:"… */
+  header: Set<number>;
+}
+
+const MAIL_HEADER_LINE = /^\s*(?:from|to|cc|bcc|date|sent|subject|reply-to):/i;
+const FROM_LINE = /^\s*from:/i;
+const SUBJECT_LINE = /^\s*subject:/i;
+
+/*
+ * A header block is a "From:" line and the header lines touching it, two or
+ * more together, as Mail, Gmail and Outlook copy them — and as a forwarded
+ * email carries a second one halfway down. One "Date:" line on its own is the
+ * ORDER's date in an order email's own body, and is left to be read.
+ */
+function headerLines(lines: readonly string[]): Set<number> {
+  const out = new Set<number>();
+  for (let i = 0; i < lines.length; i++) {
+    if (out.has(i) || !FROM_LINE.test(lines[i])) continue;
+    let a = i;
+    while (a > 0 && MAIL_HEADER_LINE.test(lines[a - 1])) a--;
+    let b = i;
+    while (b + 1 < lines.length && MAIL_HEADER_LINE.test(lines[b + 1])) b++;
+    if (b > a) for (let k = a; k <= b; k++) out.add(k);
+  }
+  return out;
+}
+
+function readDoc(text: string): Doc {
+  const lines = text.split('\n');
+  const starts: number[] = [];
+  let at = 0;
+  for (const l of lines) {
+    starts.push(at);
+    at += l.length + 1;
+  }
+  return { text, lower: text.toLowerCase(), lines, starts, header: headerLines(lines) };
+}
+
+/** The line a position in the text is on. */
+function lineAt(doc: Doc, index: number): number {
+  let lo = 0;
+  let hi = doc.starts.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (doc.starts[mid] <= index) lo = mid;
+    else hi = mid - 1;
+  }
+  return lo;
+}
+
+/*
+ * Whether a position is in a mail header — the day the EMAIL was sent, by
+ * whom, to whom. Never the day of purchase, dispatch or delivery: "Date: Sat,
+ * 3 Oct 2026" on a pasted dispatch email was the purchase, and Outlook's
+ * "Sent: Thursday, 1 October" was a Zara coat's dispatch, starting the clock
+ * of a shop that counts from dispatch on the wrong day. The subject is the
+ * email's own words and is read like the body.
+ */
+function inMailHeader(doc: Doc, index: number): boolean {
+  const line = lineAt(doc, index);
+  return doc.header.has(line) && !SUBJECT_LINE.test(doc.lines[line]);
+}
+
+/*
+ * Words beside a name that make it THE SHOP rather than a word in a sentence
+ * or a maker on a product: "Receipt from Boots", "shopping at Tesco", "your
+ * Boots order", "boots.com". "Your" alone is not one: "Your Apple iPad is on
+ * its way" from Very and "Your Samsung Galaxy" from Currys named the maker of
+ * the thing as the shop that sold it.
+ */
+const CUE_BEFORE = /\b(?:from|at|with):?\s+$/i;
+const CUE_AFTER = /^(?:\.com|\.co\.uk|['’]s?\s+(?:order|receipt|basket)\b|\s+(?:orders?|receipt|purchase|store|online|account|basket)\b)/i;
+const DOMAIN_AFTER = /^\.(?:com|co\.uk)\b/i;
+
+/*
+ * A line saying who the seller is on a marketplace: "Sold by: Mamas & Papas
+ * Ltd" on an Amazon order. The name there is not the shop the order was
+ * placed with — Amazon's own heading is — and on an order "fulfilled by
+ * Amazon" it is Amazon that takes the return. What a marketplace seller's own
+ * return terms are is not guessed here; the line is simply not read for a
+ * shop.
+ */
+const SOLD_BY = /^\s*(?:sold\s+(?:by|and\s+(?:dispatched|shipped)\s+by)|dispatched\s+from\s+and\s+sold\s+by|ships\s+from\s+and\s+sold\s+by|seller\b|marketplace\s+seller)/i;
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/**
- * Does this text name this shop?
- *
- * On word boundaries, not as a substring: "pineapple print tea towel" was
- * being read as an Apple purchase, and a receipt for a £12 tea towel then
- * carried Apple's 14-day window and Apple's policy sentence.
- *
- * A name that is also an ordinary word needs more than a boundary, because
- * "walking boots" and "next day delivery" clear one comfortably. It has to sit
- * beside something that makes it the shop — the possessive an order email uses
- * about itself, or the shop's own domain. Failing that the parser names no
- * shop at all, which the add screen shows as "Not recognised" against an
- * assumed 28-day window: an assumption the person can see and correct, rather
- * than a wrong retailer they have no reason to doubt.
- */
 /*
  * Each alias's pattern, compiled once for the life of the app.
  *
@@ -556,12 +908,20 @@ const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
  */
 const COMPILED = new Map<string, RegExp>();
 
-function pattern(alias: string, commonWord: boolean): RegExp {
-  const key = `${commonWord ? 'c' : 'p'}:${alias}`;
-  let re = COMPILED.get(key);
+/*
+ * On word boundaries, not as a substring: "pineapple print tea towel" was
+ * being read as an Apple purchase, and a receipt for a £12 tea towel then
+ * carried Apple's 14-day window and Apple's policy sentence. The edges are
+ * letters in any alphabet, not `\b`: JavaScript's `\b` knows only ASCII word
+ * characters, so "bonmarché" could never end on one — the é and the space
+ * after it are both "non-word" — and "& other stories" could never start on
+ * one. Those shops' emails named no shop.
+ */
+function pattern(alias: string): RegExp {
+  let re = COMPILED.get(alias);
   if (!re) {
-    re = compile(alias, commonWord);
-    COMPILED.set(key, re);
+    re = new RegExp(`(?<![\\p{L}\\p{N}])${escape(alias)}(?![\\p{L}\\p{N}])`, 'giu');
+    COMPILED.set(alias, re);
   }
   return re;
 }
@@ -571,56 +931,142 @@ export function compiledAliasPatterns(): number {
   return COMPILED.size;
 }
 
-function mentions(text: string, lower: string, alias: string, commonWord: boolean): boolean {
-  // Every way a pattern can match includes the alias itself, so a paste that
-  // does not contain it, in any case, cannot match. Checked first, as a plain
-  // substring, so a pattern is compiled and run only for a shop that is there.
-  if (!lower.includes(alias.toLowerCase())) return false;
-  return pattern(alias, commonWord).test(text) || (commonWord && isHeading(text, alias));
-}
-
-function compile(alias: string, commonWord: boolean): RegExp {
-  const a = escape(alias);
-  /*
-   * The alias's own edges are letters in any alphabet, not `\b`. JavaScript's
-   * `\b` knows only ASCII word characters, so "bonmarché" could never end on
-   * one — the é and the space after it are both "non-word" — and "& other
-   * stories" could never start on one. Those shops' emails named no shop.
-   */
-  const start = '(?<![\\p{L}\\p{N}])';
-  const end = '(?![\\p{L}\\p{N}])';
-  if (!commonWord) return new RegExp(`${start}${a}${end}`, 'iu');
-  return new RegExp(
-    `(?:\\b${STORE_CUE}\\s+${a}${end}|${start}${a}\\s+(?:${STORE_CUE}|store)\\b|${start}${a}\\.(?:com|co\\.uk))`,
-    'iu',
-  );
-}
-
 /*
- * The shop's name as a whole line at the top of the paste: the logo's text,
- * which is what an order email opens with when it is copied. "NEXT" alone on
- * the first line is the shop in a way that "Next day delivery" is not — the
- * whole line, and only near the top, where a heading sits.
+ * The shop's name as a line near the top of the paste: the logo's text, which
+ * is what an order email opens with when it is copied. "NEXT" alone on the
+ * first line is the shop in a way that "Next day delivery" is not — the whole
+ * line, and only near the top, where a heading sits. A mail header above it
+ * is not counted as part of the heading.
  */
 const HEADING_LINES = 3;
 
-function isHeading(text: string, alias: string): boolean {
-  return text
-    .split('\n')
-    .map((l) => l.trim().toLowerCase())
-    .filter((l) => l.length > 0)
-    .slice(0, HEADING_LINES)
-    .includes(alias.toLowerCase());
+function headingLines(doc: Doc): Set<number> {
+  const out = new Set<number>();
+  for (let i = 0; i < doc.lines.length && out.size < HEADING_LINES; i++) {
+    const l = doc.lines[i].trim();
+    if (!l || doc.header.has(i) || /^-{2,}.*forwarded/i.test(l)) continue;
+    out.add(i);
+  }
+  return out;
 }
 
-function pickStore(text: string): StorePolicy | null {
-  // Longest alias first, so a shop whose name contains another's still
-  // resolves to itself.
-  const lower = text.toLowerCase();
-  for (const { alias, store } of ALIASES_BY_LENGTH) {
-    if (mentions(text, lower, alias, store.commonWord === true)) return store;
+/** A price: what marks a line as an item's, or money about the order. */
+const PRICED = /[£€$]\s?\d/;
+
+/** How many times one name is looked at: the places that decide are near the top. */
+const MAX_MENTIONS = 50;
+
+/** How far either side of a mention its line is read. */
+const NEAR = 80;
+
+/*
+ * Where a mention of a shop sits, as a rank — lower is surer — or null where
+ * it is not a mention of the shop at all.
+ *
+ *   0  the sender: a "From:" line in the mail header, name or domain
+ *   1  the heading: one of the first lines of the email
+ *   2  named as the shop in the body: "your Boots order", "shop at Tesco"
+ *   3  a bare mention in the body — a guess, and marked as one
+ *   4  after the total, as a line of its own or named as the shop — the
+ *      sign-off; a guess, and marked
+ *
+ * And never: a name on a "Sold by" line; a name on an item's line, beside its
+ * price ("Mint Velvet Cable Knit Jumper £89.00" on a John Lewis order); a
+ * name in a sentence after the total — the footer's "family of brands", "find
+ * us next to Dunelm, IKEA and B&Q", "£20 off your next order".
+ *
+ * The first alias found used to win, longest first, so a four-letter maker on
+ * an item line beat a three-letter shop in the heading, and the footer's
+ * "your next order" made a H&M, M&S or B&Q email a Next one.
+ */
+function rankMention(doc: Doc, store: StorePolicy, start: number, end: number, heading: Set<number>, lastBodyLine: number): number | null {
+  const li = lineAt(doc, start);
+  const line = doc.lines[li];
+  const at = start - doc.starts[li];
+  const name = line.slice(at, at + (end - start));
+  if (doc.header.has(li)) {
+    if (FROM_LINE.test(line)) return 0;
+    if (!SUBJECT_LINE.test(line)) return null;
   }
-  return null;
+  if (SOLD_BY.test(line)) return null;
+  // A mention is judged by what stands near it on its line, not by the whole
+  // of a line that may be a pasted page long: each look is bounded, so a paste
+  // naming a shop fifty times on one line costs fifty short reads, not fifty long ones.
+  const before = line.slice(Math.max(0, at - NEAR), at).split(/[·|]/).pop() ?? '';
+  const after = line.slice(at + name.length, at + name.length + NEAR);
+  const segment = `${before}${name}${after.split(/[·|]/)[0]}`;
+  const domain = DOMAIN_AFTER.test(after);
+  const cued = domain || CUE_BEFORE.test(before) || CUE_AFTER.test(after);
+  const whole = line.length <= name.length + NEAR && line.trim().toLowerCase() === name.toLowerCase();
+  const first = li === Math.min(...heading);
+  // The heading is the first line, or a later line of the first few that
+  // STARTS with the name — "ASOS" under "Thanks for your order!", "Boots.com
+  // order confirmation" — not one with the name halfway along, which is how
+  // an item's title reads: "NEW Decathlon Quechua tent" on an eBay order.
+  const top = heading.has(li) && (first || /^\W*$/.test(before));
+  /*
+   * A name that is also an ordinary word needs more than a boundary, because
+   * "walking boots" and "next day delivery" clear one comfortably: it has to
+   * be the heading line, or sit beside a word that makes it the shop. And the
+   * shop writes its own name with a capital — "your next order" in a footer is
+   * not "your Next order".
+   */
+  if (store.commonWord) {
+    if (!cued && !(whole && top)) return null;
+    if (!domain && !(whole && top) && !/\p{Lu}/u.test(name)) return null;
+  }
+  if (li > lastBodyLine) return whole || cued ? 4 : null;
+  if (PRICED.test(segment) && !cued) {
+    // "Argos £12.00" typed in as the first line is the shop and its price;
+    // anywhere else a name beside a price is an item's. Offered, and marked.
+    return first && before.trim() === '' ? 3 : null;
+  }
+  if (top) return 1;
+  return cued ? 2 : 3;
+}
+
+type ShopHow = 'clear' | 'several' | 'mention';
+
+/**
+ * The shop: the surest-placed mention, and how sure that is.
+ *
+ * A shop named only in passing, or one of two named as surely as each other,
+ * is still offered — it is usually right, and the card marks it — but never
+ * stated as plainly as a sender or a heading. Naming no shop is a flagged
+ * assumption on screen ("Not recognised", and an assumed window the person
+ * can see); naming the wrong one, unmarked, is a confident lie.
+ */
+function pickStore(doc: Doc, totalEnd: number | null): { policy: StorePolicy; how: ShopHow } | null {
+  const heading = headingLines(doc);
+  const lastBodyLine = totalEnd === null ? Infinity : lineAt(doc, Math.max(0, totalEnd - 1));
+  const covered: { start: number; end: number; store: StorePolicy }[] = [];
+  const best = new Map<StorePolicy, number>();
+  // Longest alias first, so a shop whose name contains another's still
+  // resolves to itself: a mention inside a longer one belongs to that one.
+  for (const { alias, store } of ALIASES_BY_LENGTH) {
+    // Checked first, as a plain substring, so a pattern is compiled and run
+    // only for a shop that is there.
+    if (!doc.lower.includes(alias.toLowerCase())) continue;
+    let seen = 0;
+    for (const m of doc.text.matchAll(pattern(alias))) {
+      if (++seen > MAX_MENTIONS) break;
+      const start = m.index ?? 0;
+      const end = start + m[0].length;
+      if (covered.some((c) => c.store !== store && start >= c.start && end <= c.end)) continue;
+      covered.push({ start, end, store });
+      const rank = rankMention(doc, store, start, end, heading, lastBodyLine);
+      if (rank === null) continue;
+      const had = best.get(store);
+      if (had === undefined || rank < had) best.set(store, rank);
+    }
+  }
+  // By rank; between equals, the longer name, as the table has always been
+  // read (the map holds them in that order). Equals are marked either way.
+  const ranked = [...best.entries()].sort((a, b) => a[1] - b[1]);
+  if (ranked.length === 0) return null;
+  const [policy, rank] = ranked[0];
+  const rivals = ranked.slice(1).some(([, r]) => r <= Math.max(2, rank));
+  return { policy, how: rivals ? 'several' : rank >= 3 ? 'mention' : 'clear' };
 }
 
 /** The window used when the shop is not one Kept has verified. */
@@ -760,6 +1206,10 @@ function pickLines(text: string, store: StorePolicy | null, total: Pence | null)
  */
 function gbpAsPounds(text: string): string {
   return text
+    // "£28.99 GBP", as Shopify writes its total, already has its £: the GBP
+    // after it is dropped rather than made a second one. "££28.99" matched no
+    // total, and the largest figure on the page stood in for it.
+    .replace(/(£\s?\d[\d,]*(?:\.\d{1,2})?)\s?GBP\b/gi, '$1')
     .replace(/\bGBP\s?(?=\d)/gi, '£')
     .replace(/(?<![\d,.])(\d(?:[\d,]*\d)?(?:\.\d{1,2})?)\s?GBP\b/gi, '£$1');
 }
@@ -836,18 +1286,20 @@ function tidy(raw: string): string {
 export function parseReceiptText(raw: string, today: Date = new Date()): ParseOutcome {
   if (!raw.trim()) return { ok: false, reason: 'empty' };
   const text = deliveredRelative(gbpAsPounds(tidy(raw)), today);
+  const doc = readDoc(text);
 
-  const policy = pickStore(text);
   const total = pickAmount(text);
+  const shop = pickStore(doc, total?.end ?? null);
+  const policy = shop?.policy ?? null;
   const amount = total?.value ?? null;
   // Neither a shop nor a price means there is nothing to build a deadline
   // from — better to say so than to save a receipt made of assumptions.
   if (!policy && amount === null) return { ok: false, reason: 'nothing-found' };
 
-  const picked = pickDate(text, today);
+  const picked = pickDate(doc, today);
   const date = picked?.value ?? null;
-  const arrived = pickArrival(text, today, date);
-  const dispatched = pickDispatch(text, today, date);
+  const arrived = pickArrival(doc, today, date);
+  const dispatched = pickDispatch(doc, today, date);
   return {
     ok: true,
     value: {
@@ -862,7 +1314,7 @@ export function parseReceiptText(raw: string, today: Date = new Date()): ParseOu
       item: pickItem(text, policy),
       orderRef: pickOrderRef(text),
       lines: pickLines(text, policy, amount),
-      how: { amount: total?.how ?? null, purchasedOn: picked?.how ?? null },
+      how: { amount: total?.how ?? null, purchasedOn: picked?.how ?? null, store: shop?.how ?? null },
     },
   };
 }
