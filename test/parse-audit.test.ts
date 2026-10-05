@@ -109,11 +109,11 @@ const NOT_RIGHT: Record<string, Partial<Record<Field, Outcome>> | 'nothing found
   // the figure but not whether the E was a £ or a €. "f5.45" (O2) is read as
   // £5.45 and not marked, because the items less the discount come to exactly
   // that. "O3/1O/2O26" is read as 3 October and marked, since nothing on a
-  // slip can prove a date. A dropped decimal point and "B00TS" are still the
-  // scanner's to fix; each is blank or marked.
+  // slip can prove a date. "TOTAL 6900" (O5) is read as £69.00, unmarked,
+  // because the coat less the promotion is exactly that. "B00TS" is still the
+  // scanner's to fix, and is left blank.
   O1: { total: 'right, marked' },
   O4: { bought: 'right, marked' },
-  O5: { total: 'marked' },
   O8: { store: 'blank' },
   // A euro total with a £50 promotion in the footer: no £ total, so the
   // largest £ figure, marked.
@@ -127,6 +127,12 @@ const NOT_RIGHT: Record<string, Partial<Record<Field, Outcome>> | 'nothing found
   X1: { total: 'right, marked' },
   // The pasted email's "E27", "code E1" and "f5" stay text; no total line.
   X3: { total: 'right, marked' },
+  // "TOTAL 120" for a £120 voucher: nothing priced adds up to it, so it is
+  // never read as £1.20 — no £ figure at all, so the card asks.
+  X4: { total: 'blank' },
+  // "TOTAL 9900" with items that come to £104.00: not proved, so left as
+  // printed, and the largest figure is offered, marked.
+  X5: { total: 'marked' },
 };
 
 function expected(c: Case): Partial<Record<Field, Outcome>> | 'nothing found' {

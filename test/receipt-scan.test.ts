@@ -257,6 +257,44 @@ describe('an O the camera read for a 0 in a date', () => {
   });
 });
 
+describe('a total the camera read without its point', () => {
+  const totalOf = (ocr: string) => {
+    const scan = readScan(ocr);
+    const out = parseReceiptText(scan.text, TODAY);
+    if (!out.ok) throw new Error(`did not parse: ${out.reason}`);
+    return { v: out.value, ck: toCheck(out.value, [], scan.misread), scan };
+  };
+
+  it('reads "6900" as £69.00 where the items less the discount come to exactly that, unmarked', () => {
+    const { v, ck } = totalOf('NEXT\nCOAT 89.00\nPROMO -20.00\nTOTAL 6900\n26/09/2026');
+    expect(v.amount).toBe(6900);
+    expect(ck.amount).toBeUndefined();
+  });
+
+  it('reads it beside a count and a balance-due label too', () => {
+    expect(totalOf('TESCO\nMILK 1.45\nBREAD 1.20\n2 BALANCE DUE 265\n26/09/2026').v.amount).toBe(265);
+  });
+
+  it('leaves a figure the items do not add up to as printed, and the card marks what it found instead', () => {
+    // 89.00 + 15.00 is 104.00: a saving was lost, or the figure is something else.
+    const { v, ck, scan } = totalOf('NEXT\nCOAT 89.00\nSCARF 15.00\nTOTAL 9900\n26/09/2026');
+    expect(scan.text).toContain('TOTAL 9900');
+    expect(v.amount).toBe(8900);
+    expect(ck.amount).toBe('largest-figure');
+  });
+
+  it('never reads a whole-pound total as pence: nothing priced to add up to it', () => {
+    const { v } = totalOf('JOHN LEWIS\nGIFT VOUCHER 120\nTOTAL 120\nCARD 120\n26/09/2026');
+    expect(v.amount).toBeNull();
+  });
+
+  it('reads only a figure straight after the total’s own words', () => {
+    // Points are not money, whatever they come to.
+    expect(fromScan('TESCO\nMILK 1.45\nBREAD 1.20\nTOTAL 2.65\nPOINTS TOTAL 265')).toContain('POINTS TOTAL 265');
+    expect(fromScan('TESCO\nMILK 1.45\nBREAD 1.20\nTOTAL 265 POINTS')).toContain('TOTAL 265 POINTS');
+  });
+});
+
 describe('two looks at one photo', () => {
   /*
    * What each thresholding "read" of the same photo returned, shaped like the

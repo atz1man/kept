@@ -142,6 +142,16 @@ function itemsLessDiscounts(lines: readonly string[]): number | null {
 /** "1,448.00" → 144800. */
 const penceOf = (figure: string) => Number(figure.replace(/[-,.]/g, ''));
 
+/*
+ * A total whose point the camera lost: "TOTAL 6900" for £69.00. Read as
+ * pounds and pence ONLY where the slip's own arithmetic says so — its items
+ * less its discounts come to exactly 6900 pence — and otherwise left as
+ * printed, so the card asks or marks as it did. A till that prints whole
+ * pounds ("TOTAL 120" for a £120 voucher) is the reason: read as pence that
+ * is £1.20, stated as plainly as a figure printed in full.
+ */
+const POINTLESS_TOTAL = /^((?:\d+\s+)?(?:total\s+)?(?:total\s+due|total|balance\s+due|amount\s+due|to\s+pay))\s+([1-9]\d{2,6})$/i;
+
 /**
  * The shop, when a heading names one kept knows. A receipt prints the shop at
  * the top and nowhere else, with none of the "your order" or ".co.uk" that
@@ -221,6 +231,13 @@ export function readScan(ocr: string): ScanText {
   // Nothing on a slip adds up to a date, so a corrected one is always marked.
   for (const d of dates) misread.push({ field: 'purchasedOn', read: d.read, as: d.as, proved: false });
   const sum = itemsLessDiscounts(body);
+  body.forEach((line, i) => {
+    const m = POINTLESS_TOTAL.exec(line);
+    if (!m || sum === null || Number(m[2]) !== sum) return;
+    const as = `${m[2].slice(0, -2)}.${m[2].slice(-2)}`;
+    body[i] = `${m[1]} £${as}`;
+    misread.push({ field: 'amount', read: m[2], as, proved: true, line: body[i] });
+  });
   for (const p of pounds) {
     const line = body[p.line];
     // Only a total's own figure can be proved by the items: an item's is one of them.
