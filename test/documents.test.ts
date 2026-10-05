@@ -80,9 +80,51 @@ describe('HTML into lines', () => {
   it('decodes the entities an order email uses, named and numbered', () => {
     expect(htmlToText('<p>M&amp;S&nbsp;&#8211; &#x00A3;5 &rsquo;s &bogus;</p>')).toBe('M&S – £5 ’s &bogus;');
   });
+
+  it('reads a file that never closes its tags in a moment, not seconds', () => {
+    /*
+     * Measured on main, with the app frozen while it ran: 56 KB of "<style "
+     * that is never closed took 0.5 s, and the time grew with the SQUARE of the
+     * size — every "<" searched to the end of the file again — so a megabyte
+     * would take minutes. Unclosed comments, "<br" and a bare "<" did the same.
+     * Fixed, a megabyte of any of them is under 50 ms; these are a tenth of
+     * that size and took seconds, and the bound is ten times the fixed time.
+     */
+    const files: [string, string][] = [
+      ['an opening <style> never closed', `<p>Total £5.00</p>${'<style '.repeat(20_000)}`],
+      ['comments never closed', `<p>Total £5.00</p>${'<!--x'.repeat(20_000)}`],
+      ['a "<" with no ">"', `<p>Total £5.00</p>${'a<'.repeat(40_000)}`],
+      ['line breaks never closed', `<p>Total £5.00</p>${'<br'.repeat(30_000)}`],
+    ];
+    for (const [what, html] of files) {
+      const started = performance.now();
+      const text = htmlToText(html);
+      expect(performance.now() - started, what).toBeLessThan(500);
+      expect(text.startsWith('Total £5.00'), what).toBe(true);
+    }
+  });
+
+  it('reads a broken file exactly as it did before it was made fast', () => {
+    // What follows the last ">" is kept as it is, and a tag that is never
+    // closed takes nothing with it: the same lines, character for character.
+    expect(htmlToText('<p>Total £5.00</p>Kettle <b')).toBe('Total £5.00\nKettle <b');
+    expect(htmlToText('<style>p{}<p>Hi</p>')).toBe('p{}\nHi');
+    expect(htmlToText('<title>x<style>a{}</style><p>Total £5</p>')).toBe('x\nTotal £5');
+    expect(htmlToText('<!-- a --><p>Hi</p><!-- never closed <p>£5</p>')).toBe('Hi\n<!-- never closed\n£5');
+    expect(htmlToText('<STYLE>a{}</style ><p>Hi</p><script>x')).toBe('Hi\nx');
+  });
 });
 
 describe('a saved email', () => {
+  it('reads a sender line full of spaces in a moment', () => {
+    // 30,000 spaces in a From line took most of a second on main, and four
+    // times as many took sixteen times as long.
+    const started = performance.now();
+    const e = readEmail(`From: "Argos${' '.repeat(30_000)}" <orders@argos.co.uk>\nSubject: x\n\nbody`);
+    expect(performance.now() - started).toBeLessThan(200);
+    expect(e.from).toBe('Argos');
+  });
+
   it('reads its sender, subject and the day it was sent', () => {
     const e = readEmail(asEml(ORDER_EMAILS[0]));
     expect(e.from).toBe(ORDER_EMAILS[0].expect.store);
