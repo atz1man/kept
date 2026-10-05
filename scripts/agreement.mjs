@@ -15,6 +15,7 @@
  * place, has to match. A number that appears on exactly one screen is not
  * this file's business.
  */
+import './uk-clock.mjs';
 import { chromium } from 'playwright';
 import { reportOnCrash, sayCrash } from './crash-report.mjs';
 import { readFileSync } from 'node:fs';

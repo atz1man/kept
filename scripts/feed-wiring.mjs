@@ -18,6 +18,7 @@
  * An earlier version of this file patched `feed-signature.ts` and put it back
  * afterwards, which works right up until it crashes between the two.
  */
+import './uk-clock.mjs';
 import { chromium } from 'playwright';
 import { reportOnCrash, sayCrash } from './crash-report.mjs';
 import { execFileSync } from 'node:child_process';

@@ -17,6 +17,7 @@
  * would rot as the UI moved. Everything else that fails is either readable
  * and mis-measured, or unreadable and mis-coloured.
  */
+import './uk-clock.mjs';
 import { chromium } from 'playwright';
 import { reportOnCrash, sayCrash } from './crash-report.mjs';
 
