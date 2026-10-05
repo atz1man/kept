@@ -1108,7 +1108,10 @@ deliberate departure, not an oversight:
   A GET target was chosen over POST so no service worker sits in the path and
   a cold start still works. The payload is stripped from the address bar as
   soon as it is in hand — a reload must not silently re-add the same receipt,
-  and an order email has no business sitting in browser history.
+  and an order email has no business sitting in browser history. (That GET
+  turned out to send the email to the server before any of this ran; it is a
+  POST answered by the service worker now — see "A shared email stays on the
+  phone" below.)
 - **The palette was darkened to meet WCAG AA.** A sweep over every rendered
   text node found ten failing colour pairings across 43 elements: the
   handoff's amber measured 3.0:1 on cream and 2.7:1 on the secondary surface
@@ -2137,6 +2140,52 @@ to fail again when its fix is taken back out.
 It was verified in the smoke suite before that, under a comment saying the
 network was cut completely, and it was not — see the section above for what
 that check was actually proving.
+
+### A shared email stays on the phone
+
+The share target was a GET, chosen so that no service worker sat in the path.
+A GET puts what is shared in the address, so the browser opened
+`/app/?title=…&text=…` and the order email — a name, a home address, an order
+number, what was bought — went to the server in the request line before any of
+the app's code ran. Measured with the worker in control, against a server that
+logs what it receives: `GET /app/?title=Your John Lewis order 40012345&text=Hi
+Jane Smith… 14 Elm Road, Leeds LS6 2AB…`. Stripping the address bar afterwards
+changed history, not what had been sent. The privacy page says there is no
+server that receives your receipts.
+
+The target is a POST in `multipart/form-data` now, and the service worker
+answers it without the network: it reads the form, holds the text in memory,
+and answers `303` to `/app/#shared`. The page sees the mark, asks the worker
+for the text over a message channel before it mounts, and opens Add with it
+exactly as before; the worker hands it over once and keeps no copy, and lets
+go of it after thirty seconds if nobody asks. The text is never in a request
+(the redirected launch asks for plain `/app/`, and a fragment is not sent),
+never in an address, never in a cache and never on disk. A GET carrying the old
+parameters is answered the same way, because an app installed under the old
+manifest goes on sharing by GET until the browser refreshes what it installed.
+
+Without a worker in control the browser sends the POST to the server, and
+nothing in a page can stop a request made before the page exists. The share
+target exists only on an installed app and installing it is opening it, which
+registers the worker, so that is the narrow case of a worker that registered
+and has since gone (site data cleared under an icon left on the home screen, or
+a first install that failed and has not been retried). The email then crosses
+the network in a request body — not an address, and not history — and the page
+reads nothing out of a POST, so the share is lost there rather than read.
+
+An older worker also kept the shared address: before the launch stopped being
+written to the cache, the shell was kept with the URL it was fetched from, and
+Erase everything never reached Cache Storage. Every cache but the current
+worker's is deleted when it takes over, which clears those.
+
+`npm run freshness` shares through the BUILT manifest's own target, the way the
+browser does — a form POST in its enctype, or a GET to its action — against a
+server of its own that records every request line and body, and requires Add to
+open with the email, no line or body to carry any of it, no cache entry or
+address to hold it, a second ask of the worker to get nothing, and the old GET
+route to keep it off the server too. It also plants an older worker's cache
+holding a shared address and requires it gone once the worker takes over. On
+main, the server got the email by both routes.
 
 ### One question about a shop, asked in two places
 

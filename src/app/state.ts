@@ -6,7 +6,7 @@ import { isNative } from '../lib/mirror';
 import { cleanupPhotos } from '../lib/photos';
 import { onNotificationTap, syncScheduled } from './schedule-native';
 import { currentDay, daysBetween, fromISODate, startOfDay, toISODate } from '../lib/dates';
-import { sharedTextFrom, strippedShareUrl } from '../lib/share';
+import { collectedShare, sharedTextFrom, strippedShareUrl } from '../lib/share';
 import { canSplit, splitReceipt, validSplit } from '../lib/split';
 import { awaitingArrival, countsAsMoney, deadlineIsFloor, derive, makeReceiptId, refundOf } from '../lib/receipts';
 import { windowStartFor } from '../lib/draft';
@@ -896,7 +896,9 @@ export function useApp() {
       // Asked of embed.ts, which every store asks too, so the screens and the
       // stores cannot disagree about which page this is.
       const demo = embedded();
-      const incoming = sharedTextFrom(params);
+      // Handed over by the service worker before mounting (see main.tsx), or —
+      // with no worker in front of an older install — still on the address.
+      const incoming = collectedShare() ?? sharedTextFrom(params);
       // The demo on the marketing page is this same build at this same origin,
       // so it was reading and writing the real app's storage: swipe a receipt
       // in the shop window and you had changed what the installed app shows.
@@ -927,7 +929,8 @@ export function useApp() {
 
   // Strip the shared payload from the address bar once it is in hand: a
   // reload must not silently re-add the same receipt, and an order email has
-  // no business sitting in browser history.
+  // no business sitting in browser history. With the worker in front the
+  // address only ever carries the `#shared` mark, which goes the same way.
   useEffect(() => {
     if (typeof location === 'undefined' || typeof history === 'undefined') return;
     const stripped = strippedShareUrl(location.href);

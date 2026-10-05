@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { parseReceiptText } from '../src/lib/parse';
-import { shareRoute, sharedTextFrom, strippedShareUrl } from '../src/lib/share';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import {
+  CLAIM_SHARE, SHARED_MARK, handedOverText, receiveShare, shareRoute, sharedTextFrom, strippedShareUrl, type ShareSource,
+} from '../src/lib/share';
 
 const q = (s: string) => new URLSearchParams(s);
 
@@ -123,5 +127,73 @@ describe('clearing a shared payload out of the address bar', () => {
     for (const key of ['title', 'text', 'url']) {
       expect(strippedShareUrl(`https://kept.app/app/?${key}=x`), key).toBe('/app/');
     }
+  });
+});
+
+describe('a share handed over by the service worker', () => {
+  /*
+   * The share target was a GET, so an order email went to the server in the
+   * request line — measured, with the worker in control: `GET /app/?title=Your
+   * John Lewis order 40012345&text=Hi Jane Smith… 14 Elm Road…`. It is a POST
+   * the worker answers now, and the page collects the text by message. The
+   * browser half is `npm run freshness`; these pin the page's half.
+   */
+  const manifest = JSON.parse(readFileSync(join(__dirname, '..', 'public', 'manifest.webmanifest'), 'utf8'));
+
+  it('is declared as a POST, so nothing shared is put in an address', () => {
+    expect(manifest.share_target).toMatchObject({
+      action: '/app/', method: 'POST', enctype: 'multipart/form-data',
+      params: { title: 'title', text: 'text', url: 'url' },
+    });
+  });
+
+  it('is folded by the same rule as one that arrived in the address', () => {
+    expect(handedOverText({ title: 'Your Zara order', text: 'Total £34.99' })).toBe('Your Zara order\nTotal £34.99');
+    expect(handedOverText({ text: 'Total £129.00', url: 'Total £129.00' })).toBe('Total £129.00');
+  });
+
+  it('is nothing when the worker had nothing, or answered with something else', () => {
+    expect(handedOverText(null)).toBeNull();
+    expect(handedOverText({})).toBeNull();
+    expect(handedOverText('Total £34.99')).toBeNull();
+    expect(handedOverText({ text: 42 })).toBeNull();
+  });
+
+  /** A worker that answers the claim on the channel it was given, or never. */
+  const worker = (answer: unknown, answers = true): ShareSource & { asked: unknown[] } => {
+    const asked: unknown[] = [];
+    return {
+      asked,
+      controller: {
+        postMessage(message: unknown, transfer: Transferable[]) {
+          asked.push(message);
+          if (answers) (transfer[0] as MessagePort).postMessage(answer);
+        },
+      },
+    };
+  };
+
+  it('asks the worker that is in control, and reads what it hands over', async () => {
+    const w = worker({ title: 'Your Currys order', text: 'Total £129.00' });
+    expect(await receiveShare(w)).toBe('Your Currys order\nTotal £129.00');
+    expect(w.asked).toEqual([{ type: CLAIM_SHARE }]);
+  });
+
+  it('does not wait on a page no worker controls', async () => {
+    expect(await receiveShare({ controller: null })).toBeNull();
+    expect(await receiveShare(undefined)).toBeNull();
+  });
+
+  it('gives up rather than keeping the app off the screen', async () => {
+    // This runs before the app mounts.
+    expect(await receiveShare(worker(null, false), 20)).toBeNull();
+  });
+
+  it('takes the mark out of the address once the text is in hand', () => {
+    // A reload of #shared would ask for a share already handed over.
+    expect(strippedShareUrl(`https://kept.app/app/${SHARED_MARK}`)).toBe('/app/');
+    expect(strippedShareUrl(`https://kept.app/app/?embed${SHARED_MARK}`)).toBe('/app/?embed=');
+    // And only that mark: any other fragment is not a share's.
+    expect(strippedShareUrl('https://kept.app/app/#receipt-3')).toBeNull();
   });
 });

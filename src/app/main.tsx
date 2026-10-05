@@ -8,6 +8,7 @@ import { embedded } from '../lib/embed';
 import { isNative } from '../lib/mirror';
 import { restoreFromMirror, savedToStore } from '../lib/storage';
 import { bootScript, shouldReload } from '../lib/stale-build';
+import { collectShare, SHARED_MARK } from '../lib/share';
 
 /**
  * On a phone the app is the whole viewport — every phone, the 430 and 440px
@@ -69,6 +70,16 @@ function mount() {
  */
 if (isNative()) {
   void restoreFromMirror().finally(mount);
+} else if (location.hash === SHARED_MARK) {
+  /*
+   * An order email shared in, held by the service worker, which sent this
+   * page here to collect it. Collected BEFORE mounting, so the first state the
+   * app builds already holds it and opens Add with it, exactly as the share
+   * did when it arrived in the address — rather than opening on the library
+   * and jumping. See `receiveShare` in public/sw.js for why it no longer
+   * arrives in the address.
+   */
+  void collectShare(navigator.serviceWorker).finally(mount);
 } else {
   mount();
 }
