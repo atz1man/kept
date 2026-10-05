@@ -79,17 +79,56 @@ function shopHeading(lines: string[]): string | null {
   return null;
 }
 
-/** OCR text of a till receipt, as text the paste parser reads. */
-export function fromScan(ocr: string): string {
+/**
+ * Something the camera printed that was read as something else: a letter
+ * where a £ sign, a 0 or an O was. The text the parser reads carries the
+ * correction; this travels beside it, so the Add card can say which figure
+ * was corrected rather than present the correction as the slip's own print
+ * (see `misread-print` in lib/confidence.ts).
+ */
+export interface Misread {
+  field: 'amount' | 'purchasedOn' | 'store';
+  /** What the camera printed, e.g. "f5.45". */
+  read: string;
+  /** What it was taken for, e.g. "5.45". */
+  as: string;
+  /**
+   * The slip's own arithmetic agrees with it — its items, less its discounts,
+   * come to exactly this figure — so there is nothing left to check.
+   */
+  proved: boolean;
+}
+
+/** A camera's read of a till receipt: the text the paste parser reads, and what was corrected on the way. */
+export interface ScanText {
+  text: string;
+  misread: Misread[];
+}
+
+/**
+ * OCR text of a till receipt, as text the paste parser reads — with the
+ * corrections that took a letter for something it was not.
+ *
+ * Only camera text comes through here. An email, a saved page or an .eml file
+ * goes to the parser as it is, because there "E1" and "f5" are real text: a
+ * voucher code, a key to press.
+ */
+export function readScan(ocr: string): ScanText {
   const lines = ocr
     .replace(/\r\n?/g, '\n')
     .split('\n')
     .map((l) => l.replace(/[ \t]+/g, ' ').trim());
+  const misread: Misread[] = [];
   const shop = shopHeading(lines);
   const body = lines
     .filter((l) => l.length > 0)
     .map((l) => poundSigns(fixMoneyTokens(l)).replace(DUE, 'Total $1'));
-  return [...(shop ? [`Receipt from ${shop}`] : []), ...body].join('\n');
+  return { text: [...(shop ? [`Receipt from ${shop}`] : []), ...body].join('\n'), misread };
+}
+
+/** OCR text of a till receipt, as text the paste parser reads. */
+export function fromScan(ocr: string): string {
+  return readScan(ocr).text;
 }
 
 /**

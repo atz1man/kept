@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { toCheck } from '../src/lib/confidence';
 import { bestReading, emailAsText, htmlToText, readEmail } from '../src/lib/documents';
 import { parseReceiptText } from '../src/lib/parse';
-import { fromScan } from '../src/lib/receipt-scan';
+import { readScan, type Misread } from '../src/lib/receipt-scan';
 import { CASES, type Case } from './fixtures/parse-audit';
 
 /**
@@ -35,17 +35,18 @@ const TODAY = new Date(2026, 9, 5);
 type Outcome = 'right' | 'right, marked' | 'marked' | 'blank' | 'WRONG';
 type Field = 'store' | 'total' | 'bought' | 'arrived' | 'dispatched' | 'ref';
 
-function textFor(c: Case): string {
+/** The text the parser is given, and — for a camera's read only — what was corrected on the way, as the Add card is given both. */
+function textFor(c: Case): { text: string; misread: Misread[] } {
   switch (c.kind) {
     case 'paste':
-      return c.text;
+      return { text: c.text, misread: [] };
     case 'ocr':
-      return fromScan(c.text);
+      return readScan(c.text);
     case 'html':
-      return htmlToText(c.text);
+      return { text: htmlToText(c.text), misread: [] };
     case 'eml': {
       const mail = readEmail(c.text);
-      return emailAsText(mail, bestReading(mail.bodies, TODAY) ?? '');
+      return { text: emailAsText(mail, bestReading(mail.bodies, TODAY) ?? ''), misread: [] };
     }
   }
 }
@@ -57,10 +58,11 @@ function judge<T>(read: T | null, truth: T | null, marked: boolean): Outcome {
 }
 
 function read(c: Case): Partial<Record<Field, Outcome>> | 'nothing found' {
-  const out = parseReceiptText(textFor(c), TODAY);
+  const { text, misread } = textFor(c);
+  const out = parseReceiptText(text, TODAY);
   if (!out.ok) return 'nothing found';
   const v = out.value;
-  const ck = toCheck(v);
+  const ck = toCheck(v, [], misread);
   const e = c.expect;
   const got: Partial<Record<Field, Outcome>> = {
     store: judge(v.store, e.store, ck.store !== undefined),

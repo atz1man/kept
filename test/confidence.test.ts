@@ -114,6 +114,10 @@ describe('what the card asks to be checked', () => {
     for (const why of ['several-totals', 'part-total', 'notice-date', 'month-first', 'several-shops', 'shop-in-passing'] as const) {
       expect(checkWords(why.includes('shop') ? 'store' : 'amount', why).length).toBeGreaterThan(10);
     }
+    // A camera's misread says what was misread, field by field.
+    expect(checkWords('amount', 'misread-print')).toMatch(/£/);
+    expect(checkWords('purchasedOn', 'misread-print')).toMatch(/date/);
+    expect(checkWords('store', 'misread-print')).toMatch(/shop/);
   });
 });
 
@@ -196,5 +200,48 @@ describe('reads the bench got wrong are marked, and one it got right is not', ()
     const p = parse(fromScan("Sainsbury's\n\nSupermarkets Ltd\n\nHolborn Circus\n\nJS BREAD WHITE 1.10\nTU KIDS T-SHIRT 2PK 12.00\nROBINSONS SQUASH 1.10\n3 BALANCE DUE 14.20\nMASTERCARD 14.20\nNECTAR POINTS EARNED 14\nPOINTS BALANCE 312\n26/09/2026 17:41\n"));
     expect(p.amount).toBe(1420);
     expect(checkCount(toCheck(p, [{ text: '1.10', confidence: 87 }]))).toBe(0);
+  });
+});
+
+/*
+ * What the camera printed with a letter in it, and `readScan` read as the £,
+ * the 0 or the O it most likely was. Given here as `readScan` hands them on,
+ * so each rule of the mark is tested on its own; the corrections themselves
+ * are tested in test/receipt-scan.test.ts.
+ */
+describe('a figure the camera misread', () => {
+  const slip = parse('Receipt from Boots\nNO7 SERUM £38.00\nTOTAL £38.00\n26/09/2026');
+
+  it('marks the total, the date and the shop each read through a correction', () => {
+    const c = toCheck(slip, [], [
+      { field: 'amount', read: 'E38.00', as: '38.00', proved: false },
+      { field: 'purchasedOn', read: '26/O9/2O26', as: '26/09/2026', proved: false },
+      { field: 'store', read: 'B00TS', as: 'Boots', proved: false },
+    ]);
+    expect(c).toEqual({ amount: 'misread-print', purchasedOn: 'misread-print', store: 'misread-print' });
+  });
+
+  it('does not mark one the slip’s own arithmetic proved', () => {
+    expect(toCheck(slip, [], [{ field: 'amount', read: 'f38.00', as: '38.00', proved: true }]).amount).toBeUndefined();
+  });
+
+  it('marks only the figure that was corrected, not another of the same field', () => {
+    // An item's "E4.99" is no doubt about a £38.00 total read clean.
+    const c = toCheck(slip, [], [
+      { field: 'amount', read: 'E4.99', as: '4.99', proved: false },
+      { field: 'purchasedOn', read: '27/O9/2O26', as: '27/09/2026', proved: false },
+      { field: 'store', read: 'L1DL', as: 'Lidl', proved: false },
+    ]);
+    expect(checkCount(c)).toBe(0);
+  });
+
+  it('reads a date corrected without its leading zeros as the same day', () => {
+    expect(toCheck(slip, [], [{ field: 'purchasedOn', read: '26/9/2O26', as: '26/9/2026', proved: false }]).purchasedOn).toBe('misread-print');
+  });
+
+  it('marks a misread total even where the lines add up to it: they settle the figure, not the currency', () => {
+    const p = parse('Receipt from Tesco\nBANANAS £1.20\nBREAD £1.45\nTOTAL £2.65\n26/09/2026');
+    expect(toCheck(p).amount).toBeUndefined();
+    expect(toCheck(p, [], [{ field: 'amount', read: 'E2.65', as: '2.65', proved: false }]).amount).toBe('misread-print');
   });
 });

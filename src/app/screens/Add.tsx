@@ -3,7 +3,7 @@ import { color, font, radius, shadow } from '../../tokens';
 import { addDays, fmtDate, fmtDateLong, fmtDateNear, fromISODate, toISODate } from '../../lib/dates';
 import { money } from '../../lib/money';
 import { parseReceiptText, UNKNOWN_STORE_WINDOW_DAYS, type ParsedReceipt } from '../../lib/parse';
-import { fromScan, scanFailure, type UnsureWord } from '../../lib/receipt-scan';
+import { readScan, scanFailure, type Misread, type UnsureWord } from '../../lib/receipt-scan';
 import { checkCount, checkWords, toCheck } from '../../lib/confidence';
 import { arrivalProblem, MAX_WINDOW_DAYS, purchaseProblem, readAmount, windowStartFor } from '../../lib/draft';
 import { makeReceiptId } from '../../lib/receipts';
@@ -142,6 +142,8 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
   const [scannedText, setScannedText] = useState<string | null>(null);
   /** The words the photo reader was unsure of, for the text in `scannedText`. */
   const [scanUnsure, setScanUnsure] = useState<readonly UnsureWord[]>([]);
+  /** What the camera printed that was read as something else, for the text in `scannedText`. */
+  const [scanMisread, setScanMisread] = useState<readonly Misread[]>([]);
   /*
    * A receipt that came as a file — a PDF e-receipt or invoice, a saved order
    * email or page. Read on this device, into the same box as everything else.
@@ -241,16 +243,18 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
     setScanShot(null);
     setScannedText(null);
     setScanUnsure([]);
+    setScanMisread([]);
     try {
       const { readReceiptPhoto } = await import('../scan');
       const reading = await readReceiptPhoto(file, today, (p, again) => {
         setScanning(p);
         setLookingAgain(again);
       });
-      const readable = fromScan(reading.text);
+      const { text: readable, misread } = readScan(reading.text);
       setText(readable);
       setScannedText(readable);
       setScanUnsure(reading.unsure);
+      setScanMisread(misread);
       readText(readable);
       setDistance(false);
       if (base64) {
@@ -278,11 +282,12 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       setScanFailed('unreadable');
       return;
     }
-    const readable = fromScan(raw);
+    const { text: readable, misread } = readScan(raw);
     setText(readable);
     setScannedText(readable);
     // Vision gives no per-word score here yet; only the parser's own doubt applies.
     setScanUnsure([]);
+    setScanMisread(misread);
     readText(readable);
     setDistance(false);
     setScanShot(base64 ? { base64, text: readable } : null);
@@ -311,6 +316,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       setText(doc.text);
       setScannedText(doc.text);
       setScanUnsure([]);
+      setScanMisread([]);
       readText(doc.text);
     } catch (e) {
       const why = (e as { why?: 'too-big' | 'not-a-receipt' | 'unreadable' }).why;
@@ -402,8 +408,10 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
   const dateTyped = !!parsed && (!parsed.dateFound || correcting);
   // What the read was unsure of, while the card still shows what it read:
   // nothing once the fields are open for correcting, and the reader's own
-  // scores only while the box still holds the text the reader produced.
-  const checks = parsed && !typedIn && !correcting ? toCheck(parsed, scannedText !== null && text === scannedText ? scanUnsure : []) : {};
+  // scores and the camera's corrections only while the box still holds the
+  // text the reader produced.
+  const asScanned = scannedText !== null && text === scannedText;
+  const checks = parsed && !typedIn && !correcting ? toCheck(parsed, asScanned ? scanUnsure : [], asScanned ? scanMisread : []) : {};
   const boughtError = dateTyped ? purchaseProblem(boughtOn, today) : undefined;
   const purchasedOn = parsed ? (!dateTyped || boughtError ? parsed.purchasedOn : boughtOn) : '';
   const inForce = policy && parsed ? windowInForceFor(policy.name, purchasedOn, updates) : undefined;

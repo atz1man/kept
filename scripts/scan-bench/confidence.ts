@@ -13,7 +13,7 @@ import { createWorker, OEM } from 'tesseract.js';
 // @ts-expect-error a JS helper
 import { decodePng, writeOpaquePng } from '../png.mjs';
 import { readable, toGray, type Gray } from '../../src/lib/flatten';
-import { readFlattenedOrAsTaken, fromScan, UNSURE_BELOW, type Reader } from '../../src/lib/receipt-scan';
+import { readFlattenedOrAsTaken, readScan, UNSURE_BELOW, type Reader } from '../../src/lib/receipt-scan';
 import { parseReceiptText } from '../../src/lib/parse';
 import { toCheck } from '../../src/lib/confidence';
 
@@ -59,11 +59,12 @@ for (const m of meta) {
   const { text: ocr } = await readFlattenedOrAsTaken(flat ? readerOf(toPng(flat, 'b.png')) : null, readerOf(toPng(asTaken, 'a.png')), TODAY);
   const ws = words.get(ocr) ?? [];
   reads.push({ file: m.file, ocr, words: ws, total: Math.round(parseFloat(m.total.replace(/[£,]/g, '')) * 100), day: m.day });
-  const out = parseReceiptText(fromScan(ocr), TODAY);
+  const scan = readScan(ocr);
+  const out = parseReceiptText(scan.text, TODAY);
   const pence = Math.round(parseFloat(m.total.replace(/[£,]/g, '')) * 100);
   if (!out.ok) { rows.push({ file: m.file, field: 'total', right: false, how: null, conf: null, marked: false }, { file: m.file, field: 'day', right: false, how: null, conf: null, marked: false }); continue; }
   const v = out.value;
-  const marks = toCheck(v, ws.filter((w) => w.confidence < UNSURE_BELOW));
+  const marks = toCheck(v, ws.filter((w) => w.confidence < UNSURE_BELOW), scan.misread);
   const amountDigits = v.amount === null ? [] : [digits((v.amount / 100).toFixed(2))];
   const [y, mo, d] = v.purchasedOn.split('-');
   rows.push({ file: m.file, field: 'total', right: v.amount === pence, how: v.how.amount, conf: lowest(ws, amountDigits), marked: marks.amount !== undefined });
