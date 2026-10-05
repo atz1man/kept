@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { color, font, radius } from '../../tokens';
 import { isNative } from '../../lib/mirror';
+import { FEED_ORIGIN, feedRefreshes } from '../../lib/feed-origin';
 import { storageNote } from '../../lib/persist';
 import { fmtDateLong, fromISODate } from '../../lib/dates';
 import { MAX_BACKUP_BYTES, parseBackup, restoredNote, type ImportSummary, type RestoreReport } from '../../lib/backup';
@@ -375,13 +376,31 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
           </div>
         </div>
         {/* "Daily · on" was a cadence nothing kept. The feed is fetched once
-            per launch — see the effect in App.tsx — which is what this says. */}
-        <Toggle
-          label="Policy watch"
-          value={settings.policyWatch}
-          detail={settings.policyWatch ? 'Every launch · on' : 'Off'}
-          onChange={(v) => onChange({ policyWatch: v })}
-        />
+            per launch — see the effect in App.tsx — which is what this says.
+
+            Except where nothing is fetched at all: the iPhone app until its
+            build names a feed host (lib/feed-origin.ts). There a switch would
+            be one that turns nothing on and nothing off, and "Every launch"
+            a cadence nothing keeps — the defect this row was fixed for twice
+            already. So it says where the list comes from instead. */}
+        {feedRefreshes(isNative(), FEED_ORIGIN) ? (
+          <Toggle
+            label="Policy watch"
+            value={settings.policyWatch}
+            detail={settings.policyWatch ? 'Every launch · on' : 'Off'}
+            onChange={(v) => onChange({ policyWatch: v })}
+          />
+        ) : (
+          <div style={{ padding: '15px 18px', borderBottom: `1px solid ${color.borderHair}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+              <span style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap' }}>Policy watch</span>
+              <span style={{ fontSize: 14, color: color.muted, textAlign: 'right' }}>With app updates</span>
+            </div>
+            <div style={{ fontSize: 12, color: color.muted, lineHeight: 1.5, marginTop: 6 }}>
+              The list of policy changes comes with app updates. kept downloads nothing.
+            </div>
+          </div>
+        )}
         <div style={{ padding: '15px 18px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
             <span style={{ fontSize: 14, fontWeight: 600 }}>Retailer policies</span>

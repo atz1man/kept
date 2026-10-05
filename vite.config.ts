@@ -1,10 +1,10 @@
 /// <reference types="vitest" />
-import { defineConfig, type Plugin, type Rollup } from 'vite';
+import { defineConfig, loadEnv, type Plugin, type Rollup } from 'vite';
 import react from '@vitejs/plugin-react';
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { withPolicy } from './src/lib/csp';
+import { policyFor, withPolicy } from './src/lib/csp';
 
 /** Where sw.js keeps the list this plugin writes — an empty array until stamped. */
 const BUILD_FILES = '[/* __BUILD_FILES__ */]';
@@ -42,11 +42,11 @@ function appFiles(bundle: Rollup.OutputBundle, appHtml: string): string[] {
  * Build only: the dev server's hot reload is an inline script and a socket,
  * both of which the policy exists to refuse.
  */
-function contentSecurityPolicy(): Plugin {
+function contentSecurityPolicy(policy: string): Plugin {
   return {
     name: 'kept-content-security-policy',
     apply: 'build',
-    transformIndexHtml: { order: 'post', handler: withPolicy },
+    transformIndexHtml: { order: 'post', handler: (html) => withPolicy(html, policy) },
   };
 }
 
@@ -179,9 +179,28 @@ function serveOcrFiles(): Plugin {
  */
 const VERSION = (JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8')) as { version: string }).version;
 
-export default defineConfig({
+/**
+ * The mode `npm run build:ios` builds in. Named rather than inferred from the
+ * output directory, so what is left out of the iPhone bundle is decided by
+ * what the build is FOR and not by where somebody pointed it.
+ */
+const IOS_MODE = 'ios';
+
+export default defineConfig(({ mode }) => ({
   define: { __KEPT_VERSION__: JSON.stringify(VERSION) },
-  plugins: [react(), contentSecurityPolicy(), stampServiceWorker(), serveOcrFiles()],
+  plugins: [
+    react(),
+    /*
+     * The policy names the feed's host only when the build was given one —
+     * VITE_FEED_ORIGIN, from the environment or a `.env.<mode>` file, read
+     * exactly as the app's own `import.meta.env` reads it. A malformed value
+     * stops the build here (`feedOrigin` throws) rather than shipping an app
+     * whose policy and fetch disagree. See src/lib/feed-origin.ts.
+     */
+    contentSecurityPolicy(policyFor(loadEnv(mode, __dirname, 'VITE_').VITE_FEED_ORIGIN)),
+    stampServiceWorker(),
+    serveOcrFiles(),
+  ],
   server: { port: 5183 },
   build: {
     rollupOptions: {
@@ -189,8 +208,14 @@ export default defineConfig({
       // must paint without booting the app, and the app is a PWA whose service
       // worker scope is /app/. Sharing one bundle would put the whole receipt
       // app on the critical path of a page that only needs to sell it.
+      //
+      // Not the landing page in the iOS bundle. Nothing there links to it —
+      // scripts/ios-entry.mjs makes the APP the root — so it was 16 KB of
+      // marketing copy, pricing tiers included, shipped inside the app it
+      // sells and reachable by nobody. scripts/ios-bundle.mjs checks it stays
+      // out.
       input: {
-        landing: resolve(__dirname, 'index.html'),
+        ...(mode === IOS_MODE ? {} : { landing: resolve(__dirname, 'index.html') }),
         app: resolve(__dirname, 'app/index.html'),
         // Its own entry so it is in the iOS bundle as well, where Settings links
         // to it with no network — see src/privacy/Privacy.tsx.
@@ -221,4 +246,4 @@ export default defineConfig({
      */
     env: { TZ: 'America/New_York' },
   },
-});
+}));

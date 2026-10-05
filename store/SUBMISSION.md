@@ -12,6 +12,7 @@ account, a decision, or an address only you can give.
 | ☐ | Register the App ID, then `npm run bundle-id uk.co.yourname.kept` | **you** | APN-21 |
 | ☐ | A contact address for privacy questions → `CONTACT_EMAIL` in `src/lib/brand.ts` | **you** | the page shows a red notice until it is set |
 | ☐ | Your domain → replace `REPLACE_ME` in `store/listing.json` | **you** | |
+| ☐ | Once the domain exists, build the iPhone app with the feed's host: `VITE_FEED_ORIGIN=https://your.domain npm run build:ios` (or that line in a `.env.ios` file, which only the iOS build reads) | **you** | Until then the iPhone app downloads nothing: a relative feed path inside the app is its own bundle, so every screen says the list of policy changes comes with app updates. Set, the app fetches `policy-feed.json` (and `.sig`) from that origin and the content security policy allows exactly it — see `FEED_ORIGIN` in `src/lib/feed-origin.ts`. The host must answer the app's origin, `capacitor://localhost`, with `Access-Control-Allow-Origin`, or WKWebView refuses the response and the app keeps the list it shipped with. Then reword the `reviewNotes` sentence about the policy list in `store/listing.json`: `test/store-listing.test.ts` reads the iOS build's origin and fails until the notes say the app downloads it |
 | ☐ | The Paid Applications Agreement, with bank and tax details | **you** | App Store Connect → Business. Until it is active the App Store sells nothing, even to a sandbox tester, and the app shows no price and no cap (see section 4b) |
 
 Then `npm run preflight`. It reads every placeholder above out of the files they
@@ -81,5 +82,5 @@ look-alike page would dress itself in it.
 ### Questions the review team may ask, answered in `store/listing.json` → `reviewNotes`
 
 - **Do I need an account?** No — everything is on the device.
-- **Where does the data go?** Nowhere; the one download carries nothing about the person.
+- **Where does the data go?** Nowhere. The iPhone app downloads nothing: its list of policy changes comes with app updates (until a feed host is set, section 1).
 - **Are there purchases?** One, "Unlimited receipts", paid once. It is under Settings → Unlock unlimited, with Restore purchase directly below it.

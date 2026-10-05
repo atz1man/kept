@@ -6,6 +6,8 @@ import { WARRANTY_NOTICE_DAYS } from '../src/lib/alerts';
 import { STORE_COUNT, STORE_POLICIES, TABLE_CHECKED_ON } from '../src/lib/stores';
 import { FREE_TIER_LIMIT } from '../src/lib/quota';
 import { UNLOCK_PRODUCT_ID } from '../src/lib/app-store';
+import { feedOrigin, feedRefreshes } from '../src/lib/feed-origin';
+import { loadEnv } from 'vite';
 
 /**
  * The App Store listing, held to the app it describes.
@@ -216,5 +218,27 @@ describe('what it costs', () => {
   it('promises what the unlock is: paid once, no subscription', () => {
     expect(listing.description).toMatch(/paid once/i);
     expect(listing.description).toMatch(/no subscription/i);
+  });
+});
+
+describe('what the review notes say about the policy list', () => {
+  /*
+   * They said "the app may download an updated list". The iPhone app fetched
+   * its feed by a relative path, which inside the app is the bundle, so the
+   * "update" was always the copy that shipped. Whether it downloads anything
+   * is now decided by the build (lib/feed-origin.ts), and the notes are held
+   * to what THE iPHONE BUILD decides: its feed origin, read the way `npm run
+   * build:ios` reads it — the `ios` mode's env files and the environment.
+   */
+  const iosOrigin = feedOrigin(loadEnv('ios', ROOT, 'VITE_').VITE_FEED_ORIGIN);
+
+  it('say the list comes with app updates while the iPhone build fetches none, and a download only once it does', () => {
+    if (feedRefreshes(true, iosOrigin)) {
+      expect(listing.reviewNotes).toMatch(/download/i);
+      expect(listing.reviewNotes).not.toMatch(/comes with app updates/i);
+    } else {
+      expect(listing.reviewNotes).toMatch(/comes with app updates/i);
+      expect(listing.reviewNotes).not.toMatch(/may download|downloads? an updated/i);
+    }
   });
 });

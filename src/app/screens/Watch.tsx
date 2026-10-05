@@ -12,6 +12,12 @@ interface Props {
   today: Date;
   /** The Settings switch. It decides whether anything is fetched at all. */
   watching: boolean;
+  /**
+   * Whether this build fetches a newer list at all — `feedRefreshes` in
+   * lib/feed-origin.ts. False in the iPhone app until its build names a host,
+   * and then the switch above has nothing to decide.
+   */
+  refreshes: boolean;
   onOpen: (id: string) => void;
 }
 
@@ -33,7 +39,7 @@ function hostOf(url: string): string {
   }
 }
 
-export function Watch({ updates, receipts, today, watching, onOpen }: Props) {
+export function Watch({ updates, receipts, today, watching, refreshes, onOpen }: Props) {
   const ahead = comingUp(receipts, today);
   const byId = new Map(receipts.map((r) => [r.id, r]));
   const assessed = assess(updates, receipts, today);
@@ -181,11 +187,25 @@ export function Watch({ updates, receipts, today, watching, onOpen }: Props) {
             printed whether or not policy watch was on — a sentence that became
             false the moment the switch in Settings started actually stopping
             the fetch, which it now does. */}
-        {watching
-          ? 'Kept’s own list of changes, fetched each time you open the app'
-          : 'Kept’s own list of changes. Policy watch is off, so this is what was already on your device.'}
-        <br />
-        The whole list downloads, never a query naming your shops — receipts never leave your phone.
+        {/* And it follows the build. Inside the iPhone app with no feed host
+            configured, nothing is fetched at all — "fetched each time" and
+            "the whole list downloads" were both untrue there. */}
+        {!refreshes ? (
+          <>
+            Kept’s own list of changes, as it came with this version of the app: the list of policy changes comes
+            with app updates.
+            <br />
+            kept downloads nothing, so nothing naming your shops is ever asked — receipts never leave your phone.
+          </>
+        ) : (
+          <>
+            {watching
+              ? 'Kept’s own list of changes, fetched each time you open the app'
+              : 'Kept’s own list of changes. Policy watch is off, so this is what was already on your device.'}
+            <br />
+            The whole list downloads, never a query naming your shops — receipts never leave your phone.
+          </>
+        )}
       </p>
     </div>
   );

@@ -47,7 +47,7 @@ the installed binary: `CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux
 And the iOS app:
 
 ```bash
-npm run build:ios  # builds to dist-ios and makes the APP the entry, not the landing page
+npm run build:ios  # builds to dist-ios with the APP as the entry; the landing page is left out
 npx cap sync ios   # copies it into the Xcode project and updates the plugins
 ```
 
@@ -345,6 +345,7 @@ src/lib/          the decision logic — pure, tested, no React
   stores.ts       the verified UK retailer policy table
   policy-feed.ts  downloading policy changes, and what they mean for you
   feed-signature.ts  whether the feed that answered was the right thing
+  feed-origin.ts  whether the feed is fetched at all, and from where: never from the iPhone app's own bundle
   legal.ts        Consumer Rights Act + distance-selling rights, cumulative
   fault-letter.ts which remedy today falls in, and the letter that asks the shop for it
   refund-chase.ts when a refund is late, the tracking number it rests on, and the letter that chases it
@@ -363,7 +364,7 @@ src/lib/          the decision logic — pure, tested, no React
   mirror.ts       the second copy, outside the web view, that survives a reclaim
   photos.ts       the paper slip on the filesystem, never read
   embed.ts        whether this page is the landing page's demo, which every store turns away
-  csp.ts          the content security policy every built page carries: this build's scripts, this origin, nothing else
+  csp.ts          the content security policy every built page carries: this build's scripts, this origin, and a configured feed host, nothing else
   brand.ts        the tagline, in the one place all three surfaces read
 src/app/          the nine screens and their chrome
 src/landing/      the marketing page
@@ -2570,7 +2571,11 @@ screen, and an unticked second scan that leaves nothing on the disk.
 - **Signing the policy feed.** The feed is fetched from the app's own origin,
   validated entry by entry and merged (`lib/policy-feed.ts`), and the download
   is of *all* changes — never a query naming the shops a particular user
-  holds, which would be the leak the privacy notice rules out.
+  holds, which would be the leak the privacy notice rules out. Inside the
+  iPhone app the app's own origin is its bundle, so there the feed is fetched
+  only from a host the build names (`VITE_FEED_ORIGIN`, `lib/feed-origin.ts`);
+  until one is set, nothing is fetched and every screen says the list comes
+  with app updates.
 
   What was missing was provenance, and this entry said so three times before
   anything was done about it. The limits on the feed bound the *damage* — a

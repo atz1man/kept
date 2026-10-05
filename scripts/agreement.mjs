@@ -241,6 +241,35 @@ const meter = await page.evaluate(() => {
 agree('receipts counted, by the meter and on the list', (meter.match(/^(\d+)/) ?? [])[1], String(activeCount));
 
 /*
+ * --- When the policy list is fetched, in Settings and on the Watch tab -----
+ *
+ * The same fact, said twice: Settings' row gives the cadence and the Watch
+ * tab's footer says it in a sentence. Both now follow one answer
+ * (`feedRefreshes`, lib/feed-origin.ts) — on the iPhone without a feed host
+ * neither claims a fetch, and scripts/ios-bundle.mjs holds that build to it —
+ * and this holds the web build's two to each other, so one cannot be reworded
+ * to a cadence the other does not keep.
+ */
+const policyRow = await page
+  .getByRole('switch', { name: /Policy watch/ })
+  .innerText()
+  .catch(() => '');
+await page.getByRole('button', { name: /^Watch/ }).click();
+await page.waitForTimeout(400);
+const watchFooter = await page.locator('main').innerText();
+await page.getByRole('button', { name: 'Settings', exact: true }).click();
+await page.waitForTimeout(400);
+if (!policyRow) {
+  disagreements.push({ what: 'Settings has no Policy watch switch for the fetch cadence to be read from', saw: [] });
+} else {
+  agree(
+    'whether the policy list is fetched on every launch, in Settings and on the Watch tab',
+    /every launch/i.test(policyRow) ? 'every launch' : 'not on launch',
+    /fetched each time you open the app/i.test(watchFooter) ? 'every launch' : 'not on launch',
+  );
+}
+
+/*
  * --- The pricing, on the page someone buys from and inside the product -----
  *
  * Everything above this line is inside /app/, which is where this suite has

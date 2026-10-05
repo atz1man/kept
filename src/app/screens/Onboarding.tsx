@@ -3,6 +3,7 @@ import { Pressable } from '../components/Pressable';
 import { Logo, Wordmark } from '../components/Icons';
 import { Avatar } from '../components/Avatar';
 import { isNative } from '../../lib/mirror';
+import { FEED_ORIGIN, feedRefreshes } from '../../lib/feed-origin';
 
 /*
  * The first thing anyone reads, so it had better be true — and two of these
@@ -41,8 +42,15 @@ const STEPS = [
   {
     title: 'Your receipts stay yours.',
     body: 'No account. No cloud. Nothing uploaded. Policy updates download to your phone — your purchases never leave it.',
+    /*
+     * Where the app fetches no feed — the iPhone app until its build names a
+     * host (lib/feed-origin.ts) — "download to your phone" is untrue: the
+     * list it has is the one it shipped with, and a newer one arrives with
+     * the next version of the app.
+     */
+    bundledFeed: 'No account. No cloud. Nothing uploaded. The list of policy changes comes with app updates — your purchases never leave your phone.',
   },
-] as const satisfies readonly { title: string; body: string; native?: string }[];
+] as const satisfies readonly { title: string; body: string; native?: string; bundledFeed?: string }[];
 
 export const ONBOARDING_STEPS = STEPS.length;
 
@@ -53,8 +61,14 @@ interface Props {
 }
 
 export function Onboarding({ step, onNext, onSkip }: Props) {
-  const current: { title: string; body: string; native?: string } = STEPS[step] ?? STEPS[0];
-  const body = isNative() && current.native ? current.native : current.body;
+  const current: { title: string; body: string; native?: string; bundledFeed?: string } = STEPS[step] ?? STEPS[0];
+  const native = isNative();
+  const body =
+    !feedRefreshes(native, FEED_ORIGIN) && current.bundledFeed
+      ? current.bundledFeed
+      : native && current.native
+        ? current.native
+        : current.body;
   return (
     <div className="k-fade" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '6px 24px 40px', overflow: 'hidden' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0 0' }}>

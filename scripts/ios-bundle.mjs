@@ -21,7 +21,7 @@
  */
 import { spawn } from 'node:child_process';
 import { chromium } from 'playwright';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { reportOnCrash, sayCrash } from './crash-report.mjs';
 import { answeringBridge } from './answering-bridge.mjs';
 
@@ -47,6 +47,36 @@ reportOnCrash(report);
 if (!existsSync(`${ROOT}dist-ios/index.html`)) {
   console.error('✗ dist-ios is not built — run `npm run build:ios` first');
   process.exit(1);
+}
+
+/*
+ * No landing page in the bundle that ships to a phone.
+ *
+ * Nothing in the iOS bundle links to it — the root is the app — yet the web
+ * build's landing entry rode along as `assets/landing-*.js`: 16 KB of
+ * marketing copy, its pricing tiers included, inside the app it sells. The
+ * ios build mode leaves the entry out (vite.config.ts). Asked twice, by name
+ * and by content, because a renamed chunk would pass the first alone: the
+ * landing page's pricing section is the one thing no screen of the app has.
+ */
+{
+  const walk = (dir) =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+      e.isDirectory() ? walk(`${dir}/${e.name}`) : [`${dir}/${e.name}`],
+    );
+  const files = walk(`${ROOT}dist-ios`).map((f) => f.slice(`${ROOT}dist-ios/`.length));
+  const scripts = files.filter((f) => /^assets\/.+\.js$/.test(f));
+  if (scripts.length === 0) {
+    failures.push({ what: 'dist-ios has no scripts under assets/, so the landing check would pass over nothing', saw: '' });
+  }
+  const named = files.filter((f) => /(^|\/)landing[-.]/.test(f));
+  const carrying = scripts.filter((f) => readFileSync(`${ROOT}dist-ios/${f}`, 'utf8').includes('id:"pricing"'));
+  if (named.length > 0 || carrying.length > 0) {
+    failures.push({
+      what: 'the iOS bundle ships the landing page, which nothing in it links to',
+      saw: [...new Set([...named, ...carrying])].join(', '),
+    });
+  }
 }
 
 // Its own port and its own server, so it cannot be pointed at the web build by
@@ -128,6 +158,11 @@ await ctx.addInitScript(() => {
 const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
+// Every request for the policy feed, from launch: see "the policy list" below.
+const feedRequests = [];
+page.on('request', (r) => {
+  if (/\/policy-feed\.(json|sig)$/.test(new URL(r.url()).pathname)) feedRequests.push(r.url());
+});
 await page.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
 // Long enough to outlast MIRROR_READ_BUDGET_MS: the bridge never answers,
 // so the app mounts by giving up on the mirror, which is worth exercising.
@@ -255,6 +290,69 @@ if (!/Deadline alerts/.test(settingsText)) {
     what: 'the iOS build shows a price or a plan, which App Review reads as unlocking outside In-App Purchase',
     saw: (settingsText.match(/.*(£\d|Free plan|free receipts|Unlocked).*/) ?? [''])[0],
   });
+}
+
+/*
+ * The policy list, on every surface that talks about it.
+ *
+ * The feed was fetched by a relative path, and inside the iPhone app that is
+ * the bundle: the "update" was always the copy that shipped. Onboarding said
+ * "Policy updates download to your phone", the Watch tab "fetched each time
+ * you open the app", Settings "Every launch · on" and the privacy page "kept
+ * may download an updated list" — four statements of one fact, each false on
+ * the phone. This bundle is built with no feed host (VITE_FEED_ORIGIN, see
+ * lib/feed-origin.ts), so it must ask for nothing, and every surface must say
+ * the same true thing: the list comes with app updates.
+ *
+ * One phrase, looked for everywhere, because agreement is the point: a screen
+ * that said something true in other words would pass a check per screen and
+ * still leave a reader with two stories.
+ */
+{
+  const SAYS = /comes with app updates/i;
+  const CLAIMS = /fetched each time|every launch|download(?:s|ed)? (?:to your phone|an updated)|may download|the whole list downloads/i;
+  const said = {};
+
+  if (feedRequests.length > 0) {
+    failures.push({ what: 'the iOS bundle, built with no feed host, asked for the policy feed anyway', saw: feedRequests.join(', ') });
+  }
+
+  // Settings, already open: the row, and no switch that switches nothing.
+  said.Settings = settingsText;
+  if ((await page.getByRole('switch', { name: /Policy watch/ }).count()) > 0) {
+    failures.push({ what: 'Settings offers a Policy watch switch in a build that fetches nothing for it to stop', saw: '' });
+  }
+
+  await page.getByRole('button', { name: /^Watch/ }).click().catch(() => {});
+  await page.waitForTimeout(500);
+  said['the Watch tab'] = await page.locator('main').innerText().catch(() => '');
+
+  // Onboarding, from a fresh install, walked to its last step.
+  const octx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  await answeringBridge(octx);
+  const op = await octx.newPage();
+  await op.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
+  for (let i = 0; i < 5 && (await op.getByRole('button', { name: 'Next', exact: true }).count()) > 0; i += 1) {
+    await op.getByRole('button', { name: 'Next', exact: true }).click();
+    await op.waitForTimeout(300);
+  }
+  said.onboarding = (await op.getByRole('button', { name: 'Let’s go' }).count()) > 0 ? await op.locator('body').innerText() : '';
+
+  // The privacy page, as the app opens it from Settings.
+  await op.goto(`${ORIGIN}/privacy/`, { waitUntil: 'networkidle' });
+  said['the privacy page'] = await op.locator('body').innerText().catch(() => '');
+  await octx.close();
+
+  for (const [where, text] of Object.entries(said)) {
+    if (!text) {
+      failures.push({ what: `could not read ${where} to check what it says about the policy list`, saw: '' });
+    } else if (!SAYS.test(text) || CLAIMS.test(text)) {
+      failures.push({
+        what: `${where} does not say the policy list comes with app updates, in a build that downloads none`,
+        saw: (text.match(new RegExp(`.*(${CLAIMS.source}).*`, 'i')) ?? [''])[0] || 'no mention of app updates',
+      });
+    }
+  }
 }
 
 
