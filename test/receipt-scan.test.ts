@@ -219,6 +219,44 @@ describe('a £ the camera read as a letter', () => {
   });
 });
 
+describe('an O the camera read for a 0 in a date', () => {
+  const dated = (ocr: string) => {
+    const scan = readScan(ocr);
+    const out = parseReceiptText(scan.text, TODAY);
+    if (!out.ok) throw new Error(`did not parse: ${out.reason}`);
+    return { v: out.value, ck: toCheck(out.value, [], scan.misread), scan };
+  };
+
+  it('reads the date, and marks it: nothing on a slip can prove a date', () => {
+    for (const printed of ['O3/O9/2O26 11:15', '3-O9-26', 'o3.o9.2o26']) {
+      const { v, ck } = dated(`BOOTS\nNO7 SERUM 38.00\nTOTAL 38.00\n${printed}`);
+      expect(v.dateFound, printed).toBe(true);
+      expect(v.purchasedOn, printed).toBe('2026-09-03');
+      expect(ck.purchasedOn, printed).toBe('misread-print');
+    }
+  });
+
+  it('leaves alone what would not be a day and a month', () => {
+    // Month 20, and day 0: not a date with an O in it, so not rewritten as one.
+    expect(fromScan('TILL 1O/2O/3O')).toBe('TILL 1O/2O/3O');
+    expect(fromScan('TILL OO/1O/26')).toBe('TILL OO/1O/26');
+    expect(readScan('TILL 1O/2O/3O').misread).toEqual([]);
+  });
+
+  it('leaves alone an O-date run into another word or figure', () => {
+    expect(fromScan('REF AB1O/1O/2O')).toBe('REF AB1O/1O/2O');
+    expect(fromScan('REF 1O/1O/2O26/7')).toBe('REF 1O/1O/2O26/7');
+  });
+
+  it('needs the same separator twice', () => {
+    expect(fromScan('O3/1O-2O26')).toBe('O3/1O-2O26');
+  });
+
+  it('records nothing for a date printed cleanly', () => {
+    expect(readScan('BOOTS\nTOTAL 38.00\n03/09/2026').misread).toEqual([]);
+  });
+});
+
 describe('two looks at one photo', () => {
   /*
    * What each thresholding "read" of the same photo returned, shaped like the

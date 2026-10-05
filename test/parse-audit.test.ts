@@ -108,10 +108,11 @@ const NOT_RIGHT: Record<string, Partial<Record<Field, Outcome>> | 'nothing found
   // "E2.65" is read as £2.65 and marked: the items add up to it, which settles
   // the figure but not whether the E was a £ or a €. "f5.45" (O2) is read as
   // £5.45 and not marked, because the items less the discount come to exactly
-  // that. O for 0 in the date, a dropped decimal point and "B00TS" are still
-  // the scanner's to fix; each is blank or marked.
+  // that. "O3/1O/2O26" is read as 3 October and marked, since nothing on a
+  // slip can prove a date. A dropped decimal point and "B00TS" are still the
+  // scanner's to fix; each is blank or marked.
   O1: { total: 'right, marked' },
-  O4: { bought: 'blank' },
+  O4: { bought: 'right, marked' },
   O5: { total: 'marked' },
   O8: { store: 'blank' },
   // A euro total with a £50 promotion in the footer: no £ total, so the

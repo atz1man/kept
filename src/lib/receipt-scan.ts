@@ -89,6 +89,27 @@ function poundAsLetter(line: string, euros: boolean, noted: { read: string; as: 
 }
 
 /*
+ * An O for a 0 in a date: "O3/1O/2O26". The parser reads dates in figures, so
+ * the slip's one date was not found at all. Read as 0s only inside something
+ * that is otherwise a date — day, month and year, all figures or O, the same
+ * separator twice, standing apart from any other word — and only when the
+ * day and month it makes are a real day and month, the way the date reads
+ * here. "1O/2O/2O26" is not a date with O in it, it is something else.
+ */
+const DATE_WITH_O = /(?<![\w/.:-])([\dOo]{1,2})([/.-])([\dOo]{1,2})\2([\dOo]{4}|[\dOo]{2})(?![\w/.:-])/g;
+
+function dateWithO(line: string, noted: { read: string; as: string }[]): string {
+  return line.replace(DATE_WITH_O, (whole, d: string, _sep: string, m: string) => {
+    if (!/[Oo]/.test(whole)) return whole;
+    const zero = (s: string) => Number(s.replace(/[Oo]/g, '0'));
+    if (zero(d) < 1 || zero(d) > 31 || zero(m) < 1 || zero(m) > 12) return whole;
+    const as = whole.replace(/[Oo]/g, '0');
+    noted.push({ read: whole, as });
+    return as;
+  });
+}
+
+/*
  * The slip's own arithmetic: what its items come to, less its discounts. A
  * till prints each thing on a line ending in its price, and money off on one
  * ending in a minus figure ("STAFF DISC -0.50", "PROMO 20.00-"); a line with a
@@ -188,14 +209,17 @@ export function readScan(ocr: string): ScanText {
   const shop = shopHeading(lines);
   const euros = EUROS.test(ocr);
   const pounds: { line: number; read: string; as: string; letter: string }[] = [];
+  const dates: { read: string; as: string }[] = [];
   const body = lines
     .filter((l) => l.length > 0)
     .map((l, i) => {
       const noted: { read: string; as: string; letter: string }[] = [];
-      const line = poundSigns(poundAsLetter(fixMoneyTokens(l), euros, noted)).replace(DUE, 'Total $1');
+      const line = poundSigns(poundAsLetter(fixMoneyTokens(dateWithO(l, dates)), euros, noted)).replace(DUE, 'Total $1');
       for (const n of noted) pounds.push({ ...n, line: i });
       return line;
     });
+  // Nothing on a slip adds up to a date, so a corrected one is always marked.
+  for (const d of dates) misread.push({ field: 'purchasedOn', read: d.read, as: d.as, proved: false });
   const sum = itemsLessDiscounts(body);
   for (const p of pounds) {
     const line = body[p.line];
