@@ -158,6 +158,11 @@ await ctx.addInitScript(() => {
 const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
+// Every request for the policy feed, from launch: see "the policy list" below.
+const feedRequests = [];
+page.on('request', (r) => {
+  if (/\/policy-feed\.(json|sig)$/.test(new URL(r.url()).pathname)) feedRequests.push(r.url());
+});
 await page.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
 // Long enough to outlast MIRROR_READ_BUDGET_MS: the bridge never answers,
 // so the app mounts by giving up on the mirror, which is worth exercising.
@@ -285,6 +290,69 @@ if (!/Deadline alerts/.test(settingsText)) {
     what: 'the iOS build shows a price or a plan, which App Review reads as unlocking outside In-App Purchase',
     saw: (settingsText.match(/.*(£\d|Free plan|free receipts|Unlocked).*/) ?? [''])[0],
   });
+}
+
+/*
+ * The policy list, on every surface that talks about it.
+ *
+ * The feed was fetched by a relative path, and inside the iPhone app that is
+ * the bundle: the "update" was always the copy that shipped. Onboarding said
+ * "Policy updates download to your phone", the Watch tab "fetched each time
+ * you open the app", Settings "Every launch · on" and the privacy page "kept
+ * may download an updated list" — four statements of one fact, each false on
+ * the phone. This bundle is built with no feed host (VITE_FEED_ORIGIN, see
+ * lib/feed-origin.ts), so it must ask for nothing, and every surface must say
+ * the same true thing: the list comes with app updates.
+ *
+ * One phrase, looked for everywhere, because agreement is the point: a screen
+ * that said something true in other words would pass a check per screen and
+ * still leave a reader with two stories.
+ */
+{
+  const SAYS = /comes with app updates/i;
+  const CLAIMS = /fetched each time|every launch|download(?:s|ed)? (?:to your phone|an updated)|may download|the whole list downloads/i;
+  const said = {};
+
+  if (feedRequests.length > 0) {
+    failures.push({ what: 'the iOS bundle, built with no feed host, asked for the policy feed anyway', saw: feedRequests.join(', ') });
+  }
+
+  // Settings, already open: the row, and no switch that switches nothing.
+  said.Settings = settingsText;
+  if ((await page.getByRole('switch', { name: /Policy watch/ }).count()) > 0) {
+    failures.push({ what: 'Settings offers a Policy watch switch in a build that fetches nothing for it to stop', saw: '' });
+  }
+
+  await page.getByRole('button', { name: /^Watch/ }).click().catch(() => {});
+  await page.waitForTimeout(500);
+  said['the Watch tab'] = await page.locator('main').innerText().catch(() => '');
+
+  // Onboarding, from a fresh install, walked to its last step.
+  const octx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  await answeringBridge(octx);
+  const op = await octx.newPage();
+  await op.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
+  for (let i = 0; i < 5 && (await op.getByRole('button', { name: 'Next', exact: true }).count()) > 0; i += 1) {
+    await op.getByRole('button', { name: 'Next', exact: true }).click();
+    await op.waitForTimeout(300);
+  }
+  said.onboarding = (await op.getByRole('button', { name: 'Let’s go' }).count()) > 0 ? await op.locator('body').innerText() : '';
+
+  // The privacy page, as the app opens it from Settings.
+  await op.goto(`${ORIGIN}/privacy/`, { waitUntil: 'networkidle' });
+  said['the privacy page'] = await op.locator('body').innerText().catch(() => '');
+  await octx.close();
+
+  for (const [where, text] of Object.entries(said)) {
+    if (!text) {
+      failures.push({ what: `could not read ${where} to check what it says about the policy list`, saw: '' });
+    } else if (!SAYS.test(text) || CLAIMS.test(text)) {
+      failures.push({
+        what: `${where} does not say the policy list comes with app updates, in a build that downloads none`,
+        saw: (text.match(new RegExp(`.*(${CLAIMS.source}).*`, 'i')) ?? [''])[0] || 'no mention of app updates',
+      });
+    }
+  }
 }
 
 

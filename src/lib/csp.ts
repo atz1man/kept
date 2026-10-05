@@ -1,3 +1,5 @@
+import { feedOrigin } from './feed-origin';
+
 /**
  * The Content-Security-Policy every page of the built app carries, as a
  * <meta> written in by vite.config.ts (`contentSecurityPolicy`).
@@ -22,7 +24,10 @@
  *  - connect-src 'self' data: blob: — the feed, the deploy check and the
  *    reader's files are all on this origin; data: and blob: are local. No
  *    other host, which is the privacy page's promise written where the
- *    browser enforces it.
+ *    browser enforces it. The one exception is a build given
+ *    `VITE_FEED_ORIGIN` (lib/feed-origin.ts), where the iPhone app fetches
+ *    the feed from that host: then exactly that origin is added, here and
+ *    nowhere else, by `policyFor`.
  *  - worker-src 'self' blob: — the PDF reader's and the photo reader's
  *    workers, and the service worker, all served from here.
  *  - frame-src 'self' — the landing page shows the app itself as its demo.
@@ -33,7 +38,7 @@
  * pages) and reporting. Both belong in a response header, which needs the
  * host — see store/SUBMISSION.md.
  */
-export const CONTENT_SECURITY_POLICY = [
+const DIRECTIVES = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self'",
@@ -47,12 +52,28 @@ export const CONTENT_SECURITY_POLICY = [
   "object-src 'none'",
   "base-uri 'none'",
   "form-action 'self'",
-].join('; ');
+];
+
+/**
+ * The policy for a build, given the feed origin it was configured with.
+ *
+ * Read through `feedOrigin`, so what is added is an https origin and nothing
+ * else — a value with a path or a scheme of its own would be a different
+ * source expression from the one it reads as — and only to connect-src: a
+ * feed is fetched, never run, framed or shown.
+ */
+export function policyFor(configuredFeedOrigin: unknown): string {
+  const origin = feedOrigin(configuredFeedOrigin);
+  return DIRECTIVES.map((d) => (origin !== null && d.startsWith('connect-src ') ? `${d} ${origin}` : d)).join('; ');
+}
+
+/** The policy of a build with no feed origin configured, which is the default. */
+export const CONTENT_SECURITY_POLICY = policyFor(undefined);
 
 /** The page with the policy as the first thing in its head, ahead of anything it governs. */
-export function withPolicy(html: string): string {
+export function withPolicy(html: string, policy: string = CONTENT_SECURITY_POLICY): string {
   const at = html.indexOf('<head>');
   if (at < 0) throw new Error('kept: a page with no <head> cannot carry the content security policy');
   const end = at + '<head>'.length;
-  return `${html.slice(0, end)}\n  <meta http-equiv="Content-Security-Policy" content="${CONTENT_SECURITY_POLICY}" />${html.slice(end)}`;
+  return `${html.slice(0, end)}\n  <meta http-equiv="Content-Security-Policy" content="${policy}" />${html.slice(end)}`;
 }

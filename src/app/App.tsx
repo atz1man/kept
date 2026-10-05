@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { color, paperGrain } from '../tokens';
 import { dueAlerts, supersededKeys } from '../lib/alerts';
-import { FEED_SIG_URL, FEED_URL, mergeFeed, policyAlertFor, readFeed } from '../lib/policy-feed';
+import { mergeFeed, policyAlertFor, readFeed } from '../lib/policy-feed';
+import { FEED_ORIGIN, feedLocation, feedRefreshes } from '../lib/feed-origin';
 import { FEED_PUBLIC_KEY, feedIsAcceptable, verifyFeed } from '../lib/feed-signature';
 import { currentNotifyState, deliver, offerReminders, type NotifyState } from './notify';
 import { isNative } from '../lib/mirror';
@@ -132,6 +133,11 @@ export function App() {
    * from this app's own origin, and the download is of EVERY change — never a
    * query naming the shops this person holds, because that query would be the
    * leak the privacy notice rules out.
+   *
+   * Not inside the iPhone app unless the build names a host: there the
+   * relative path is the bundle itself, and fetching the copy that shipped
+   * is not an update. `feedLocation` decides, from the same answer every
+   * screen that talks about the feed reads (lib/feed-origin.ts).
    */
   useEffect(() => {
     // The switch in Settings actually switches it.
@@ -144,6 +150,8 @@ export function App() {
     // to get wrong. The same defect the "Deadline alerts" row had, in the row
     // directly below it.
     if (!settings.policyWatch) return;
+    const where = feedLocation(isNative(), FEED_ORIGIN);
+    if (where === null) return;
     let cancelled = false;
     /*
      * Read as TEXT, not json, because a signature covers BYTES.
@@ -155,7 +163,7 @@ export function App() {
      */
     void (async () => {
       try {
-        const res = await fetch(FEED_URL, { cache: 'no-cache' });
+        const res = await fetch(where.feed, { cache: 'no-cache' });
         if (!res.ok) return;
         const body = await res.text();
 
@@ -165,7 +173,7 @@ export function App() {
          */
         let verified: boolean | null = null;
         if (FEED_PUBLIC_KEY !== null) {
-          const sig = await fetch(FEED_SIG_URL, { cache: 'no-cache' })
+          const sig = await fetch(where.sig, { cache: 'no-cache' })
             .then((r) => (r.ok ? r.text() : ''))
             .catch(() => '');
           verified = sig.trim() ? await verifyFeed(body, sig.trim(), FEED_PUBLIC_KEY) : null;
@@ -448,7 +456,7 @@ export function App() {
         />
       )}
 
-      {screen === 'watch' && <Watch updates={state.updates} receipts={state.receipts} today={today} watching={settings.policyWatch} onOpen={(id) => dispatch({ type: 'open', id })} />}
+      {screen === 'watch' && <Watch updates={state.updates} receipts={state.receipts} today={today} watching={settings.policyWatch} refreshes={feedRefreshes(isNative(), FEED_ORIGIN)} onOpen={(id) => dispatch({ type: 'open', id })} />}
 
       {screen === 'detail' && selected && (
         <Detail

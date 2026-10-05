@@ -1,6 +1,8 @@
 import { color } from '../tokens';
 import { Fine, ProsePage, Section } from '../pages/Prose';
 import { CONTACT_EMAIL } from '../lib/brand';
+import { isNative } from '../lib/mirror';
+import { FEED_ORIGIN, feedRefreshes } from '../lib/feed-origin';
 
 /**
  * The privacy policy.
@@ -18,7 +20,7 @@ import { CONTACT_EMAIL } from '../lib/brand';
 
 
 /** Moves whenever what this page says moves. */
-export const UPDATED_ON = '4 October 2026';
+export const UPDATED_ON = '5 October 2026';
 
 export function Privacy() {
   return (
@@ -46,12 +48,23 @@ export function Privacy() {
           between you and Apple.
         </Section>
 
-        <Section title="The one thing kept downloads">
-          kept may download an updated list of retailer return policies, so that a shop changing its window can be
-          shown to you. That download is the same for everyone: it asks for every change, never for the shops you use,
-          and it carries nothing about you or your receipts. You can turn it off in Settings with the Policy watch
-          switch.
-        </Section>
+        {/* Read inside the iPhone app too, where — until its build names a
+            feed host (lib/feed-origin.ts) — nothing is downloaded and there is
+            no Policy watch switch to point at. The same answer every other
+            screen reads. */}
+        {feedRefreshes(isNative(), FEED_ORIGIN) ? (
+          <Section title="The one thing kept downloads">
+            kept may download an updated list of retailer return policies, so that a shop changing its window can be
+            shown to you. That download is the same for everyone: it asks for every change, never for the shops you
+            use, and it carries nothing about you or your receipts. You can turn it off in Settings with the Policy
+            watch switch.
+          </Section>
+        ) : (
+          <Section title="What kept downloads">
+            Nothing. The list of policy changes comes with app updates, so kept never asks anyone for it, and nothing
+            about you or your receipts goes anywhere.
+          </Section>
+        )}
 
         <Section title="Links to shops">
           Each receipt links to its shop's own returns page. kept opens it only when you tap it, in your browser, and

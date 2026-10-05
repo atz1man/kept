@@ -1,10 +1,10 @@
 /// <reference types="vitest" />
-import { defineConfig, type Plugin, type Rollup } from 'vite';
+import { defineConfig, loadEnv, type Plugin, type Rollup } from 'vite';
 import react from '@vitejs/plugin-react';
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { withPolicy } from './src/lib/csp';
+import { policyFor, withPolicy } from './src/lib/csp';
 
 /** Where sw.js keeps the list this plugin writes — an empty array until stamped. */
 const BUILD_FILES = '[/* __BUILD_FILES__ */]';
@@ -42,11 +42,11 @@ function appFiles(bundle: Rollup.OutputBundle, appHtml: string): string[] {
  * Build only: the dev server's hot reload is an inline script and a socket,
  * both of which the policy exists to refuse.
  */
-function contentSecurityPolicy(): Plugin {
+function contentSecurityPolicy(policy: string): Plugin {
   return {
     name: 'kept-content-security-policy',
     apply: 'build',
-    transformIndexHtml: { order: 'post', handler: withPolicy },
+    transformIndexHtml: { order: 'post', handler: (html) => withPolicy(html, policy) },
   };
 }
 
@@ -188,7 +188,19 @@ const IOS_MODE = 'ios';
 
 export default defineConfig(({ mode }) => ({
   define: { __KEPT_VERSION__: JSON.stringify(VERSION) },
-  plugins: [react(), contentSecurityPolicy(), stampServiceWorker(), serveOcrFiles()],
+  plugins: [
+    react(),
+    /*
+     * The policy names the feed's host only when the build was given one —
+     * VITE_FEED_ORIGIN, from the environment or a `.env.<mode>` file, read
+     * exactly as the app's own `import.meta.env` reads it. A malformed value
+     * stops the build here (`feedOrigin` throws) rather than shipping an app
+     * whose policy and fetch disagree. See src/lib/feed-origin.ts.
+     */
+    contentSecurityPolicy(policyFor(loadEnv(mode, __dirname, 'VITE_').VITE_FEED_ORIGIN)),
+    stampServiceWorker(),
+    serveOcrFiles(),
+  ],
   server: { port: 5183 },
   build: {
     rollupOptions: {
