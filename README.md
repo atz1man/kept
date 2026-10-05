@@ -277,17 +277,27 @@ The service worker is what makes the deadline checkable with no signal.
 ## CI
 
 `.github/workflows/ci.yml` runs on every push to `main` and every pull
-request. Two jobs: a fast one (typecheck, unit tests, build) and a browser one
-that serves the built app and runs five sweeps against it, plus three that own
-their servers: `freshness`, which starts and stops one so it can cut a service
-worker's network; `ios`, which boots the bundle that actually ships; and
-`feed:wiring`, which builds the app twice, with a signing key and without. Each of those found real defects
-the day it was written, which is why they are gates rather than a ritual
-someone remembers to perform.
+request. A fast job (typecheck, unit tests, build), a Mac that compiles the
+iPhone app, and the browser sweeps: five against the served app, plus three
+that own their servers — `freshness`, which starts and stops one so it can cut
+a service worker's network; `ios`, which boots the bundle that actually ships;
+and `feed:wiring`, which builds the app twice, with a signing key and without.
+Each of those found real defects the day it was written, which is why they are
+gates rather than a ritual someone remembers to perform.
 
-Both jobs carry a timeout, and `feed:wiring` carries a deadline per case. From
-reading rather than from an incident — nothing has hung, and every run of the
-browser job has finished in about ten minutes. What is true is the default:
+The sweeps run in three shards side by side (`journeys`, `screens`, `access`),
+and one job named `browser` passes only when all three did. They were one job
+until it stopped fitting: 9.8 minutes on 28 September, 16.4 on 3 October, 22.7
+on 5 October, against a 25-minute backstop that was written to be a backstop
+and not a budget. Split by measured step time, the slowest shard is about nine
+minutes. Each step's `if: matrix.shard == '…'` is the new way to lose a gate —
+a misspelt shard runs the step nowhere and reports green — so
+`test/ci-shards.test.ts` holds every sweep to exactly one shard that exists,
+every shard to at least one sweep, and the `browser` result to waiting on all
+of them even when one fails.
+
+Every job carries a timeout, and `feed:wiring` carries a deadline per case. From
+reading rather than from an incident — nothing has hung. What is true is the default:
 with no `timeout-minutes` a step that stops answering holds a runner until
 GitHub's six-hour limit and reports nothing, so a pull request that is broken
 reads as one still deciding, and silence is the failure this repository is
@@ -298,12 +308,12 @@ minutes against the five seconds it takes, and says which one stopped rather
 than stopping.
 
 One run per pull request at a time, and the newest is the one that matters.
-The browser job is about ten minutes and this repository is public, so the
-runners are the free ones; without a concurrency group a branch that takes four
+The browser shards are over twenty minutes of runner time between them and
+this repository is public, so the runners are the free ones; without a concurrency group a branch that takes four
 pushes in an hour runs all four in full, three of them answering a question
 about a commit nobody will merge. They do not delay the fourth — runs here
-start within seconds of the push — so this is about the ten minutes each rather
-than about waiting. It applies to pull requests only. A push to `main` is the record of what that
+start within seconds of the push — so this is about the twenty minutes each
+rather than about waiting. It applies to pull requests only. A push to `main` is the record of what that
 branch does, and a later push must not delete it: two commits landing close
 together would leave the first with no result at all, which is the state this
 repository refuses everywhere else — a green tree that was never asked.

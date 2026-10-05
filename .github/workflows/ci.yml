@@ -3,7 +3,8 @@
 # Three jobs, split by what they need. The fast one is pure logic, strict
 # types and a build — no browser, so it fails in seconds rather than minutes
 # when it fails at all. The second serves the built app and runs eight sweeps
-# against a real Chromium. The third compiles the iPhone app on a Mac. Each of those sweeps found genuine defects the day it was
+# against a real Chromium, in three shards side by side, with one `browser`
+# result over them. The third compiles the iPhone app on a Mac. Each of those sweeps found genuine defects the day it was
 # written, which is why they are gates and not a ritual someone remembers to
 # perform.
 name: ci
@@ -16,13 +17,14 @@ on:
 
 # One run per pull request at a time, and the newest is the one that matters.
 #
-# The browser job builds, installs Chromium and runs eight sweeps, three of
-# which stand up servers of their own; it is about ten minutes, and this
-# repository is public so the runners are the free ones. Without this, a branch
+# The browser shards build, install Chromium and run eight sweeps, three of
+# which stand up servers of their own; together they are over twenty minutes
+# of runner time, and this repository is public so the runners are the free
+# ones. Without this, a branch
 # that takes four pushes in an hour runs all four in full, three of them
 # answering a question about a commit nobody will merge. They do not currently
 # delay the fourth — runs here start within seconds of the push — so this is
-# about the ten minutes each, not about waiting.
+# about the twenty minutes each, not about waiting.
 #
 # Only for pull requests. A push to `main` is the record of what that branch
 # does, and a later push must not delete it: two commits landing close together
@@ -58,14 +60,37 @@ jobs:
       - name: What each page downloads before it paints, within its ceiling
         run: npm run budget
 
+  # The sweeps, in three shards that run side by side.
+  #
+  # One job ran them all until it stopped fitting. Measured on main's own
+  # runs: 9.8 minutes on 28 September, 16.4 on 3 October, 22.7 on 5 October,
+  # against the 25-minute backstop below. Every sweep added was worth its
+  # minutes, and the arithmetic still said that within a pull request or two
+  # every run would stop at the backstop and read as a hang. Raising the
+  # backstop would have made it a budget, which it was written not to be.
+  #
+  # Each shard builds and serves the app itself, about a minute of the same
+  # setup, so a step's `if` decides only WHICH runner asks it. That `if` is the
+  # new way to lose a gate: a shard name spelt wrong runs the step nowhere and
+  # reports success. `test/ci-shards.test.ts` holds every sweep to exactly one
+  # shard that exists, and every shard to at least one sweep.
+  #
+  # Balanced by those step timings (`smoke` 404s, `layout` 436s, `a11y` 150s,
+  # `ios` 133s, `contrast` 100s, the rest under 35s each), so the slowest shard
+  # is about nine minutes where the whole job was twenty-three.
   browser:
-    name: browser
+    name: browser (${{ matrix.shard }})
     runs-on: ubuntu-latest
-    # Ten minutes of work, so this is two and a half times it — a backstop for
-    # a step that stops answering rather than a budget anything runs near.
+    strategy:
+      # One shard failing says nothing about the others; let each finish so a
+      # run reports every sweep it can, not the first one to go red.
+      fail-fast: false
+      matrix:
+        shard: [journeys, screens, access]
+    # About nine minutes of work in the slowest shard, so this is a backstop
+    # for a step that stops answering rather than a budget anything runs near.
     #
-    # Nothing has hung: every run of this job has finished in about ten minutes.
-    # The reason to have it anyway is what the DEFAULT is. With no
+    # The reason to have it at all is what the DEFAULT is. With no
     # `timeout-minutes` a step that stops answering holds this runner until
     # GitHub's six-hour limit and reports nothing at all, so a pull request that
     # is broken reads as one still deciding — and silence is the failure mode
@@ -91,25 +116,32 @@ jobs:
           npx vite preview --port 5183 --strictPort &
           npx wait-on http://localhost:5183/app/ --timeout 60000
       - name: End to end
+        if: matrix.shard == 'journeys'
         run: npm run smoke
       - name: WCAG AA contrast over every rendered text node
+        if: matrix.shard == 'screens'
         run: npm run contrast
       - name: axe-core audit of every screen
+        if: matrix.shard == 'access'
         run: npm run a11y
       - name: Narrow screens, adversarial content, empty states
+        if: matrix.shard == 'screens'
         run: npm run layout
       - name: The same fact, stated in more than one place, agrees
+        if: matrix.shard == 'journeys'
         run: npm run agreement
       # Last, and on its own port: it starts and then STOPS its own server,
       # because that is the only way to cut a service worker's network — the
       # page-level offline switch the other sweeps have leaves the worker's own
       # fetches reaching the live server. Nothing above it is disturbed.
       - name: A deploy reaches the app, and the app works without one
+        if: matrix.shard == 'journeys'
         run: npm run freshness
       # The bundle that actually ships to a phone. Every check above runs
       # against the WEB build; this one builds dist-ios and boots it, which is
       # a different document at a different path. It owns its own port.
       - name: The iOS bundle boots as the app at its root
+        if: matrix.shard == 'access'
         run: npm run build:ios && npm run ios
       # Builds the app twice itself, with and without a feed key, and owns its
       # own ports. It is here rather than in the unit job because the question
@@ -117,7 +149,27 @@ jobs:
       # can be asked that — the verifier's own tests pass whether or not
       # anything calls it.
       - name: An unproven policy feed does not reach the store
+        if: matrix.shard == 'journeys'
         run: npm run feed:wiring
+
+  # The one result to read. A matrix reports a check per shard, named after
+  # the shard, so anything that asks for `browser` by name — a required check,
+  # or a person looking for the browser sweeps — would otherwise find nothing,
+  # and nothing found is not the same as passed. This passes only when every
+  # shard did; a shard that was cancelled or never got a runner fails it.
+  browser-result:
+    name: browser
+    needs: browser
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every browser shard passed
+        env:
+          RESULT: ${{ needs.browser.result }}
+        run: |
+          echo "the browser shards: $RESULT"
+          test "$RESULT" = success
 
   # The iPhone app, compiled. Nothing else here ever builds the native half:
   # the browser job runs the web bundle with the bridge stubbed, so a Swift
