@@ -391,6 +391,18 @@ if (!/Deadline alerts/.test(settingsText)) {
     if (kept.length !== 1 || kept[0][1] !== photo) {
       failures.push({ what: 'saving a scanned receipt did not keep the photo the camera took', saw: `${kept.length} photos on disk` });
     }
+    /*
+     * And the library's own copy. Every mirror write is a pending file renamed
+     * over kept-receipts.json (see `write` in src/lib/mirror.ts), so the
+     * receipt must be IN the mirror and nothing left pending. Asked here
+     * because this save is one that writes: the rescue below stores a library
+     * identical to the one it read, which `save` skips, so no check there
+     * could see a rename that never happened.
+     */
+    const files = await np.evaluate(() => window.__keptDisk());
+    if (!/KENWOOD MIXER/i.test(String(files['kept-receipts.json'])) || 'kept-receipts.json.next' in files) {
+      failures.push({ what: 'saving a receipt in the iOS bundle did not reach the mirror', saw: Object.keys(files).filter((k) => !k.startsWith('receipts/')).join(', ') });
+    }
     await np.getByText(/KENWOOD MIXER/i).first().click().catch(() => {});
     await np.waitForTimeout(600);
     const shown = await np.getByRole('img', { name: 'The paper receipt for this purchase' }).isVisible().catch(() => false);

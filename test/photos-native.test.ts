@@ -28,6 +28,9 @@ vi.mock('@capacitor/filesystem', () => ({
     rmdir: async ({ path }: { path: string }) => void dirsRemoved.push(path),
     mkdir: async () => {},
     writeFile: async () => {},
+    // A mirror write is a pending file renamed over the mirror; this suite
+    // keeps no files, so the rename has nothing to move.
+    rename: async () => {},
     readFile: async () => {
       if (readFileReturns === undefined) throw new Error('ENOENT');
       return { data: readFileReturns };
