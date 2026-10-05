@@ -29,10 +29,19 @@ function humaniseRemaining(today: Date, ends: Date): string {
   const days = daysBetween(today, ends);
   if (days < 0) return '';
   if (days < 45) return `${days} ${days === 1 ? 'day' : 'days'}`;
-  // Starting at 1 gives the same answer everywhere this line is reached — 45
-  // days is always at least one whole month — so no test can tell 0 from 1
-  // here. Recorded rather than left for the next person to try.
-  let months = 0;
+  // The whole months from today that still fit before the cover ends. This
+  // counted up from nought a month at a time — three Dates a step, seventy-two
+  // steps for a six-year guarantee — and `derive` runs it for every receipt
+  // with a guarantee, on every pass over the library: at 3,000 receipts, with
+  // a third carrying one, it was most of what `derive` cost. Now it starts
+  // from the calendar's own count (the months between the two dates' months,
+  // less one so it begins at or below the answer) and walks the last step or
+  // two. The same walk as before, the same answer — `addMonths` only moves
+  // forward as the months grow, so wherever it starts below the answer, the
+  // walk stops where the old one did; test/big-library.test.ts holds the two
+  // to agreeing on every day of four years.
+  const between = (ends.getFullYear() - today.getFullYear()) * 12 + (ends.getMonth() - today.getMonth());
+  let months = Math.max(0, between - 1);
   while (addMonths(today, months + 1).getTime() <= ends.getTime()) months += 1;
   // Singular, like the days and years branches either side of it. This read
   // "1 months" for every warranty between 45 and 59 days from its end, on the

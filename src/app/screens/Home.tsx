@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { memo, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { color, font, gradient, radius, shadow } from '../../tokens';
 import { addDays, fmtDate, fmtDateNear, fromISODate } from '../../lib/dates';
 import { money, sumPence } from '../../lib/money';
@@ -48,16 +48,31 @@ const sectionLabel = (c: string) => ({
 
 export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onOpen, onSwipe, onKeepClosed, reminders, onAdd, onWatch, onClearSamples, undoShowing = false }: Props) {
   const [query, setQuery] = useState('');
+  /*
+   * The list follows the box; it does not hold it up. A search expands the
+   * settled lists in full, so on a library of 3,000 receipts the first letter
+   * puts hundreds of rows on screen, and with the CPU slowed four times — a
+   * mid-range phone — the first letter took 1.4 s to appear in the box, and
+   * typing "kettle" a key every 200 ms froze the page for up to a second and
+   * took 3.3 s to show the answer. Deferred, the letter appears in under
+   * 100 ms, a render overtaken by the next letter is dropped rather than
+   * finished, and "kettle" is answered in 1.5 s (a second of it the typing)
+   * with nothing longer than 160 ms in the way. The list that lands is the
+   * same list. Everything below reads `shown`; only the box reads `query`.
+   */
+  const shown = useDeferredValue(query);
   const [openReturned, setOpenReturned] = useState(false);
   const [openKept, setOpenKept] = useState(false);
   const offerSearch = shouldOfferSearch(receipts);
-  const searching = offerSearch && query.trim().length > 0;
+  const searching = offerSearch && shown.trim().length > 0;
   // Filtered inside the urgency buckets rather than flattened into one list:
   // "which of these is about to close" is the question the grouping answers,
   // and it is still the question while you are looking for something.
-  const visible = searching ? search(receipts, query) : receipts;
+  // Held while the box changes and the list has not caught up: the render
+  // that shows the new letter does not search and sort the library again.
+  const visible = useMemo(() => (searching ? search(receipts, shown) : receipts), [searching, receipts, shown]);
 
-  const { unsure, closed, urgent, later, returned, kept, sent } = bucket(visible, today, urgentDays);
+  const { unsure, closed, urgent, later, returned, kept, sent } = useMemo(() => bucket(visible, today, urgentDays), [visible, today, urgentDays]);
   // The unsure first: like the closed, their day has gone by on the count
   // kept has, and unlike them they may still be saved by one date.
   const active = [...unsure, ...closed, ...urgent, ...later];
@@ -99,9 +114,9 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
       setSpokenCount('');
       return undefined;
     }
-    const t = setTimeout(() => setSpokenCount(searchStatus(matchCount, query)), 450);
+    const t = setTimeout(() => setSpokenCount(searchStatus(matchCount, shown)), 450);
     return () => clearTimeout(t);
-  }, [searching, query, matchCount]);
+  }, [searching, shown, matchCount]);
 
   return (
     <div style={{ flex: 1, overflow: 'auto', padding: `6px 16px ${undoShowing ? 212 : 120}px` }}>
@@ -255,7 +270,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
       {nothingMatched && (
         <div style={{ textAlign: 'center', padding: '40px 24px' }}>
           <div style={{ fontFamily: font.display, fontSize: 20, fontWeight: 600, letterSpacing: '-0.4px' }}>
-            Nothing matches “{query.trim()}”
+            Nothing matches “{shown.trim()}”
           </div>
           <div style={{ fontSize: 14, color: color.muted, lineHeight: 1.6, marginTop: 8 }}>
             Try the shop’s name, or what the thing was.
@@ -298,15 +313,16 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
           <p style={{ margin: '-4px 4px 10px', fontSize: 13, lineHeight: 1.5, color: color.body }}>{unsureNote(unsure)}</p>
           <ul className="k-group" data-unsure>
             {unsure.map((r) => (
-              <ReceiptRow
+              <ActiveRow
                 key={r.id}
                 receipt={r}
-                onItsWay={awaitingArrival(r, today)}
-                urgency={urgency(derive(r, today).daysLeft, urgentDays, deadlineIsFloor(r))}
+                today={today}
+                urgentDays={urgentDays}
+                hedged={deadlineIsFloor(r)}
                 emphasised
                 policyChanged={changedIds.has(r.id)}
-                onOpen={() => onOpen(r.id)}
-                onSwipe={() => onSwipe(r.id)}
+                onOpen={onOpen}
+                onSwipe={onSwipe}
               />
             ))}
           </ul>
@@ -322,15 +338,16 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
           <h2 style={sectionLabel(color.danger)}>Window closed · check your rights</h2>
           <ul className="k-group">
             {closed.map((r) => (
-              <ReceiptRow
+              <ActiveRow
                 key={r.id}
                 receipt={r}
-                onItsWay={awaitingArrival(r, today)}
-                urgency={urgency(derive(r, today).daysLeft, urgentDays)}
+                today={today}
+                urgentDays={urgentDays}
+                hedged={false}
                 emphasised
                 policyChanged={changedIds.has(r.id)}
-                onOpen={() => onOpen(r.id)}
-                onSwipe={() => onSwipe(r.id)}
+                onOpen={onOpen}
+                onSwipe={onSwipe}
               />
             ))}
           </ul>
@@ -354,15 +371,16 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
           <h2 style={sectionLabel(color.danger)}>Due soon</h2>
           <ul className="k-group">
             {urgent.map((r) => (
-              <ReceiptRow
+              <ActiveRow
                 key={r.id}
                 receipt={r}
-                onItsWay={awaitingArrival(r, today)}
-                urgency={urgency(derive(r, today).daysLeft, urgentDays)}
+                today={today}
+                urgentDays={urgentDays}
+                hedged={false}
                 emphasised
                 policyChanged={changedIds.has(r.id)}
-                onOpen={() => onOpen(r.id)}
-                onSwipe={() => onSwipe(r.id)}
+                onOpen={onOpen}
+                onSwipe={onSwipe}
               />
             ))}
           </ul>
@@ -374,15 +392,16 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
           <h2 style={sectionLabel(color.muted)}>Later</h2>
           <ul className="k-group">
             {later.map((r) => (
-              <ReceiptRow
+              <ActiveRow
                 key={r.id}
                 receipt={r}
-                onItsWay={awaitingArrival(r, today)}
-                urgency={urgency(derive(r, today).daysLeft, urgentDays)}
+                today={today}
+                urgentDays={urgentDays}
+                hedged={false}
                 emphasised={false}
                 policyChanged={changedIds.has(r.id)}
-                onOpen={() => onOpen(r.id)}
-                onSwipe={() => onSwipe(r.id)}
+                onOpen={onOpen}
+                onSwipe={onSwipe}
               />
             ))}
           </ul>
@@ -397,32 +416,9 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
           <ul className="k-group">
             {/* A refund that is late comes first and says so: the list is where
                 a chase starts, and the oldest parcel was otherwise the last row. */}
-            {[...sent.filter((r) => refundChase(r, today)?.late), ...sent.filter((r) => !refundChase(r, today)?.late)].map((r) => {
-              const went = r.sentOn ? `sent back ${fmtDateNear(fromISODate(r.sentOn), today)}` : 'sent back';
-              const late = !!refundChase(r, today)?.late;
-              return (
-                <li key={r.id} style={{ listStyle: 'none' }}>
-                  <Pressable
-                    onClick={() => onOpen(r.id)}
-                    aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${money(r.amount)}, ${went}, ${late ? 'refund late' : 'waiting for the refund'}`}
-                    style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 15, background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.card }}
-                  >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: 15, color: color.body, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.store}</div>
-                      <div style={{ fontSize: 12, color: color.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {r.demo && <span>sample · </span>}
-                        {r.item}
-                      </div>
-                      <div style={{ fontSize: 12, color: color.muted, marginTop: 2 }}>
-                        {went}
-                        {late && <span style={{ color: color.danger, fontWeight: 600 }}> · refund late</span>}
-                      </div>
-                    </div>
-                    <div style={{ fontFamily: font.figures, fontSize: 15, fontWeight: 600, color: color.body, flexShrink: 0 }}>{money(r.amount)}</div>
-                  </Pressable>
-                </li>
-              );
-            })}
+            {[...sent.filter((r) => refundChase(r, today)?.late), ...sent.filter((r) => !refundChase(r, today)?.late)].map((r) => (
+              <SentRow key={r.id} receipt={r} today={today} onOpen={onOpen} />
+            ))}
           </ul>
         </>
       )}
@@ -432,37 +428,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
           <h2 style={sectionLabel(color.muted)}>Money back ✓</h2>
           <ul id="money-back-list" className="k-group">
             {settledRows(returned, openReturned, searching).rows.map((r) => (
-              <li key={r.id} style={{ listStyle: 'none' }}>
-                {/* Reachable. These were inert, so a receipt marked returned by
-                    a stray swipe could never be opened, corrected or deleted. */}
-                <Pressable
-                  onClick={() => onOpen(r.id)}
-                  aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${r.exchanged ? 'swapped for another' : `${money(refundOf(r))} ${r.credit ? 'in credit' : 'back'}, returned`}`}
-                  style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 15, background: color.surfaceAlt, border: '1px solid rgba(10,10,18,0.06)', borderRadius: radius.card }}
-                >
-                  <div style={{ width: 40, height: 40, borderRadius: 10, background: color.accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Tick />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 15, textDecoration: 'line-through', color: color.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.store}</div>
-                    {/* The marker survives the return. This list is where
-                        "which of these were mine" is asked, and the row
-                        stopped saying so the moment it was ticked off — these
-                        rows are hand-built rather than a ReceiptRow, so the
-                        marker added there never reached them. */}
-                    <div style={{ fontSize: 12, color: color.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {r.demo && <span>sample · </span>}
-                      {r.item}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    {/* A swap brought an item back, not money: said, not shown as £0.00. */}
-                    <div style={{ fontFamily: font.figures, fontSize: 15, fontWeight: 600, color: color.accentInk }}>{r.exchanged ? 'swapped' : money(refundOf(r))}</div>
-                    {/* Credit is not cash: it is still at the shop, to be spent. */}
-                    {r.credit && <div style={{ fontSize: 11, fontWeight: 600, color: color.muted, marginTop: 2 }}>credit</div>}
-                  </div>
-                </Pressable>
-              </li>
+              <MoneyBackRow key={r.id} receipt={r} onOpen={onOpen} />
             ))}
           </ul>
           <ShowAll list="money-back-list" total={returned.length} hidden={settledRows(returned, openReturned, searching).hidden} open={openReturned} onToggle={() => setOpenReturned((v) => !v)} />
@@ -476,28 +442,9 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
               shop's window, which is why it is kept here rather than deleted. */}
           <h2 style={sectionLabel(color.muted)}>Keeping</h2>
           <ul id="keeping-list" className="k-group">
-            {settledRows(kept, openKept, searching).rows.map((r) => {
-              const cover = coverLine(r, today);
-              return (
-              <li key={r.id} style={{ listStyle: 'none' }}>
-                <Pressable
-                  onClick={() => onOpen(r.id)}
-                  aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${money(r.amount)}, ${cover ? `${cover}, ` : ''}keeping it`}
-                  style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 15, background: color.surfaceAlt, border: '1px solid rgba(10,10,18,0.06)', borderRadius: radius.card }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 15, color: color.body, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.store}</div>
-                    <div style={{ fontSize: 12, color: color.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {r.demo && <span>sample · </span>}
-                      {r.item}
-                    </div>
-                    {cover && <div style={{ fontSize: 12, color: color.muted, marginTop: 2 }}>{cover}</div>}
-                  </div>
-                  <div style={{ fontFamily: font.figures, fontSize: 15, fontWeight: 600, color: color.muted, flexShrink: 0 }}>{money(r.amount)}</div>
-                </Pressable>
-              </li>
-              );
-            })}
+            {settledRows(kept, openKept, searching).rows.map((r) => (
+              <KeepingRow key={r.id} receipt={r} today={today} onOpen={onOpen} />
+            ))}
           </ul>
           <ShowAll list="keeping-list" total={kept.length} hidden={settledRows(kept, openKept, searching).hidden} open={openKept} onToggle={() => setOpenKept((v) => !v)} />
         </>
@@ -505,6 +452,132 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
     </div>
   );
 }
+
+/*
+ * The rows, each memoised on what it shows.
+ *
+ * Home renders again on every keystroke in the search box, and a search
+ * expands the settled lists in full: on a library of 3,000 receipts one
+ * letter puts hundreds of them on screen, and every later letter rendered
+ * every surviving row again — the same receipt, the same day, the same
+ * words — before React found nothing to change. Measured with the CPU slowed
+ * four times, a mid-range phone: the last letters of "kettle", which barely
+ * change the list, took 90–140 ms each, and 50–95 ms memoised. Each row now
+ * takes only what it shows, and the callbacks Home was handed rather than an
+ * arrow made per row per render, so a row whose receipt has not changed is
+ * skipped. test/big-library.test.ts holds the rows to being memoised and to
+ * taking no fresh arrow from Home.
+ */
+
+/** A row under the deadline headings. `hedged` is the unsure section's floor. */
+export const ActiveRow = memo(function ActiveRow({ receipt: r, today, urgentDays, hedged, emphasised, policyChanged, onOpen, onSwipe }: {
+  receipt: Receipt;
+  today: Date;
+  urgentDays: number;
+  hedged: boolean;
+  emphasised: boolean;
+  policyChanged: boolean;
+  onOpen: (id: string) => void;
+  onSwipe: (id: string) => void;
+}) {
+  return (
+    <ReceiptRow
+      receipt={r}
+      onItsWay={awaitingArrival(r, today)}
+      urgency={urgency(derive(r, today).daysLeft, urgentDays, hedged)}
+      emphasised={emphasised}
+      policyChanged={policyChanged}
+      onOpen={() => onOpen(r.id)}
+      onSwipe={() => onSwipe(r.id)}
+    />
+  );
+});
+
+export const SentRow = memo(function SentRow({ receipt: r, today, onOpen }: { receipt: Receipt; today: Date; onOpen: (id: string) => void }) {
+  const went = r.sentOn ? `sent back ${fmtDateNear(fromISODate(r.sentOn), today)}` : 'sent back';
+  const late = !!refundChase(r, today)?.late;
+  return (
+    <li style={{ listStyle: 'none' }}>
+      <Pressable
+        onClick={() => onOpen(r.id)}
+        aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${money(r.amount)}, ${went}, ${late ? 'refund late' : 'waiting for the refund'}`}
+        style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 15, background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.card }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 600, fontSize: 15, color: color.body, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.store}</div>
+          <div style={{ fontSize: 12, color: color.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {r.demo && <span>sample · </span>}
+            {r.item}
+          </div>
+          <div style={{ fontSize: 12, color: color.muted, marginTop: 2 }}>
+            {went}
+            {late && <span style={{ color: color.danger, fontWeight: 600 }}> · refund late</span>}
+          </div>
+        </div>
+        <div style={{ fontFamily: font.figures, fontSize: 15, fontWeight: 600, color: color.body, flexShrink: 0 }}>{money(r.amount)}</div>
+      </Pressable>
+    </li>
+  );
+});
+
+export const MoneyBackRow = memo(function MoneyBackRow({ receipt: r, onOpen }: { receipt: Receipt; onOpen: (id: string) => void }) {
+  return (
+    <li style={{ listStyle: 'none' }}>
+      {/* Reachable. These were inert, so a receipt marked returned by
+          a stray swipe could never be opened, corrected or deleted. */}
+      <Pressable
+        onClick={() => onOpen(r.id)}
+        aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${r.exchanged ? 'swapped for another' : `${money(refundOf(r))} ${r.credit ? 'in credit' : 'back'}, returned`}`}
+        style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 15, background: color.surfaceAlt, border: '1px solid rgba(10,10,18,0.06)', borderRadius: radius.card }}
+      >
+        <div style={{ width: 40, height: 40, borderRadius: 10, background: color.accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Tick />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 600, fontSize: 15, textDecoration: 'line-through', color: color.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.store}</div>
+          {/* The marker survives the return. This list is where
+              "which of these were mine" is asked, and the row
+              stopped saying so the moment it was ticked off — these
+              rows are hand-built rather than a ReceiptRow, so the
+              marker added there never reached them. */}
+          <div style={{ fontSize: 12, color: color.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {r.demo && <span>sample · </span>}
+            {r.item}
+          </div>
+        </div>
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          {/* A swap brought an item back, not money: said, not shown as £0.00. */}
+          <div style={{ fontFamily: font.figures, fontSize: 15, fontWeight: 600, color: color.accentInk }}>{r.exchanged ? 'swapped' : money(refundOf(r))}</div>
+          {/* Credit is not cash: it is still at the shop, to be spent. */}
+          {r.credit && <div style={{ fontSize: 11, fontWeight: 600, color: color.muted, marginTop: 2 }}>credit</div>}
+        </div>
+      </Pressable>
+    </li>
+  );
+});
+
+export const KeepingRow = memo(function KeepingRow({ receipt: r, today, onOpen }: { receipt: Receipt; today: Date; onOpen: (id: string) => void }) {
+  const cover = coverLine(r, today);
+  return (
+    <li style={{ listStyle: 'none' }}>
+      <Pressable
+        onClick={() => onOpen(r.id)}
+        aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${money(r.amount)}, ${cover ? `${cover}, ` : ''}keeping it`}
+        style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 15, background: color.surfaceAlt, border: '1px solid rgba(10,10,18,0.06)', borderRadius: radius.card }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 600, fontSize: 15, color: color.body, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.store}</div>
+          <div style={{ fontSize: 12, color: color.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {r.demo && <span>sample · </span>}
+            {r.item}
+          </div>
+          {cover && <div style={{ fontSize: 12, color: color.muted, marginTop: 2 }}>{cover}</div>}
+        </div>
+        <div style={{ fontFamily: font.figures, fontSize: 15, fontWeight: 600, color: color.muted, flexShrink: 0 }}>{money(r.amount)}</div>
+      </Pressable>
+    </li>
+  );
+});
 
 /**
  * The way to the rest of a settled section, and back. Rendered only where

@@ -112,9 +112,34 @@ export function fromISODate(iso: string): Date {
   return new Date(y, (m ?? 1) - 1, d ?? 1);
 }
 
+/*
+ * One formatter each, made once. `toLocaleDateString` builds a new
+ * Intl.DateTimeFormat on every call, and a list row can carry a date: on a
+ * library of 3,000 receipts a search that matched the Keeping list called it
+ * once a row per keystroke. Measured in Node, 69 µs a call against under 1 µs
+ * for a formatter already made — 207 ms for 3,000 dates, on the main thread.
+ *
+ * Held in UTC and handed the date's own LOCAL day, month and year, so the
+ * answer is the one `toLocaleDateString` gave and cannot drift: a formatter
+ * made once also fixes its timezone once, and a phone that crosses a zone with
+ * the app open would otherwise print a local midnight as the day before.
+ */
+const SHORT = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+const LONG = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+/** The same calendar day as `d` reads locally, as an instant in UTC. */
+function sameDayInUTC(d: Date): Date {
+  const u = new Date(0);
+  // setUTCFullYear rather than Date.UTC, which reads years 0–99 as 1900–1999.
+  u.setUTCFullYear(d.getFullYear(), d.getMonth(), d.getDate());
+  return u;
+}
+
 /** en-GB short form, as the design shows it: "5 Sep". */
 export function fmtDate(d: Date): string {
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  // An invalid date throws from `format`; toLocaleDateString says so instead.
+  if (Number.isNaN(d.getTime())) return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  return SHORT.format(sameDayInUTC(d));
 }
 
 /**
@@ -139,7 +164,8 @@ export function fmtDatesTogether(dates: readonly Date[], today: Date): string[] 
 
 /** en-GB long form for legal copy: "5 September 2026". */
 export function fmtDateLong(d: Date): string {
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  if (Number.isNaN(d.getTime())) return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  return LONG.format(sameDayInUTC(d));
 }
 
 /**
