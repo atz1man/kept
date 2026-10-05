@@ -1,4 +1,4 @@
-import { addDays, startOfDay } from './dates';
+import { addDays, startOfDay, toISODate } from './dates';
 import { derive } from './receipts';
 import { alertKey, copyFor, singleShotDue, singleShots, type AlertRung, type ReturnRung } from './alerts';
 import type { Receipt } from './types';
@@ -45,7 +45,48 @@ export interface PlannedAlert {
   at: Date;
   title: string;
   body: string;
+  /**
+   * Present when this is a single-shot rung lodged AFTER its notice morning
+   * had gone: what to remember about it once iOS has it (`recordLate`).
+   */
+  late?: LateLodged;
 }
+
+/**
+ * A single-shot alert lodged late — after its one notice morning had gone —
+ * and the clock it was about.
+ *
+ * Needed because nothing else records it. On iOS a reminder is recorded as
+ * said (`alertsSent`) only when it is TAPPED (state.ts says why: delivery is
+ * not inferred from the clock), and a late one is lodged for "the next 9am",
+ * which is a different morning every day. So one that fired and was swiped
+ * away was lodged again on the next launch for the morning after, and again
+ * the day after that: measured, a credit note recorded with twenty days to
+ * run and the app opened each evening raised twenty notifications.
+ *
+ * This is a narrower fact than delivery — "it was lodged with iOS for `at`" —
+ * and it is used only for what it says. While `at` is ahead, a re-plan lodges
+ * for the same `at` rather than moving it. Once `at` has passed, the alert has
+ * had its morning, exactly as an on-time one whose 9am has passed has had its
+ * own, and it is not lodged again. `from` and `until` name the clock: where
+ * the person moves it (a new expiry on the credit note, a longer guarantee,
+ * the day it arrived), the record is about a day that has gone, and the alert
+ * is owed again.
+ */
+export interface LateLodged {
+  /** The instant it was lodged for, ISO. */
+  at: string;
+  /** The rung's first day, ISO date. */
+  from: string;
+  /** Its last day, ISO date, or null where it does not lapse. */
+  until: string | null;
+}
+
+/** Late lodgings, by alert key. */
+export type LateRecord = Readonly<Record<string, LateLodged>>;
+
+// Not `Object.hasOwn`: the iOS build targets 13, whose web view predates it.
+const owns = (o: object, k: string) => Object.prototype.hasOwnProperty.call(o, k);
 
 /**
  * How many days before the deadline each rung is worth raising.
@@ -97,12 +138,14 @@ function nextNine(now: Date): Date {
  * @param sent Keys already delivered — the same list `dueAlerts` reads, so an
  *             alert the app already showed on screen is not then repeated by
  *             the operating system a week later.
+ * @param late Single-shot alerts already lodged late (`LateLodged`).
  */
 export function planAlerts(
   receipts: readonly Receipt[],
   today: Date,
   urgentDays: number,
   sent: ReadonlySet<string>,
+  late: LateRecord = {},
 ): PlannedAlert[] {
   const now = new Date();
   const out: PlannedAlert[] = [];
@@ -130,9 +173,17 @@ export function planAlerts(
      */
     for (const s of singleShots(r, today)) {
       if (sent.has(s.key)) continue;
-      const when = new Date(Math.max(at9am(s.from).getTime(), nextNine(now).getTime()));
+      const notice = at9am(s.from);
+      const clock = { from: toISODate(s.from), until: s.until ? toISODate(s.until) : null };
+      // Already lodged late, about this same clock: its morning is fixed.
+      const before = owns(late, s.key) ? late[s.key] : undefined;
+      const same = before !== undefined && before.from === clock.from && before.until === clock.until;
+      const when = same ? new Date(before.at) : new Date(Math.max(notice.getTime(), nextNine(now).getTime()));
+      // Its morning came: said, as an on-time one is once its 9am has passed.
+      if (when.getTime() <= now.getTime()) continue;
       if (!singleShotDue(s, when)) continue;
-      out.push({ key: s.key, receiptId: r.id, rung: s.rung, at: when, ...s.copy(when) });
+      const lateBy = when.getTime() > notice.getTime() ? { at: when.toISOString(), ...clock } : undefined;
+      out.push({ key: s.key, receiptId: r.id, rung: s.rung, at: when, ...s.copy(when), ...(lateBy ? { late: lateBy } : {}) });
     }
     if (r.status !== 'active') continue;
     // The same rule `dueAlerts` states at length: a notification is not a
@@ -161,4 +212,31 @@ export function planAlerts(
 
   out.sort((a, b) => a.at.getTime() - b.at.getTime());
   return out.slice(0, MAX_PENDING);
+}
+
+/**
+ * The late record after `plan` has been handed to iOS: its late lodgings
+ * added (or, for a clock that moved, replaced), and anything no longer worth
+ * holding dropped — a receipt that has gone, or a key now in `sent`, which
+ * says more than this record does.
+ *
+ * Returns `previous` itself when nothing changed, so a caller can tell.
+ */
+export function recordLate(
+  previous: LateRecord,
+  plan: readonly PlannedAlert[],
+  receipts: readonly Receipt[],
+  sent: ReadonlySet<string>,
+): LateRecord {
+  const held = new Set(receipts.map((r) => r.id));
+  const next: Record<string, LateLodged> = Object.fromEntries(
+    Object.entries(previous).filter(([key]) => !sent.has(key) && held.has(key.slice(0, key.lastIndexOf(':')))),
+  );
+  for (const p of plan) if (p.late && !sent.has(p.key) && held.has(p.receiptId)) next[p.key] = p.late;
+  const a = Object.keys(previous);
+  const b = Object.keys(next);
+  const unchanged =
+    a.length === b.length &&
+    b.every((k) => owns(previous, k) && previous[k].at === next[k].at && previous[k].from === next[k].from && previous[k].until === next[k].until);
+  return unchanged ? previous : next;
 }

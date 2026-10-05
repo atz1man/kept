@@ -86,7 +86,7 @@ describe('once the notice has gone', () => {
 describe('recording the notice', () => {
   const state = (r: Receipt): AppState => ({
     version: 1, receipts: [r], updates: [], onboardingSeen: true,
-    settings: { ...DEFAULT_SETTINGS }, alertsSent: [],
+    settings: { ...DEFAULT_SETTINGS }, alertsLate: {}, alertsSent: [],
     screen: 'detail', selId: r.id, obStep: 0, celebrating: null, shared: 'no', upgrading: false, store: { shelf: { kind: 'asking' }, busy: null, note: null },
     sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null, restored: null,
   });

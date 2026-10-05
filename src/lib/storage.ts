@@ -1,3 +1,4 @@
+import { SINGLE_SHOT_RUNGS } from './alerts';
 import { readPrice } from './app-store';
 import { readReceipt } from './backup';
 import { embedded } from './embed';
@@ -7,6 +8,7 @@ import { readFeed } from './policy-feed';
 import { seedReceipts, seedUpdates } from './seed';
 import type { PolicyUpdate, Receipt } from './types';
 import { DEFAULT_URGENT_DAYS } from './urgency';
+import type { LateLodged } from './schedule';
 
 /**
  * Local-first persistence.
@@ -85,6 +87,14 @@ export interface KeptState {
    * reload would re-announce the same coat every launch.
    */
   alertsSent: string[];
+  /**
+   * Single-shot alerts lodged with iOS after their notice morning had gone,
+   * by key (`LateLodged` in schedule.ts says why). Not delivery: only that
+   * one was lodged for a moment, so a re-plan does not lodge it again for
+   * another. Not in a backup, as `alertsSent` is not: both are about what
+   * this device has said.
+   */
+  alertsLate: Record<string, LateLodged>;
 }
 
 /**
@@ -111,6 +121,7 @@ export function freshState(today: Date): KeptState {
     onboardingSeen: false,
     settings: { ...DEFAULT_SETTINGS },
     alertsSent: [],
+    alertsLate: {},
   };
 }
 
@@ -182,6 +193,37 @@ function readSettings(raw: unknown): Settings {
   };
 }
 
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * The late-lodging record, entry by entry, with anything unreadable dropped.
+ *
+ * An entry is a promise not to say something again, so one that cannot be
+ * read is not trusted: dropped, the worst that follows is that an alert is
+ * lodged once more. Only for receipts still held and only for the
+ * single-shot rungs, which are the only ones ever lodged late; anything else
+ * could only ever silence a rung it was never about.
+ */
+function readLate(raw: unknown, held: ReadonlySet<string>): Record<string, LateLodged> {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return {};
+  return Object.fromEntries(
+    Object.entries(raw).filter(([key, v]) => {
+      const cut = key.lastIndexOf(':');
+      if (cut <= 0 || !held.has(key.slice(0, cut)) || !(SINGLE_SHOT_RUNGS as readonly string[]).includes(key.slice(cut + 1))) return false;
+      if (typeof v !== 'object' || v === null) return false;
+      const e = v as Record<string, unknown>;
+      return (
+        typeof e.at === 'string' && !Number.isNaN(Date.parse(e.at)) &&
+        typeof e.from === 'string' && ISO_DAY.test(e.from) &&
+        (e.until === null || (typeof e.until === 'string' && ISO_DAY.test(e.until)))
+      );
+    }).map(([key, v]) => {
+      const e = v as LateLodged;
+      return [key, { at: e.at, from: e.from, until: e.until }];
+    }),
+  );
+}
+
 export function hydrate(raw: unknown, today: Date): KeptState {
   if (typeof raw !== 'object' || raw === null) return freshState(today);
   const parsed = raw as Partial<KeptState>;
@@ -221,6 +263,7 @@ export function hydrate(raw: unknown, today: Date): KeptState {
     onboardingSeen: parsed.onboardingSeen === true,
     settings: readSettings(parsed.settings),
     alertsSent: Array.isArray(parsed.alertsSent) ? parsed.alertsSent.filter((k) => typeof k === 'string') : [],
+    alertsLate: readLate((parsed as { alertsLate?: unknown }).alertsLate, seen),
   };
 }
 
@@ -564,7 +607,7 @@ function erasedFrom(raw: string | null): string {
     const parsed: unknown = JSON.parse(raw ?? '');
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
       const { updates: _news, ...rest } = parsed as Record<string, unknown>;
-      return JSON.stringify({ ...rest, receipts: [], alertsSent: [] });
+      return JSON.stringify({ ...rest, receipts: [], alertsSent: [], alertsLate: {} });
     }
   } catch {
     // Unparseable is the same answer as absent: write a clean empty library.

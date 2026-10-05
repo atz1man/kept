@@ -24,7 +24,7 @@ const r = (id: string, item: string, amount: number): Receipt => ({
   policy: 'Argos · 30-day return window', distance: true, status: 'active',
 });
 const start = (receipts: Receipt[]): AppState => ({
-  version: 1, receipts, updates: [], onboardingSeen: true, settings: { ...DEFAULT_SETTINGS }, alertsSent: [],
+  version: 1, receipts, updates: [], onboardingSeen: true, settings: { ...DEFAULT_SETTINGS }, alertsLate: {}, alertsSent: [],
   screen: 'settings', selId: null, obStep: 0, celebrating: null, shared: 'no', upgrading: false,
   store: { shelf: { kind: 'asking' }, busy: null, note: null },
   sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null,

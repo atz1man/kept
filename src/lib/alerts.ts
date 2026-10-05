@@ -307,6 +307,7 @@ export function copyFor(rung: AlertRung, r: Receipt, daysLeft: number, deadline:
 
 /** A rung on a clock of its own, rather than one of the return ladder's four. */
 export type SingleShotRung = 'refund' | 'warranty' | 'reject' | 'credit' | 'fault';
+export const SINGLE_SHOT_RUNGS: readonly SingleShotRung[] = ['refund', 'warranty', 'reject', 'credit', 'fault'];
 
 /**
  * One single-shot alert a receipt carries: the days on which it is worth

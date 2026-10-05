@@ -675,6 +675,24 @@ if (!/Deadline alerts/.test(settingsText)) {
         what: 'an item kept on day 28 did not have its right to reject lodged for the next 9am, counted from that morning',
         saw: `status ${status}; ${JSON.stringify(got).slice(0, 300)}`,
       });
+    } else {
+      /*
+       * And once. On iOS only a TAP records a reminder as said, so a late one
+       * that fired and was swiped away used to be lodged again on the next
+       * launch for the morning after, every day until the right ran out. Two
+       * launches after its 9am, the clock pinned, and nothing about it is
+       * handed to iOS again.
+       */
+      const again = [];
+      for (const hours of [1, 3]) {
+        await lctx.clock.setFixedTime(new Date(got[0].at + hours * 3_600_000));
+        await lp.reload({ waitUntil: 'networkidle' });
+        await lp.waitForTimeout(1200);
+        again.push(...(await lp.evaluate(() => window.__keptNotes().pending)).map((n) => ({ key: n.extra?.key, at: n.schedule?.at })));
+      }
+      if (again.length > 0) {
+        failures.push({ what: 'a late reminder that had had its morning was lodged again on a later launch', saw: JSON.stringify(again).slice(0, 300) });
+      }
     }
     if (lerrors.length > 0) failures.push({ what: 'the late-reminder run raised page errors', saw: lerrors.join(' | ') });
     await lctx.close();

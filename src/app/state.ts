@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useState } from 'react';
 import { alertKey, inheritedKeys, movedRungs, pruneSent, remindedBeforeWindow } from '../lib/alerts';
-import { planAlerts } from '../lib/schedule';
+import { planAlerts, recordLate, type PlannedAlert } from '../lib/schedule';
 import { embedded } from '../lib/embed';
 import { isNative } from '../lib/mirror';
 import { cleanupPhotos } from '../lib/photos';
@@ -138,6 +138,8 @@ export type Action =
   | { type: 'restore'; backup: ImportSummary }
   | { type: 'undo-unswap' }
   | { type: 'alerted'; keys: string[] }
+  /** A plan iOS now holds: its late single-shot lodgings are remembered (schedule.ts `recordLate`). */
+  | { type: 'lodged'; plan: readonly PlannedAlert[] }
   | { type: 'feed'; updates: PolicyUpdate[] }
   | { type: 'settings'; patch: Partial<Settings> }
   | { type: 'keep'; id: string }
@@ -860,6 +862,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         ...state,
         receipts: [],
         alertsSent: [],
+        alertsLate: {},
         // Back to the samples a fresh install has: see `erasedFrom` in
         // storage.ts for why the held news goes too, and why these two paths
         // must write the same thing.
@@ -915,6 +918,12 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       // superseded), so an alert that failed to display is tried again rather
       // than lost.
       return { ...state, alertsSent: [...new Set([...state.alertsSent, ...action.keys])] };
+    case 'lodged': {
+      // The same state back when nothing changed, so the sync effect that
+      // dispatched this does not run again for a record it already holds.
+      const alertsLate = recordLate(state.alertsLate, action.plan, state.receipts, new Set(state.alertsSent));
+      return alertsLate === state.alertsLate ? state : { ...state, alertsLate };
+    }
     case 'shared':
       return { ...state, shared: action.outcome };
   }
@@ -1031,9 +1040,10 @@ export function useApp() {
       onboardingSeen: state.onboardingSeen,
       settings: state.settings,
       alertsSent: state.alertsSent,
+      alertsLate: state.alertsLate,
     });
     setSaveFailed(!ok);
-  }, [state.embedded, state.version, state.receipts, state.updates, state.onboardingSeen, state.settings, state.alertsSent]);
+  }, [state.embedded, state.version, state.receipts, state.updates, state.onboardingSeen, state.settings, state.alertsSent, state.alertsLate]);
 
   /*
    * Pictures whose receipt has gone, cleared once per launch.
@@ -1118,10 +1128,16 @@ export function useApp() {
       void syncScheduled([]);
       return;
     }
-    void syncScheduled(
-      planAlerts(state.receipts, today, state.settings.urgentDays, new Set(state.alertsSent)),
-      state.settings.remindersExplained,
-    );
+    /*
+     * What iOS took is remembered where it was lodged late — after its one
+     * notice morning had gone — so the next launch does not lodge it again
+     * for a later morning (`LateLodged` in schedule.ts). Only once the plugin
+     * has it: a sync that was refused or failed lodged nothing to remember.
+     */
+    const plan = planAlerts(state.receipts, today, state.settings.urgentDays, new Set(state.alertsSent), state.alertsLate);
+    void syncScheduled(plan, state.settings.remindersExplained).then((lodged) => {
+      if (lodged && plan.some((p) => p.late)) rawDispatch({ type: 'lodged', plan });
+    });
   }, [
     state.embedded,
     state.receipts,
@@ -1129,6 +1145,7 @@ export function useApp() {
     state.settings.remindersExplained,
     state.settings.urgentDays,
     state.alertsSent,
+    state.alertsLate,
     today,
   ]);
 
