@@ -12,6 +12,7 @@ import { awaitingArrival, countsAsMoney, deadlineIsFloor, derive, makeReceiptId,
 import { windowStartFor } from '../lib/draft';
 import { readReturnRef } from '../lib/refund-chase';
 import { freshState, load, onExternalChange, save, type KeptState, type Settings } from '../lib/storage';
+import { seedUpdates } from '../lib/seed';
 import { quotaFull as quotaFullFor } from '../lib/quota';
 import { ONBOARDING_STEPS } from './screens/Onboarding';
 import { capsLibrary, offerFor, type Offer } from '../lib/pricing';
@@ -796,6 +797,10 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         ...state,
         receipts: [],
         alertsSent: [],
+        // Back to the samples a fresh install has: see `erasedFrom` in
+        // storage.ts for why the held news goes too, and why these two paths
+        // must write the same thing.
+        updates: seedUpdates(today),
         justDeleted: null,
         justKept: null, justReturned: null, justSent: null, justAdded: null,
         selId: null,

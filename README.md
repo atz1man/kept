@@ -1963,6 +1963,24 @@ dates and the deadline with it, and nobody can correct that. Both directions
 are pinned: applying the ceilings to the store fails, and removing them from
 the import path fails.
 
+**And the date the cap sorts by.** `readFeed` checked a date's shape and
+nothing more, so it took `2026-99-99` and `9999-12-31`. The cap keeps the
+newest two hundred by date, so a feed of two hundred entries dated 9999-12-31
+held every place for good: measured in a browser, a genuine signed feed
+published afterwards was never stored, and Erase everything kept the poison
+because it preserved the held news. A date now has to be a real one (the round
+trip `backup.ts` already uses) and no later than tomorrow on the reader's
+calendar: `feed:add` already refuses a future date when the feed is written,
+and the one day is the most any clock runs behind London's. The bound is tight
+on purpose, since whatever it allows is how long one bad feed can crowd out the
+real ones; a phone whose clock is slow refuses a genuine change and takes it on
+a later launch, which is the recoverable direction. `hydrate` reads the stored
+news through the same function, so an install already holding such a feed is
+cleaned at its next launch, and Erase everything now clears the held news back
+to the samples — it is the same for everyone, but Erase was the way out a bad
+feed was promised, and it is the only exit from a bad feed nobody has thought
+of yet. The cost is the news until the next launch online.
+
 ### The numbers that are facts, and the numbers that are judgements
 
 A third pass asked something different of the same suite: move every named

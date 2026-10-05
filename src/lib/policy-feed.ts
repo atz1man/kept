@@ -1,3 +1,4 @@
+import { addDays, fromISODate, toISODate } from './dates';
 import { deadlineIsFloor, derive } from './receipts';
 import { canonicalStoreName } from './stores';
 import { MAX_WINDOW_DAYS } from './draft';
@@ -362,6 +363,43 @@ const MAX_AFFECTED = 40;
 const isStr = (v: unknown): v is string => typeof v === 'string' && v.trim().length > 0;
 const fits = (v: unknown, max: number): v is string => isStr(v) && v.length <= max;
 
+/*
+ * A day the feed could actually mean: a real one, and not after tomorrow.
+ *
+ * Only the SHAPE was checked, so `2026-99-99` and `9999-12-31` both passed, and
+ * the second is the one that does damage. The list is kept newest-first and cut
+ * at MAX_UPDATES, so two hundred entries dated 9999-12-31 hold every place for
+ * good. Measured in a real browser: a genuine signed feed published after one
+ * such feed was never stored, the install's policy watch was over, and Erase
+ * everything kept the poison. The date the cap sorts by has to be one the cap
+ * can trust.
+ *
+ * Real, the way `backup.ts`'s `isISODate` decides it: a string that survives
+ * the round trip through a Date. `2026-02-31` has the shape and is 3 March.
+ *
+ * Not after TOMORROW, on the reader's own calendar. `changedOn` is the day a
+ * change was published and `checkedOn` the day a page was read, and neither can
+ * be later than the day the feed is read: `feed:add`, the tool that writes the
+ * feed, already refuses both in the future ("a promise is not a change"). The
+ * one day of slack is time zones — the feed is written in UK days, and no
+ * clock on Earth is more than one calendar day behind London's. Anything later
+ * is a slip of the keyboard or a feed that means harm, and either way it is
+ * not news yet. The bound is deliberately that
+ * tight rather than "far" in the future, because whatever it allows is how long
+ * one bad feed can crowd out the real ones; at one day, the next day's genuine
+ * changes outrank it. A phone whose clock runs slow drops a genuine change
+ * rather than keeping it — and fetches it again on every launch, so it arrives
+ * once the clock is right, which is the recoverable way round.
+ *
+ * The same reader checks the DEVICE's copy (`hydrate` comes through here), so
+ * an install that took such a feed before this check existed is cleaned at its
+ * next launch rather than left stuck.
+ */
+function plausibleDay(v: unknown, latest: string): v is string {
+  if (!isStr(v) || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+  return toISODate(fromISODate(v)) === v && v <= latest;
+}
+
 /**
  * Validate a downloaded feed. It arrives over the network, so nothing in it is
  * trusted: a malformed entry is dropped rather than allowed to reach a screen,
@@ -375,10 +413,10 @@ const fits = (v: unknown, max: number): v is string => isStr(v) && v.length <= m
  * taken seriously, and nothing downloaded gets to award itself that.
  */
 /** A citation, or nothing: an https page on some host, and the day it was read. */
-function readSource(raw: unknown): { url: string; checkedOn: string } | undefined {
+function readSource(raw: unknown, latest: string): { url: string; checkedOn: string } | undefined {
   if (typeof raw !== 'object' || raw === null) return undefined;
   const r = raw as Record<string, unknown>;
-  if (!fits(r.url, MAX_TEXT) || !isStr(r.checkedOn) || !/^\d{4}-\d{2}-\d{2}$/.test(r.checkedOn)) return undefined;
+  if (!fits(r.url, MAX_TEXT) || !plausibleDay(r.checkedOn, latest)) return undefined;
   try {
     if (new URL(r.url).protocol !== 'https:') return undefined;
   } catch {
@@ -387,17 +425,22 @@ function readSource(raw: unknown): { url: string; checkedOn: string } | undefine
   return { url: r.url, checkedOn: r.checkedOn };
 }
 
-export function readFeed(doc: unknown, from: 'network' | 'device' = 'network'): PolicyUpdate[] | null {
+export function readFeed(
+  doc: unknown,
+  from: 'network' | 'device' = 'network',
+  today: Date = new Date(),
+): PolicyUpdate[] | null {
   if (typeof doc !== 'object' || doc === null) return null;
   const d = doc as Record<string, unknown>;
   if (d.feed !== 'kept-policy' || !Array.isArray(d.updates)) return null;
+  const latest = toISODate(addDays(today, 1));
 
   const out: PolicyUpdate[] = [];
   for (const raw of d.updates) {
     if (typeof raw !== 'object' || raw === null) continue;
     const u = raw as Record<string, unknown>;
     if (!fits(u.id, MAX_NAME) || !fits(u.store, MAX_NAME) || !fits(u.text, MAX_TEXT)) continue;
-    if (!isStr(u.changedOn) || !/^\d{4}-\d{2}-\d{2}$/.test(u.changedOn)) continue;
+    if (!plausibleDay(u.changedOn, latest)) continue;
     if (!Array.isArray(u.affectsStores) || u.affectsStores.length > MAX_AFFECTED) continue;
     if (!u.affectsStores.every((x) => fits(x, MAX_NAME))) continue;
     if (
@@ -408,7 +451,7 @@ export function readFeed(doc: unknown, from: 'network' | 'device' = 'network'): 
     ) {
       continue;
     }
-    const source = readSource(u.source);
+    const source = readSource(u.source, latest);
     // Downloaded, a change must say where it came from. See `PolicyUpdate.source`.
     if (from === 'network' && !source) continue;
     out.push({

@@ -211,7 +211,7 @@ export function hydrate(raw: unknown, today: Date): KeptState {
   // always safe and keeps the feed current on an old install. Validated the
   // same way, through the reader the network path already uses.
   const storedUpdates = Array.isArray(parsed.updates)
-    ? readFeed({ feed: 'kept-policy', updates: parsed.updates }, 'device') ?? []
+    ? readFeed({ feed: 'kept-policy', updates: parsed.updates }, 'device', today) ?? []
     : [];
 
   return {
@@ -525,11 +525,11 @@ export function wipe(): void {
    * rather than being made small. `chooseSource` then answers "local" from the
    * instant this returns, whatever the mirror still holds.
    *
-   * It keeps the rest of the blob — settings, the policy feed, whether
-   * onboarding has been seen — because that is what the reducer's `wipe` does
-   * a moment later, and two paths writing different post-erase states would be
-   * the same fact disagreeing with itself. Only the receipts and the record of
-   * having spoken about them go.
+   * It keeps the rest of the blob — settings, whether onboarding has been
+   * seen — because that is what the reducer's `wipe` does a moment later, and
+   * two paths writing different post-erase states would be the same fact
+   * disagreeing with itself. The receipts, the record of having spoken about
+   * them, and the held policy news go; see `erasedFrom` for the last.
    */
   const erased = erasedFrom(existing);
   // "Erase everything" includes what a bad launch set aside: it is the same
@@ -546,12 +546,25 @@ export function wipe(): void {
   void writeMirror(erased);
 }
 
-/** The stored blob with the receipts taken out — or a valid empty one. */
+/**
+ * The stored blob with the receipts taken out — or a valid empty one.
+ *
+ * The held policy news goes too, and `hydrate` puts the samples back as it
+ * does on a fresh install. It is not the person's data — every install is
+ * sent the same feed — which is why it was kept. But Erase everything is the
+ * way out that MAX_UPDATES in policy-feed.ts names for a feed gone wrong, and
+ * it was not one: measured, two hundred entries dated 9999-12-31 survived an
+ * erase and went on crowding out every genuine change. `readFeed` now refuses
+ * that particular feed, at the door and on the device; this is for the bad
+ * feed nobody has thought of yet, which no reader can name in advance. What
+ * it costs is the news until the next launch online, which fetches it again.
+ */
 function erasedFrom(raw: string | null): string {
   try {
     const parsed: unknown = JSON.parse(raw ?? '');
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      return JSON.stringify({ ...(parsed as object), receipts: [], alertsSent: [] });
+      const { updates: _news, ...rest } = parsed as Record<string, unknown>;
+      return JSON.stringify({ ...rest, receipts: [], alertsSent: [] });
     }
   } catch {
     // Unparseable is the same answer as absent: write a clean empty library.

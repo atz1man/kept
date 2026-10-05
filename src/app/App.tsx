@@ -174,7 +174,7 @@ export function App() {
           return;
         }
 
-        const incoming = readFeed(JSON.parse(body));
+        const incoming = readFeed(JSON.parse(body), 'network', today);
         if (cancelled || !incoming || incoming.length === 0) return;
         dispatch({ type: 'feed', updates: mergeFeed(state.updates, incoming) });
       } catch {

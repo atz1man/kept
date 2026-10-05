@@ -309,6 +309,34 @@ describe('on iOS', () => {
     expect(after.settings).toEqual({ urgentDays: 9 });
   });
 
+  it('takes the held policy news too, and both erase paths put back the same samples', async () => {
+    /*
+     * Measured before this: two hundred feed entries dated 9999-12-31 survived
+     * Erase everything and went on crowding every genuine change out of the
+     * capped list. The news is the same for everyone, but Erase is the way out
+     * a bad feed was promised, and it was not one.
+     */
+    boot(true);
+    const { save, wipe, hydrate } = await import('../src/lib/storage');
+    const { reducer } = await import('../src/app/state');
+    const { seedUpdates } = await import('../src/lib/seed');
+    const today = new Date(2026, 9, 4);
+    const poison = { id: 'held', store: 'Currys', changedOn: '2026-10-01', text: 'x', affectsStores: ['Currys'], affectNote: '' };
+    save({ ...JSON.parse(library(['a'])), updates: [poison] });
+    await settle();
+
+    wipe();
+
+    const after = JSON.parse(store.getItem(KEY)!);
+    expect(after.updates).toBeUndefined();
+    const relaunched = hydrate(after, today).updates;
+    expect(relaunched).toEqual(seedUpdates(today));
+    const held = hydrate({ ...JSON.parse(library(['a'])), updates: [poison] }, today);
+    expect(held.updates.map((u) => u.id)).toEqual(['held']);
+    const erasedOnScreen = reducer(held as unknown as Parameters<typeof reducer>[0], { type: 'wipe' }, today);
+    expect(erasedOnScreen.updates).toEqual(relaunched);
+  });
+
   it('does NOT undo an erase, even when the mirror still holds the old library', async () => {
     /*
      * The state that actually matters, and the one the obvious version of this
