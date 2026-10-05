@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { color, font, radius } from '../../tokens';
 import { isNative } from '../../lib/mirror';
+import { storageNote } from '../../lib/persist';
 import { fmtDateLong, fromISODate } from '../../lib/dates';
 import { MAX_BACKUP_BYTES, parseBackup, restoredNote, type ImportSummary, type RestoreReport } from '../../lib/backup';
 import { backupFilename, saveJsonFile, savedWhere, type SaveOutcome } from '../../lib/save-file';
@@ -27,6 +28,8 @@ interface Props {
   onRestore: (backup: ImportSummary) => void;
   /** What the last restore did, as the reducer decided it. */
   restored: RestoreReport | null;
+  /** The browser's answer to `keepStorage`: null until it is in, and on iPhone. */
+  storageKept: boolean | null;
   onWipe: () => void;
   onClearSamples: () => void;
   /** The web's sheet, or the App Store's purchase: App decides which (lib/pricing.ts `Offer`). */
@@ -46,7 +49,7 @@ const RESTORE_FAILURES = {
   'too-large': 'That file is too large to be a kept backup — nothing was changed.',
 } as const;
 
-export function Settings({ settings, receipts, embedded, onExport, onRestore, restored, onWipe, onClearSamples, onUpgrade, onChange, offer, store, onRestorePurchase }: Props) {
+export function Settings({ settings, receipts, embedded, onExport, onRestore, restored, storageKept, onWipe, onClearSamples, onUpgrade, onChange, offer, store, onRestorePurchase }: Props) {
   // How current the retailer table is, decided in `tableCheck` so that a date
   // set once cannot go on reassuring people years later.
   const check = tableCheck(new Date());
@@ -235,6 +238,9 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
             Restore
           </Pressable>
         </div>
+        {!embedded && !isNative() && storageNote(storageKept) && (
+          <div style={{ fontSize: 12.5, color: color.muted, lineHeight: 1.5, marginTop: 8 }}>{storageNote(storageKept)}</div>
+        )}
         {/* Said where the button is: a backup carries every receipt and its
             dates, and the photos stay on the phone. The listing promises both
             a restore on a new phone and a photo kept with each receipt, and

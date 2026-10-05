@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { keepStorage } from '../src/lib/persist';
+import { keepStorage, storageNote } from '../src/lib/persist';
 
 describe('asking the browser to keep the library', () => {
   it('asks when storage is not yet kept, and reports the answer', async () => {
@@ -20,5 +20,16 @@ describe('asking the browser to keep the library', () => {
     expect(await keepStorage({} as never)).toBe(false);
     expect(await keepStorage({ persisted: async () => false, persist: async () => false })).toBe(false);
     expect(await keepStorage({ persisted: async () => { throw new Error('no'); }, persist: async () => true })).toBe(false);
+  });
+});
+
+describe('what Settings says about it', () => {
+  it('says the browser may clear the library only when it refused to keep it', () => {
+    expect(storageNote(false)).toMatch(/can clear it when space runs low/);
+    expect(storageNote(false)).toMatch(/Home Screen/);
+    expect(storageNote(false)).toMatch(/backup/);
+    // Kept, or not answered yet (and on iPhone, which never asks): nothing.
+    expect(storageNote(true)).toBeNull();
+    expect(storageNote(null)).toBeNull();
   });
 });
