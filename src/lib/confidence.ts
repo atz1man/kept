@@ -25,7 +25,13 @@ import type { UnsureWord } from './receipt-scan';
  * score alone, without the parser's own doubt, misses the totals that were
  * read cleanly off the wrong line.
  */
-export type CheckWhy = 'largest-figure' | 'named-total' | 'unclear-print' | 'several-dates';
+export type CheckWhy =
+  | 'largest-figure'
+  | 'named-total'
+  | 'unclear-print'
+  | 'several-dates'
+  | 'several-totals'
+  | 'part-total';
 
 export interface Checks {
   amount?: CheckWhy;
@@ -66,6 +72,8 @@ export function toCheck(p: ParsedReceipt, unsure: readonly UnsureWord[] = []): C
     if (!addsUp) {
       if (p.how.amount === 'largest') out.amount = 'largest-figure';
       else if (p.how.amount === 'named') out.amount = 'named-total';
+      else if (p.how.amount === 'several') out.amount = 'several-totals';
+      else if (p.how.amount === 'part') out.amount = 'part-total';
       else if (readOffUnsure(unsure, digits((p.amount / 100).toFixed(2)), TOTAL_UNSURE_BELOW, TOTAL_LINE)) out.amount = 'unclear-print';
     }
   }
@@ -88,6 +96,10 @@ export function checkWords(field: keyof Checks, why: CheckWhy): string {
       return 'It has several dates and none says “order date”, so this is the latest.';
     case 'unclear-print':
       return field === 'amount' ? 'The print was unclear where this was read.' : 'The print was unclear where this date was read.';
+    case 'several-totals':
+      return 'It has more than one total and they disagree, so this is the last one.';
+    case 'part-total':
+      return 'This total is of the items alone — it may leave out delivery.';
   }
 }
 

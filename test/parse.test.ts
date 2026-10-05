@@ -881,3 +881,16 @@ describe('the order number', () => {
     expect(ref('Argos\n0345 640 2020\nTotal £10.00')).toBeNull();
   });
 });
+
+describe('what the parse audit found', () => {
+  /*
+   * Single rules the audit's cases (test/parse-audit.test.ts) do not separate
+   * on their own, because another rule happens to cover the same case there.
+   * Each was found by deleting the rule and watching the audit stay green.
+   */
+  it('takes the last of two totals that disagree, and says so', () => {
+    const p = parse('Argos\nTotal £20.00\nTotal £30.00');
+    expect(p.amount).toBe(3000);
+    expect(p.how.amount).toBe('several');
+  });
+});

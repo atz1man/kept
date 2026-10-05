@@ -54,8 +54,13 @@ export interface ParsedReceipt {
    * presented exactly as it presented a labelled fact.
    */
   how: {
-    /** 'label': a total line; 'named': "total" with a product name before it; 'largest': no total line. */
-    amount: 'label' | 'named' | 'largest' | null;
+    /**
+     * 'label': a total line; 'named': "total" with a product name beside it;
+     * 'largest': no total line; 'part': only a basket or items total, which
+     * may leave out delivery; 'several': totals that disagree, the last of the
+     * surest kind taken.
+     */
+    amount: 'label' | 'named' | 'largest' | 'part' | 'several' | null;
     /** 'label': an order-date label; 'only': the one past date there is; 'latest': the newest of several. */
     purchasedOn: 'label' | 'only' | 'latest' | null;
   };
@@ -112,9 +117,32 @@ function amountsIn(text: string): Pence[] {
  * before a discount, or a "free delivery over £50" banner.
  */
 const LABELLED_TOTAL = new RegExp(
-  '(?<![a-z])(?<!sub[\\s-])(?<!net\\s)total(?!\\s*(?:savings?|saved|discounts?|vat|tax)\\b)' +
+  '(?<![a-z])(?<!sub[\\s-])(?<!net\\s)total' +
+    /*
+     * Nor a total OF a part of the order: "Total Delivery £4.95", "Total
+     * Goods £120.00", "Total postage". An invoice prints all of these above
+     * its real total, and the first one found was the receipt's price — a
+     * £89.95 order saved as £4.95. A total of the GOODS is kept (as a part,
+     * below); a total of the delivery or the VAT is never the order's.
+     */
+    '(?!\\s*(?:savings?|saved|discounts?|vat|tax|delivery|shipping|postage|p\\s?&\\s?p|packing|carriage)\\b)' +
     '(?![^£\\n]{0,24}\\b(?:before|excl?\\.?|excluding|ex|net|without|pre)\\b)' +
-    '[^£\\n]{0,40}(?:\\n[ \\t]*)?' +
+    // What stands between the word and its figure is read below, so it is kept.
+    // The figure may sit one line down, or two with a blank line between, as a
+    // table pasted cell by cell sets it.
+    '([^£\\n]{0,40})(?:\\n[ \\t]*){0,2}' +
+    POUNDS,
+  'gi',
+);
+
+/*
+ * The money that actually left, in words that do not say "total": "Amount
+ * paid £114.99", "Balance due". Without it a receipt whose only summary line
+ * said this fell back to the largest figure on the page — which on a JD
+ * Sports email was "Win £1,000 of vouchers" in the footer.
+ */
+const PAID_LABEL = new RegExp(
+  '(?<![a-z])(?:amount\\s+(?:paid|due|payable|charged|to\\s+pay)|balance\\s+(?:due|paid)|you\\s+paid)\\b([^£\\n]{0,20})(?:\\n[ \\t]*){0,2}' +
     POUNDS,
   'gi',
 );
@@ -136,10 +164,10 @@ const AS_A_LABEL = /(?:^|\b(?:order|grand|basket|bag|cart|your|the|final|new|est
 
 /*
  * Nor is a count or a stray mark a name. A till prints the number of items
- * before its balance line ("3 BALANCE DUE 14.20"), and a camera reads a rule
- * or a smudge as a lone letter ("J TOTAL £1,448.00"); a product's name is
- * neither a bare number nor one character. Measured over 132 photos, these
- * two were every "named" total that was in fact the total.
+ * before its balance line ("3 BALANCE DUE 14.20", "2 ITEMS TOTAL 34.98"), and
+ * a camera reads a rule or a smudge as a lone letter ("J TOTAL £1,448.00"); a
+ * product's name is neither a bare number nor one character. Measured over 132
+ * photos, these two were every "named" total that was in fact the total.
  */
 const NOT_A_NAME = /^(?:\d+|[a-z])$/i;
 
@@ -154,27 +182,109 @@ const NOT_A_NAME = /^(?:\d+|[a-z])$/i;
  */
 const LABEL_LOOKBACK = 160;
 
-function readsAsLabel(text: string, at: number): boolean {
+/** The words before a "total" on its part of the line, or null when they make it a name. */
+function labelBefore(text: string, at: number): string[] | null {
   const from = Math.max(0, at - LABEL_LOOKBACK);
   const window = text.slice(from, at);
   const newline = window.lastIndexOf('\n');
   const line = newline >= 0 ? window.slice(newline + 1) : from > 0 ? window.replace(/^\S*\s*/, '') : window;
   const before = line.split(/[·|:—–]|\s-\s/).pop() ?? '';
   const words = before.replace(/^\W+/, '').split(/\s+/).filter(Boolean);
-  while (words.length > 0 && NOT_A_NAME.test(words[0])) words.shift();
-  return AS_A_LABEL.test(words.length > 0 ? `${words.join(' ')} ` : '');
+  let counted = false;
+  while (words.length > 0 && NOT_A_NAME.test(words[0])) {
+    counted ||= /^\d+$/.test(words[0]);
+    words.shift();
+  }
+  // "2 ITEMS TOTAL": the count a till prints, not a total of the items alone.
+  if (counted && words.length > 0 && /^items?$/i.test(words[0])) words.shift();
+  return AS_A_LABEL.test(words.length > 0 ? `${words.join(' ')} ` : '') ? words.map((w) => w.toLowerCase()) : null;
+}
+
+/*
+ * What a label says about its figure, read off the words around "total".
+ *
+ * The first labelled total used to win, and an order email prints several:
+ * "Basket total" before delivery, "Total (2 items)" before delivery, "Order
+ * total" before a promotion code, "Order summary: Total" before a voucher —
+ * and then the figure that was charged. In the parser audit's cases
+ * (test/fixtures/parse-audit.ts), eight emails and till slips that say
+ * "total" more than once were saved at the wrong figure, with nothing on the
+ * card to say so. So each total is ranked by what it is:
+ *
+ *   3  the money that left: to pay, paid, payable, due, charged, grand, final
+ *   2  the order's total: plain "Total", "Order total", "Invoice total"
+ *   1  a part of it: a basket, bag or cart total, a total of the items or goods
+ *   0  a product's name: "Total Care mouthwash 500ml £3.50"
+ *
+ * The last of the highest rank wins, because an order email states its totals
+ * in the order the money is worked out and the charged figure comes last.
+ */
+const PAID_WORDS = new Set(['pay', 'paid', 'payable', 'due', 'charged', 'charge', 'owing', 'grand', 'final']);
+const PART_WORDS = new Set(['items', 'item', 'goods', 'products', 'product', 'merchandise', 'basket', 'bag', 'cart', 'lines']);
+/*
+ * Words that may stand between "total" and its figure without making it a
+ * name: "Total to pay", "Total (inc. VAT)", "Total (tax incl.)", "Total due
+ * today", "Total £28.99 GBP". Anything else there — "Total Care mouthwash
+ * 500ml" — is the rest of a product's name, and the line is an item.
+ */
+const TAIL_WORDS = new Set([
+  'to', 'amount', 'inc', 'incl', 'including', 'included', 'vat', 'tax', 'taxes', 'gbp', 'order', 'value', 'sum',
+  'of', 'for', 'the', 'your', 'in', 'uk', 'after', 'with', 'applied', 'and', 'all', 'cost', 'price', 'now', 'today',
+  'is', 'was', 'delivery', 'shipping', 'postage', 'p&p', 'discount', 'discounts', 'savings', 'promo', 'promotions',
+  'vouchers', 'pounds', 'sterling', 'stg', 'summary', 'spend', 'spent', 'be', 'will', 'been', 'has', 'card', 'account',
+  'balance',
+]);
+
+type TotalRank = 0 | 1 | 2 | 3;
+
+function rankTotal(before: string[] | null, tail: string): TotalRank {
+  if (before === null) return 0;
+  const words = [...before, ...tail.toLowerCase().replace(/[^a-z0-9&]+/g, ' ').split(' ').filter(Boolean)];
+  let rank: TotalRank = 2;
+  for (const w of words) {
+    if (/^\d+$/.test(w) || w.length === 1) continue;
+    if (PAID_WORDS.has(w)) rank = 3;
+    else if (PART_WORDS.has(w)) {
+      if (rank === 2) rank = 1;
+    } else if (!TAIL_WORDS.has(w) && !AS_A_LABEL.test(`${w} `)) return 0;
+  }
+  return rank;
 }
 
 type Picked<T, H> = { value: T; how: H } | null;
 
-function pickAmount(text: string): Picked<Pence, 'label' | 'named' | 'largest'> {
-  const labelled = [...text.matchAll(LABELLED_TOTAL)];
-  const asLabel = labelled.find((m) => readsAsLabel(text, m.index!));
-  const chosen = asLabel ?? labelled[0];
-  if (chosen) return { value: toPence(parseFloat(chosen[1].replace(/,/g, ''))), how: asLabel ? 'label' : 'named' };
+/** The figure chosen, and where its line ends — what follows it is the email's footer. */
+type PickedTotal = { value: Pence; how: 'label' | 'named' | 'largest' | 'part' | 'several'; end: number | null } | null;
+
+function pickAmount(text: string): PickedTotal {
+  const found: { value: Pence; rank: TotalRank; index: number; end: number }[] = [];
+  const pence = (m: RegExpMatchArray) => toPence(parseFloat(m[2].replace(/,/g, '')));
+  for (const m of text.matchAll(LABELLED_TOTAL)) {
+    found.push({ value: pence(m), rank: rankTotal(labelBefore(text, m.index!), m[1]), index: m.index!, end: m.index! + m[0].length });
+  }
+  for (const m of text.matchAll(PAID_LABEL)) {
+    found.push({ value: pence(m), rank: 3, index: m.index!, end: m.index! + m[0].length });
+  }
+  const usable = found.filter((t) => t.rank > 0).sort((a, b) => a.index - b.index);
+  if (usable.length > 0) {
+    const top = Math.max(...usable.map((t) => t.rank));
+    const chosen = usable.filter((t) => t.rank === top).pop()!;
+    /*
+     * Still a choice when another total disagrees and the ranking did not
+     * settle it — one of the same rank, or a lesser one printed AFTER the
+     * chosen figure ("Order total £60.00 · Promo -£6.00 · Total £54.00").
+     * The figure stands, and the card marks it.
+     */
+    const disputed = usable.some((t) => t.value !== chosen.value && (t.rank >= chosen.rank || t.index > chosen.index));
+    return { value: chosen.value, how: disputed ? 'several' : chosen.rank === 1 ? 'part' : 'label', end: chosen.end };
+  }
+  if (found.length > 0) {
+    const first = found.sort((a, b) => a.index - b.index)[0];
+    return { value: first.value, how: 'named', end: null };
+  }
   const all = amountsIn(text);
   if (all.length === 0) return null;
-  return { value: Math.max(...all), how: 'largest' };
+  return { value: Math.max(...all), how: 'largest', end: null };
 }
 
 /** A date found in the paste, and where it sat — the position is what lets a
@@ -760,6 +870,10 @@ function pickLines(text: string, store: StorePolicy | null, total: Pence | null)
  */
 function gbpAsPounds(text: string): string {
   return text
+    // "£28.99 GBP", as Shopify writes its total, already has its £: the GBP
+    // after it is dropped rather than made a second one. "££28.99" matched no
+    // total, and the largest figure on the page stood in for it.
+    .replace(/(£\s?\d[\d,]*(?:\.\d{1,2})?)\s?GBP\b/gi, '$1')
     .replace(/\bGBP\s?(?=\d)/gi, '£')
     .replace(/(?<![\d,.])(\d(?:[\d,]*\d)?(?:\.\d{1,2})?)\s?GBP\b/gi, '£$1');
 }

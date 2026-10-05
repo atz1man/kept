@@ -108,6 +108,27 @@ describe('what the card asks to be checked', () => {
       expect(checkWords('amount', why).length).toBeGreaterThan(10);
     }
     expect(checkWords('purchasedOn', 'unclear-print')).toMatch(/date/);
+    for (const why of ['several-totals', 'part-total'] as const) {
+      expect(checkWords('amount', why).length).toBeGreaterThan(10);
+    }
+  });
+});
+
+describe('a total chosen from several', () => {
+  it('marks totals that disagree when nothing ranks one above the other', () => {
+    expect(toCheck(parse('Argos\nTotal £20.00\nTotal £30.00')).amount).toBe('several-totals');
+    // A lesser total printed AFTER the one taken is a disagreement too.
+    expect(toCheck(parse('Argos\nTotal paid £30.00\nTotal £20.00')).amount).toBe('several-totals');
+  });
+
+  it('does not mark a basket total followed by the total to pay', () => {
+    const p = parse('Argos\nBasket total £50.00\nDelivery £3.95\nTotal to pay £53.95');
+    expect(p.amount).toBe(5395);
+    expect(toCheck(p).amount).toBeUndefined();
+  });
+
+  it('marks a total that is only of the items, which may leave out delivery', () => {
+    expect(toCheck(parse('Argos\nBasket total £50.00')).amount).toBe('part-total');
   });
 });
 
