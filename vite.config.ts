@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { withPolicy } from './src/lib/csp';
 
 /** Where sw.js keeps the list this plugin writes — an empty array until stamped. */
 const BUILD_FILES = '[/* __BUILD_FILES__ */]';
@@ -34,6 +35,19 @@ function appFiles(bundle: Rollup.OutputBundle, appHtml: string): string[] {
   };
   visit(entry.fileName);
   return [...files].sort();
+}
+
+/**
+ * Every built page carries the content security policy (src/lib/csp.ts).
+ * Build only: the dev server's hot reload is an inline script and a socket,
+ * both of which the policy exists to refuse.
+ */
+function contentSecurityPolicy(): Plugin {
+  return {
+    name: 'kept-content-security-policy',
+    apply: 'build',
+    transformIndexHtml: { order: 'post', handler: withPolicy },
+  };
 }
 
 /**
@@ -167,7 +181,7 @@ const VERSION = (JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'ut
 
 export default defineConfig({
   define: { __KEPT_VERSION__: JSON.stringify(VERSION) },
-  plugins: [react(), stampServiceWorker(), serveOcrFiles()],
+  plugins: [react(), contentSecurityPolicy(), stampServiceWorker(), serveOcrFiles()],
   server: { port: 5183 },
   build: {
     rollupOptions: {
