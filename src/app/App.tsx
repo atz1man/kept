@@ -85,9 +85,16 @@ export function App() {
 
   // The web build's library lives only in this browser; ask it to keep it.
   // Not from the landing page's demo frame, which stores nothing.
+  const [storageKept, setStorageKept] = useState<boolean | null>(null);
   useEffect(() => {
     if (state.embedded || isNative()) return;
-    void keepStorage(typeof navigator === 'undefined' ? undefined : navigator.storage);
+    let live = true;
+    void keepStorage(typeof navigator === 'undefined' ? undefined : navigator.storage).then((kept) => {
+      if (live) setStorageKept(kept);
+    });
+    return () => {
+      live = false;
+    };
   }, [state.embedded]);
 
   /*
@@ -522,6 +529,7 @@ export function App() {
           onExport={exportNow}
           onRestore={(backup) => dispatch({ type: 'restore', backup })}
           restored={state.restored}
+          storageKept={storageKept}
           onClearSamples={() => dispatch({ type: 'clear-samples' })}
           onWipe={() => {
             // Cleared from disk as well as from state: leaving the old blob

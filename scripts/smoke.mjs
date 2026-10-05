@@ -1715,6 +1715,39 @@ for (const cancel of [false, true]) {
 }
 
 /*
+ * Whether the browser will keep the library, said where the backup buttons
+ * are. The web build's storage is the only copy and the browser's to clear;
+ * the app asked for it to be kept and threw the answer away, leaving
+ * "Everything lives on this device" with nothing about how long. Both ways
+ * round, with the browser's answer pinned, so the check is about the wiring
+ * and not about what this Chromium happens to grant.
+ */
+{
+  const said = async (granted) => {
+    const ctx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+    await ctx.addInitScript((g) => {
+      if (navigator.storage) {
+        navigator.storage.persisted = async () => g;
+        navigator.storage.persist = async () => g;
+      }
+    }, granted);
+    const p = await ctx.newPage();
+    await p.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+    await p.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+    await p.waitForTimeout(300);
+    await p.getByRole('button', { name: 'Settings', exact: true }).click({ timeout: 3000 }).catch(() => {});
+    await p.waitForTimeout(300);
+    const n = await p.getByText(/can clear it when space runs low/).count();
+    await ctx.close();
+    return n;
+  };
+  const refused = await said(false);
+  const granted = await said(true);
+  results['Settings says when the browser may clear the library, and only then'] = refused === 1 && granted === 0;
+  if (!(refused === 1 && granted === 0)) problems.push(`storage note: refused ${refused}, granted ${granted}`);
+}
+
+/*
  * From Settings as well, where it is offered whenever there are samples:
  * someone who wants a clean list before adding anything should not have to
  * delete five receipts one at a time or erase the app to get it.
