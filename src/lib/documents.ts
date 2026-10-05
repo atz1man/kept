@@ -84,7 +84,7 @@ export function htmlToText(html: string): string {
   let s = upToLast(html, '-->', (t) => t.replace(/<!--[\s\S]*?-->/g, ''));
   s = dropRawText(s);
   s = upToLast(s, '>', (t) =>
-    t
+    pairStackedCells(penceInSup(t))
       .replace(/<br\b[^>]*>/gi, '\n')
       .replace(/<\/(p|div|tr|li|h[1-6]|table|section|article|header|footer|blockquote|address|ul|ol|dl|dt|dd)\s*>/gi, '\n')
       .replace(/<(p|div|tr|li|h[1-6]|table)\b[^>]*>/gi, '\n')
@@ -96,6 +96,90 @@ export function htmlToText(html: string): string {
     .map((l) => l.replace(/[ \t ​]+/g, ' ').trim())
     .filter(Boolean)
     .join('\n');
+}
+
+/*
+ * "£54<sup>98</sup>": the pence set small and raised, as some shops style a
+ * price. Removing the tag joined the figures into £5,498. Two digits raised
+ * straight after a figure are its pence; any other raised figure after one —
+ * a footnote mark, "£54<sup>1</sup>" — is kept apart from it by a space, so it
+ * can never be read as more digits of the price. A raised "st" or "th" after a
+ * day is left alone: "1<sup>st</sup> October" must still read as a date.
+ *
+ * Linear: each pattern starts at a figure followed by "<sup", and `[^<>]*`
+ * stops at the next tag either way.
+ */
+function penceInSup(html: string): string {
+  return html
+    .replace(/(\d)<sup\b[^<>]*>\s*\.?(\d{2})\s*<\/sup\s*>/gi, '$1.$2')
+    .replace(/(\d)(<sup\b[^<>]*>)(?=\s*\d)/gi, '$1 $2');
+}
+
+/*
+ * A table row whose cells each stack several lines with <br>: the labels in
+ * one cell, "Subtotal<br>Delivery<br>Total", and the figures in the next,
+ * "£69.98<br>£4.99<br>£74.97". Read cell after cell, that is "Subtotal",
+ * "Delivery", "Total £69.98", "£4.99", "£74.97" — the total read as the
+ * subtotal, £5 short, with nothing to say so. Where every cell in the row has
+ * the same number of lines, the row is read as that many rows, line beside
+ * line. Any other row — cells stacked unevenly, a table inside a cell, a cell
+ * never closed — is left exactly as it was.
+ *
+ * One pass over the tags, so a file of unclosed rows costs no more than one of
+ * closed ones; `[^<>]*` stops at the next tag whether or not this one closes.
+ */
+const ROW_TAG = /<(\/?)(tr|td|th)\b[^<>]*>/gi;
+const LINE_BREAK = /<br\b[^<>]*>/i;
+const NESTED = /<(?:table|tr|td|th)\b/i;
+
+function pairStackedCells(html: string): string {
+  if (!/<br\b/i.test(html)) return html;
+  let out = '';
+  let from = 0;
+  let row: { start: number; cells: { start: number; end: number }[]; open: number | null } | null = null;
+  ROW_TAG.lastIndex = 0;
+  for (let m = ROW_TAG.exec(html); m; m = ROW_TAG.exec(html)) {
+    const closing = m[1] === '/';
+    if (m[2].toLowerCase() === 'tr') {
+      if (closing && row && row.open === null) {
+        const rows = stackedRows(row.cells.map((c) => html.slice(c.start, c.end)));
+        if (rows !== null) {
+          out += html.slice(from, row.start) + rows;
+          from = m.index;
+        }
+      }
+      row = closing ? null : { start: m.index + m[0].length, cells: [], open: null };
+      continue;
+    }
+    if (!row) continue;
+    if (!closing) {
+      if (row.open !== null) row = null; // a cell opened inside an open cell: not a row this reads
+      else row.open = m.index + m[0].length;
+    } else if (row.open === null) {
+      row = null;
+    } else {
+      row.cells.push({ start: row.open, end: m.index });
+      row.open = null;
+    }
+  }
+  return out + html.slice(from);
+}
+
+/** The cells' lines side by side, as rows — or null where they do not line up. */
+function stackedRows(cells: string[]): string | null {
+  if (cells.length < 2 || cells.some((c) => NESTED.test(c))) return null;
+  const blank = (part: string) => part.replace(/<[^<>]*>|&nbsp;|\s/gi, '') === '';
+  const lines = cells.map((c) => {
+    const parts = c.split(LINE_BREAK);
+    while (parts.length > 1 && blank(parts[parts.length - 1])) parts.pop();
+    while (parts.length > 1 && blank(parts[0])) parts.shift();
+    return parts;
+  });
+  const n = lines[0].length;
+  if (n < 2 || lines.some((l) => l.length !== n)) return null;
+  const rows: string[] = [];
+  for (let i = 0; i < n; i++) rows.push(lines.map((l) => `<td>${l[i]}</td>`).join(''));
+  return rows.join('</tr><tr>');
 }
 
 /*

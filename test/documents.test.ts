@@ -104,6 +104,32 @@ describe('HTML into lines', () => {
     }
   });
 
+  it('reads a row of stacked cells line beside line', () => {
+    // Labels stacked in one cell and figures in the next: read cell after
+    // cell, the total sat beside the subtotal's figure.
+    const row = '<table><tr><td>Subtotal<br>Delivery<br>Total</td><td>&pound;69.98<br>&pound;4.99<br>&pound;74.97</td></tr></table>';
+    expect(htmlToText(row)).toBe('Subtotal £69.98\nDelivery £4.99\nTotal £74.97');
+    // A trailing <br> is not a line.
+    expect(htmlToText('<table><tr><td>A<br>B<br></td><td>£1<br>£2</td></tr></table>')).toBe('A £1\nB £2');
+  });
+
+  it('leaves a row alone when its cells do not stack evenly, or a cell holds a table', () => {
+    // Exactly as before the pairing existed: nothing made up to fill a gap.
+    expect(htmlToText('<table><tr><td>A<br>B<br>C</td><td>£1<br>£2</td></tr></table>')).toBe('A\nB\nC £1\n£2');
+    expect(htmlToText('<table><tr><td>A<br>B</td><td>£1</td></tr></table>')).toBe('A\nB £1');
+    const nested = '<table><tr><td>A<br>B</td><td><table><tr><td>£1<br>£2</td></tr></table></td></tr></table>';
+    expect(htmlToText(nested)).toBe('A\nB\n£1\n£2');
+  });
+
+  it('reads raised pence as pence, and keeps any other raised figure apart from the price', () => {
+    expect(htmlToText('<p>Total &pound;54<sup>98</sup></p>')).toBe('Total £54.98');
+    expect(htmlToText('<p>Total &pound;54<sup>.98</sup></p>')).toBe('Total £54.98');
+    // A footnote mark is not more digits of the price.
+    expect(htmlToText('<p>Total &pound;54<sup>1</sup></p>')).toBe('Total £54 1');
+    // And an ordinal is still a date.
+    expect(htmlToText('<p>Order date: 1<sup>st</sup> October 2026</p>')).toBe('Order date: 1st October 2026');
+  });
+
   it('reads a broken file exactly as it did before it was made fast', () => {
     // What follows the last ">" is kept as it is, and a tag that is never
     // closed takes nothing with it: the same lines, character for character.
