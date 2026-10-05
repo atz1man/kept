@@ -77,6 +77,23 @@ export function offerFor(native: boolean, shelf: Shelf, remembered: string | nul
   return { kind: 'none' };
 }
 
+/**
+ * Whether Settings offers "Restore purchase" with no unlock beside it.
+ *
+ * `offerFor` answers `none` when the App Store would not show the product —
+ * offline on a first launch, or a product not yet attached in App Store
+ * Connect — and Settings then showed no plan, no price and no restore at all.
+ * Measured with the product withheld: nothing on the screen App Review's own
+ * notes point at. Someone who bought the unlock on another iPhone has no other
+ * way back to it, and restoring does not need the product to be on sale: it
+ * asks for what this Apple ID already owns. So on iPhone, wherever StoreKit
+ * exists (`absent` is iOS 13 and 14, which cannot buy or restore), a free plan
+ * keeps the restore even when there is nothing to buy.
+ */
+export function restoreOnlyOffered(native: boolean, offer: Offer, shelf: Shelf, free: boolean): boolean {
+  return native && free && offer.kind === 'none' && shelf.kind !== 'absent';
+}
+
 /** Whether the free tier's cap applies: only where there is a way past it. */
 export function capsLibrary(offer: Offer): boolean {
   return offer.kind !== 'none';

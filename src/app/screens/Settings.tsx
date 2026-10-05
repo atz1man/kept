@@ -11,11 +11,11 @@ import { CONTACT_EMAIL, TAGLINE } from '../../lib/brand';
 import { LEGAL_DISCLAIMER } from '../../lib/legal';
 import { checkedCount, CHECKED_ON, STORE_COUNT, tableCheck } from '../../lib/stores';
 import { discardSetAside, setAsideData, URGENT_DAYS_MAX, URGENT_DAYS_MIN, type Settings as SettingsShape } from '../../lib/storage';
-import type { Offer } from '../../lib/pricing';
+import { restoreOnlyOffered, type Offer } from '../../lib/pricing';
 import type { StoreView } from '../../lib/app-store';
 import { countedAgainstQuota, FREE_TIER_LIMIT } from '../../lib/quota';
 import { Pressable } from '../components/Pressable';
-import { Note, UnlockOffer } from '../components/UnlockOffer';
+import { Note, RestorePurchase, UnlockOffer } from '../components/UnlockOffer';
 import { SupportDetails } from '../components/SupportDetails';
 
 interface Props {
@@ -295,6 +295,16 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
         )}
       </section>
 
+      {/* Nothing to buy just now, but a purchase from another iPhone can still come back. */}
+      {restoreOnlyOffered(isNative(), offer, store.shelf, free) && (
+        <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, padding: 18, marginTop: 12 }}>
+          <div style={{ fontWeight: 600, fontSize: 15 }}>Bought the unlock before?</div>
+          <div style={{ fontSize: 13, color: color.muted, lineHeight: 1.5, marginTop: 4 }}>
+            The App Store isn’t offering it just now, but anything this Apple ID already owns can still be restored.
+          </div>
+          <RestorePurchase store={store} onRestore={onRestorePurchase} />
+        </section>
+      )}
       {/* No plan, no price and no unlock where nothing can be bought — see offerFor. */}
       {offer.kind !== 'none' && free && (
         <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, padding: 18, marginTop: 12 }}>

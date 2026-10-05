@@ -985,6 +985,20 @@ if (!/Deadline alerts/.test(settingsText)) {
     if ((await p.evaluate(() => window.__keptStore().purchases)) !== 0) failures.push({ what: 'restoring made a purchase', saw: '' });
     await done(run, 'restoring a purchase');
   }
+  // Nothing on sale — offline on a first launch, or a product not yet attached
+  // in App Store Connect — and a purchase made on another iPhone still comes
+  // back. On main Settings showed no restore at all here.
+  {
+    const run = await boot({ price: null, restoreFinds: 'owned' });
+    const { p } = run;
+    await tab(p, 'Settings');
+    const offered = await p.getByRole('button', { name: 'Restore purchase', exact: true }).count();
+    if (offered !== 1) failures.push({ what: 'no Restore purchase when the App Store offers nothing to buy', saw: `${offered} buttons` });
+    await p.getByRole('button', { name: 'Restore purchase', exact: true }).click({ timeout: 5000 }).catch(() => {});
+    await p.waitForTimeout(700);
+    if ((await plan(p)) !== 'pro') failures.push({ what: 'a restore with nothing on sale did not bring back a purchase the App Store holds', saw: `plan ${await plan(p)}` });
+    await done(run, 'restoring with nothing on sale');
+  }
   {
     const run = await boot({ price: '£9.99' });
     const { p } = run;

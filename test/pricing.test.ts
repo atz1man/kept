@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { capsLibrary, offerFor, unlockLabel, UNLOCK } from '../src/lib/pricing';
+import { capsLibrary, offerFor, unlockLabel, UNLOCK, restoreOnlyOffered } from '../src/lib/pricing';
 import { quotaFull, type AppState } from '../src/app/state';
 import { FREE_TIER_LIMIT } from '../src/lib/quota';
 import { DEFAULT_SETTINGS } from '../src/lib/storage';
@@ -159,5 +159,29 @@ describe('what each build sells', () => {
   it('lifts the cap for someone who bought the unlock', () => {
     withPlatform(true);
     expect(quotaFull(overFull({ store: { shelf: forSale, busy: null, note: null } }, 'pro', '£9.99'))).toBe(false);
+  });
+});
+
+describe('restore, when there is nothing to buy', () => {
+  /*
+   * Measured on main with the App Store withholding the product (offline on a
+   * first launch, or the product not yet attached in App Store Connect):
+   * Settings showed no plan, no price and no "Restore purchase" — the screen
+   * App Review's own notes send the reviewer to was empty, and someone who had
+   * bought on another iPhone had no way back to it.
+   */
+  const none = offerFor(true, { kind: 'not-for-sale' }, null);
+  it('is offered on iPhone whenever StoreKit is there', () => {
+    expect(none.kind).toBe('none');
+    for (const shelf of [{ kind: 'not-for-sale' }, { kind: 'unreachable' }, { kind: 'asking' }] as const) {
+      expect(restoreOnlyOffered(true, offerFor(true, shelf, null), shelf, true), shelf.kind).toBe(true);
+    }
+  });
+  it('is not offered where StoreKit is absent, on the web, on a paid plan, or beside a real offer', () => {
+    expect(restoreOnlyOffered(true, none, { kind: 'absent' }, true)).toBe(false);
+    expect(restoreOnlyOffered(false, none, { kind: 'not-for-sale' }, true)).toBe(false);
+    expect(restoreOnlyOffered(true, none, { kind: 'not-for-sale' }, false)).toBe(false);
+    const forSale = { kind: 'for-sale', price: '£9.99', canPay: true } as const;
+    expect(restoreOnlyOffered(true, offerFor(true, forSale, null), forSale, true)).toBe(false);
   });
 });

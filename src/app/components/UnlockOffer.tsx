@@ -53,24 +53,30 @@ export function UnlockOffer({
           {store.busy === 'buying' ? 'Waiting for the App Store…' : unlockLabel(offer.price)}
         </Pressable>
       )}
-      {appStore && (
-        <>
-          {/* Always in the page, so what it says is announced when it changes:
-              a live region added at the same moment as its text often is not. */}
-          <div role="status">{store.note && <Note note={store.note} />}</div>
-          <Pressable
-            onClick={onRestore}
-            disabled={waiting}
-            aria-busy={store.busy === 'restoring'}
-            style={{
-              minHeight: 44, marginTop: 4, background: 'transparent', border: 0,
-              color: color.accentInk, fontWeight: 600, fontSize: 13, textAlign: 'center', opacity: waiting ? 0.7 : 1,
-            }}
-          >
-            {store.busy === 'restoring' ? 'Asking the App Store…' : 'Restore purchase'}
-          </Pressable>
-        </>
-      )}
+      {appStore && <RestorePurchase store={store} onRestore={onRestore} />}
+    </>
+  );
+}
+
+/** The App Store's answer and the restore button: beside the unlock, or on its own (`restoreOnlyOffered`). */
+export function RestorePurchase({ store, onRestore }: { store: StoreView; onRestore: () => void }) {
+  const waiting = store.busy !== null;
+  return (
+    <>
+      {/* Always in the page, so what it says is announced when it changes:
+          a live region added at the same moment as its text often is not. */}
+      <div role="status">{store.note && <Note note={store.note} />}</div>
+      <Pressable
+        onClick={onRestore}
+        disabled={waiting}
+        aria-busy={store.busy === 'restoring'}
+        style={{
+          minHeight: 44, marginTop: 4, background: 'transparent', border: 0,
+          color: color.accentInk, fontWeight: 600, fontSize: 13, textAlign: 'center', opacity: waiting ? 0.7 : 1,
+        }}
+      >
+        {store.busy === 'restoring' ? 'Asking the App Store…' : 'Restore purchase'}
+      </Pressable>
     </>
   );
 }
