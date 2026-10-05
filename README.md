@@ -47,7 +47,7 @@ the installed binary: `CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux
 And the iOS app:
 
 ```bash
-npm run build:ios  # builds to dist-ios and makes the APP the entry, not the landing page
+npm run build:ios  # builds to dist-ios with the APP as the entry; the landing page is left out
 npx cap sync ios   # copies it into the Xcode project and updates the plugins
 ```
 

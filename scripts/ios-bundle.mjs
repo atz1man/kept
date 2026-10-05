@@ -21,7 +21,7 @@
  */
 import { spawn } from 'node:child_process';
 import { chromium } from 'playwright';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { reportOnCrash, sayCrash } from './crash-report.mjs';
 import { answeringBridge } from './answering-bridge.mjs';
 
@@ -47,6 +47,36 @@ reportOnCrash(report);
 if (!existsSync(`${ROOT}dist-ios/index.html`)) {
   console.error('✗ dist-ios is not built — run `npm run build:ios` first');
   process.exit(1);
+}
+
+/*
+ * No landing page in the bundle that ships to a phone.
+ *
+ * Nothing in the iOS bundle links to it — the root is the app — yet the web
+ * build's landing entry rode along as `assets/landing-*.js`: 16 KB of
+ * marketing copy, its pricing tiers included, inside the app it sells. The
+ * ios build mode leaves the entry out (vite.config.ts). Asked twice, by name
+ * and by content, because a renamed chunk would pass the first alone: the
+ * landing page's pricing section is the one thing no screen of the app has.
+ */
+{
+  const walk = (dir) =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+      e.isDirectory() ? walk(`${dir}/${e.name}`) : [`${dir}/${e.name}`],
+    );
+  const files = walk(`${ROOT}dist-ios`).map((f) => f.slice(`${ROOT}dist-ios/`.length));
+  const scripts = files.filter((f) => /^assets\/.+\.js$/.test(f));
+  if (scripts.length === 0) {
+    failures.push({ what: 'dist-ios has no scripts under assets/, so the landing check would pass over nothing', saw: '' });
+  }
+  const named = files.filter((f) => /(^|\/)landing[-.]/.test(f));
+  const carrying = scripts.filter((f) => readFileSync(`${ROOT}dist-ios/${f}`, 'utf8').includes('id:"pricing"'));
+  if (named.length > 0 || carrying.length > 0) {
+    failures.push({
+      what: 'the iOS bundle ships the landing page, which nothing in it links to',
+      saw: [...new Set([...named, ...carrying])].join(', '),
+    });
+  }
 }
 
 // Its own port and its own server, so it cannot be pointed at the web build by
