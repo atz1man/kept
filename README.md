@@ -36,6 +36,7 @@ npm run layout     # 320px and 402px, adversarial content, empty states, covered
                    #   minimum font size applied
 npm run agreement  # the same fact, on more than one screen, has to match
 npm run perf       # diagnostic, not a gate: how it behaves as the list grows
+npm run budget     # a gate: what each page downloads before it paints, gzipped, against a ceiling
 npm run freshness  # starts and stops its OWN server — see below, no preview needed
 npm run ios        # boots dist-ios, the bundle that ships — also its own server
 ```
