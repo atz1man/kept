@@ -81,20 +81,67 @@ function decodeEntities(s: string): string {
  * cell and "£89.00" in the next is ONE line to the parser, and was two.
  */
 export function htmlToText(html: string): string {
-  return decodeEntities(
-    html
-      .replace(/<!--[\s\S]*?-->/g, '')
-      .replace(/<(script|style|head|title|noscript|template)\b[\s\S]*?<\/\1\s*>/gi, '')
+  let s = upToLast(html, '-->', (t) => t.replace(/<!--[\s\S]*?-->/g, ''));
+  s = dropRawText(s);
+  s = upToLast(s, '>', (t) =>
+    t
       .replace(/<br\b[^>]*>/gi, '\n')
       .replace(/<\/(p|div|tr|li|h[1-6]|table|section|article|header|footer|blockquote|address|ul|ol|dl|dt|dd)\s*>/gi, '\n')
       .replace(/<(p|div|tr|li|h[1-6]|table)\b[^>]*>/gi, '\n')
       .replace(/<\/(td|th)\s*>/gi, ' \t')
       .replace(/<[^>]+>/g, ''),
-  )
+  );
+  return decodeEntities(s)
     .split('\n')
     .map((l) => l.replace(/[ \t ​]+/g, ' ').trim())
     .filter(Boolean)
     .join('\n');
+}
+
+/*
+ * Why the tag patterns are not simply run over the whole file. Each one starts
+ * at a "<" and runs to the ">" that closes it, and where there IS no closing
+ * ">" the engine starts again at the next "<" and runs to the end once more —
+ * once per "<", so a file of 56 KB that never closes a tag took half a second
+ * and a megabyte would take minutes, on the main thread, with the app frozen.
+ * A broken export or a hostile attachment is enough. Nothing these patterns
+ * remove can END after the last ">" (or "-->"), so they run over the text up to
+ * it and the rest is kept as it is: the same result, without the rescans.
+ */
+function upToLast(s: string, end: string, f: (t: string) => string): string {
+  const cut = s.lastIndexOf(end) + end.length;
+  return cut < end.length ? s : f(s.slice(0, cut)) + s.slice(cut);
+}
+
+const RAW_TEXT = /<(script|style|head|title|noscript|template)\b/gi;
+const CLOSES = new Map<string, RegExp>();
+
+/**
+ * <style>…</style> and the like, with what is inside them: never words a person
+ * reads. Written as a loop rather than one pattern because an opening tag that
+ * is never closed made the pattern search to the end of the file for EVERY
+ * opening after it; here, once one name has no closing tag left, no later
+ * opening of it can have one either, and it is not searched for again.
+ */
+function dropRawText(s: string): string {
+  const unclosed = new Set<string>();
+  let out = '';
+  let from = 0;
+  RAW_TEXT.lastIndex = 0;
+  for (let m = RAW_TEXT.exec(s); m; m = RAW_TEXT.exec(s)) {
+    const name = m[1].toLowerCase();
+    if (unclosed.has(name)) continue;
+    let close = CLOSES.get(name);
+    if (!close) CLOSES.set(name, (close = new RegExp(`<\\/${name}\\s*>`, 'gi')));
+    close.lastIndex = RAW_TEXT.lastIndex;
+    if (!close.exec(s)) {
+      unclosed.add(name);
+      continue;
+    }
+    out += s.slice(from, m.index);
+    from = RAW_TEXT.lastIndex = close.lastIndex;
+  }
+  return out + s.slice(from);
 }
 
 // ── Email ─────────────────────────────────────────────────────────────────
@@ -222,7 +269,9 @@ export function readEmail(raw: string): ReadEmail {
   const found = { plain: [] as string[], html: [] as string[], attachments: [] as Attachment[] };
   walk(raw, found);
   const fromHeader = headers.get('from');
-  const from = fromHeader ? decodeWords(fromHeader).replace(/^\s*"?([^"<]*?)"?\s*<([^>]+)>.*$/, (_, n: string, a: string) => n.trim() || a).trim() : null;
+  // Runs of spaces are made one first: the pattern below tries each length of a
+  // run against the next, which made a From line of 80,000 spaces take seconds.
+  const from = fromHeader ? decodeWords(fromHeader).replace(/\s+/g, ' ').replace(/^\s*"?([^"<]*?)"?\s*<([^>]+)>.*$/, (_, n: string, a: string) => n.trim() || a).trim() : null;
   const dateHeader = headers.get('date');
   const sent = dateHeader ? new Date(dateHeader) : null;
   return {
