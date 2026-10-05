@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, addMonths, currentDay, daysBetween, fmtDate, fmtDateNear, fmtDatesTogether, fromISODate, lastDayOfMonthsBeginning, relativeAgo, startOfDay, toISODate } from '../src/lib/dates';
+import { addDays, addMonths, currentDay, daysBetween, fmtDate, fmtDateNear, fmtDatesTogether, fromISODate, lastDayOfMonthsBeginning, relativeAgo, startOfDay, toISODate, ukDay } from '../src/lib/dates';
 
 /**
  * This suite runs under TZ=America/New_York on purpose (see package.json).
@@ -251,40 +251,77 @@ describe('the day the app thinks it is', () => {
    *
    * The effect it came out of asserted this in prose — "sets state only when
    * the date actually turns over" — where nothing could contradict it.
+   *
+   * The day is the UK's (see `ukDay`), so every instant here is written as
+   * the moment it is in London: `uk(…)` takes London wall-clock time. The
+   * suite runs in New York, five hours behind, which is the point — a check
+   * that only ever ran in London could not tell the two rules apart.
    */
+  const uk = (y: number, m: number, d: number, h: number, min = 0, sec = 0) => {
+    // British Summer Time from the last Sunday of March to the last Sunday of
+    // October; in 2026, 29 March and 25 October, both at 01:00 GMT.
+    const t = Date.UTC(y, m, d, h, min, sec);
+    const bst = t >= Date.UTC(2026, 2, 29, 1) && t < Date.UTC(2026, 9, 25, 1);
+    return new Date(t - (bst ? 3_600_000 : 0));
+  };
+
   it('hands back the very same object while the day has not turned', () => {
-    const current = startOfDay(new Date(2026, 5, 30, 9, 0));
-    const later = new Date(2026, 5, 30, 23, 59, 59);
+    const current = ukDay(uk(2026, 5, 30, 9));
+    const later = uk(2026, 5, 30, 23, 59, 59);
     // Identity, not equality: a fresh Date each minute would re-run the
     // reducer, every derivation and the scheduler for the life of the session.
     expect(currentDay(current, later)).toBe(current);
   });
 
-  it('turns over at midnight, not at the twenty-four hour mark', () => {
-    const current = startOfDay(new Date(2026, 5, 30, 23, 0));
-    const justAfter = new Date(2026, 6, 1, 0, 0, 1);
+  it('turns over at midnight in London, not at the twenty-four hour mark', () => {
+    const current = ukDay(uk(2026, 5, 30, 23));
+    const justAfter = uk(2026, 6, 1, 0, 0, 1);
     const next = currentDay(current, justAfter);
     expect(next).not.toBe(current);
     expect(toISODate(next)).toBe('2026-07-01');
   });
 
-  it('turns over exactly once across a 23-hour spring-forward day', () => {
-    /*
-     * The suite runs in America/New_York for this: on 8 March 2026 the day is
-     * 23 hours long, so anything comparing elapsed milliseconds against
-     * 86_400_000 turns the date over early or late. Two calls, one either side
-     * of the short night.
-     */
-    const before = startOfDay(new Date(2026, 2, 8, 12, 0));
-    expect(currentDay(before, new Date(2026, 2, 8, 23, 30))).toBe(before);
-    const after = currentDay(before, new Date(2026, 2, 9, 0, 30));
-    expect(toISODate(after)).toBe('2026-03-09');
+  it('turns over exactly once across the UK’s 23-hour spring-forward day', () => {
+    // 29 March 2026: the clocks go forward at 01:00, so the day is 23 hours
+    // long and anything counting elapsed milliseconds turns over at the wrong time.
+    const before = ukDay(uk(2026, 2, 29, 12));
+    expect(currentDay(before, uk(2026, 2, 29, 23, 30))).toBe(before);
+    const after = currentDay(before, uk(2026, 2, 30, 0, 30));
+    expect(toISODate(after)).toBe('2026-03-30');
+  });
+
+  it('is not moved by the PHONE’s short night either', () => {
+    // 8 March 2026 is New York's 23-hour day — this suite's own zone — and is
+    // an ordinary day in London, so the app's day turns over at London's
+    // midnight on it, once, as on any other.
+    const before = ukDay(uk(2026, 2, 8, 12));
+    expect(currentDay(before, uk(2026, 2, 8, 23, 59))).toBe(before);
+    expect(toISODate(currentDay(before, uk(2026, 2, 9, 0, 1)))).toBe('2026-03-09');
   });
 
   it('goes backwards if the clock does', () => {
     // A phone whose time is corrected backwards is not a case to be clever
     // about: the app should report the day it now is, not the latest it saw.
-    const current = startOfDay(new Date(2026, 5, 30));
-    expect(toISODate(currentDay(current, new Date(2026, 5, 28, 8, 0)))).toBe('2026-06-28');
+    const current = ukDay(uk(2026, 5, 30, 12));
+    expect(toISODate(currentDay(current, uk(2026, 5, 28, 8)))).toBe('2026-06-28');
+  });
+
+  it('is the day it is in the UK, wherever the phone is', () => {
+    /*
+     * Measured on main: at 04:00 on Monday 5 October in London, a phone set to
+     * New York — 23:00 on the Sunday there — held Sunday as today, and a window
+     * whose last day was that Sunday read "Today is the last day" when it had
+     * already shut. The suite's own zone is New York, so this IS that phone.
+     */
+    expect(toISODate(ukDay(new Date('2026-10-05T03:00:00Z')))).toBe('2026-10-05');
+    expect(new Date('2026-10-05T03:00:00Z').getDate()).toBe(4); // what the phone's own calendar says
+    expect(toISODate(ukDay(new Date('2026-10-04T22:00:00Z')))).toBe('2026-10-04'); // 23:00 in London, still Sunday
+    expect(toISODate(ukDay(new Date('2026-10-04T23:00:00Z')))).toBe('2026-10-05'); // midnight in London
+  });
+
+  it('is a day this module counts with: local midnight of that date', () => {
+    const d = ukDay(new Date('2026-10-05T03:00:00Z'));
+    expect(d.getTime()).toBe(startOfDay(d).getTime());
+    expect(daysBetween(fromISODate('2026-10-04'), d)).toBe(1);
   });
 });

@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { alertKey, dueAlerts, inheritedKeys, movedRungs, pruneSent, REFUND_CHASE_DAYS, supersededKeys, WARRANTY_NOTICE_DAYS } from '../src/lib/alerts';
-import { addDays, addMonths, fmtDate, toISODate } from '../src/lib/dates';
+import { addDays, addMonths, currentDay, fmtDate, toISODate } from '../src/lib/dates';
 import { toPence } from '../src/lib/money';
 import { refundChase } from '../src/lib/refund-chase';
 import { seedReceipts } from '../src/lib/seed';
 import { derive } from '../src/lib/receipts';
+import { findStore } from '../src/lib/stores';
 import type { Receipt } from '../src/lib/types';
 
 const TODAY = new Date(2026, 7, 28);
@@ -423,5 +424,29 @@ describe('a refund still to come', () => {
 
   it('is never about a sample', () => {
     expect(refunds([sentAgo(20, { demo: true })])).toEqual([]);
+  });
+});
+
+describe('the last day, on a phone outside the UK', () => {
+  it('is over when it is over in London, not when the phone says so', () => {
+    /*
+     * A Next jacket bought on 6 September with 28 days: the last day is Sunday
+     * 4 October. The suite runs in New York, so this is a phone there, five
+     * hours behind. Measured on main at 04:00 on Monday in London (23:00 on the
+     * Sunday in New York): "Today is the last day", about a window that had
+     * shut four hours earlier. The day the app holds comes from `currentDay`,
+     * exactly as `useApp` gets it.
+     */
+    const next = findStore('Next')!;
+    const r: Receipt = { id: 'n', store: 'Next', item: 'Jacket', cat: 'clothing', amount: 6000, purchasedOn: '2026-09-06', windowDays: 28, policy: next.policy, distance: false, status: 'active' };
+    const at = (instant: string) => {
+      const today = currentDay(new Date(0), new Date(instant));
+      return { left: derive(r, today).daysLeft, said: dueAlerts([r], today, 7, new Set()).map((a) => a.title) };
+    };
+    // 23:00 on the Sunday in London: still the last day.
+    expect(at('2026-10-04T22:00:00Z')).toEqual({ left: 0, said: ['Today is the last day'] });
+    // 04:00 on the Monday in London, still Sunday on the phone: shut.
+    expect(at('2026-10-05T03:00:00Z').left).toBe(-1);
+    expect(at('2026-10-05T03:00:00Z').said).not.toContain('Today is the last day');
   });
 });

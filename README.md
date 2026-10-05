@@ -321,7 +321,7 @@ touch. It reads exactly like a broken filter and is not one.
 ```
 src/lib/          the decision logic — pure, tested, no React
   types.ts        the Receipt, and the shapes every other module agrees on
-  dates.ts        whole-day arithmetic in the user's timezone
+  dates.ts        whole-day arithmetic, and which day it is: the UK's, wherever the phone is
   money.ts        integer pence
   receipt-scan.ts a till receipt, as the camera reads it, made readable by the parser
   confidence.ts   which figures a read was unsure of, so the Add card marks them to check
