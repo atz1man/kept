@@ -22,22 +22,50 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  */
 
 let resolveRead: ((value: unknown) => void) | null = null;
+/** Reads of the file that hangs. */
 let readCalls = 0;
+/** Every file read was asked for, hanging or not. */
+const reads: string[] = [];
 /** What reached the mirror file, in order. */
 const writes: string[] = [];
+/** The disk, for every file but the one that hangs. */
+const disk = new Map<string, string>();
+/**
+ * The file whose read never answers. The mirror itself unless a test says
+ * otherwise: a write that reaches it goes through a pending file first (see
+ * `write` in mirror.ts), and that read sits inside the same budget.
+ */
+let hangs = 'kept-receipts.json';
 
 vi.mock('@capacitor/filesystem', () => ({
   Directory: { Documents: 'DOCUMENTS' },
   Encoding: { UTF8: 'utf8' },
   Filesystem: {
     // Never settles: a plugin call waiting on a bridge that will not answer.
-    readFile: () => {
+    readFile: async ({ path }: { path: string }) => {
+      reads.push(path);
+      if (path !== hangs) {
+        if (!disk.has(path)) throw new Error('ENOENT');
+        return { data: disk.get(path) };
+      }
       readCalls += 1;
       return new Promise((res) => {
         resolveRead = res;
       });
     },
-    writeFile: async ({ data }: { data: string }) => void writes.push(data),
+    writeFile: async ({ path, data }: { path: string; data: string }) => {
+      if (path === 'kept-receipts.json') writes.push(data);
+      disk.set(path, data);
+    },
+    // Capacitor 6 on iOS: remove the destination, then move (Filesystem.swift:132-149).
+    rename: async ({ from, to }: { from: string; to: string }) => {
+      disk.delete(to);
+      if (!disk.has(from)) throw new Error('ENOENT');
+      const data = disk.get(from)!;
+      disk.delete(from);
+      disk.set(to, data);
+      if (to === 'kept-receipts.json') writes.push(data);
+    },
   },
 }));
 
@@ -47,6 +75,9 @@ beforeEach(() => {
   readCalls = 0;
   resolveRead = null;
   writes.length = 0;
+  reads.length = 0;
+  disk.clear();
+  hangs = 'kept-receipts.json';
   (globalThis as Record<string, unknown>).window = {
     localStorage: {
       getItem: () => null,
@@ -115,6 +146,27 @@ describe('a rescue that never answers', () => {
     const { restoreFromMirror } = await import('../src/lib/storage');
     await expect(restoreFromMirror()).resolves.toBe(false);
     expect(readCalls).toBe(0);
+    expect(reads).toEqual([]);
+  });
+
+  it('holds the pending file to the same budget as the mirror', async () => {
+    /*
+     * The read now asks two files, the pending one first, and a budget that
+     * covered only the second would let the first hang the app all over
+     * again. A late answer from it is still an answer: a complete pending
+     * file is the newest library there is.
+     */
+    hangs = 'kept-receipts.json.next';
+    const { readMirrorWithin } = await import('../src/lib/mirror');
+    const started = Date.now();
+    const { raw, late } = await readMirrorWithin(BUDGET);
+    expect(raw).toBeNull();
+    expect(readCalls).toBe(1);
+    expect(Date.now() - started).toBeLessThan(2000);
+    expect(late).not.toBeNull();
+    const pending = JSON.stringify({ receipts: [{ id: 'pending' }] });
+    resolveRead!({ data: pending });
+    await expect(late).resolves.toBe(pending);
   });
 });
 

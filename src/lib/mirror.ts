@@ -94,6 +94,14 @@ export function isNative(): boolean {
 const MIRROR_FILE = 'kept-receipts.json';
 
 /**
+ * Where a write goes before it becomes the mirror. See `write`.
+ *
+ * Same directory as the mirror, so the rename that follows is a rename within
+ * one volume and not a copy across two.
+ */
+const MIRROR_NEXT = `${MIRROR_FILE}.next`;
+
+/**
  * The one place that knows how to reach the filesystem plugin, and only once
  * the platform check has passed, so a browser never loads it.
  *
@@ -203,12 +211,21 @@ export async function readMirrorWithin(
    */
   const read = (async () => {
     const { Filesystem, Directory, Encoding } = await filesystem();
-    const file = await Filesystem.readFile({
-      path: MIRROR_FILE,
-      directory: Directory.Documents,
-      encoding: Encoding.UTF8,
-    });
-    return typeof file.data === 'string' ? file.data : null;
+    const readText = async (path: string) => {
+      const file = await Filesystem.readFile({ path, directory: Directory.Documents, encoding: Encoding.UTF8 });
+      return typeof file.data === 'string' ? file.data : null;
+    };
+    /*
+     * The pending write first, and only when it is a whole library. See
+     * `write` for why a complete one is always the newest copy there is —
+     * an erase cut off before its rename included, which is the case that
+     * makes the order matter: the main file then still holds every receipt.
+     * A missing or half-written one is no answer, and falls through to the
+     * mirror exactly as a launch did before the pending file existed.
+     */
+    const next = await readText(MIRROR_NEXT).catch(() => null);
+    if (looksLikeState(next)) return next;
+    return readText(MIRROR_FILE);
   })().catch(() => {
     // No mirror yet is the ordinary case on a first launch, and an unreadable
     // one is not worth distinguishing: either way there is nothing to restore.
@@ -233,14 +250,63 @@ export async function readMirrorWithin(
   }
 }
 
+/**
+ * One mirror write: the whole library to a pending file, then renamed over the
+ * mirror.
+ *
+ * The mirror used to be written in place, and a write in place cannot survive
+ * being cut off. Read from the plugin's source rather than seen on a device:
+ * Capacitor 6's `writeFile` on iOS (@capacitor/filesystem 6.0.4,
+ * ios/Sources/FilesystemPlugin/Filesystem.swift:49) is `data.write(to:
+ * fileUrl, atomically: false, encoding: .utf8)`, straight into the file it
+ * replaces. The app swiped away mid-save, or the battery giving out, leaves
+ * the mirror truncated: not JSON, so `looksLikeState` refuses it and
+ * `chooseSource` answers "fresh". The copy that exists for the day the web
+ * view loses the live store is then gone on the day it would have been needed.
+ *
+ * Capacitor's `rename` is no atomic replace either, and the read is built
+ * around what it actually does. `_copy` (Filesystem.swift:132-149) removes the
+ * destination (:139) and then calls `moveItem` (:144): two steps, with a
+ * moment between them when there is no mirror at all. So every point a write
+ * can be cut off at leaves one whole library on disk, and `readMirrorWithin`
+ * knows where:
+ *
+ *   - during the pending write: the mirror is untouched, and the pending file
+ *     is a fragment (a cut-off JSON object is never valid JSON — its closing
+ *     brace is its last character), so the read passes over it;
+ *   - after the pending write, before the rename: the old mirror, and the new
+ *     library complete beside it;
+ *   - between the remove and the move: no mirror, and a complete pending file;
+ *   - after the move: the mirror is the new library and nothing is pending.
+ *
+ * Which is why the read takes a complete pending file over the mirror. One can
+ * only exist when the latest write finished and its rename did not, so it is
+ * always newer than the mirror beside it. Taking the mirror instead would read
+ * an erase that was cut off before its rename as "the library is still here",
+ * and hand back every receipt the person had just erased — the defect the
+ * comments on `writeMirror` and in `wipe` describe, by a third route.
+ *
+ * Nothing extra is needed for an erase: it is a write like any other, its
+ * `writeFile` replaces whatever pending fragment an earlier killed write left,
+ * and its rename leaves nothing pending behind it.
+ *
+ * True only when both steps landed; a write that is still pending has not
+ * reached the mirror, whatever the next launch will make of it.
+ */
 async function write(raw: string): Promise<boolean> {
   try {
     const { Filesystem, Directory, Encoding } = await filesystem();
     await Filesystem.writeFile({
-      path: MIRROR_FILE,
+      path: MIRROR_NEXT,
       directory: Directory.Documents,
       encoding: Encoding.UTF8,
       data: raw,
+    });
+    await Filesystem.rename({
+      from: MIRROR_NEXT,
+      to: MIRROR_FILE,
+      directory: Directory.Documents,
+      toDirectory: Directory.Documents,
     });
     return true;
   } catch {

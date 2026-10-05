@@ -26,7 +26,7 @@ vi.mock('@capacitor/filesystem', () => ({
   Directory: { Documents: 'DOCUMENTS' },
   Encoding: { UTF8: 'utf8' },
   Filesystem: Object.fromEntries(
-    ['readFile', 'writeFile', 'deleteFile', 'mkdir', 'rmdir', 'readdir'].map((method) => [
+    ['readFile', 'writeFile', 'rename', 'deleteFile', 'mkdir', 'rmdir', 'readdir'].map((method) => [
       method,
       async () => {
         bridge.push(`Filesystem.${method}`);
@@ -291,7 +291,7 @@ describe('an iPhone’s files: the mirror, the photographs, a saved backup', () 
     storage.wipe();
     await settle();
     await mirror.mirrorSettled();
-    expect(bridge).toEqual(expect.arrayContaining(['Filesystem.writeFile', 'Filesystem.rmdir']));
+    expect(bridge).toEqual(expect.arrayContaining(['Filesystem.writeFile', 'Filesystem.rename', 'Filesystem.rmdir']));
   });
 });
 

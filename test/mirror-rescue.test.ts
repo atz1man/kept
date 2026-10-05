@@ -42,10 +42,44 @@ vi.mock('@capacitor/filesystem', () => ({
         writeThrows -= 1;
         throw new Error('no space');
       }
+      if (cutOff === 'writing') {
+        // `writeFile` on iOS is `atomically: false`: a write killed part-way
+        // leaves the first part of the file and nothing after it.
+        cutOff = null;
+        files.set(path, data.slice(0, Math.floor(data.length / 2)));
+        throw new Error('killed');
+      }
       files.set(path, data);
+    },
+    rename: async ({ from, to }: { from: string; to: string }) => {
+      /*
+       * What Capacitor 6 does on iOS, step for step (Filesystem.swift:132-149):
+       * remove the destination if it is a file, then `moveItem`. Not an atomic
+       * replace, and the mirror is written around exactly that, so the mock
+       * must not be kinder than the phone.
+       */
+      if (cutOff === 'renaming') {
+        cutOff = null;
+        throw new Error('killed');
+      }
+      files.delete(to);
+      if (cutOff === 'removed') {
+        cutOff = null;
+        throw new Error('killed');
+      }
+      if (!files.has(from)) throw new Error('ENOENT');
+      files.set(to, files.get(from)!);
+      files.delete(from);
     },
   },
 }));
+
+/**
+ * Where the next mirror write is cut off, as the app being killed would cut
+ * it: part-way through writing the pending file, after it but before the
+ * rename began, or inside the rename between its remove and its move.
+ */
+let cutOff: 'writing' | 'renaming' | 'removed' | null = null;
 
 /** Held open across the NEXT write only. See the ordering tests below. */
 let writeGate: Promise<void> | null = null;
@@ -133,6 +167,7 @@ beforeEach(() => {
   writeGate = null;
   gateEntered = null;
   writeThrows = 0;
+  cutOff = null;
   vi.resetModules();
 });
 
@@ -460,5 +495,157 @@ describe('two mirror writes in flight at once', () => {
     expect(await writeMirror('second')).toBe(true);
     await mirrorSettled();
     expect(files.get('kept-receipts.json')).toBe('second');
+  });
+});
+
+describe('a mirror write cut off part-way', () => {
+  /*
+   * The phone is killed in the middle of a save — swiped away, or the battery
+   * gone — and the web view's storage is lost before the next launch. That
+   * launch is the one the mirror exists for, so it must find a whole library
+   * on disk whatever point the write had reached.
+   *
+   * Capacitor 6 on iOS writes a file in place (`atomically: false`,
+   * Filesystem.swift:49) and renames by removing the destination and then
+   * moving (Filesystem.swift:132-149), so a write is a pending file renamed
+   * over the mirror, and every point it can be stopped at leaves one copy
+   * whole. The mock above stops it at each.
+   */
+  const MIRROR = 'kept-receipts.json';
+  const PENDING = 'kept-receipts.json.next';
+
+  /** The next launch, with the web view's storage gone and the disk kept. */
+  async function relaunchWithStoreLost() {
+    vi.resetModules();
+    boot(true);
+    return import('../src/lib/storage');
+  }
+
+  const ids = (raw: string | null) => (JSON.parse(raw!).receipts as { id: string }[]).map((r) => r.id);
+
+  it('killed while writing: the next launch gets the library before it', async () => {
+    boot(true);
+    const { save } = await import('../src/lib/storage');
+    save(JSON.parse(library(['a', 'b'])));
+    await settle();
+
+    cutOff = 'writing';
+    save(JSON.parse(library(['a', 'b', 'c'])));
+    await settle();
+
+    const { restoreFromMirror } = await relaunchWithStoreLost();
+    expect(await restoreFromMirror()).toBe(true);
+    expect(ids(store.getItem(KEY))).toEqual(['a', 'b']);
+    // And it was a real fragment that was passed over, not a write that never began.
+    expect(files.get(PENDING)).toBeTruthy();
+    expect(() => JSON.parse(files.get(PENDING)!)).toThrow();
+  });
+
+  it('killed between the rename’s remove and its move: the next launch gets the new library', async () => {
+    // What `_copy` leaves when it is stopped after `removeItem` (:139) and
+    // before `moveItem` (:144): no mirror at all, and the new library pending.
+    files.set(PENDING, library(['a', 'b', 'c']));
+    const { restoreFromMirror } = await relaunchWithStoreLost();
+    expect(await restoreFromMirror()).toBe(true);
+    expect(ids(store.getItem(KEY))).toEqual(['a', 'b', 'c']);
+  });
+
+  it('an erase killed before its rename stays an erase', async () => {
+    /*
+     * The case that decides which file the read asks first. The erase reached
+     * the pending file and not the mirror, so the mirror still holds every
+     * receipt. Read mirror-first, this launch would put them all back — the
+     * erase undone, again, by the copy that was meant to protect the library.
+     */
+    files.set(MIRROR, library(['a', 'b']));
+    files.set(PENDING, JSON.stringify({ version: 1, receipts: [] }));
+    const { restoreFromMirror } = await relaunchWithStoreLost();
+    const { readMirror } = await import('../src/lib/mirror');
+    expect(ids(await readMirror())).toEqual([]);
+    expect(await restoreFromMirror()).toBe(true);
+    expect(ids(store.getItem(KEY))).toEqual([]);
+  });
+
+  it('each cut-off point leaves the disk the read is built for', async () => {
+    // The two states above, reached through the real write rather than set by
+    // hand, so they are what a killed write leaves and not what a test wished.
+    boot(true);
+    const { save, wipe } = await import('../src/lib/storage');
+    save(JSON.parse(library(['a', 'b'])));
+    await settle();
+
+    cutOff = 'removed';
+    save(JSON.parse(library(['a', 'b', 'c'])));
+    await settle();
+    expect(files.has(MIRROR)).toBe(false);
+    expect(ids(files.get(PENDING)!)).toEqual(['a', 'b', 'c']);
+
+    save(JSON.parse(library(['a', 'b'])));
+    await settle();
+    cutOff = 'renaming';
+    wipe();
+    await settle();
+    expect(ids(files.get(MIRROR)!)).toEqual(['a', 'b']);
+    expect(ids(files.get(PENDING)!)).toEqual([]);
+  });
+
+  it('a write that is still pending does not report that it landed', async () => {
+    boot(true);
+    const { writeMirror } = await import('../src/lib/mirror');
+    cutOff = 'renaming';
+    expect(await writeMirror(library(['a']))).toBe(false);
+    cutOff = 'removed';
+    expect(await writeMirror(library(['a']))).toBe(false);
+    expect(await writeMirror(library(['a']))).toBe(true);
+  });
+
+  it('the ordinary path leaves nothing pending', async () => {
+    boot(true);
+    const { save, wipe } = await import('../src/lib/storage');
+    save(JSON.parse(library(['a', 'b'])));
+    await settle();
+    expect([...files.keys()]).toEqual([MIRROR]);
+    wipe();
+    await settle();
+    expect([...files.keys()]).toEqual([MIRROR]);
+  });
+
+  it('a cut-off mirror with nothing pending is read as it always was', async () => {
+    // No pending file to prefer, so the fragment comes back as text and the
+    // choice between copies is made exactly as before: it is not a library.
+    const truncated = library(['a', 'b']).slice(0, 30);
+    files.set(MIRROR, truncated);
+    const { restoreFromMirror } = await relaunchWithStoreLost();
+    const { readMirror, chooseSource } = await import('../src/lib/mirror');
+    expect(await readMirror()).toBe(truncated);
+    expect(chooseSource(null, truncated)).toBe('fresh');
+    expect(chooseSource(library(['a']), truncated)).toBe('local');
+    expect(await restoreFromMirror()).toBe(false);
+    expect(store.getItem(KEY)).toBeNull();
+  });
+
+  it('after an erase, no file in Documents holds an erased receipt', async () => {
+    /*
+     * Including the fragment a killed write left pending. It is not a
+     * library, so no launch would ever read it back — but it is the shopping
+     * in plain text, sitting where the Files app can open it, and "Erase
+     * everything" that left it there would be an erase that did not.
+     */
+    boot(true);
+    const { save, wipe } = await import('../src/lib/storage');
+    save(JSON.parse(library(['stand-mixer', 'kettle'])));
+    await settle();
+    cutOff = 'writing';
+    save(JSON.parse(library(['stand-mixer', 'kettle', 'toaster'])));
+    await settle();
+    expect(files.get(PENDING)).toContain('stand-mixer');
+
+    wipe();
+    await settle();
+
+    expect([...files.keys()]).toEqual([MIRROR]);
+    for (const [name, text] of files) {
+      for (const id of ['stand-mixer', 'kettle', 'toaster']) expect(text, name).not.toContain(id);
+    }
   });
 });

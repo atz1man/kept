@@ -75,6 +75,20 @@ export async function answeringBridge(ctx, { shot = '', disk = {}, slowMirrorMs 
           delete all[path];
           put(all);
         },
+        // As Capacitor 6 does it on iOS (Filesystem.swift:132-149): remove the
+        // destination, then move. Every mirror write ends in one of these (see
+        // `write` in src/lib/mirror.ts), so without it no write would land.
+        rename: async ({ from, to }) => {
+          const all = files();
+          delete all[to];
+          if (!(from in all)) {
+            put(all);
+            return missing();
+          }
+          all[to] = all[from];
+          delete all[from];
+          put(all);
+        },
         rmdir: async () => {},
         stat: async ({ path }) => (path in files() ? { type: 'file', size: files()[path].length } : missing()),
       },
