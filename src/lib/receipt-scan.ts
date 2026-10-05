@@ -216,7 +216,11 @@ export function readScan(ocr: string): ScanText {
     .split('\n')
     .map((l) => l.replace(/[ \t]+/g, ' ').trim());
   const misread: Misread[] = [];
-  const shop = shopHeading(lines);
+  const clean = shopHeading(lines);
+  const misreadShop = clean ? null : misreadHeading(lines);
+  // A shop read through figures is never proved: a name has no arithmetic.
+  if (misreadShop) misread.push({ field: 'store', read: misreadShop.read, as: misreadShop.store, proved: false });
+  const shop = clean ?? misreadShop?.store ?? null;
   const euros = EUROS.test(ocr);
   const pounds: { line: number; read: string; as: string; letter: string }[] = [];
   const dates: { read: string; as: string }[] = [];
@@ -245,6 +249,47 @@ export function readScan(ocr: string): ScanText {
     misread.push({ field: 'amount', read: p.read, as: p.as, proved, line });
   }
   return { text: [...(shop ? [`Receipt from ${shop}`] : []), ...body].join('\n'), misread };
+}
+
+/*
+ * A shop's name with figures in it: "B00TS", "1KEA", "L1DL". The heading is
+ * the one place a till prints its shop, so a heading misread was a slip with
+ * no shop. Read through only on the heading line itself — the first line
+ * printed — and only where the figures are the four OCR puts for a capital
+ * letter (0 for O, 1 for I or L, 5 for S, 8 for B), each in a word that is
+ * mostly letters. "A505", a road, is mostly figures and is never read as
+ * ASOS; a "B00TS" on an item line further down is walking boots on some other
+ * shop's slip. And the result must be a shop Kept knows, the same way a
+ * heading printed cleanly must be.
+ */
+const LETTERS_FOR: Record<string, readonly string[]> = { '0': ['o'], '1': ['i', 'l'], '5': ['s'], '8': ['b'] };
+/** A word misread in more places than this is not read through: past it, a match is more likely chance than a shop. */
+const MAX_FIGURES = 3;
+/** The most words in any name Kept knows a shop by. */
+const ALIAS_WORDS = Math.max(...ALIASES_BY_LENGTH.map(({ alias }) => alias.split(' ').length));
+
+function misreadHeading(lines: readonly string[]): { read: string; store: string } | null {
+  const first = lines.find((l) => l.trim());
+  if (!first) return null;
+  // A shop's name is its first few words, and only they are read through:
+  // each misread word can be read up to eight ways, and the ways multiply.
+  const words = first.toLowerCase().replace(/[^a-z0-9&'’ ]/g, ' ').replace(/\s+/g, ' ').trim().split(' ').slice(0, ALIAS_WORDS);
+  let readings = [''];
+  for (const word of words) {
+    const letters = word.replace(/[^a-z]/g, '').length;
+    const figures = word.replace(/\D/g, '').length;
+    const swap = figures > 0 && figures <= MAX_FIGURES && letters > figures;
+    const ways = swap
+      ? [...word].reduce<string[]>((acc, c) => acc.flatMap((a) => (LETTERS_FOR[c] ?? [c]).map((l) => a + l)), [''])
+      : [word];
+    readings = readings.flatMap((r) => ways.map((w) => (r ? `${r} ${w}` : w)));
+  }
+  for (const reading of readings) {
+    for (const { alias, store } of ALIASES_BY_LENGTH) {
+      if (reading === alias || reading.startsWith(`${alias} `)) return { read: first, store: store.name };
+    }
+  }
+  return null;
 }
 
 /** OCR text of a till receipt, as text the paste parser reads. */

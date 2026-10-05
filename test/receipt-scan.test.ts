@@ -295,6 +295,52 @@ describe('a total the camera read without its point', () => {
   });
 });
 
+describe('a shop’s heading the camera read with figures in it', () => {
+  const shopOf = (ocr: string) => {
+    const scan = readScan(ocr);
+    const out = parseReceiptText(scan.text, TODAY);
+    if (!out.ok) throw new Error(`did not parse: ${out.reason}`);
+    return { store: out.value.store, mark: toCheck(out.value, [], scan.misread).store, scan };
+  };
+
+  it('reads 0 as O, 1 as I or L, 5 as S and 8 as B, and marks the shop: a name has no arithmetic', () => {
+    for (const [heading, shop] of [['B00TS', 'Boots'], ['1KEA', 'IKEA'], ['L1DL', 'Lidl'], ['C1ARKS', 'Clarks'], ['ARG05', 'Argos'], ['8OOTS PHARMACY', 'Boots'], ['MARKS & 5PENCER', 'M&S']]) {
+      const { store, mark } = shopOf(`${heading}\nNO7 SERUM 38.00\nTOTAL 38.00\n26/09/2026`);
+      expect(store, heading).toBe(shop);
+      expect(mark, heading).toBe('misread-print');
+    }
+  });
+
+  it('never reads a word that is mostly figures as a shop: the A505 is a road, not ASOS', () => {
+    expect(shopOf('A505 SERVICES\nFUEL 45.00\nTOTAL 45.00\n26/09/2026').store).toBeNull();
+  });
+
+  it('never reads a word misread in more than three places', () => {
+    expect(shopOf('T00L5TAT10N\nDRILL 45.00\nTOTAL 45.00\n26/09/2026').store).toBeNull();
+  });
+
+  it('reads the heading only: a "B00TS" further down is walking boots on another shop’s slip', () => {
+    expect(shopOf('TK MAXX\nB00TS 45.00\nTOTAL 45.00\n26/09/2026').store).toBeNull();
+  });
+
+  it('records nothing where a heading printed cleanly names the shop', () => {
+    const { store, mark, scan } = shopOf('B00TS\nBoots UK Ltd\nNO7 SERUM 38.00\nTOTAL 38.00\n26/09/2026');
+    expect(store).toBe('Boots');
+    expect(mark).toBeUndefined();
+    expect(scan.misread).toEqual([]);
+  });
+
+  it('reads a heading of many misread words in a moment', () => {
+    // Each misread word can be read eight ways, and the ways multiply: read
+    // through every word of this line, it took eleven seconds; read through
+    // only as many words as a shop's name has, a few milliseconds. Seven words
+    // and not more, so a slow version fails here rather than never finishing.
+    const started = performance.now();
+    expect(readScan(`${'B1L1I1X '.repeat(7)}\nTOTAL 5.00`).misread).toEqual([]);
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+});
+
 describe('two looks at one photo', () => {
   /*
    * What each thresholding "read" of the same photo returned, shaped like the

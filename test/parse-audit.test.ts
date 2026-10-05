@@ -110,11 +110,11 @@ const NOT_RIGHT: Record<string, Partial<Record<Field, Outcome>> | 'nothing found
   // £5.45 and not marked, because the items less the discount come to exactly
   // that. "O3/1O/2O26" is read as 3 October and marked, since nothing on a
   // slip can prove a date. "TOTAL 6900" (O5) is read as £69.00, unmarked,
-  // because the coat less the promotion is exactly that. "B00TS" is still the
-  // scanner's to fix, and is left blank.
+  // because the coat less the promotion is exactly that. The heading "B00TS"
+  // is read as Boots and marked: a name has no arithmetic to prove it.
   O1: { total: 'right, marked' },
   O4: { bought: 'right, marked' },
-  O8: { store: 'blank' },
+  O8: { store: 'right, marked' },
   // A euro total with a £50 promotion in the footer: no £ total, so the
   // largest £ figure, marked.
   C1: { total: 'marked' },
