@@ -1,3 +1,4 @@
+import { embedded } from '../lib/embed';
 import { isNative } from '../lib/mirror';
 import type { DeadlineAlert } from '../lib/alerts';
 import type { Receipt } from '../lib/types';
@@ -59,8 +60,12 @@ const MAX_PER_WAKE = 3;
  * the permission and switching deadline alerts on waited forever, while every
  * test passed against a fake that was a plain object. See the proxy fake in
  * notify-native.test.ts, which is now as strict as the real thing.
+ *
+ * Refused to the landing page's demo (see embed.ts): every caller catches, and
+ * reads the refusal as notifications being unavailable, which in the demo they are.
  */
 async function local() {
+  if (embedded()) throw new Error('the landing page’s demo does not touch this device');
   const { LocalNotifications } = await import('@capacitor/local-notifications');
   return { plugin: LocalNotifications };
 }
@@ -122,8 +127,12 @@ export function offerReminders(o: {
   );
 }
 
-/** True when this is the landing page's embedded demo rather than the real app. */
-function isEmbedded(): boolean {
+/**
+ * True inside any frame. It was called `isEmbedded` and read as the test for
+ * the landing page's demo, which it is not: `/app/?embed=1` opened on its own
+ * is the demo too, outside any frame. That is `embedded()`, asked separately.
+ */
+function framed(): boolean {
   try {
     return window.self !== window.top;
   } catch {
@@ -133,6 +142,14 @@ function isEmbedded(): boolean {
 }
 
 export async function requestNotifyPermission(): Promise<NotifyState> {
+  /*
+   * Never from the landing page's demo (see embed.ts), framed or not. The
+   * answer belongs to the whole origin, so a visitor refusing a prompt the demo
+   * raised would block the real app's alerts, and iOS raises its dialog once,
+   * ever. Measured: the demo opened on its own raised the browser's prompt the
+   * moment its switch was turned on.
+   */
+  if (embedded()) return currentNotifyState();
   if (isNative()) {
     try {
       const { plugin: LocalNotifications } = await local();
@@ -148,9 +165,9 @@ export async function requestNotifyPermission(): Promise<NotifyState> {
     }
   }
   if (typeof Notification === 'undefined') return 'unsupported';
-  // Permission prompts are blocked in frames, and the marketing page's demo
-  // has no business asking for one.
-  if (isEmbedded()) return notifyState();
+  // Permission prompts are blocked in frames, and a page framing this one is
+  // not the app.
+  if (framed()) return notifyState();
   try {
     return (await Notification.requestPermission()) as NotifyState;
   } catch {
@@ -165,6 +182,13 @@ export async function requestNotifyPermission(): Promise<NotifyState> {
  */
 export async function deliver(alerts: readonly DeadlineAlert[]): Promise<DeadlineAlert[]> {
   /*
+   * Nothing from the landing page's demo (see embed.ts), framed or not: its
+   * receipts are nobody's. The frame check below did not cover it. Measured:
+   * the demo opened on its own put "£49.00 still returnable" on screen, about
+   * a receipt that existed only in the demo.
+   */
+  if (embedded()) return [];
+  /*
    * Never on native, and stated rather than left to fall out of WKWebView
    * having no `Notification`. The system raises these from the plan lodged by
    * `schedule-native.ts`, and a second copy here would not merely duplicate
@@ -174,7 +198,7 @@ export async function deliver(alerts: readonly DeadlineAlert[]): Promise<Deadlin
    * supposed to arrive with the app closed.
    */
   if (isNative()) return [];
-  if (notifyState() !== 'granted' || isEmbedded()) return [];
+  if (notifyState() !== 'granted' || framed()) return [];
   const batch = alerts.slice(0, MAX_PER_WAKE);
   if (batch.length === 0) return [];
 

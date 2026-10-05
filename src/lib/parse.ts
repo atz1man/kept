@@ -143,9 +143,23 @@ const AS_A_LABEL = /(?:^|\b(?:order|grand|basket|bag|cart|your|the|final|new|est
  */
 const NOT_A_NAME = /^(?:\d+|[a-z])$/i;
 
+/*
+ * How far back from a "total" its label is looked for. A label is a word or
+ * two ("Order total", "3 BALANCE DUE"), and a receipt's line is under a
+ * hundred characters; the whole line used to be sliced and split again for
+ * every "total" on it, so one long line that said "total" many times took
+ * time in the square of its length. Measured: a 40,000-character line took
+ * 1.9 s, through the paste box. Past this distance the window may start in
+ * the middle of a word, so that first fragment is dropped.
+ */
+const LABEL_LOOKBACK = 160;
+
 function readsAsLabel(text: string, at: number): boolean {
-  const lineStart = Math.max(text.lastIndexOf('\n', at - 1), -1) + 1;
-  const before = text.slice(lineStart, at).split(/[·|:—–]|\s-\s/).pop() ?? '';
+  const from = Math.max(0, at - LABEL_LOOKBACK);
+  const window = text.slice(from, at);
+  const newline = window.lastIndexOf('\n');
+  const line = newline >= 0 ? window.slice(newline + 1) : from > 0 ? window.replace(/^\S*\s*/, '') : window;
+  const before = line.split(/[·|:—–]|\s-\s/).pop() ?? '';
   const words = before.replace(/^\W+/, '').split(/\s+/).filter(Boolean);
   while (words.length > 0 && NOT_A_NAME.test(words[0])) words.shift();
   return AS_A_LABEL.test(words.length > 0 ? `${words.join(' ')} ` : '');
@@ -761,9 +775,34 @@ function deliveredRelative(text: string, today: Date): string {
   );
 }
 
+/**
+ * The most of a paste that is read. An order email's text is a few thousand
+ * characters, and the longest in the corpus is under twenty thousand; a
+ * hundred thousand reads any real one whole, and keeps what an accidental
+ * paste of a whole document costs bounded.
+ */
+export const MAX_PARSE_CHARS = 100_000;
+
+/**
+ * The paste as the rules read it: runs of spaces and tabs as one space, and
+ * runs of blank lines as one. The scan and document readers already did the
+ * first (receipt-scan.ts, documents.ts); a paste did not, and several rules
+ * put a `\s*` either side of an optional piece, which on a long run of spaces
+ * tries every way of sharing the run between them. Measured on main: "Order
+ * no" and 2,000 spaces took 3.7 s and 6,000 more than 20 s, and 40,000 blank
+ * lines 3.9 s, all on the main thread with the app frozen. No rule tells one
+ * space from several, or one blank line from many.
+ */
+function tidy(raw: string): string {
+  return raw
+    .slice(0, MAX_PARSE_CHARS)
+    .replace(/[^\S\n]+/g, ' ')
+    .replace(/\n(?: ?\n)+/g, '\n\n');
+}
+
 export function parseReceiptText(raw: string, today: Date = new Date()): ParseOutcome {
   if (!raw.trim()) return { ok: false, reason: 'empty' };
-  const text = deliveredRelative(gbpAsPounds(raw), today);
+  const text = deliveredRelative(gbpAsPounds(tidy(raw)), today);
 
   const policy = pickStore(text);
   const total = pickAmount(text);

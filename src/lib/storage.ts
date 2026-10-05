@@ -1,5 +1,6 @@
 import { readPrice } from './app-store';
 import { readReceipt } from './backup';
+import { embedded } from './embed';
 import { chooseSource, holdMirrorWrites, isNative, mirrorWritesHeld, readMirrorWithin, releaseMirrorWrites, writeMirror } from './mirror';
 import { erasePhotos } from './photos';
 import { readFeed } from './policy-feed';
@@ -114,6 +115,14 @@ export function freshState(today: Date): KeptState {
 }
 
 function storage(): Storage | null {
+  /*
+   * The landing page's demo has no store (see embed.ts), so it gets the answer
+   * a private-mode Safari gets: an in-memory session. Every read and write of
+   * the library and of the set-aside copy comes through here, so this one line
+   * covers them all, including `wipe` and `discardSetAside` called straight
+   * from a demo screen, which is how the demo erased a real library.
+   */
+  if (embedded()) return null;
   // Safari in private mode throws on access, not on write. A thrown getter
   // must degrade to an in-memory session, never to a blank screen.
   try {
@@ -451,6 +460,9 @@ export function save(state: KeptState): boolean {
  * cannot hear itself.
  */
 export function onExternalChange(handler: (state: KeptState) => void, today: Date): () => void {
+  // Not in the demo: what the real app writes is the visitor's own library,
+  // and adopting it would show it inside the marketing page.
+  if (embedded()) return () => {};
   const listener = (e: StorageEvent) => {
     if (e.key !== KEY || e.newValue === null) return;
     try {
@@ -471,6 +483,11 @@ export function onExternalChange(handler: (state: KeptState) => void, today: Dat
  * being able to take it all back is not a nice-to-have. Uninstalling clears a
  * native app; a web app's storage outlives a closed tab and clearing it by
  * hand means digging through browser settings.
+ *
+ * In the landing page's demo it erases nothing on the device: localStorage,
+ * the photographs and the mirror each refuse the demo at their own door (see
+ * embed.ts). What the demo's Erase clears is the demo's own library, which is
+ * the reducer's `wipe`.
  */
 export function wipe(): void {
   /*

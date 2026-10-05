@@ -27,6 +27,7 @@
  * mirror is emptied by the same path everything else uses, rather than by a
  * rule of its own that could be forgotten.
  */
+import { embedded } from './embed';
 
 export type Source = 'local' | 'mirror' | 'fresh';
 
@@ -128,6 +129,13 @@ type FilesystemPlugin = {
 let plugin: Promise<FilesystemPlugin> | null = null;
 
 export function filesystem(): Promise<FilesystemPlugin> {
+  /*
+   * The landing page's demo has no disk (see embed.ts). The mirror, the
+   * photographs and a file a person asked to save all share one Documents
+   * folder with the real app's, so the demo is turned away here, once, and
+   * every caller already treats a refusal as "nothing was written".
+   */
+  if (embedded()) return Promise.reject(new Error('the landing page’s demo does not touch this device'));
   if (!plugin) {
     plugin = import('@capacitor/filesystem')
       .then((mod) => ({ Filesystem: mod.Filesystem, Directory: mod.Directory, Encoding: mod.Encoding }))
