@@ -504,14 +504,37 @@ deliberate departure, not an oversight:
   headphones back Tuesday, restore Monday's file Wednesday to recover a
   receipt deleted by mistake: the headphones silently revert to active, the
   refund date disappears, the money leaves the total, and the app starts
-  telling you to return something you already returned. The backup supplies a
-  row's *details* now and the device keeps its *state*, because `returned`
-  records something that happened in the world and `active` only records that
-  it has not happened yet — so a file written earlier cannot be evidence
-  against it. The same asymmetry protects the mirror case: a stray swipe
-  corrected with *Not actually returned* is not undone by a restore either. A
+  telling you to return something you already returned. The first fix let the
+  backup supply a row's *details* and the device keep its *state* — status and
+  three dates — and that stopped four fields short, because here the details
+  are the money. Measured: export Monday; on Tuesday split a £20 lamp off a
+  £60 basket, take £30 of a £60 coat back as store credit, swap some shoes;
+  restore Monday's file on Wednesday, and "still returnable" went from £140
+  to £160 (the basket back to £60 beside its £20 part), "money back" from £30
+  to £140 (the partial refund read as a full one, the swap as an £80 refund),
+  and the credit's expiry was gone — under "Nothing already here was lost".
+  Now a receipt already on the phone is left exactly as the phone has it,
+  every field (`mergeBackup`). The device is the live copy and the file a
+  snapshot of it taken earlier; every change since was made here, and the
+  file has no timestamps that could show any one of its fields is newer. A
   row absent locally still comes in whole, state included; that is the case a
-  restore exists for.
+  restore exists for. The merge runs in the reducer against the receipts it
+  lands on — the Settings screen used to merge a copy it had rendered with,
+  after waiting for the file — and the note says what it did: "2 restored ·
+  3 already here. Nothing already here was changed." What that costs: a file
+  that genuinely is newer for a receipt, from a second phone that moved on,
+  does not replace this phone's older copy of it. The file still holds it,
+  and the note says how many it left alone.
+- **"Not swapped after all" deleted a refund.** Taking a swap back removes the
+  receipt the swap produced, and it removed it whatever had happened to it.
+  Measured: swap size 8 for size 9, get £80 back for the 9s, and one tap on
+  the 8s left the 8s alone and active — money back £80 to £0, with no undo; a
+  swap of a swap (8 → 9 → 10) left two receipts in hand for one £80 purchase.
+  It is refused now once the one that came home has gone back, been posted,
+  kept, split, swapped again or written to the shop about (`swapInFate`), and
+  the screen says which in place of the button, with a way to that receipt.
+  When it does go through it is offered back from the bar for eight seconds,
+  like every other tap that removes a receipt.
 - **A render error blanked the whole app.** Measured before the fix: a throw
   on one screen unmounted the tree and left a page with no text and not one
   button, while the receipts sat intact in localStorage with no server holding

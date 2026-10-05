@@ -39,6 +39,12 @@ interface Props {
   /** Swapped for another: settle this one and open the one that came home. */
   onExchange: () => void;
   onUnexchange: () => void;
+  /**
+   * Set when the swap cannot be taken back, because something has happened to
+   * the receipt it produced (`swapInFate`): what to say instead of the button,
+   * and the way to that receipt.
+   */
+  swapBlocked: { text: string; onOpen: () => void } | null;
   onKeep: () => void;
   onUnkeep: () => void;
   onSend: () => void;
@@ -64,7 +70,7 @@ interface Props {
 
 const cardLabel = { fontSize: 13, fontWeight: 600, color: color.muted } as const;
 
-export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onSetCredit, onCreditSpent, onArrived, onFaultSent, onFaultUnsent, onCancelSent, onCancelUnsent, onExchange, onUnexchange, onDelete, onSplit, onUnsplit, splitFromReceipt }: Props) {
+export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onSetCredit, onCreditSpent, onArrived, onFaultSent, onFaultUnsent, onCancelSent, onCancelUnsent, onExchange, onUnexchange, swapBlocked, onDelete, onSplit, onUnsplit, splitFromReceipt }: Props) {
   const [legalOpen, setLegalOpen] = useState(true);
   const d = derive(receipt, today);
   /*
@@ -463,6 +469,20 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
               <CreditPanel receipt={receipt} onSetCredit={onSetCredit} onCreditSpent={onCreditSpent} />
             </>
           )}
+          {/* A swap whose swap-in has a refund, a posting or a swap of its own
+              is not offered back: that tap removed the swap-in and all of it,
+              with no undo. Said instead, with the way to it. */}
+          {receipt.exchanged && swapBlocked ? (
+            <div data-swap-blocked style={{ marginTop: 10, fontSize: 13.5, lineHeight: 1.5, color: color.body, textAlign: 'center' }}>
+              {swapBlocked.text}{' '}
+              <Pressable
+                onClick={swapBlocked.onOpen}
+                style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', fontSize: 13.5, fontWeight: 600, textDecoration: 'underline' }}
+              >
+                Open that receipt
+              </Pressable>
+            </div>
+          ) : (
           <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
             <Pressable
               className="k-row-white k-secondary"
@@ -474,6 +494,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
               {receipt.exchanged ? 'Not swapped after all' : receipt.sentOn ? 'The refund hasn’t come' : 'Not actually returned'}
             </Pressable>
           </div>
+          )}
         </>
       ) : receipt.status === 'sent' ? (
         <>

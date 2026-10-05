@@ -21,7 +21,7 @@ const base = (over: Partial<AppState> = {}): AppState => ({
   version: 1, receipts: [sample('s1'), receipt('mine'), sample('s2')], updates: [], onboardingSeen: true,
   settings: { ...DEFAULT_SETTINGS }, alertsSent: ['s1:week', 'mine:week'],
   screen: 'home', selId: null, obStep: 0, celebrating: null, shared: 'no', upgrading: false, store: { shelf: { kind: 'asking' }, busy: null, note: null },
-  sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null,
+  sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null, restored: null,
   ...over,
 });
 const clear = (s: AppState) => reducer(s, { type: 'clear-samples' }, TODAY);

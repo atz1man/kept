@@ -296,58 +296,86 @@ export function parseBackup(text: string): ImportOutcome {
 
 export interface MergeResult {
   receipts: Receipt[];
+  /** Rows the device did not have, brought in whole. */
   added: number;
-  replaced: number;
+  /** Rows the device already had, left exactly as the device has them. */
+  alreadyHere: number;
+}
+
+/** What a restore did, as the Settings screen reports it. */
+export interface RestoreReport {
+  added: number;
+  alreadyHere: number;
+  /** Rows the file carried that could not be read, from `parseBackup`. */
+  skipped: number;
 }
 
 /**
- * Merge, never replace. A restore onto a phone that already has receipts must
- * not silently discard the ones added since the backup was taken — so rows are
- * matched by id, and everything local survives.
+ * Merge, never replace — and for a receipt already on this phone, never
+ * overwrite either.
  *
- * For a row on both sides the backup supplies the DETAILS and the device keeps
- * the STATE. That asymmetry is the whole of this function's judgement, and it
- * is there because the obvious rule — the incoming copy wins outright — loses
- * money in the ordinary case:
+ * Rows are matched by id. A row the device does not have comes in whole,
+ * state included: a receipt deleted by mistake, or a new phone, which is the
+ * case a restore exists for, and there is nothing here to contradict it. A row
+ * the device DOES have is left exactly as the device has it, every field.
  *
- *   Monday, export a backup. Tuesday, take the headphones back; £89 recovered,
- *   the receipt marked returned. Wednesday, restore Monday's file to recover a
- *   receipt deleted by mistake — and the headphones silently revert to active,
- *   `returnedOn` disappears, £89 vanishes from the money-back total, and the
- *   app starts telling you to return something you already returned.
+ * WHY THE WHOLE ROW. The device is the live copy and the file is a snapshot of
+ * it taken earlier: every change made since the file was written was made
+ * here — a split, a partial refund, a swap, a credit, an edit — and the file
+ * has no timestamps that could show any one of its fields is the newer. This
+ * used to split the row instead, the file supplying the DETAILS and the
+ * device keeping the STATE (status and three dates), on the reasoning that a
+ * return is an event and a file written before it is no evidence against it.
+ * That reasoning was right and stopped four fields short of where it applies,
+ * because in this app the details ARE the money. Measured, with the audit's
+ * repro (Monday export; Tuesday split a £20 lamp off a £60 basket, take £30 of
+ * £60 back as store credit, swap some shoes; Wednesday restore Monday):
  *
- * `returned` records something that happened in the world. `active` records
- * only that it has not happened yet, so a file written before it happened
- * cannot be evidence against it. The same asymmetry protects the other
- * direction: someone who marked a receipt returned by a stray swipe and used
- * "Not actually returned" does not have that undone by a restore either.
+ *   still returnable  £140 → £160   the basket back to £60, beside its £20 part
+ *   money back         £30 → £140   the £30 refund became a full one, and the
+ *                                   swap an £80 refund nobody received
+ *   the credit's expiry, gone
  *
- * A row absent locally comes in whole, state included — that is the case a
- * restore exists for, and there is nothing on the device to contradict it.
+ * — under a note saying "Nothing already here was lost". `amount` and `lines`
+ * move together in a split, and so does `item` when one line is left
+ * (`withoutLine`); `refunded`, `credit` and `exchanged` are what the totals
+ * read; `arrivedOn` and the dates decide the deadline. There is no field left
+ * on a receipt that is only a detail, so there is no field-by-field rule that
+ * cannot assemble a row neither side ever held.
+ *
+ * What it costs, said rather than discovered: a file that genuinely IS newer
+ * for a row — exported from a second phone that had moved on, restored onto
+ * one holding an older copy of the same receipt — leaves this phone's older
+ * copy in place. Nothing is lost by that (the file still holds its version,
+ * and the screen says how many rows it left alone), where the opposite rule
+ * silently rewrites money on the one phone the person actually uses.
  */
 export function mergeBackup(current: readonly Receipt[], incoming: readonly Receipt[]): MergeResult {
   const byId = new Map(current.map((r) => [r.id, r]));
   let added = 0;
-  let replaced = 0;
+  let alreadyHere = 0;
   for (const r of incoming) {
-    const here = byId.get(r.id);
-    if (!here) {
-      added += 1;
-      byId.set(r.id, r);
+    if (byId.has(r.id)) {
+      alreadyHere += 1;
       continue;
     }
-    replaced += 1;
-    byId.set(r.id, {
-      ...r,
-      status: here.status,
-      // Deleted rather than carried over when the device says active, so an
-      // active receipt never keeps a refund date from the file.
-      ...(here.returnedOn !== undefined ? { returnedOn: here.returnedOn } : { returnedOn: undefined }),
-      // Keeping is a decision made on this device, and a file written before it
-      // is no evidence against it — the same rule as a return.
-      ...(here.keptOn !== undefined ? { keptOn: here.keptOn } : { keptOn: undefined }),
-      ...(here.sentOn !== undefined ? { sentOn: here.sentOn } : { sentOn: undefined }),
-    });
+    added += 1;
+    byId.set(r.id, r);
   }
-  return { receipts: [...byId.values()], added, replaced };
+  return { receipts: [...byId.values()], added, alreadyHere };
+}
+
+/**
+ * The sentence under the Restore button. "Nothing already here was changed"
+ * is a claim about the person's receipts, so it is only printed by the code
+ * that makes it true: `mergeBackup` above, run by the reducer against the
+ * state it lands on.
+ */
+export function restoredNote({ added, alreadyHere, skipped }: RestoreReport): string {
+  const parts = [
+    `${added} restored`,
+    ...(alreadyHere ? [`${alreadyHere} already here`] : []),
+    ...(skipped ? [`${skipped} unreadable and skipped`] : []),
+  ];
+  return `${parts.join(' · ')}. Nothing already here was changed.`;
 }

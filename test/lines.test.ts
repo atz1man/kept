@@ -119,7 +119,7 @@ describe('splitting a listed thing out', () => {
   it('puts the line back when the part goes back in', () => {
     const s: AppState = {
       version: 1, receipts: [basket()], updates: [], onboardingSeen: true, screen: 'detail', selId: 'b',
-      settings: { ...DEFAULT_SETTINGS }, alertsSent: [], justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null, celebrating: null,
+      settings: { ...DEFAULT_SETTINGS }, alertsSent: [], justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null, restored: null, celebrating: null,
     } as unknown as AppState;
     const split = reducer(s, { type: 'split', id: 'b', item: 'SPF 50', pence: 1199, newId: 'p' }, TODAY);
     const back = reducer(split, { type: 'unsplit', id: 'p' }, TODAY);

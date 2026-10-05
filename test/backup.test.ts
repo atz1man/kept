@@ -186,17 +186,22 @@ describe('merging a restore into what is already here', () => {
   it('never discards a receipt added since the backup was taken', () => {
     const m = mergeBackup(local, [{ ...good, id: 'from-backup' }]);
     expect(m.receipts.map((r) => r.id).sort()).toEqual(['from-backup', 'local-only', 'r1']);
-    expect(m).toMatchObject({ added: 1, replaced: 0 });
+    expect(m).toMatchObject({ added: 1, alreadyHere: 0 });
   });
 
-  it('lets the backup win for a row that exists on both sides', () => {
-    const m = mergeBackup(local, [{ ...good, item: 'Corrected name' }]);
-    expect(m.receipts.find((r) => r.id === 'r1')!.item).toBe('Corrected name');
-    expect(m).toMatchObject({ added: 0, replaced: 1 });
+  it('leaves a row that exists on both sides exactly as the device has it', () => {
+    // This test used to read "lets the backup win for a row that exists on
+    // both sides". The device is the live copy and the file a snapshot of it
+    // taken earlier, so a name edited here since is the newer one, and the
+    // file has nothing that could show otherwise (see `mergeBackup`).
+    const edited: Receipt = { ...good, item: 'Edited since' };
+    const m = mergeBackup([edited], [good]);
+    expect(m.receipts).toEqual([edited]);
+    expect(m).toMatchObject({ added: 0, alreadyHere: 1 });
   });
 
   it('restores cleanly onto an empty device', () => {
-    expect(mergeBackup([], [good])).toMatchObject({ added: 1, replaced: 0 });
+    expect(mergeBackup([], [good])).toMatchObject({ added: 1, alreadyHere: 0 });
   });
 
   describe('a restore does not undo what you did since', () => {
@@ -224,9 +229,14 @@ describe('merging a restore into what is already here', () => {
       expect(m.receipts[0].returnedOn).toBeUndefined();
     });
 
-    it('still takes every other correction from the file', () => {
-      const m = mergeBackup([returnedHere], [{ ...good, item: 'Corrected name', amount: toPence(99) }]);
-      expect(m.receipts[0]).toMatchObject({ item: 'Corrected name', amount: toPence(99), status: 'returned' });
+    it('takes no field from the file for a receipt already here, money least of all', () => {
+      // This used to read "still takes every other correction from the file"
+      // and assert that a file's amount replaced the device's under a refund
+      // the device had recorded — the exact shape of the measured defect: the
+      // file's £60 beside a £20 part split off it since, a £30 refund read
+      // as £60. Nothing on a receipt is only a detail.
+      const m = mergeBackup([returnedHere], [{ ...good, item: 'Other name', amount: toPence(99) }]);
+      expect(m.receipts[0]).toEqual(returnedHere);
     });
 
     it('takes the state too for a receipt the device does not have', () => {

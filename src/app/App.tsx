@@ -7,7 +7,7 @@ import { currentNotifyState, deliver, offerReminders, type NotifyState } from '.
 import { isNative } from '../lib/mirror';
 import { money, sumPence } from '../lib/money';
 import { canSplit } from '../lib/split';
-import { countsAsMoney, derive, makeReceiptId, recoveredPence } from '../lib/receipts';
+import { countsAsMoney, derive, makeReceiptId, recoveredPence, swapInFate, swapInFateText } from '../lib/receipts';
 import { fmtDateNear } from '../lib/dates';
 import { winSentence } from '../lib/words';
 import { exportBackup, wipe } from '../lib/storage';
@@ -408,7 +408,7 @@ export function App() {
           policyAlert={policyAlert}
           changedIds={changedIds}
           onOpen={(id) => dispatch({ type: 'open', id })}
-          undoShowing={!!(state.justReturned || state.justSent || state.justAdded || state.justKept || state.justDeleted)}
+          undoShowing={!!(state.justReturned || state.justSent || state.justAdded || state.justKept || state.justDeleted || state.justUnswapped)}
           onSwipe={(id) => {
             // The same next step the receipt's own screen leads with: an
             // online order goes back in the post, and the money follows later.
@@ -461,6 +461,12 @@ export function App() {
             return from && canSplit(from) && canSplit(selected) ? () => dispatch({ type: 'unsplit', id: selected.id }) : null;
           })()}
           onUnexchange={() => dispatch({ type: 'unexchange', id: selected.id })}
+          swapBlocked={(() => {
+            // Decided by the same function the reducer refuses with, so the
+            // screen cannot offer what the tap would then not do.
+            const held = selected.exchanged ? swapInFate(state.receipts, selected.id) : null;
+            return held ? { text: swapInFateText(held.fate), onOpen: () => dispatch({ type: 'open', id: held.swapIn.id }) } : null;
+          })()}
           onKeep={() => dispatch({ type: 'keep', id: selected.id })}
           onUnkeep={() => dispatch({ type: 'unkeep', id: selected.id })}
           onSend={() => dispatch({ type: 'send', id: selected.id })}
@@ -514,7 +520,8 @@ export function App() {
           receipts={state.receipts}
           embedded={state.embedded}
           onExport={exportNow}
-          onRestore={(receipts) => dispatch({ type: 'restore', receipts })}
+          onRestore={(backup) => dispatch({ type: 'restore', backup })}
+          restored={state.restored}
           onClearSamples={() => dispatch({ type: 'clear-samples' })}
           onWipe={() => {
             // Cleared from disk as well as from state: leaving the old blob
@@ -589,6 +596,15 @@ export function App() {
           key={state.justKept.join()}
           label={state.justKept.length === 1 ? 'Moved to Keeping it' : `Moved ${state.justKept.length} to Keeping it`}
           onUndo={() => dispatch({ type: 'undo-keep' })}
+          onDismiss={() => dispatch({ type: 'dismiss-undo' })}
+        />
+      )}
+
+      {state.justUnswapped && (
+        <UndoBar
+          key={`unswapped:${state.justUnswapped.id}`}
+          label={`Marked ${state.receipts.find((r) => r.id === state.justUnswapped?.id)?.item ?? 'it'} not swapped`}
+          onUndo={() => dispatch({ type: 'undo-unswap' })}
           onDismiss={() => dispatch({ type: 'dismiss-undo' })}
         />
       )}
