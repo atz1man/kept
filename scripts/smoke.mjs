@@ -10,6 +10,7 @@
  * reload (the whole local-first promise), that the page contacts NO third
  * party, and that nothing throws on the way through.
  */
+import { UK_TIME_ZONE } from './uk-clock.mjs';
 import { chromium } from 'playwright';
 import { reportOnCrash, sayCrash } from './crash-report.mjs';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -101,6 +102,14 @@ const opening = await page.evaluate(() => window.__notes);
 const results = {
   'a fresh install does not ping you about the sample receipts': opening.length === 0,
 };
+
+// Every date this sweep works out (`new Date()`, here and in the page) is
+// meant to be the app's day, and the app's day is London's. uk-clock.mjs sets
+// TZ for that; this asks the browser itself, because a launch option that
+// dropped the variable would leave the page on the runner's UTC and every
+// date check wrong for an hour a night, which is the failure it exists for.
+results['the browser keeps the UK clock the app keeps'] =
+  (await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone)) === UK_TIME_ZONE;
 
 /*
  * Say what was learned, even when the run does not finish — see
@@ -2752,7 +2761,7 @@ results['a delivery date in the paste is read, not asked for'] =
   await lastPage.waitForTimeout(400);
   await lastPage.evaluate(() => {
     const s = JSON.parse(localStorage.getItem('kept.v1'));
-    const ago = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
+    const ago = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
     s.receipts = [
       { id: 'lastday', store: 'ASOS', item: 'Running shoes', cat: 'clothing', amount: 6500,
         purchasedOn: ago(28), windowDays: 28, policy: 'ASOS · 28 days', distance: false, status: 'active' },
@@ -2810,7 +2819,7 @@ results['a delivery date in the paste is read, not asked for'] =
     const s = JSON.parse(localStorage.getItem('kept.v1'));
     const d = new Date();
     d.setDate(d.getDate() + (${late} ? 400 : 0));
-    s.receipts = s.receipts.map((r) => ({ ...r, status: 'returned', returnedOn: d.toISOString().slice(0, 10) }));
+    s.receipts = s.receipts.map((r) => ({ ...r, status: 'returned', returnedOn: d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') }));
     s.onboardingSeen = true;
     localStorage.setItem('kept.v1', JSON.stringify(s));
   }`;
@@ -2853,13 +2862,13 @@ results['a delivery date in the paste is read, not asked for'] =
     old.setDate(old.getDate() - 200);
     s.receipts = [
       { id: 'gone', store: 'M&S', item: 'Towels', cat: 'other', amount: 19325,
-        purchasedOn: old.toISOString().slice(0, 10), windowDays: 35, policy: 'M&S · 35 days',
+        purchasedOn: old.getFullYear() + '-' + String(old.getMonth() + 1).padStart(2, '0') + '-' + String(old.getDate()).padStart(2, '0'), windowDays: 35, policy: 'M&S · 35 days',
         distance: false, status: 'active' },
       // A real receipt still inside its window, so the footer below has real
       // money to show: once any real receipt exists the samples stop counting,
       // and without this the right answer would be £0.00.
       { id: 'fresh', store: 'Argos', item: 'Toaster', cat: 'kitchen', amount: 2499,
-        purchasedOn: new Date().toISOString().slice(0, 10), windowDays: 30, policy: 'Argos · 30 days',
+        purchasedOn: ((t) => t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'))(new Date()), windowDays: 30, policy: 'Argos · 30 days',
         distance: false, status: 'active' },
       ...s.receipts,
     ];

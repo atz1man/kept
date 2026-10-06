@@ -14,6 +14,7 @@
  * both are what a new user and a diligent user actually see, and neither
  * appears in the seeded data.
  */
+import './uk-clock.mjs';
 import { chromium } from 'playwright';
 import { reportOnCrash, sayCrash } from './crash-report.mjs';
 
@@ -397,7 +398,7 @@ const seedAdversarial = (rows) => `() => {
   const today = new Date();
   s.receipts = rows.map((r, i) => {
     const d = new Date(today); d.setDate(d.getDate() - 5);
-    return { ...r, id: 'x' + i, purchasedOn: d.toISOString().slice(0, 10) };
+    return { ...r, id: 'x' + i, purchasedOn: d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') };
   });
   s.onboardingSeen = true;
   localStorage.setItem('kept.v1', JSON.stringify(s));
