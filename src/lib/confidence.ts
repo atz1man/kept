@@ -1,5 +1,5 @@
 import type { ParsedReceipt } from './parse';
-import type { UnsureWord } from './receipt-scan';
+import type { Misread, UnsureWord } from './receipt-scan';
 
 /**
  * Which of the figures a read found should be checked before saving, and why.
@@ -35,7 +35,8 @@ export type CheckWhy =
   | 'notice-date'
   | 'month-first'
   | 'several-shops'
-  | 'shop-in-passing';
+  | 'shop-in-passing'
+  | 'misread-print';
 
 /*
  * The shop is marked too. It never was, and of the audit's 65 order emails
@@ -76,7 +77,24 @@ function readOffUnsure(unsure: readonly UnsureWord[], run: string, below: number
  */
 const TOTAL_LINE = /tot|due|bal/i;
 
-export function toCheck(p: ParsedReceipt, unsure: readonly UnsureWord[] = []): Checks {
+/*
+ * A figure the camera printed with a letter in it — "E2.65", "O3/1O/2O26",
+ * "B00TS" — that was read as the £, the 0 or the O it most likely was
+ * (`readScan`). The correction is a reading, not the slip's print, so it is
+ * marked unless the slip's own arithmetic proved it. An "E" is never proved:
+ * the arithmetic settles the figure, not whether the sign was a £ or a €.
+ */
+function misreadAs(misread: readonly Misread[], field: Misread['field'], matches: (m: Misread) => boolean): boolean {
+  return misread.some((m) => !m.proved && m.field === field && matches(m));
+}
+
+/** "3/10/2026" → "0310": the day and the month, as `readOffUnsure` compares them. */
+function dayMonth(date: string): string {
+  const [d = '', m = ''] = date.split(/[/.-]/);
+  return `${d.padStart(2, '0')}${m.padStart(2, '0')}`;
+}
+
+export function toCheck(p: ParsedReceipt, unsure: readonly UnsureWord[] = [], misread: readonly Misread[] = []): Checks {
   const out: Checks = {};
   if (p.amount !== null) {
     // The lines adding up to the figure exactly is a second reading of it
@@ -89,17 +107,24 @@ export function toCheck(p: ParsedReceipt, unsure: readonly UnsureWord[] = []): C
       else if (p.how.amount === 'part') out.amount = 'part-total';
       else if (readOffUnsure(unsure, digits((p.amount / 100).toFixed(2)), TOTAL_UNSURE_BELOW, TOTAL_LINE)) out.amount = 'unclear-print';
     }
+    // Outside the lines' agreement: they settle the figure, not the currency.
+    const figure = digits((p.amount / 100).toFixed(2));
+    if (out.amount === undefined && misreadAs(misread, 'amount', (m) => digits(m.as) === figure && (m.line === undefined || TOTAL_LINE.test(m.line)))) {
+      out.amount = 'misread-print';
+    }
   }
   if (p.dateFound) {
     const [, month, day] = p.purchasedOn.split('-');
     if (p.how.purchasedOn === 'latest') out.purchasedOn = 'several-dates';
     else if (p.how.purchasedOn === 'other') out.purchasedOn = 'notice-date';
     else if (p.how.purchasedOn === 'month-first') out.purchasedOn = 'month-first';
+    else if (misreadAs(misread, 'purchasedOn', (m) => dayMonth(m.as) === `${day}${month}`)) out.purchasedOn = 'misread-print';
     else if (readOffUnsure(unsure, `${day}${month}`, DATE_UNSURE_BELOW)) out.purchasedOn = 'unclear-print';
   }
   if (p.store !== null) {
     if (p.how.store === 'several') out.store = 'several-shops';
     else if (p.how.store === 'mention') out.store = 'shop-in-passing';
+    else if (misreadAs(misread, 'store', (m) => m.as === p.store)) out.store = 'misread-print';
   }
   return out;
 }
@@ -127,6 +152,10 @@ export function checkWords(field: keyof Checks, why: CheckWhy): string {
       return 'It names more than one shop, so this is the likeliest.';
     case 'shop-in-passing':
       return 'The shop is only named in passing, not as who the email is from.';
+    case 'misread-print':
+      if (field === 'store') return 'The camera read figures in the shop’s name, so this is the shop it spells with them read as letters.';
+      if (field === 'purchasedOn') return 'The camera read letters among this date’s figures, so it was read with them as figures.';
+      return 'The camera read a letter where the £ sign would be, so this figure is taken to be in pounds.';
   }
 }
 

@@ -110,3 +110,23 @@ export const CASES: Case[] = [
   { id: 'E2', kind: 'eml', stress: '.eml from Very, body names "Your Apple Watch"', text: eml('Very <noreply@very.co.uk>', 'Thanks for your order', 'Thu, 01 Oct 2026 10:00:00 +0100', 'Order number: 98765432\nOrder date: 1 October 2026\nYour Apple Watch Series 10 is on its way\nTotal £399.00'), expect: { store: null, pence: 39900, on: '2026-10-01' } },
   { id: 'E3', kind: 'eml', stress: '.eml John Lewis, item Oliver Bonas', text: eml('John Lewis <noreply@johnlewis.co.uk>', 'Your order confirmation', 'Tue, 29 Sep 2026 10:00:00 +0100', 'Order number: 7654321\nOrder date: 29 September 2026\nOliver Bonas ceramic vase £35.00\nOrder total £35.00'), expect: { store: 'John Lewis', pence: 3500, on: '2026-09-29' } },
 ];
+
+/**
+ * Cases written against the camera-misread corrections in `readScan`, each a
+ * place a looser correction would read wrong: a product code that starts with
+ * an E, a slip in euros, a pasted email whose "E1" and "f5" are real text, a
+ * till that prints whole pounds, a dot-less total nothing on the slip proves,
+ * a heading that becomes a shop only with its figures read as letters, and a
+ * misread shop name on a line that is not the heading.
+ * Held to the same rule as the audit's cases, beside them rather than among
+ * them, so the audit stays the sixty-five it was measured on.
+ */
+export const MISREAD_GUARDS: Case[] = [
+  { id: 'X1', kind: 'ocr', stress: 'bulb codes E27 and E14 at the start of item lines, no pence after the E', text: 'WICKES\nE27 LED BULB 4.99\nCARD 4.99\n03/10/2026', expect: { store: 'Wickes', pence: 499, on: '2026-10-03' } },
+  { id: 'X2', kind: 'ocr', stress: 'a slip in euros whose € read as E: not a £ total', text: 'NEXT\nDUNDRUM\nT-SHIRT E5.00\nSOCKS E3.00\nTOTAL EUR E8.00\n03/10/2026', expect: { store: 'Next', pence: null, on: '2026-10-03' } },
+  { id: 'X3', kind: 'paste', stress: 'pasted email with "E27", "code E1" and "press f5" as real text', text: 'Your Screwfix order\nOrder date: 3 October 2026\nPhilips LED bulb E27 £4.99\nUse code E1 on your next order\nIf this email does not display, press f5', expect: { store: 'Screwfix', pence: 499, on: '2026-10-03' } },
+  { id: 'X4', kind: 'ocr', stress: 'whole-pound total with no point, nothing priced to prove it pence', text: 'JOHN LEWIS\nGIFT VOUCHER 120\nTOTAL 120\nCARD 120\n02/10/2026', expect: { store: 'John Lewis', pence: 12000, on: '2026-10-02' } },
+  { id: 'X5', kind: 'ocr', stress: 'dot-less total the items do not add up to', text: 'NEXT\nCOAT 89.00\nSCARF 15.00\nTOTAL 9900\n02/10/2026', expect: { store: 'Next', pence: 9900, on: '2026-10-02' } },
+  { id: 'X6', kind: 'ocr', stress: 'heading "A505", a road, that reads ASOS with its figures as letters', text: 'A505 SERVICES\nFUEL 45.00\nTOTAL 45.00\n03/10/2026', expect: { store: null, pence: 4500, on: '2026-10-03' } },
+  { id: 'X7', kind: 'ocr', stress: 'unknown shop\'s slip with "B00TS" (walking boots) on an item line', text: 'TK MAXX\nB00TS 45.00\nTOTAL 45.00\n03/10/2026', expect: { store: null, pence: 4500, on: '2026-10-03' } },
+];

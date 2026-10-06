@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { fieldsFound, fromScan, readBestOf, scanFailure, type Thresholding, readFlattenedOrAsTaken } from '../src/lib/receipt-scan';
+import { fieldsFound, fromScan, readBestOf, readScan, scanFailure, type Thresholding, readFlattenedOrAsTaken } from '../src/lib/receipt-scan';
+import { toCheck } from '../src/lib/confidence';
 import { parseReceiptText } from '../src/lib/parse';
 
 /**
@@ -139,6 +140,204 @@ TOTAL 24.99
 
   it('takes a shop from the heading only, not from the middle of the receipt', () => {
     expect(fromScan('THE CORNER SHOP\nline\nline\nline\nNext to the station 1.00')).not.toContain('Receipt from');
+  });
+});
+
+/*
+ * What the camera printed with a letter in it, read as what it most likely
+ * was — and handed on as a misread, so the card can mark it unless the slip's
+ * own arithmetic proves it.
+ */
+describe('a £ the camera read as a letter', () => {
+  const checked = (ocr: string) => {
+    const scan = readScan(ocr);
+    const out = parseReceiptText(scan.text, TODAY);
+    if (!out.ok) throw new Error(`did not parse: ${out.reason}`);
+    return { v: out.value, ck: toCheck(out.value, [], scan.misread), scan };
+  };
+
+  it('reads "E" before every price as a £, and marks the total: an E may have been a €', () => {
+    const { v, ck } = checked("SAINSBURY'S\nBANANAS E1.20\nBREAD E1.45\nBALANCE DUE E2.65\n26/09/2026 12:01");
+    expect(v.amount).toBe(265);
+    expect(ck.amount).toBe('misread-print');
+  });
+
+  it('reads "f" on the total as a £, unmarked where the items less the discount come to it', () => {
+    const { v, ck, scan } = checked('TESCO\nCOFFEE 4.50\nMILK 1.45\nSTAFF DISC -0.50\nTOTAL f5.45\n26/09/26 09:12');
+    expect(v.amount).toBe(545);
+    expect(scan.misread).toEqual([{ field: 'amount', read: 'f5.45', as: '5.45', proved: true, line: 'TOTAL £5.45' }]);
+    expect(ck.amount).toBeUndefined();
+  });
+
+  it('marks an "f" total the items do not add up to', () => {
+    // 4.50 + 1.45 is 5.95: the discount line was lost, so nothing proves 5.45.
+    const { v, ck } = checked('TESCO\nCOFFEE 4.50\nMILK 1.45\nTOTAL f5.45\n26/09/26');
+    expect(v.amount).toBe(545);
+    expect(ck.amount).toBe('misread-print');
+  });
+
+  it('takes a discount printed with its minus after the figure as money off', () => {
+    const { ck } = checked('TESCO\nCOFFEE 4.50\nMILK 1.45\nSTAFF DISC 0.50-\nTOTAL f5.45\n26/09/26');
+    expect(ck.amount).toBeUndefined();
+  });
+
+  it('does not count the time printed beside the date as a thing bought', () => {
+    // "09.12" ends its line like a price; the date before it says it is the time.
+    const { v, ck } = checked('TESCO\nCOFFEE 4.50\nMILK 1.45\nSTAFF DISC -0.50\nTOTAL f5.45\n26/09/26 09.12');
+    expect(v.amount).toBe(545);
+    expect(ck.amount).toBeUndefined();
+  });
+
+  it('does not take a misread item for doubt about a total printed cleanly', () => {
+    const { v, ck } = checked('BOOTS\nNO7 SERUM f38.00\nTOTAL 38.00\n26/09/2026');
+    expect(v.amount).toBe(3800);
+    expect(ck.amount).toBeUndefined();
+  });
+
+  it('leaves a bulb code alone: an E with no pence after it is not a £', () => {
+    expect(fromScan('WICKES\nE27 LED BULB 4.99\nE14 CANDLE 3.50\nTOTAL 8.49')).toBe('Receipt from Wickes\nWICKES\nE27 LED BULB £4.99\nE14 CANDLE £3.50\nTOTAL £8.49');
+  });
+
+  it('leaves an E inside a word, or a capital F, alone', () => {
+    expect(fromScan('COFFEE1.20')).toBe('COFFEE1.20');
+    expect(readScan('BEEF F5.00\nTOTAL 5.00').misread).toEqual([]);
+  });
+
+  it('reads an E or f as a £ only where a bare figure would have been given one', () => {
+    // A unit price in the middle of a quantity line, with no money word: the
+    // line's price is the figure at its end.
+    expect(fromScan('2 X E1.50 3.00')).toBe('2 X E1.50 £3.00');
+    expect(fromScan('VISA E2.65 CONTACTLESS')).toBe('VISA £2.65 CONTACTLESS');
+  });
+
+  it('never reads an E as a £ on a slip that names euros', () => {
+    for (const euro of ['TOTAL EUR E8.00', 'TOTAL €8.00', 'PRICES IN EUROS']) {
+      expect(readScan(`NEXT\nT-SHIRT E5.00\nSOCKS E3.00\n${euro}`).text).toContain('T-SHIRT E5.00');
+    }
+    // An f is no €, so it is still read as a £.
+    expect(fromScan('NEXT\nTOTAL EUR f8.00')).toContain('£8.00');
+  });
+});
+
+describe('an O the camera read for a 0 in a date', () => {
+  const dated = (ocr: string) => {
+    const scan = readScan(ocr);
+    const out = parseReceiptText(scan.text, TODAY);
+    if (!out.ok) throw new Error(`did not parse: ${out.reason}`);
+    return { v: out.value, ck: toCheck(out.value, [], scan.misread), scan };
+  };
+
+  it('reads the date, and marks it: nothing on a slip can prove a date', () => {
+    for (const printed of ['O3/O9/2O26 11:15', '3-O9-26', 'o3.o9.2o26']) {
+      const { v, ck } = dated(`BOOTS\nNO7 SERUM 38.00\nTOTAL 38.00\n${printed}`);
+      expect(v.dateFound, printed).toBe(true);
+      expect(v.purchasedOn, printed).toBe('2026-09-03');
+      expect(ck.purchasedOn, printed).toBe('misread-print');
+    }
+  });
+
+  it('leaves alone what would not be a day and a month', () => {
+    // Month 20, and day 0: not a date with an O in it, so not rewritten as one.
+    expect(fromScan('TILL 1O/2O/3O')).toBe('TILL 1O/2O/3O');
+    expect(fromScan('TILL OO/1O/26')).toBe('TILL OO/1O/26');
+    expect(readScan('TILL 1O/2O/3O').misread).toEqual([]);
+  });
+
+  it('leaves alone an O-date run into another word or figure', () => {
+    expect(fromScan('REF AB1O/1O/2O')).toBe('REF AB1O/1O/2O');
+    expect(fromScan('REF 1O/1O/2O26/7')).toBe('REF 1O/1O/2O26/7');
+  });
+
+  it('needs the same separator twice', () => {
+    expect(fromScan('O3/1O-2O26')).toBe('O3/1O-2O26');
+  });
+
+  it('records nothing for a date printed cleanly', () => {
+    expect(readScan('BOOTS\nTOTAL 38.00\n03/09/2026').misread).toEqual([]);
+  });
+});
+
+describe('a total the camera read without its point', () => {
+  const totalOf = (ocr: string) => {
+    const scan = readScan(ocr);
+    const out = parseReceiptText(scan.text, TODAY);
+    if (!out.ok) throw new Error(`did not parse: ${out.reason}`);
+    return { v: out.value, ck: toCheck(out.value, [], scan.misread), scan };
+  };
+
+  it('reads "6900" as £69.00 where the items less the discount come to exactly that, unmarked', () => {
+    const { v, ck } = totalOf('NEXT\nCOAT 89.00\nPROMO -20.00\nTOTAL 6900\n26/09/2026');
+    expect(v.amount).toBe(6900);
+    expect(ck.amount).toBeUndefined();
+  });
+
+  it('reads it beside a count and a balance-due label too', () => {
+    expect(totalOf('TESCO\nMILK 1.45\nBREAD 1.20\n2 BALANCE DUE 265\n26/09/2026').v.amount).toBe(265);
+  });
+
+  it('leaves a figure the items do not add up to as printed, and the card marks what it found instead', () => {
+    // 89.00 + 15.00 is 104.00: a saving was lost, or the figure is something else.
+    const { v, ck, scan } = totalOf('NEXT\nCOAT 89.00\nSCARF 15.00\nTOTAL 9900\n26/09/2026');
+    expect(scan.text).toContain('TOTAL 9900');
+    expect(v.amount).toBe(8900);
+    expect(ck.amount).toBe('largest-figure');
+  });
+
+  it('never reads a whole-pound total as pence: nothing priced to add up to it', () => {
+    const { v } = totalOf('JOHN LEWIS\nGIFT VOUCHER 120\nTOTAL 120\nCARD 120\n26/09/2026');
+    expect(v.amount).toBeNull();
+  });
+
+  it('reads only a figure straight after the total’s own words', () => {
+    // Points are not money, whatever they come to.
+    expect(fromScan('TESCO\nMILK 1.45\nBREAD 1.20\nTOTAL 2.65\nPOINTS TOTAL 265')).toContain('POINTS TOTAL 265');
+    expect(fromScan('TESCO\nMILK 1.45\nBREAD 1.20\nTOTAL 265 POINTS')).toContain('TOTAL 265 POINTS');
+  });
+});
+
+describe('a shop’s heading the camera read with figures in it', () => {
+  const shopOf = (ocr: string) => {
+    const scan = readScan(ocr);
+    const out = parseReceiptText(scan.text, TODAY);
+    if (!out.ok) throw new Error(`did not parse: ${out.reason}`);
+    return { store: out.value.store, mark: toCheck(out.value, [], scan.misread).store, scan };
+  };
+
+  it('reads 0 as O, 1 as I or L, 5 as S and 8 as B, and marks the shop: a name has no arithmetic', () => {
+    for (const [heading, shop] of [['B00TS', 'Boots'], ['1KEA', 'IKEA'], ['L1DL', 'Lidl'], ['C1ARKS', 'Clarks'], ['ARG05', 'Argos'], ['8OOTS PHARMACY', 'Boots'], ['MARKS & 5PENCER', 'M&S']]) {
+      const { store, mark } = shopOf(`${heading}\nNO7 SERUM 38.00\nTOTAL 38.00\n26/09/2026`);
+      expect(store, heading).toBe(shop);
+      expect(mark, heading).toBe('misread-print');
+    }
+  });
+
+  it('never reads a word that is mostly figures as a shop: the A505 is a road, not ASOS', () => {
+    expect(shopOf('A505 SERVICES\nFUEL 45.00\nTOTAL 45.00\n26/09/2026').store).toBeNull();
+  });
+
+  it('never reads a word misread in more than three places', () => {
+    expect(shopOf('T00L5TAT10N\nDRILL 45.00\nTOTAL 45.00\n26/09/2026').store).toBeNull();
+  });
+
+  it('reads the heading only: a "B00TS" further down is walking boots on another shop’s slip', () => {
+    expect(shopOf('TK MAXX\nB00TS 45.00\nTOTAL 45.00\n26/09/2026').store).toBeNull();
+  });
+
+  it('records nothing where a heading printed cleanly names the shop', () => {
+    const { store, mark, scan } = shopOf('B00TS\nBoots UK Ltd\nNO7 SERUM 38.00\nTOTAL 38.00\n26/09/2026');
+    expect(store).toBe('Boots');
+    expect(mark).toBeUndefined();
+    expect(scan.misread).toEqual([]);
+  });
+
+  it('reads a heading of many misread words in a moment', () => {
+    // Each misread word can be read eight ways, and the ways multiply: read
+    // through every word of this line, it took eleven seconds; read through
+    // only as many words as a shop's name has, a few milliseconds. Seven words
+    // and not more, so a slow version fails here rather than never finishing.
+    const started = performance.now();
+    expect(readScan(`${'B1L1I1X '.repeat(7)}\nTOTAL 5.00`).misread).toEqual([]);
+    expect(performance.now() - started).toBeLessThan(500);
   });
 });
 

@@ -16,6 +16,9 @@ import { ALIASES_BY_LENGTH } from './stores';
  * What it will not do is guess. A heading is taken as the shop only when it IS
  * a shop kept knows, word for word; an amount gains a £ only when it sits at
  * the end of a line or beside a money word; nothing is invented to fill a gap.
+ * Where it reads through a misprint — a £ printed as "E", an O in a date, a
+ * shop's name with figures in it — it says so (`Misread`), and the card marks
+ * the field unless the slip's own arithmetic proves the reading.
  */
 
 /** Characters OCR puts where a digit was, and the digit it was. */
@@ -61,6 +64,97 @@ function poundSigns(line: string): string {
   return line;
 }
 
+/*
+ * A £ the camera read as a letter: "E2.65", "TOTAL f5.45". Thermal print's £
+ * is a looped stroke that OCR returns as an E or an f, and the figure after it
+ * was then not money at all — a slip whose every price read "E" had no total.
+ *
+ * Read as a £ only where a £ would be: the letter alone before a till figure,
+ * nothing else attached, and that figure placed where `poundSigns` would have
+ * given a bare one its £ — ending the line, or beside a money word. So a bulb's
+ * "E10" or "E27" is never touched (no pence), and nor is a letter inside a
+ * word. An "E" is never taken for a £ on a slip that names euros anywhere,
+ * because a € reads as an E at least as readily as a £ does; and even where it
+ * names none, an E-read total is marked (see `toCheck`).
+ */
+const POUND_AS_LETTER = new RegExp(`(^|\\s)([Ef])(-?${TILL_FIGURE})(?=\\s|$)`, 'g');
+const EUROS = /€|\bEUR\b|\beuros?\b/i;
+
+/** A line's £ read as a letter, given back as a £ — and each one noted. */
+function poundAsLetter(line: string, euros: boolean, noted: { read: string; as: string; letter: string }[]): string {
+  const moneyWord = MONEY_WORD.test(line);
+  return line.replace(POUND_AS_LETTER, (whole, sp: string, letter: string, n: string, at: number) => {
+    if (letter === 'E' && euros) return whole;
+    if (!moneyWord && line.slice(at + whole.length).trim() !== '') return whole;
+    noted.push({ read: `${letter}${n}`, as: n, letter });
+    return `${sp}£${n}`;
+  });
+}
+
+/*
+ * An O for a 0 in a date: "O3/1O/2O26". The parser reads dates in figures, so
+ * the slip's one date was not found at all. Read as 0s only inside something
+ * that is otherwise a date — day, month and year, all figures or O, the same
+ * separator twice, standing apart from any other word — and only when the
+ * day and month it makes are a real day and month, the way the date reads
+ * here. "1O/2O/2O26" is not a date with O in it, it is something else.
+ */
+const DATE_WITH_O = /(?<![\w/.:-])([\dOo]{1,2})([/.-])([\dOo]{1,2})\2([\dOo]{4}|[\dOo]{2})(?![\w/.:-])/g;
+
+function dateWithO(line: string, noted: { read: string; as: string }[]): string {
+  return line.replace(DATE_WITH_O, (whole, d: string, _sep: string, m: string) => {
+    if (!/[Oo]/.test(whole)) return whole;
+    const zero = (s: string) => Number(s.replace(/[Oo]/g, '0'));
+    if (zero(d) < 1 || zero(d) > 31 || zero(m) < 1 || zero(m) > 12) return whole;
+    const as = whole.replace(/[Oo]/g, '0');
+    noted.push({ read: whole, as });
+    return as;
+  });
+}
+
+/*
+ * The slip's own arithmetic: what its items come to, less its discounts. A
+ * till prints each thing on a line ending in its price, and money off on one
+ * ending in a minus figure ("STAFF DISC -0.50", "PROMO 20.00-"); a line with a
+ * money word on it (the total, the card, the change, the VAT) is not a thing
+ * bought, and a line with a date on it ends in the time. When these add up to
+ * a total the camera half-read, the total is proved — by a dozen other numbers
+ * that would all have had to be misread to agree with it.
+ *
+ * Anything this does not understand makes the sum wrong, never right by
+ * accident: an item with no price, a saving printed without its minus. A
+ * wrong sum proves nothing, and the correction stays marked.
+ */
+const LINE_PRICE = new RegExp(`(?:^|\\s)(-?)£?(-?)(${TILL_FIGURE})(-?)$`);
+const DATED = /\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}/;
+
+function itemsLessDiscounts(lines: readonly string[]): number | null {
+  let sum = 0;
+  let items = 0;
+  for (const line of lines) {
+    if (MONEY_WORD.test(line) || DATED.test(line)) continue;
+    const m = LINE_PRICE.exec(line);
+    if (!m) continue;
+    const pence = Number(m[3].replace(/[,.]/g, ''));
+    sum += m[1] || m[2] || m[4] ? -pence : pence;
+    items += 1;
+  }
+  return items > 0 ? sum : null;
+}
+
+/** "1,448.00" → 144800. */
+const penceOf = (figure: string) => Number(figure.replace(/[-,.]/g, ''));
+
+/*
+ * A total whose point the camera lost: "TOTAL 6900" for £69.00. Read as
+ * pounds and pence ONLY where the slip's own arithmetic says so — its items
+ * less its discounts come to exactly 6900 pence — and otherwise left as
+ * printed, so the card asks or marks as it did. A till that prints whole
+ * pounds ("TOTAL 120" for a £120 voucher) is the reason: read as pence that
+ * is £1.20, stated as plainly as a figure printed in full.
+ */
+const POINTLESS_TOTAL = /^((?:\d+\s+)?(?:total\s+)?(?:total\s+due|total|balance\s+due|amount\s+due|to\s+pay))\s+([1-9]\d{2,6})$/i;
+
 /**
  * The shop, when a heading names one kept knows. A receipt prints the shop at
  * the top and nowhere else, with none of the "your order" or ".co.uk" that
@@ -79,17 +173,132 @@ function shopHeading(lines: string[]): string | null {
   return null;
 }
 
-/** OCR text of a till receipt, as text the paste parser reads. */
-export function fromScan(ocr: string): string {
+/**
+ * Something the camera printed that was read as something else: a letter
+ * where a £ sign, a 0 or an O was. The text the parser reads carries the
+ * correction; this travels beside it, so the Add card can say which figure
+ * was corrected rather than present the correction as the slip's own print
+ * (see `misread-print` in lib/confidence.ts).
+ */
+export interface Misread {
+  field: 'amount' | 'purchasedOn' | 'store';
+  /** What the camera printed, e.g. "f5.45". */
+  read: string;
+  /** What it was taken for, e.g. "5.45". */
+  as: string;
+  /**
+   * The slip's own arithmetic agrees with it — its items, less its discounts,
+   * come to exactly this figure — so there is nothing left to check.
+   */
+  proved: boolean;
+  /**
+   * The line it was read on, as corrected. A till prints the paid figure on
+   * the item line and the card line too; a misread item is no doubt about a
+   * total printed cleanly on its own line.
+   */
+  line?: string;
+}
+
+/** A camera's read of a till receipt: the text the paste parser reads, and what was corrected on the way. */
+export interface ScanText {
+  text: string;
+  misread: Misread[];
+}
+
+/**
+ * OCR text of a till receipt, as text the paste parser reads — with the
+ * corrections that took a letter for something it was not.
+ *
+ * Only camera text comes through here. An email, a saved page or an .eml file
+ * goes to the parser as it is, because there "E1" and "f5" are real text: a
+ * voucher code, a key to press.
+ */
+export function readScan(ocr: string): ScanText {
   const lines = ocr
     .replace(/\r\n?/g, '\n')
     .split('\n')
     .map((l) => l.replace(/[ \t]+/g, ' ').trim());
-  const shop = shopHeading(lines);
+  const misread: Misread[] = [];
+  const clean = shopHeading(lines);
+  const misreadShop = clean ? null : misreadHeading(lines);
+  // A shop read through figures is never proved: a name has no arithmetic.
+  if (misreadShop) misread.push({ field: 'store', read: misreadShop.read, as: misreadShop.store, proved: false });
+  const shop = clean ?? misreadShop?.store ?? null;
+  const euros = EUROS.test(ocr);
+  const pounds: { line: number; read: string; as: string; letter: string }[] = [];
+  const dates: { read: string; as: string }[] = [];
   const body = lines
     .filter((l) => l.length > 0)
-    .map((l) => poundSigns(fixMoneyTokens(l)).replace(DUE, 'Total $1'));
-  return [...(shop ? [`Receipt from ${shop}`] : []), ...body].join('\n');
+    .map((l, i) => {
+      const noted: { read: string; as: string; letter: string }[] = [];
+      const line = poundSigns(poundAsLetter(fixMoneyTokens(dateWithO(l, dates)), euros, noted)).replace(DUE, 'Total $1');
+      for (const n of noted) pounds.push({ ...n, line: i });
+      return line;
+    });
+  // Nothing on a slip adds up to a date, so a corrected one is always marked.
+  for (const d of dates) misread.push({ field: 'purchasedOn', read: d.read, as: d.as, proved: false });
+  const sum = itemsLessDiscounts(body);
+  body.forEach((line, i) => {
+    const m = POINTLESS_TOTAL.exec(line);
+    if (!m || sum === null || Number(m[2]) !== sum) return;
+    const as = `${m[2].slice(0, -2)}.${m[2].slice(-2)}`;
+    body[i] = `${m[1]} £${as}`;
+    misread.push({ field: 'amount', read: m[2], as, proved: true, line: body[i] });
+  });
+  for (const p of pounds) {
+    const line = body[p.line];
+    // Only a figure on a money line (the total, the card) can be proved by the
+    // items: an item's is one of them.
+    const proved = p.letter === 'f' && MONEY_WORD.test(line) && sum === penceOf(p.as);
+    misread.push({ field: 'amount', read: p.read, as: p.as, proved, line });
+  }
+  return { text: [...(shop ? [`Receipt from ${shop}`] : []), ...body].join('\n'), misread };
+}
+
+/*
+ * A shop's name with figures in it: "B00TS", "1KEA", "L1DL". The heading is
+ * the one place a till prints its shop, so a heading misread was a slip with
+ * no shop. Read through only on the heading line itself — the first line
+ * printed — and only where the figures are the four OCR puts for a capital
+ * letter (0 for O, 1 for I or L, 5 for S, 8 for B), each in a word that is
+ * mostly letters. "A505", a road, is mostly figures and is never read as
+ * ASOS; a "B00TS" on an item line further down is walking boots on some other
+ * shop's slip. And the result must be a shop Kept knows, the same way a
+ * heading printed cleanly must be.
+ */
+const LETTERS_FOR: Record<string, readonly string[]> = { '0': ['o'], '1': ['i', 'l'], '5': ['s'], '8': ['b'] };
+/** A word misread in more places than this is not read through: past it, a match is more likely chance than a shop. */
+const MAX_FIGURES = 3;
+/** The most words in any name Kept knows a shop by. */
+const ALIAS_WORDS = Math.max(...ALIASES_BY_LENGTH.map(({ alias }) => alias.split(' ').length));
+
+function misreadHeading(lines: readonly string[]): { read: string; store: string } | null {
+  const first = lines.find((l) => l.trim());
+  if (!first) return null;
+  // A shop's name is its first few words, and only they are read through:
+  // each misread word can be read up to eight ways, and the ways multiply.
+  const words = first.toLowerCase().replace(/[^a-z0-9&'’ ]/g, ' ').replace(/\s+/g, ' ').trim().split(' ').slice(0, ALIAS_WORDS);
+  let readings = [''];
+  for (const word of words) {
+    const letters = word.replace(/[^a-z]/g, '').length;
+    const figures = word.replace(/\D/g, '').length;
+    const swap = figures > 0 && figures <= MAX_FIGURES && letters > figures;
+    const ways = swap
+      ? [...word].reduce<string[]>((acc, c) => acc.flatMap((a) => (LETTERS_FOR[c] ?? [c]).map((l) => a + l)), [''])
+      : [word];
+    readings = readings.flatMap((r) => ways.map((w) => (r ? `${r} ${w}` : w)));
+  }
+  for (const reading of readings) {
+    for (const { alias, store } of ALIASES_BY_LENGTH) {
+      if (reading === alias || reading.startsWith(`${alias} `)) return { read: first, store: store.name };
+    }
+  }
+  return null;
+}
+
+/** OCR text of a till receipt, as text the paste parser reads. */
+export function fromScan(ocr: string): string {
+  return readScan(ocr).text;
 }
 
 /**
