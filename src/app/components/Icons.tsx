@@ -3,26 +3,38 @@ import { color, font } from '../../tokens';
 import type { Category } from '../../lib/types';
 
 /*
- * The mark: a lowercase k whose leg sweeps round like a clock hand — the
- * name, and a deadline running. Drawn on a 40-unit grid, the same geometry as
- * public/icons/icon.svg (512 units, ×12.8), so the app icon and every mark
- * inside the app are one drawing at different sizes.
+ * The mark: a gold pound coin whose rim is a return arrow (↺), the head
+ * closing the circle — money coming back, which is what "quids in" means.
+ * It replaced a lowercase k for kept, the old name. Drawn on a 40-unit grid,
+ * the same geometry as public/icons/icon.svg (512 units, ×12.8), so the app
+ * icon and every mark inside the app are one drawing at different sizes.
  *
- * It replaced a tick inside a countdown ring: clear, but the tick-in-a-circle
- * is the stock symbol of half the to-do apps on the store, which made it
- * neither ownable nor safe to register. This one is drawn for kept.
+ * Simple on purpose: it has to read at 29px on a Settings row, so it is one
+ * coin, one £ and one arrowhead, and nothing finer than the gap between the
+ * rim and the face.
  */
-const K_PATHS = ['M14.22 9.22V30.78', 'M25.47 11.41L16.41 20', 'M16.41 20A11.72 11.72 0 0 1 26.41 30.47'];
+const RIM = 'M32.13 14.6A13.28 13.28 0 1 1 21.39 6.79';
+const HEAD = 'M28.69 16.49L35.94 13.56L27.81 9.26Z';
+const POUND = ['M23.28 16.64C22.62 14.67 18.95 14.14 18.16 17.16L18.16 23.2C18.16 24.38 17.64 25.43 16.32 26.09L23.81 26.09', 'M16.06 20.71L21.31 20.71'];
 
-function KGlyph({ ink, weight = 4.2 }: { ink: string; weight?: number }) {
+/**
+ * The coin. `face` fills it, as on the app icon; without one it is drawn as
+ * line work — the rim's arrow and the £ — for the one-colour uses.
+ */
+function CoinGlyph({ rim, ink, face, weight = 3.91, pound = 2.34 }: { rim: string; ink: string; face?: string; weight?: number; pound?: number }) {
   return (
-    <g fill="none" stroke={ink} strokeWidth={weight} strokeLinecap="round">
-      {K_PATHS.map((d) => <path key={d} d={d} />)}
+    <g>
+      <path d={RIM} fill="none" stroke={rim} strokeWidth={weight} />
+      <path d={HEAD} fill={rim} stroke={rim} strokeWidth={0.47} strokeLinejoin="round" />
+      {face && <circle cx="20" cy="20" r="9.06" fill={face} />}
+      <g fill="none" stroke={ink} strokeWidth={pound} strokeLinecap="round" strokeLinejoin="round">
+        {POUND.map((d) => <path key={d} d={d} />)}
+      </g>
     </g>
   );
 }
 
-/** The logo: the k, white, on the green tile — the app icon at header size. */
+/** The logo: the gold coin on the violet tile — the app icon at header size. */
 export function Logo({ size = 28, style }: { size?: number; style?: CSSProperties }) {
   // An id per instance: the header and the landing page can show two at once,
   // and a shared gradient id would let one tile paint with the other's.
@@ -36,7 +48,7 @@ export function Logo({ size = 28, style }: { size?: number; style?: CSSPropertie
         </linearGradient>
       </defs>
       <rect width="40" height="40" rx="8.75" fill={`url(#${id}t)`} />
-      <KGlyph ink={color.white} weight={size < 32 ? 4.6 : 4.2} />
+      <CoinGlyph rim={color.gold} face={color.gold} ink={color.goldInk} pound={size < 32 ? 2.6 : 2.34} />
     </svg>
   );
 }
@@ -44,8 +56,8 @@ export function Logo({ size = 28, style }: { size?: number; style?: CSSPropertie
 /** The bare mark, no tile — for surfaces that are themselves the accent. */
 export function LogoMark({ size = 18, fill = color.accent }: { size?: number; fill?: string }) {
   return (
-    <svg width={size} height={size} viewBox="6 5 28 30" aria-hidden="true">
-      <KGlyph ink={fill} weight={4.4} />
+    <svg width={size} height={size} viewBox="4 4 32 32" aria-hidden="true">
+      <CoinGlyph rim={fill} ink={fill} weight={4.2} pound={3} />
     </svg>
   );
 }
@@ -55,7 +67,7 @@ export function LogoChecked({ size = 38 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 40 40" aria-hidden="true">
       <rect width="40" height="40" rx="8.75" fill={color.accentSoft} />
-      <KGlyph ink={color.accent} />
+      <CoinGlyph rim={color.accent} ink={color.accent} />
     </svg>
   );
 }
@@ -65,7 +77,7 @@ export function LogoDashed({ size = 72 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 40 40" style={{ margin: '0 auto 20px' }} aria-hidden="true">
       <rect x="1" y="1" width="38" height="38" rx="8.5" fill="none" stroke={color.borderSoft} strokeWidth="1" strokeDasharray="2.5 2.5" />
-      <KGlyph ink={color.fainter} weight={2.2} />
+      <CoinGlyph rim={color.fainter} ink={color.fainter} weight={2.2} pound={1.8} />
     </svg>
   );
 }

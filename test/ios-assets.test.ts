@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { color } from '../src/tokens';
 import { describe, expect, it } from 'vitest';
 // @ts-expect-error - a small JS helper shared with scripts/make-icons.mjs
 import { decodePng, pixelAt } from '../scripts/png.mjs';
@@ -24,7 +25,9 @@ const SPLASHES = ['splash-2732x2732.png', 'splash-2732x2732-1.png', 'splash-2732
   .map((n) => join(ASSETS, 'Splash.imageset', n));
 
 const CANVAS = [255, 255, 255]; // #FFFFFF, what the shell is told to paint
-const MARK = [255, 255, 255];   // #FFFFFF, the mark itself
+// The gold coin, read from the token the logo draws with, so icon.svg and the
+// in-app mark cannot quietly pick two different golds.
+const MARK = [1, 3, 5].map((i) => parseInt(color.gold.slice(i, i + 2), 16));
 
 const near = (got: number[], want: number[]) =>
   want.every((v, i) => Math.abs(got[i] - v) <= 2);
@@ -65,7 +68,7 @@ describe('the app icon', () => {
     expect(icon.channels).toBe(3);
   });
 
-  it('has square corners, in kept indigo — not rounded, and not a vendor logo', () => {
+  it('has square corners, in the brand indigo — not rounded, and not a vendor logo', () => {
     /*
      * One assertion doing two jobs, and both matter. iOS masks the icon itself,
      * so a corner that is transparent or white means the artwork was rounded
@@ -112,11 +115,12 @@ describe('the launch screen', () => {
   });
 
   it('has the mark on it, centred, rather than a plain empty field', () => {
-    // Looked for by the tile's indigo: the launch screen is white now, so the
-    // mark's own white is everywhere on it and would prove nothing.
-    expect(CANVAS).toEqual(MARK);
+    // Looked for by the tile's indigo AND the coin's gold: the launch screen
+    // is white, so neither could come from the ground.
+    expect(CANVAS).not.toEqual(MARK);
     const s = decodePng(SPLASHES[0]);
     expect(hasMark(s, [1110, 1110, 1622, 1622], 'tile')).toBe(true);
+    expect(hasMark(s, [1110, 1110, 1622, 1622])).toBe(true);
     // And nothing outside where the mark belongs — the first attempt at this
     // artwork rendered it several times too large and running off the canvas,
     // which the generator reported as a success because it had drawn something.
