@@ -6,7 +6,7 @@ import { isNative } from '../lib/mirror';
 import { cleanupPhotos } from '../lib/photos';
 import { onNotificationTap, syncScheduled } from './schedule-native';
 import { askForReview } from './purchases';
-import { shouldAskForReview, type ReviewAsked } from '../lib/review-prompt';
+import { celebrationLeft, shouldAskForReview, type ReviewAsked } from '../lib/review-prompt';
 import { currentDay, daysBetween, fromISODate, toISODate, ukDay } from '../lib/dates';
 import { collectedShare, sharedTextFrom, strippedShareUrl } from '../lib/share';
 import { canSplit, splitReceipt, validSplit } from '../lib/split';
@@ -1167,8 +1167,9 @@ export function useApp() {
    * receipt as it stands NOW: an undone return is not a win, and is not asked
    * about. A timer would have had to guess how long the card takes to read.
    *
-   * Which celebration is held in a ref, by id, and spent as it is used, so a
-   * remount (React's development double-run) cannot ask twice. The record is
+   * Which celebration is held in a ref, by id, and spent as it is used
+   * (`celebrationLeft`), so a remount (React's development double-run) or a
+   * later change of tab cannot ask again. The record is
    * written as the ask goes out and whatever iOS does with it: Apple shows
    * the dialog at most three times a year, may show nothing, and says
    * nothing back either way (lib/review-prompt.ts).
@@ -1176,12 +1177,9 @@ export function useApp() {
   const celebrated = useRef<string | null>(null);
   useEffect(() => {
     if (state.embedded || !isNative()) return;
-    if (state.screen === 'celebrate') {
-      celebrated.current = state.celebrating?.id ?? null;
-      return;
-    }
-    const id = celebrated.current;
-    celebrated.current = null;
+    const step = celebrationLeft(celebrated.current, state.screen, state.celebrating?.id ?? null);
+    celebrated.current = step.held;
+    const id = step.left;
     if (id === null) return;
     const ask = shouldAskForReview({
       native: isNative(),

@@ -1,6 +1,6 @@
-import { daysBetween, fromISODate } from './dates';
+import { daysBetween, fromISODate, toISODate } from './dates';
 import { refundOf } from './receipts';
-import type { Receipt } from './types';
+import type { Receipt, Screen } from './types';
 
 /**
  * When the iPhone app asks iOS for its App Store rating prompt.
@@ -86,6 +86,23 @@ export function shouldAskForReview(m: ReviewMoment): boolean {
   return daysBetween(fromISODate(m.last.on), m.today) >= REVIEW_GAP_DAYS;
 }
 
+/**
+ * Which celebration was just LEFT, given the one held from before and the
+ * screen now showing. The celebrate screen holds its receipt; any other
+ * screen hands back what was held, once, and holds nothing after. Spent as
+ * it is handed back, so the moment is one moment: a later change of tab is
+ * not leaving it again, which matters on the day the library reaches a
+ * second win by some way other than a celebration (a restore, another tab).
+ */
+export function celebrationLeft(
+  held: string | null,
+  screen: Screen,
+  celebrating: string | null,
+): { held: string | null; left: string | null } {
+  if (screen === 'celebrate') return { held: celebrating, left: null };
+  return { held: null, left: held };
+}
+
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
@@ -96,7 +113,8 @@ const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 export function readReviewAsked(raw: unknown): ReviewAsked | null {
   if (typeof raw !== 'object' || raw === null) return null;
   const { on, version } = raw as Record<string, unknown>;
-  if (typeof on !== 'string' || !ISO_DAY.test(on) || Number.isNaN(fromISODate(on).getTime())) return null;
+  // A real calendar day: 2026-02-30 is not one, though it has the shape.
+  if (typeof on !== 'string' || !ISO_DAY.test(on) || toISODate(fromISODate(on)) !== on) return null;
   if (typeof version !== 'string' || version.trim() === '') return null;
   return { on, version };
 }

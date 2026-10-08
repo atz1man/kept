@@ -3,6 +3,7 @@ import { reducer, type AppState } from '../src/app/state';
 import { addDays, toISODate } from '../src/lib/dates';
 import { toPence } from '../src/lib/money';
 import {
+  celebrationLeft,
   isMoneyBack,
   moneyBackCount,
   readReviewAsked,
@@ -139,6 +140,27 @@ describe('whether to ask', () => {
   });
 });
 
+describe('which celebration was just left', () => {
+  it('holds the receipt being celebrated, and leaves nothing while it shows', () => {
+    expect(celebrationLeft(null, 'celebrate', 'r1')).toEqual({ held: 'r1', left: null });
+    // Still showing, after a corrected refund re-renders it.
+    expect(celebrationLeft('r1', 'celebrate', 'r1')).toEqual({ held: 'r1', left: null });
+  });
+
+  it('hands it back on any other screen, once', () => {
+    for (const screen of ['home', 'detail', 'settings', 'watch', 'add'] as const) {
+      expect(celebrationLeft('r1', screen, 'r1')).toEqual({ held: null, left: 'r1' });
+    }
+    const left = celebrationLeft('r1', 'home', 'r1');
+    expect(celebrationLeft(left.held, 'settings', 'r1')).toEqual({ held: null, left: null });
+  });
+
+  it('leaves nothing where nothing was celebrated', () => {
+    expect(celebrationLeft(null, 'home', null)).toEqual({ held: null, left: null });
+    expect(celebrationLeft(null, 'detail', 'r1')).toEqual({ held: null, left: null });
+  });
+});
+
 describe('the record of the last ask', () => {
   it('reads one that was written', () => {
     expect(readReviewAsked({ on: '2026-10-08', version: '1.1.0' })).toEqual({ on: '2026-10-08', version: '1.1.0' });
@@ -150,6 +172,12 @@ describe('the record of the last ask', () => {
       { on: '2026-10-08' },
       { version: '1.1.0' },
       { on: '8 October 2026', version: '1.1.0' },
+      { on: '2026-10-8', version: '1.1.0' },
+      { on: '2026-02-30', version: '1.1.0' },
+      { on: '2026-13-01', version: '1.1.0' },
+      // A real day, but no day this was written on, and one that would stop
+      // the app ever asking again.
+      { on: '10000-01-01', version: '1.1.0' },
       { on: 20261008, version: '1.1.0' },
       { on: '2026-10-08', version: '' },
       { on: '2026-10-08', version: '   ' },
