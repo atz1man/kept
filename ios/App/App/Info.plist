@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-        <string>kept</string>
+        <string>Quids In</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -36,16 +36,16 @@
 	     asks for a new photograph. test/ios-usage-strings.test.ts reads the
 	     plugin's own list rather than this comment. -->
 	<key>NSCameraUsageDescription</key>
-	<string>kept uses the camera only to photograph a paper receipt: to keep it as proof of purchase for when you go back to the shop, or to read the shop, total and date from it. The picture stays on this device and is never uploaded.</string>
+	<string>Quids In uses the camera only to photograph a paper receipt: to keep it as proof of purchase for when you go back to the shop, or to read the shop, total and date from it. The picture stays on this device and is never uploaded.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>kept never opens your photo library. It only takes a new photograph of a receipt, which stays on this device.</string>
+	<string>Quids In never opens your photo library. It only takes a new photograph of a receipt, which stays on this device.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>kept does not add anything to your photo library. A receipt photograph is kept inside the app and is deleted when you erase your receipts.</string>
+	<string>Quids In does not add anything to your photo library. A receipt photograph is kept inside the app and is deleted when you erase your receipts.</string>
 	<!-- Both are what make the app's Documents directory a place a person can
 	     actually reach: without them it exists but appears nowhere, and the
 	     backup written into it is exactly as lost as the download WKWebView
 	     refuses — with the added harm of having looked like it worked.
-	     UIFileSharingEnabled puts "kept" under On My iPhone in the Files app;
+	     UIFileSharingEnabled puts "Quids In" under On My iPhone in the Files app;
 	     LSSupportsOpeningDocumentsInPlace lets a file be opened from there
 	     rather than only copied out. See src/lib/save-file.ts.
 

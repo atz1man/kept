@@ -138,7 +138,7 @@ describe('what the page says about kept’s users', () => {
   const TELLS: [string, RegExp][] = [
     ['a star rating', /★|\b\d(?:\.\d)?\s*(?:out of 5|stars?)\b/i],
     ['a count of ratings or reviews', /\b\d[\d,.]*\s*[kKmM]?\+?\s*(?:ratings|reviews|downloads)\b/i],
-    ['a figure about kept’s users', /\b(?:kept users|our users|customers)\b|recovered by/i],
+    ['a figure about Quids In’s users', /\b(?:quids in users|kept users|our users|customers)\b|recovered by/i],
     ['a named reviewer', /\b[A-Z][a-z]+, \d{2} · [A-Z]/],
   ];
   const offences = (text: string) => TELLS.filter(([, re]) => re.test(text)).map(([what]) => what);

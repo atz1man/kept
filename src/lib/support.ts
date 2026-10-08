@@ -52,7 +52,7 @@ export function supportDetails(f: SupportFacts): string {
   }
   const samples = f.receipts.filter((r) => r?.demo === true).length;
   const lines = [
-    `Kept ${f.version}${f.build ? ` (build ${f.build})` : ''} · ${f.platform}`,
+    `Quids In ${f.version}${f.build ? ` (build ${f.build})` : ''} · ${f.platform}`,
     `Device: ${f.userAgent}`,
     `Receipts: ${f.receipts.length} (${counts.active} open, ${counts.sent} sent back, ${counts.returned} returned, ${counts.kept} kept${counts.other ? `, ${counts.other} unreadable` : ''}; ${samples} samples)`,
     `Storage: ${f.storageBytes === null ? 'unknown' : `${Math.round(f.storageBytes / 1024)} KB`}${f.persisted === null ? '' : f.persisted ? ', kept by the browser' : ', not yet kept by the browser'}`,

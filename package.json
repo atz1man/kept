@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Kept — local-first UK return-deadline tracker (PWA + landing page)",
+  "description": "Quids In — local-first UK return-deadline tracker (PWA + landing page)",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

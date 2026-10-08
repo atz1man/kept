@@ -1,6 +1,6 @@
 # TestFlight — what the first testers are for
 
-kept measures nothing about the people using it — no analytics, no crash
+Quids In measures nothing about the people using it — no analytics, no crash
 reporting, nothing leaves the phone. That is the privacy promise, and it
 means the only feedback before launch is what testers tell you. So decide
 now what you need to learn, and ask for exactly that.
@@ -18,7 +18,7 @@ Not people who will be kind about it.
    the Add screen. (There is no iPhone share-sheet entry yet: that is a
    native share extension, built on a Mac. The web app's share target works
    in Chrome on Android and desktop.)
-3. When kept offers reminders after your first real receipt, turn them on
+3. When Quids In offers reminders after your first real receipt, turn them on
    (iOS asks once), then leave the app alone.
 4. Return one thing, or mark one returned, and mark one you are keeping.
    Say what the app said each time.

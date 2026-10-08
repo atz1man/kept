@@ -90,7 +90,12 @@ export function isNative(): boolean {
   return bridge?.isNativePlatform?.() === true;
 }
 
-/** One file, named for what it holds rather than for the app that wrote it. */
+/**
+ * One file, named for what it holds rather than for the app that wrote it.
+ * Still `kept-…` after the rename to Quids In, on purpose: every phone that
+ * ran the old build has its mirror under this name, and renaming it would
+ * leave the copy that recovers a damaged store where no build looks.
+ */
 const MIRROR_FILE = 'kept-receipts.json';
 
 /**

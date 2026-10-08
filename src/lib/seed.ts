@@ -79,12 +79,12 @@ export function seedUpdates(today: Date): PolicyUpdate[] {
     },
     {
       id: 'u_asos_frequent_returners', store: 'ASOS', changedOn: ago(7),
-      text: 'New 28-day window for “frequent returners” (was 45). ASOS decides who counts, so Kept assumes the shorter one.',
+      text: 'New 28-day window for “frequent returners” (was 45). ASOS decides who counts, so Quids In assumes the shorter one.',
       affectsStores: ['ASOS'], affectNote: 'your window is the shorter one', newWindowDays: 28, demo: true,
     },
     {
       id: 'u_apple_iphone18_window', store: 'Apple', changedOn: ago(21),
-      text: '14-day window confirmed for the iPhone 18 line. Put the warranty length on the receipt and Kept counts that down too.',
+      text: '14-day window confirmed for the iPhone 18 line. Put the warranty length on the receipt and Quids In counts that down too.',
       affectsStores: ['Apple'], affectNote: 'confirmed at 14 days', newWindowDays: 14, demo: true,
     },
     {

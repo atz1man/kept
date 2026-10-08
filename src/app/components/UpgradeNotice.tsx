@@ -62,7 +62,7 @@ export function UpgradeNotice({ onUnlock, onCancel }: { onUnlock: () => void; on
           Nothing has been charged
         </h2>
         <p style={{ fontSize: 14, color: color.body, lineHeight: 1.6, margin: '10px 0 0' }}>
-          kept cannot take payments yet — there is no card box, no {UNLOCK.price} leaving your account, and nothing to
+          Quids In cannot take payments yet — there is no card box, no {UNLOCK.price} leaving your account, and nothing to
           cancel later. {UNLOCK.price}, once, is what it is <em>meant</em> to cost.
         </p>
         <p style={{ fontSize: 14, color: color.body, lineHeight: 1.6, margin: '10px 0 0' }}>

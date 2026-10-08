@@ -22,6 +22,8 @@ import type { LateLodged } from './schedule';
  * or hand-edited between two launches and the app still has to open.
  */
 
+// `kept.v1`, not `quids-in.v1`: the key predates the rename to Quids In, and
+// it is where every saved receipt is. Renaming it loses them all on update.
 const KEY = 'kept.v1';
 
 /*
@@ -685,6 +687,10 @@ export function rescueBackup(): { text: string; readable: boolean } | null {
  * The indent is two because a backup is a file somebody may open and read, not
  * because any width is required; three would do, which is why no test pins it.
  */
+// The label stays `kept` after the rename to Quids In. It is a file-format
+// marker, not a name anyone reads, and every build ever shipped — including a
+// phone still on the old one — restores a file carrying it. The new name is on
+// the FILE instead (`backupFilename`).
 export function exportBackup(state: KeptState): string {
   return JSON.stringify(
     { app: 'kept', exportedAt: new Date().toISOString(), version: state.version, receipts: state.receipts, settings: state.settings },

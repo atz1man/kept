@@ -57,7 +57,7 @@ describe('the iOS usage descriptions', () => {
     // the app with a camera.
     for (const key of requiredKeys()) {
       expect(plistValue(key)!.length).toBeGreaterThan(40);
-      expect(plistValue(key)!.toLowerCase()).toContain('kept');
+      expect(plistValue(key)!.toLowerCase()).toContain('quids in');
     }
   });
 

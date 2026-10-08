@@ -163,7 +163,7 @@ describe('what the app says', () => {
 
   it('says what happens if a failed purchase charged them after all', () => {
     for (const reason of ['network', 'unknown'] as const) {
-      expect(noteFor({ kind: 'failed', reason })?.text).toMatch(/kept unlocks by itself/);
+      expect(noteFor({ kind: 'failed', reason })?.text).toMatch(/Quids In unlocks by itself/);
     }
     expect(noteFor({ kind: 'unverified' })?.text).toMatch(/Restore purchase/);
   });

@@ -1,4 +1,11 @@
-# kept.
+# Quids In
+
+Renamed from **kept** in October 2026: two apps called "Kept" were already on
+the App Store. Only the name a person sees changed — storage keys (`kept.v1`),
+the in-app purchase id (`kept.unlimited`), the bundle-id placeholder, the iOS
+mirror file (`kept-receipts.json`), package and file names, and the label
+inside a backup are unchanged, so nothing anyone saved is lost on update. The
+history below is left as it was written, under the old name.
 
 A local-first UK return-deadline tracker. It remembers every receipt, knows
 each shop's real return window and the statutory clock running alongside it,
@@ -73,7 +80,7 @@ real, and it does not care what the identifier is, only that the three agree.
 
 ## iOS
 
-kept is a native app by **wrapping** the web app, not by being rewritten.
+Quids In is a native app by **wrapping** the web app, not by being rewritten.
 
 The reason is where the risk lands. `src/lib` is the return windows, the two
 statutory clocks and the parser, held by the unit suite and eight browser sweeps.

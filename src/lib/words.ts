@@ -50,7 +50,7 @@ export function winSentence(
   { amount, store, warned, inTime }: { amount: string; store: string; warned: boolean; inTime: boolean | null },
 ): string {
   const earned = warned && inTime === true;
-  return `Just got ${amount} back from ${store} — kept. ${
+  return `Just got ${amount} back from ${store} — Quids In ${
     earned ? 'reminded me before the window shut.' : 'keeps every return deadline in one place.'
   }`;
 }

@@ -193,7 +193,7 @@ describe('the page it makes', () => {
     const p = claimPack(counter(), TODAY);
     expect(claimPackHtml(p, null)).toContain(LEGAL_DISCLAIMER);
     expect(claimPackText(p)).toContain(LEGAL_DISCLAIMER);
-    expect(claimPackText(p)).toContain(`Made with kept on ${fmtDateLong(TODAY)}`);
+    expect(claimPackText(p)).toContain(`Made with Quids In on ${fmtDateLong(TODAY)}`);
   });
 
   it('marks a floor as a floor in the text too', () => {
@@ -202,7 +202,7 @@ describe('the page it makes', () => {
   });
 
   it('is named for the shop and the day', () => {
-    expect(claimPackFilename(counter({ store: 'Marks & Spencer' }), TODAY)).toBe('kept-claim-marks-spencer-2026-10-04.html');
-    expect(claimPackFilename(counter({ store: '!!!' }), TODAY)).toBe('kept-claim-receipt-2026-10-04.html');
+    expect(claimPackFilename(counter({ store: 'Marks & Spencer' }), TODAY)).toBe('quids-in-claim-marks-spencer-2026-10-04.html');
+    expect(claimPackFilename(counter({ store: '!!!' }), TODAY)).toBe('quids-in-claim-receipt-2026-10-04.html');
   });
 });

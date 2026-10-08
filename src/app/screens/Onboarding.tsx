@@ -22,11 +22,11 @@ import { FEED_ORIGIN, feedRefreshes } from '../../lib/feed-origin';
 const STEPS = [
   {
     title: 'Every receipt, remembered.',
-    body: 'Paste an order email or photograph a till receipt, and Kept reads the store, the total and the date — then starts the clock for you.',
+    body: 'Paste an order email or photograph a till receipt, and Quids In reads the store, the total and the date — then starts the clock for you.',
   },
   {
     title: 'Two clocks. We watch both.',
-    body: 'The shop’s return window, and the statutory one running beside it. Kept counts both down and tells you which closes first, every time you open it.',
+    body: 'The shop’s return window, and the statutory one running beside it. Quids In counts both down and tells you which closes first, every time you open it.',
     /*
      * The iPhone app does more than the sentence above, and the first screens
      * are where it should say so: reminders are lodged with iOS in advance and
@@ -37,7 +37,7 @@ const STEPS = [
      * moment instead of promising a ping. Leaving the web sentence up here
      * would be the app understating itself, the same untruth notify.ts refuses.
      */
-    native: 'The shop’s return window, and the statutory one running beside it. Kept counts both down, and if you allow notifications, lodges each deadline with iOS so it arrives at 9am on the day, even with Kept shut.',
+    native: 'The shop’s return window, and the statutory one running beside it. Quids In counts both down, and if you allow notifications, lodges each deadline with iOS so it arrives at 9am on the day, even with Quids In shut.',
   },
   {
     title: 'Your receipts stay yours.',

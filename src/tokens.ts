@@ -41,6 +41,16 @@ export const color = {
   accentInk: '#3B2BD6',
 
   /**
+   * The coin in the mark: Quids In is money coming back, so the one thing on
+   * the violet tile is a gold pound. Only the logo uses these. 3.5:1 against
+   * the tile's lightest stop, so the coin holds its edge at 29px; `goldInk` is
+   * the pound sign struck on it, 7.9:1 on the gold — a darker gold rather than
+   * the ink, so it reads as one object rather than a sticker on one.
+   */
+  gold: '#F7C948',
+  goldInk: '#4A2F00',
+
+  /**
    * The hero's gradient, top to bottom. `heroEnd` is the LIGHTEST stop, and is
    * what the hero declares as its background colour: the contrast sweep reads
    * colours, not gradients, so it measures every word on the hero against the

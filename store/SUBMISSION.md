@@ -1,4 +1,4 @@
-# Submitting kept to the App Store
+# Submitting Quids In to the App Store
 
 In order. Each step says who can do it. Everything marked **done** is in this
 repository and held by a test; everything marked **you** needs a Mac, an Apple
@@ -53,7 +53,7 @@ look-alike page would dress itself in it.
 
 | | Step | Who | Where |
 |---|---|---|---|
-| ✅ | Name, subtitle, promotional text, description, keywords, review notes | done | `store/listing.json`, held by `test/store-listing.test.ts` |
+| ✅ | Name (**Quids In: UK Returns & Refunds**, 30 characters exactly), subtitle, promotional text, description, keywords, review notes | done | `store/listing.json`, held by `test/store-listing.test.ts`. The app was renamed from kept because two apps called "Kept" are already on the store |
 | ✅ | Privacy answers: **Data Not Collected**, no tracking | done | matches `PrivacyInfo.xcprivacy`. The purchase does not change this, as far as this repository can tell: Apple takes the payment and kept has no server to receive anything about it. The privacy page says so under "Buying the unlock". Confirm against Apple's current guidance when you answer |
 | ✅ | Screenshot storyboard at 1290 × 2796 — four shots (deadlines, the two clocks, a pasted order, a scanned till receipt), from the iOS bundle booted as native, UK locale | done | `npm run build:ios && npm run store:screenshots`. They show the seed's retailer data, so they wait on APN-16 like the listing does |
 | ☐ | Retake the screenshots in the Simulator, for the real status bar | **you** (Mac) | `xcrun simctl io booted screenshot` |

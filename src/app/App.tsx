@@ -344,7 +344,7 @@ export function App() {
           inTime: win.inTime,
           recovered: money(recovered),
         }).catch(() => null);
-        const file = png ? new File([png], 'kept-money-back.png', { type: 'image/png' }) : null;
+        const file = png ? new File([png], 'quids-in-money-back.png', { type: 'image/png' }) : null;
         const withPicture = file && navigator.canShare?.({ files: [file] });
         await navigator.share(withPicture ? { files: [file], text: line } : { text: line });
         dispatch({ type: 'shared', outcome: 'shared' });

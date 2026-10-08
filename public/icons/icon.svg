@@ -11,9 +11,13 @@
   </defs>
   <rect width="512" height="512" rx="112" fill="url(#tile)"/>
   <rect width="512" height="512" rx="112" fill="url(#light)"/>
-  <g transform="translate(0 0) scale(1)" fill="none" stroke="#FFFFFF" stroke-width="54" stroke-linecap="round">
-    <path d="M182 118V394"/>
-    <path d="M326 146L210 256"/>
-    <path d="M210 256A150 150 0 0 1 338 390"/>
+  <g transform="translate(0 0) scale(1)">
+    <path d="M411.3 186.85A170 170 0 1 1 273.77 86.93" fill="none" stroke="#F7C948" stroke-width="50"/>
+    <path d="M367.26 211.05L459.98 173.59L355.92 118.47Z" fill="#F7C948" stroke="#F7C948" stroke-width="6" stroke-linejoin="round"/>
+    <circle cx="256" cy="256" r="116" fill="#F7C948"/>
+    <g fill="none" stroke="#4A2F00" stroke-width="30" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M298 212.96C289.6 187.76 242.56 181.04 232.48 219.68L232.48 296.96C232.48 312.08 225.76 325.52 208.96 333.92L304.72 333.92"/>
+      <path d="M205.6 265.04L272.8 265.04"/>
+    </g>
   </g>
 </svg>

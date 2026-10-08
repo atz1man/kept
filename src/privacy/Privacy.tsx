@@ -28,8 +28,8 @@ export function Privacy() {
       title="Privacy"
       lede="Everything lives on this device. No account, nothing uploaded, no one reading your purchases. This page says exactly what that means."
     >
-        <Section title="What kept collects">
-          Nothing. There is no account, no sign-in and no server that receives your receipts. kept has no analytics,
+        <Section title="What Quids In collects">
+          Nothing. There is no account, no sign-in and no server that receives your receipts. Quids In has no analytics,
           no advertising and no crash-reporting service, and it shares nothing with anyone, because it holds nothing
           about you to share.
         </Section>
@@ -44,7 +44,7 @@ export function Privacy() {
           That Documents folder, with the receipt photographs in it, appears in the Files app under On My iPhone, so a
           backup you save can be found and opened — which also means anyone using your unlocked phone can see it there.
           It is also part of your iPhone’s own backup, to iCloud or to a computer, if you have that turned on: your
-          phone copies it along with everything else on the device. kept itself sends it nowhere, and that backup is
+          phone copies it along with everything else on the device. Quids In itself sends it nowhere, and that backup is
           between you and Apple.
         </Section>
 
@@ -53,22 +53,22 @@ export function Privacy() {
             no Policy watch switch to point at. The same answer every other
             screen reads. */}
         {feedRefreshes(isNative(), FEED_ORIGIN) ? (
-          <Section title="The one thing kept downloads">
-            kept may download an updated list of retailer return policies, so that a shop changing its window can be
+          <Section title="The one thing Quids In downloads">
+            Quids In may download an updated list of retailer return policies, so that a shop changing its window can be
             shown to you. That download is the same for everyone: it asks for every change, never for the shops you
             use, and it carries nothing about you or your receipts. You can turn it off in Settings with the Policy
             watch switch.
           </Section>
         ) : (
-          <Section title="What kept downloads">
-            Nothing. The list of policy changes comes with app updates, so kept never asks anyone for it, and nothing
+          <Section title="What Quids In downloads">
+            Nothing. The list of policy changes comes with app updates, so Quids In never asks anyone for it, and nothing
             about you or your receipts goes anywhere.
           </Section>
         )}
 
         <Section title="Links to shops">
-          Each receipt links to its shop's own returns page. kept opens it only when you tap it, in your browser, and
-          sends nothing with it: no receipt, no amount, not even that you came from kept. What happens on the shop's
+          Each receipt links to its shop's own returns page. Quids In opens it only when you tap it, in your browser, and
+          sends nothing with it: no receipt, no amount, not even that you came from Quids In. What happens on the shop's
           site is between you and the shop.
         </Section>
 
@@ -79,39 +79,39 @@ export function Privacy() {
         </Section>
 
         <Section title="Camera and photos">
-          kept uses the camera only when you choose to photograph a receipt. A picture taken to scan a receipt is read
+          Quids In uses the camera only when you choose to photograph a receipt. A picture taken to scan a receipt is read
           on this phone — the text is worked out here, not by a server. In the iPhone app it is then kept with the
           receipt as proof of purchase, unless you untick that before saving; in a browser it is discarded. A picture
-          kept with a receipt is stored with it in the app’s Documents folder on this phone, and kept never uploads
+          kept with a receipt is stored with it in the app’s Documents folder on this phone, and Quids In never uploads
           it.
         </Section>
 
         <Section title="Buying the unlock">
-          On iPhone, unlimited receipts is bought through the App Store, and the payment is between you and Apple: kept
-          never sees your card, your name or your Apple ID. All kept learns, from the App Store on this phone, is whether
+          On iPhone, unlimited receipts is bought through the App Store, and the payment is between you and Apple: Quids In
+          never sees your card, your name or your Apple ID. All Quids In learns, from the App Store on this phone, is whether
           this Apple ID has bought the unlock, so it can stop counting receipts, and it keeps that answer here with your
           settings. Restore purchase in Settings asks the App Store again.
         </Section>
 
         <Section title="Backups">
-          When you export a backup, kept writes a file and hands it to you. Where it goes next is your choice, and kept
+          When you export a backup, Quids In writes a file and hands it to you. Where it goes next is your choice, and Quids In
           keeps no record of where it went.
         </Section>
 
         <Section title="Your rights">
-          Because kept holds nothing about you, there is nothing for anyone to access, correct, export or delete on
+          Because Quids In holds nothing about you, there is nothing for anyone to access, correct, export or delete on
           your behalf — all of it is on your phone, where you can export it, and Erase everything in Settings removes
           it from the app.
         </Section>
 
         <Section title="Changes">
-          If this ever changes — if kept ever sends anything anywhere — this page will say so before the app does.
+          If this ever changes — if Quids In ever sends anything anywhere — this page will say so before the app does.
         </Section>
 
         <Section id="contact" title="Contact">
           {CONTACT_EMAIL ? (
             <>
-              Questions about privacy, or about anything else in kept:{' '}
+              Questions about privacy, or about anything else in Quids In:{' '}
               <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: color.ink, fontWeight: 600 }}>{CONTACT_EMAIL}</a>.
             </>
           ) : (

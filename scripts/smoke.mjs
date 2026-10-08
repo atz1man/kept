@@ -409,7 +409,7 @@ for (const cancel of [false, true]) {
   if (!cancel) {
     results['the win is shared as a picture of the card, with its sentence'] =
       !!card && card.type === 'image/png' && card.width === 1080 && card.height === 1350 && card.size > 20_000 &&
-      /kept-money-back\.png/.test(card.name) && /Just got £89\.00 back from Currys/.test(sheet.text ?? '') &&
+      /quids-in-money-back\.png/.test(card.name) && /Just got £89\.00 back from Currys/.test(sheet.text ?? '') &&
       /Shared ✓/.test(said) && copied === null;
     if (!results['the win is shared as a picture of the card, with its sentence']) problems.push(`share sheet: ${JSON.stringify({ sheet, copied })}`);
   } else {
@@ -2448,7 +2448,7 @@ await page.waitForTimeout(400);
   results['the claim pack lays out a receipt in date order, with today marked'] =
     /Charcoal wool coat/.test(shape.h1) && shape.done >= 1 && shape.deadlines >= 3 && shape.today === 1;
   results['the claim pack saves as a page that carries the purchase and loads nothing'] =
-    !!packFile && /^kept-claim-zara-\d{4}-\d{2}-\d{2}\.html$/.test(packFile.suggestedFilename()) &&
+    !!packFile && /^quids-in-claim-zara-\d{4}-\d{2}-\d{2}\.html$/.test(packFile.suggestedFilename()) &&
     html.includes('Claim pack: Charcoal wool coat') && html.includes('Zara') && !/<script|https?:\/\//i.test(html);
   if (!results['the claim pack lays out a receipt in date order, with today marked']) problems.push(`claim pack: ${JSON.stringify(shape)}`);
   await page.getByRole('button', { name: 'Back', exact: true }).click();
@@ -2574,7 +2574,7 @@ await page.waitForTimeout(500);
 // screen change — which is earlier in the DOM and made this read the wrong
 // element the day it was added.
 const spoken = await page.getByRole('status').allTextContents();
-const refused = spoken.some((t) => (t ?? '').includes('not a kept backup'));
+const refused = spoken.some((t) => (t ?? '').includes('not a Quids In backup'));
 await page.getByRole('button', { name: 'Receipts', exact: true }).click();
 await page.waitForTimeout(300);
 results['a file that is not a backup is refused, and nothing is lost'] =
@@ -3181,7 +3181,7 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
   await broken.waitForTimeout(900);
 
   results['a render failure is not a blank page'] =
-    (await broken.getByRole('heading', { name: 'Something in kept broke' }).isVisible().catch(() => false)) &&
+    (await broken.getByRole('heading', { name: 'Something in Quids In broke' }).isVisible().catch(() => false)) &&
     (await broken.getByRole('button', { name: 'Save my receipts to a file' }).isVisible().catch(() => false));
 
   // The rescue must produce the receipts, without going through the loader or
@@ -3234,7 +3234,7 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
   const copied = await sp.evaluate(() => navigator.clipboard.readText()).catch(() => '');
   const stored = await sp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.map((r) => r.store));
   results['the version is shown, and support gets counts, not purchases'] =
-    /^Kept \d+\.\d+\.\d+/.test(shown) && /^Kept \d+\.\d+\.\d+/.test(copied) &&
+    /^Quids In \d+\.\d+\.\d+/.test(shown) && /^Quids In \d+\.\d+\.\d+/.test(copied) &&
     new RegExp(`Receipts: ${stored.length} \\(`).test(copied) &&
     stored.length > 0 && stored.every((shop) => !copied.split('\n').filter((l) => !l.startsWith('Device:')).join('\n').includes(shop)) &&
     /Copied — paste it/.test(await sp.locator('[data-support] [role="status"]').innerText().catch(() => ''));
@@ -3613,7 +3613,7 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
     new URL(sp.url()).pathname === '/privacy/' &&
     (await sp.getByRole('heading', { level: 1, name: 'Privacy' }).isVisible().catch(() => false)) &&
     (await sp.locator('#contact').count()) === 1;
-  await sp.getByRole('link', { name: /kept\./ }).first().click();
+  await sp.getByRole('link', { name: /Quids In/ }).first().click();
   await sp.waitForLoadState('networkidle');
   results['the privacy policy is one tap from Settings, with a way back'] =
     onPolicy && new URL(sp.url()).pathname === '/';
@@ -3703,9 +3703,9 @@ await landing.waitForTimeout(1200);
 // This context is phone-width, so the demo sits well below the fold. Without
 // scrolling to it the drag below lands on empty page and the check measures
 // nothing.
-await landing.locator('iframe[title="kept — live app demo"]').scrollIntoViewIfNeeded();
+await landing.locator('iframe[title="Quids In — live app demo"]').scrollIntoViewIfNeeded();
 await landing.waitForTimeout(600);
-const demo = landing.frameLocator('iframe[title="kept — live app demo"]');
+const demo = landing.frameLocator('iframe[title="Quids In — live app demo"]');
 const demoRow = demo.getByRole('button', { name: /Currys, JBL/ });
 // And the row into the middle of the demo's own screen: the app opens on its
 // balance, so the list starts below the fold inside the frame too.
@@ -3740,14 +3740,14 @@ results['the landing demo works'] = await demo.getByText('Money back', { exact: 
 // nav button satisfied this while the hero's still pointed at "#".
 const ctas = await landing.evaluate(() =>
   [...document.querySelectorAll('a')]
-    .filter((a) => /open kept/i.test(a.textContent ?? ''))
+    .filter((a) => /open Quids In/i.test(a.textContent ?? ''))
     .map((a) => a.getAttribute('href')),
 );
 results['the landing page has a way into the app'] =
   ctas.length >= 2 && ctas.every((h) => h === '/app/');
 
 // And one of them is followed, because an href is not a working link.
-await landing.getByRole('link', { name: /Open kept/ }).last().click();
+await landing.getByRole('link', { name: /Open Quids In/ }).last().click();
 await landing.waitForTimeout(900);
 results['and its call to action actually opens it'] = new URL(landing.url()).pathname === '/app/';
 await landing.goBack({ waitUntil: 'networkidle' }).catch(() => {});
@@ -3871,7 +3871,7 @@ await landing.close();
   const crashSays = await crashed.locator('main').innerText().catch(() => '');
   const rescueOffered = await crashed.getByRole('button', { name: 'Save my receipts to a file' }).isVisible().catch(() => false);
   results['the demo’s crash screen does not hand over the real library'] =
-    /Something in kept broke/.test(crashSays) && /This is the demo/.test(crashSays) && !rescueOffered;
+    /Something in Quids In broke/.test(crashSays) && /This is the demo/.test(crashSays) && !rescueOffered;
   await crashed.close();
   await demoCtx.close();
 
@@ -3941,9 +3941,9 @@ await landing.close();
   const freshCtx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const visit = await freshCtx.newPage();
   await visit.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
-  await visit.locator('iframe[title="kept — live app demo"]').scrollIntoViewIfNeeded();
+  await visit.locator('iframe[title="Quids In — live app demo"]').scrollIntoViewIfNeeded();
   const demoRan = await visit
-    .frameLocator('iframe[title="kept — live app demo"]')
+    .frameLocator('iframe[title="Quids In — live app demo"]')
     .getByRole('button', { name: 'Settings', exact: true })
     .waitFor({ timeout: 15000 })
     .then(() => true)

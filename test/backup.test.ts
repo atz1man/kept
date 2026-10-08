@@ -561,3 +561,45 @@ describe('the order number, in a backup', () => {
     expect(readReceipt({ ...good, orderRef: 42 })).not.toBeNull();
   });
 });
+
+/**
+ * The app was renamed from kept to Quids In. A backup is the one copy of
+ * somebody's receipts that lives outside the app, and it may be years old and
+ * sitting in a downloads folder — so a file the old app wrote has to restore
+ * in the new one, and a file the new one writes has to restore in a phone
+ * still running the old one. The label inside the file is a format marker and
+ * stays `kept`; the new name goes on the file instead.
+ */
+describe('a backup written before the rename to Quids In', () => {
+  // Byte for byte the shape the old app's exportBackup wrote, under the
+  // filename it gave it (kept-backup-YYYY-MM-DD.json).
+  const OLD_FILE = JSON.stringify({
+    app: 'kept',
+    exportedAt: '2026-09-30T08:15:00.000Z',
+    version: 1,
+    receipts: [
+      good,
+      { ...good, id: 'r2', store: 'Boots', item: 'Hairdryer', status: 'kept', keptOn: '2026-08-20' },
+    ],
+    settings: { urgentDays: 7, alerts: true },
+  }, null, 2);
+
+  it('still restores, every row of it — a kept receipt included', () => {
+    const summary = ok(OLD_FILE);
+    expect(summary.skipped).toBe(0);
+    expect(summary.receipts.map((r) => [r.id, r.status])).toEqual([['r1', 'active'], ['r2', 'kept']]);
+    expect(summary.receipts[1].keptOn).toBe('2026-08-20');
+    expect(mergeBackup([], summary.receipts).added).toBe(2);
+  });
+
+  it('is written in the same format today, so a phone on the old build can read a new one', async () => {
+    const { exportBackup, freshState } = await import('../src/lib/storage');
+    const { backupFilename } = await import('../src/lib/save-file');
+    const doc = JSON.parse(exportBackup({ ...freshState(new Date(2026, 9, 4)), receipts: [good] }));
+    // The old reader accepted exactly `app: "kept"`; anything else it refused.
+    expect(doc.app).toBe('kept');
+    expect(parseBackup(JSON.stringify(doc)).ok).toBe(true);
+    // The name a person sees on the file is the new one.
+    expect(backupFilename('backup', new Date(2026, 9, 4))).toBe('quids-in-backup-2026-10-04.json');
+  });
+});

@@ -80,9 +80,9 @@ export function savedWhere(outcome: SaveOutcome): string {
     case 'download':
       return 'Saved to your downloads.';
     case 'files':
-      return `Saved to Files › On My iPhone › kept, as ${outcome.name}.`;
+      return `Saved to Files › On My iPhone › Quids In, as ${outcome.name}.`;
     case 'nowhere':
-      return 'kept could not write the file, so nothing was written. Try again.';
+      return 'Quids In could not write the file, so nothing was written. Try again.';
   }
 }
 
@@ -94,5 +94,5 @@ export function savedWhere(outcome: SaveOutcome): string {
  * the date on the file is how someone picks which backup to restore.
  */
 export function backupFilename(kind: 'backup' | 'rescue', today: Date): string {
-  return `kept-${kind}-${toISODate(today)}.json`;
+  return `quids-in-${kind}-${toISODate(today)}.json`;
 }

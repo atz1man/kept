@@ -37,7 +37,7 @@ const facts = (over: Partial<SupportFacts> = {}): SupportFacts => ({
 describe('the details a person sends to support', () => {
   it('says which version and build, where, and how much', () => {
     const text = supportDetails(facts());
-    expect(text).toContain('Kept 0.1.0 (build a1b2c3d4e5f6) · web');
+    expect(text).toContain('Quids In 0.1.0 (build a1b2c3d4e5f6) · web');
     expect(text).toContain('Device: Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)');
     expect(text).toContain('Receipts: 5 (2 open, 1 sent back, 1 returned, 1 kept; 1 samples)');
     expect(text).toContain('Storage: 48 KB, kept by the browser');
@@ -60,7 +60,7 @@ describe('the details a person sends to support', () => {
 
   it('says what it does not know rather than guessing', () => {
     const text = supportDetails(facts({ build: null, storageBytes: null, persisted: null }));
-    expect(text.split('\n')[0]).toBe('Kept 0.1.0 · web');
+    expect(text.split('\n')[0]).toBe('Quids In 0.1.0 · web');
     expect(text).toContain('Storage: unknown');
     expect(text).not.toContain('kept by the browser');
     expect(supportDetails(facts({ persisted: false }))).toContain('not yet kept by the browser');

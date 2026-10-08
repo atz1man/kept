@@ -192,16 +192,16 @@ export function Watch({ updates, receipts, today, watching, refreshes, onOpen }:
             "the whole list downloads" were both untrue there. */}
         {!refreshes ? (
           <>
-            Kept’s own list of changes, as it came with this version of the app: the list of policy changes comes
+            Quids In’s own list of changes, as it came with this version of the app: the list of policy changes comes
             with app updates.
             <br />
-            kept downloads nothing, so nothing naming your shops is ever asked — receipts never leave your phone.
+            Quids In downloads nothing, so nothing naming your shops is ever asked — receipts never leave your phone.
           </>
         ) : (
           <>
             {watching
-              ? 'Kept’s own list of changes, fetched each time you open the app'
-              : 'Kept’s own list of changes. Policy watch is off, so this is what was already on your device.'}
+              ? 'Quids In’s own list of changes, fetched each time you open the app'
+              : 'Quids In’s own list of changes. Policy watch is off, so this is what was already on your device.'}
             <br />
             The whole list downloads, never a query naming your shops — receipts never leave your phone.
           </>

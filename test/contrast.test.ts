@@ -186,3 +186,19 @@ describe('the arithmetic underneath, against WCAG\'s own numbers', () => {
     expect(contrast('#777777', '#ffffff')).toBeLessThan(AA_TEXT);
   });
 });
+
+describe('the coin in the mark', () => {
+  /*
+   * Not text, so WCAG asks 3:1 of it (SC 1.4.11) — but the pound sign is the
+   * whole point of the icon and has to survive 29px on a settings row, so it
+   * is held to the text minimum. The coin against its own tile is held to the
+   * graphic one, at the tile's lightest stop.
+   */
+  it('the pound sign reads on the gold', () => {
+    expect(contrast(color.goldInk, color.gold)).toBeGreaterThanOrEqual(AA_TEXT);
+  });
+  it('the coin stands off the violet tile, at both ends of its gradient', () => {
+    expect(contrast(color.gold, color.accentTile)).toBeGreaterThanOrEqual(AA_LARGE);
+    expect(contrast(color.gold, color.accentHover)).toBeGreaterThanOrEqual(AA_LARGE);
+  });
+});

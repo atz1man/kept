@@ -884,7 +884,7 @@ if (!/Deadline alerts/.test(settingsText)) {
       if (!/Photos of receipts stay on this phone/.test(text)) {
         failures.push({ what: 'Settings in the iOS app does not say backups leave photos behind', saw: '' });
       }
-      if (!/Blocked in iOS Settings/.test(text) || !/Settings › Notifications › kept/.test(text)) {
+      if (!/Blocked in iOS Settings/.test(text) || !/Settings › Notifications › Quids In/.test(text)) {
         failures.push({ what: 'Settings did not say iOS is blocking reminders, or where to turn them back on', saw: '' });
       }
     }
@@ -1034,7 +1034,7 @@ if (!/Deadline alerts/.test(settingsText)) {
   for (const [ending, expect, what] of [
     ['cancelled', null, 'a cancelled sheet'],
     ['unverified', /couldn’t be checked/, 'a purchase whose signature does not check'],
-    ['failed:network', /Couldn’t reach the App Store[\s\S]*kept unlocks by itself/, 'a purchase the connection dropped'],
+    ['failed:network', /Couldn’t reach the App Store[\s\S]*Quids In unlocks by itself/, 'a purchase the connection dropped'],
     ['failed:not-allowed', /turned off on this iPhone/, 'a purchase Screen Time refused'],
   ]) {
     const run = await boot({ price: '£9.99', purchase: ending });

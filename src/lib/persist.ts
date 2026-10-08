@@ -37,6 +37,6 @@ export async function keepStorage(
  */
 export function storageNote(kept: boolean | null): string | null {
   return kept === false
-    ? 'This browser hasn’t promised to keep what kept stores here, and can clear it when space runs low or after weeks without a visit. Adding kept to your Home Screen helps, and a backup is a copy it can’t clear.'
+    ? 'This browser hasn’t promised to keep what Quids In stores here, and can clear it when space runs low or after weeks without a visit. Adding Quids In to your Home Screen helps, and a backup is a copy it can’t clear.'
     : null;
 }

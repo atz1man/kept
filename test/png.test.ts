@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { color } from '../src/tokens';
 // @ts-expect-error - a small JS helper shared with scripts/make-icons.mjs
 import { decodePng, pixelAt, writeOpaquePng } from '../scripts/png.mjs';
 
@@ -21,7 +22,7 @@ import { decodePng, pixelAt, writeOpaquePng } from '../scripts/png.mjs';
  * decoder's own output.
  */
 const WEB_ICON = join(__dirname, '..', 'public', 'icons', 'icon-512.png');
-const MARK = [255, 255, 255];
+const MARK = [1, 3, 5].map((i) => parseInt(color.gold.slice(i, i + 2), 16));
 const near = (got: number[], want: number[]) => want.every((v, i) => Math.abs(got[i] - v) <= 2);
 
 describe('reading a PNG somebody else encoded', () => {
@@ -51,7 +52,7 @@ describe('reading a PNG somebody else encoded', () => {
   });
 
   it('reads the mark inside it', () => {
-    // The receipt shape is white and sits in the middle third.
+    // The coin is gold and its face fills the middle third.
     let found = false;
     for (let y = 170; y < 340 && !found; y += 3) {
       for (let x = 170; x < 340; x += 3) if (near(pixelAt(icon, x, y), MARK)) { found = true; break; }
