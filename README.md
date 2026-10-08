@@ -368,6 +368,7 @@ src/lib/          the decision logic — pure, tested, no React
   quota.ts        what the free tier counts, and when it is full
   pricing.ts      the one price, what each build offers, and what a tap on it is allowed to claim
   app-store.ts    the unlock on iPhone: what StoreKit's answers mean for the plan, and what each outcome says
+  review-prompt.ts when the iPhone app asks iOS for the App Store rating prompt: the second real refund on, once a version, 120 days apart
   storage.ts      localStorage persistence, and the shape a stored state is
   backup.ts       reading a backup file back in, and merging it by id
   save-file.ts    where a backup actually lands — Files on iOS, a download on the web
@@ -1573,6 +1574,16 @@ walks it all on the bundle that ships, with StoreKit emulated in the bridge:
 - nothing on sale.
 `ios/App/Kept.storekit` lets the same flows run in the Simulator without App
 Store Connect (`store/SUBMISSION.md`, section 4b).
+
+**A rating is asked for once the app has earned one.** The same plugin asks
+iOS for Apple's own rating prompt (`requestReview`), as the person leaves the
+celebration of their second real refund or a later one: never over the
+celebration, never about a sample, never in the landing page's demo, and at
+most once per app version with 120 days between asks
+(`lib/review-prompt.ts`). Apple shows the dialog at most three times a year
+and may show nothing; the app neither knows nor cares, and nothing is sent
+anywhere. There is no web version of it. `npm run ios` refunds three
+receipts in a row and counts exactly one ask, after the second.
 
 ### The date it was already holding
 

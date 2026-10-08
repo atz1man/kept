@@ -5,6 +5,7 @@ import { embedded } from './embed';
 import { chooseSource, holdMirrorWrites, isNative, mirrorWritesHeld, readMirrorWithin, releaseMirrorWrites, writeMirror } from './mirror';
 import { erasePhotos } from './photos';
 import { readFeed } from './policy-feed';
+import { readReviewAsked, type ReviewAsked } from './review-prompt';
 import { seedReceipts, seedUpdates } from './seed';
 import type { PolicyUpdate, Receipt } from './types';
 import { DEFAULT_URGENT_DAYS } from './urgency';
@@ -95,6 +96,17 @@ export interface KeptState {
    * this device has said.
    */
   alertsLate: Record<string, LateLodged>;
+  /**
+   * When the iPhone app last asked iOS for its rating prompt, and from which
+   * version; null when it never has (lib/review-prompt.ts). Kept with the
+   * library, so it reaches the mirror and survives the web view losing its
+   * store, and so another tab adopts it. Not in a backup, for the reason
+   * `alertsLate` is not: it is about what this device has asked, not about
+   * the person's purchases, and a backup opened on a new phone should not
+   * hold back an ask that phone has never made. Kept by Erase everything,
+   * as the settings are: erasing receipts is not a reason to ask sooner.
+   */
+  reviewAsked: ReviewAsked | null;
 }
 
 /**
@@ -122,6 +134,7 @@ export function freshState(today: Date): KeptState {
     settings: { ...DEFAULT_SETTINGS },
     alertsSent: [],
     alertsLate: {},
+    reviewAsked: null,
   };
 }
 
@@ -264,6 +277,7 @@ export function hydrate(raw: unknown, today: Date): KeptState {
     settings: readSettings(parsed.settings),
     alertsSent: Array.isArray(parsed.alertsSent) ? parsed.alertsSent.filter((k) => typeof k === 'string') : [],
     alertsLate: readLate((parsed as { alertsLate?: unknown }).alertsLate, seen),
+    reviewAsked: readReviewAsked((parsed as { reviewAsked?: unknown }).reviewAsked),
   };
 }
 

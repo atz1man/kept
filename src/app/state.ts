@@ -1,10 +1,12 @@
-import { useEffect, useReducer, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import { alertKey, inheritedKeys, movedRungs, pruneSent, remindedBeforeWindow } from '../lib/alerts';
 import { planAlerts, recordLate, type PlannedAlert } from '../lib/schedule';
 import { embedded } from '../lib/embed';
 import { isNative } from '../lib/mirror';
 import { cleanupPhotos } from '../lib/photos';
 import { onNotificationTap, syncScheduled } from './schedule-native';
+import { askForReview } from './purchases';
+import { celebrationLeft, shouldAskForReview, type ReviewAsked } from '../lib/review-prompt';
 import { currentDay, daysBetween, fromISODate, toISODate, ukDay } from '../lib/dates';
 import { collectedShare, sharedTextFrom, strippedShareUrl } from '../lib/share';
 import { canSplit, splitReceipt, validSplit } from '../lib/split';
@@ -163,6 +165,8 @@ export type Action =
   | { type: 'undo-send' }
   | { type: 'undo-add' }
   | { type: 'shared'; outcome: 'shared' | 'copied' | 'failed' }
+  /** iOS was just asked for its rating prompt: when, and by which version (lib/review-prompt.ts). */
+  | { type: 'review-asked'; asked: ReviewAsked }
   | { type: 'upgrade-ask' }
   | { type: 'upgrade-cancel' }
   /** What the App Store said it sells, this launch. */
@@ -926,6 +930,8 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
     }
     case 'shared':
       return { ...state, shared: action.outcome };
+    case 'review-asked':
+      return { ...state, reviewAsked: action.asked };
   }
 }
 
@@ -1041,9 +1047,10 @@ export function useApp() {
       settings: state.settings,
       alertsSent: state.alertsSent,
       alertsLate: state.alertsLate,
+      reviewAsked: state.reviewAsked,
     });
     setSaveFailed(!ok);
-  }, [state.embedded, state.version, state.receipts, state.updates, state.onboardingSeen, state.settings, state.alertsSent, state.alertsLate]);
+  }, [state.embedded, state.version, state.receipts, state.updates, state.onboardingSeen, state.settings, state.alertsSent, state.alertsLate, state.reviewAsked]);
 
   /*
    * Pictures whose receipt has gone, cleared once per launch.
@@ -1148,6 +1155,48 @@ export function useApp() {
     state.alertsLate,
     today,
   ]);
+
+  /*
+   * Apple's rating prompt, asked as a money-back celebration is LEFT.
+   *
+   * On leaving rather than on arriving, so the request can never land over
+   * the card the person is looking at: iOS draws its dialog on top of
+   * whatever is there, and what is there should be their £89, not a question
+   * about the app. Leaving is any way off the screen (Back to receipts, a
+   * tab, Back), and an undo leaves it too, which is why the decision reads the
+   * receipt as it stands NOW: an undone return is not a win, and is not asked
+   * about. A timer would have had to guess how long the card takes to read.
+   *
+   * Which celebration is held in a ref, by id, and spent as it is used
+   * (`celebrationLeft`), so a remount (React's development double-run) or a
+   * later change of tab cannot ask again. The record is
+   * written as the ask goes out and whatever iOS does with it: Apple shows
+   * the dialog at most three times a year, may show nothing, and says
+   * nothing back either way (lib/review-prompt.ts).
+   */
+  const celebrated = useRef<string | null>(null);
+  useEffect(() => {
+    if (state.embedded || !isNative()) return;
+    const step = celebrationLeft(celebrated.current, state.screen, state.celebrating?.id ?? null);
+    celebrated.current = step.held;
+    const id = step.left;
+    if (id === null) return;
+    const ask = shouldAskForReview({
+      native: isNative(),
+      embedded: state.embedded,
+      won: state.receipts.find((r) => r.id === id),
+      receipts: state.receipts,
+      version: __KEPT_VERSION__,
+      today,
+      last: state.reviewAsked,
+    });
+    if (!ask) return;
+    rawDispatch({ type: 'review-asked', asked: { on: toISODate(today), version: __KEPT_VERSION__ } });
+    askForReview();
+    // Only on a change of screen: that is the moment being watched for, and
+    // the rest is read as it stands when it comes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.screen]);
 
   return { state, dispatch: rawDispatch, today, saveFailed };
 }

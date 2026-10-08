@@ -30,7 +30,8 @@ import { describe, expect, it } from 'vitest';
 const SOURCE = join(__dirname, '..', 'src', 'app', 'state.ts');
 
 /** Anything that reaches off this device or onto its disk. */
-const REACHES_OUT = ['cleanupPhotos', 'onNotificationTap', 'syncScheduled', 'save', 'onExternalChange'];
+// `askForReview` asks iOS to put Apple's rating dialog over the app: never on behalf of a demo.
+const REACHES_OUT = ['cleanupPhotos', 'onNotificationTap', 'syncScheduled', 'save', 'onExternalChange', 'askForReview'];
 
 interface Effect {
   line: number;

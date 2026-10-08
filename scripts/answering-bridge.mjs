@@ -144,12 +144,13 @@ export async function answeringBridge(ctx, { shot = '', disk = {}, slowMirrorMs 
      * - `offline`: the App Store cannot be reached at all.
      * `__approve()` is an Ask to Buy approval and `__refund()` a refund. Both
      * arrive as StoreKit's own `Transaction.updates` would, through the event
-     * the plugin raises.
+     * the plugin raises. `reviews` counts the rating prompts asked for, which,
+     * as on a phone, answer nothing whether or not Apple showed one.
      */
     if (appStore !== null) {
       const STORE = '__keptStore';
       if (sessionStorage.getItem(STORE) === null) {
-        sessionStorage.setItem(STORE, JSON.stringify({ owned: appStore.owned ?? 'none', purchases: 0, restores: 0 }));
+        sessionStorage.setItem(STORE, JSON.stringify({ owned: appStore.owned ?? 'none', purchases: 0, restores: 0, reviews: 0 }));
       }
       const record = () => JSON.parse(sessionStorage.getItem(STORE));
       const keep = (r) => sessionStorage.setItem(STORE, JSON.stringify(r));
@@ -184,12 +185,16 @@ export async function answeringBridge(ctx, { shot = '', disk = {}, slowMirrorMs 
           if (appStore.restoreFinds) keep({ ...record(), owned: appStore.restoreFinds });
           return { outcome: 'synced' };
         },
+        requestReview: async () => {
+          const r = record();
+          keep({ ...r, reviews: r.reviews + 1 });
+        },
         removeListener: async () => {},
       };
       w.Capacitor.PluginHeaders.push({
         name: 'Purchases',
         methods: [
-          ...['products', 'purchase', 'entitlement', 'restore', 'removeListener'].map((name) => ({ name, rtype: 'promise' })),
+          ...['products', 'purchase', 'entitlement', 'restore', 'requestReview', 'removeListener'].map((name) => ({ name, rtype: 'promise' })),
           { name: 'addListener', rtype: 'callback' },
         ],
       });

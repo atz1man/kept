@@ -15,7 +15,7 @@ const receipt = (id: string): Receipt => ({
 
 const base = (over: Partial<AppState> = {}): AppState => ({
   version: 1, receipts: [receipt('a'), receipt('b')], updates: [], onboardingSeen: true,
-  settings: { ...DEFAULT_SETTINGS }, alertsLate: {}, alertsSent: [],
+  settings: { ...DEFAULT_SETTINGS }, alertsLate: {}, reviewAsked: null, alertsSent: [],
   screen: 'home', selId: null, obStep: 0, celebrating: null, shared: 'no', upgrading: false, store: { shelf: { kind: 'asking' }, busy: null, note: null },
   sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null, restored: null,
   ...over,
@@ -89,7 +89,7 @@ describe('undoing a delete', () => {
     const deleted = reducer(base(), { type: 'delete', id: 'a' }, TODAY);
     const synced = reducer(deleted, { type: 'sync', state: {
       version: 1, receipts: [receipt('a'), receipt('b')], updates: [],
-      onboardingSeen: true, settings: { ...DEFAULT_SETTINGS }, alertsLate: {}, alertsSent: [],
+      onboardingSeen: true, settings: { ...DEFAULT_SETTINGS }, alertsLate: {}, reviewAsked: null, alertsSent: [],
     } }, TODAY);
     const undone = reducer(synced, { type: 'undo-delete' }, TODAY);
     expect(undone.receipts.map((r) => r.id).sort()).toEqual(['a', 'b']);
@@ -107,7 +107,7 @@ describe('adopting another tab’s state', () => {
     const s = base({ screen: 'settings' });
     const synced = reducer(s, { type: 'sync', state: {
       version: 1, receipts: [receipt('a')], updates: [], onboardingSeen: true,
-      settings: { ...DEFAULT_SETTINGS }, alertsLate: {}, alertsSent: [],
+      settings: { ...DEFAULT_SETTINGS }, alertsLate: {}, reviewAsked: null, alertsSent: [],
     } }, TODAY);
     expect(synced.screen).toBe('settings');
     expect(synced.receipts.map((r) => r.id)).toEqual(['a']);
@@ -117,7 +117,7 @@ describe('adopting another tab’s state', () => {
     const s = base({ screen: 'detail', selId: 'a' });
     const synced = reducer(s, { type: 'sync', state: {
       version: 1, receipts: [receipt('a'), receipt('b')], updates: [], onboardingSeen: true,
-      settings: { ...DEFAULT_SETTINGS }, alertsLate: {}, alertsSent: [],
+      settings: { ...DEFAULT_SETTINGS }, alertsLate: {}, reviewAsked: null, alertsSent: [],
     } }, TODAY);
     expect(synced).toMatchObject({ screen: 'detail', selId: 'a' });
   });
@@ -128,7 +128,7 @@ describe('adopting another tab’s state', () => {
       const s = base({ screen, selId: 'a' });
       const synced = reducer(s, { type: 'sync', state: {
         version: 1, receipts: [receipt('b')], updates: [], onboardingSeen: true,
-        settings: { ...DEFAULT_SETTINGS }, alertsLate: {}, alertsSent: [],
+        settings: { ...DEFAULT_SETTINGS }, alertsLate: {}, reviewAsked: null, alertsSent: [],
       } }, TODAY);
       expect(synced).toMatchObject({ screen: 'home', selId: null });
     }

@@ -31,6 +31,7 @@ interface PurchasesPlugin {
   purchase(options: { id: string }): Promise<unknown>;
   entitlement(options: { id: string }): Promise<unknown>;
   restore(): Promise<unknown>;
+  requestReview(): Promise<unknown>;
   addListener(eventName: 'entitlementChanged', listener: () => void): Promise<PluginListenerHandle>;
 }
 
@@ -84,6 +85,20 @@ export async function restoreUnlock(): Promise<Outcome> {
     return { kind: 'restore-failed', reason: reasonFromError(e) };
   }
   return readRestore(synced, await askOwnership());
+}
+
+/**
+ * Asks iOS for the App Store's rating prompt. When to ask is decided in
+ * lib/review-prompt.ts; this only carries the request. Nothing comes back
+ * that matters: Apple decides whether its dialog appears and does not say,
+ * so a refusal, a build without the plugin and an older iOS are all the same
+ * answer, which is none.
+ */
+export function askForReview(): void {
+  // Inside a promise, so a throw on the way in is swallowed with a refusal.
+  Promise.resolve()
+    .then(() => Purchases.requestReview())
+    .catch(() => {});
 }
 
 /**

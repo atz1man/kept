@@ -390,7 +390,7 @@ describe('the round trip, which is the whole promise', () => {
 
   const library = (receipts: Receipt[]) => ({
     version: 3, receipts, updates: [], onboardingSeen: true,
-    settings: DEFAULT_SETTINGS, alertsLate: {}, alertsSent: [],
+    settings: DEFAULT_SETTINGS, alertsLate: {}, reviewAsked: null, alertsSent: [],
   });
 
   it('gives back the receipts that were saved', () => {
