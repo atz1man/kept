@@ -247,7 +247,7 @@ function addMonthsBack(d: Date, months: number): Date {
 function appState(receipts: Receipt[], alertsLate: LateRecord = {}): AppState {
   return {
     version: 1, receipts, updates: [], onboardingSeen: true,
-    settings: { ...DEFAULT_SETTINGS }, alertsSent: [], alertsLate: { ...alertsLate },
+    settings: { ...DEFAULT_SETTINGS }, alertsSent: [], alertsLate: { ...alertsLate }, reviewAsked: null,
     screen: 'home', selId: null, obStep: 0, celebrating: null, shared: 'no', upgrading: false, store: { shelf: { kind: 'asking' }, busy: null, note: null },
     sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null, restored: null,
   };

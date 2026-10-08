@@ -5,6 +5,7 @@ import { embedded } from '../lib/embed';
 import { isNative } from '../lib/mirror';
 import { cleanupPhotos } from '../lib/photos';
 import { onNotificationTap, syncScheduled } from './schedule-native';
+import type { ReviewAsked } from '../lib/review-prompt';
 import { currentDay, daysBetween, fromISODate, toISODate, ukDay } from '../lib/dates';
 import { collectedShare, sharedTextFrom, strippedShareUrl } from '../lib/share';
 import { canSplit, splitReceipt, validSplit } from '../lib/split';
@@ -163,6 +164,8 @@ export type Action =
   | { type: 'undo-send' }
   | { type: 'undo-add' }
   | { type: 'shared'; outcome: 'shared' | 'copied' | 'failed' }
+  /** iOS was just asked for its rating prompt: when, and by which version (lib/review-prompt.ts). */
+  | { type: 'review-asked'; asked: ReviewAsked }
   | { type: 'upgrade-ask' }
   | { type: 'upgrade-cancel' }
   /** What the App Store said it sells, this launch. */
@@ -926,6 +929,8 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
     }
     case 'shared':
       return { ...state, shared: action.outcome };
+    case 'review-asked':
+      return { ...state, reviewAsked: action.asked };
   }
 }
 
@@ -1041,9 +1046,10 @@ export function useApp() {
       settings: state.settings,
       alertsSent: state.alertsSent,
       alertsLate: state.alertsLate,
+      reviewAsked: state.reviewAsked,
     });
     setSaveFailed(!ok);
-  }, [state.embedded, state.version, state.receipts, state.updates, state.onboardingSeen, state.settings, state.alertsSent, state.alertsLate]);
+  }, [state.embedded, state.version, state.receipts, state.updates, state.onboardingSeen, state.settings, state.alertsSent, state.alertsLate, state.reviewAsked]);
 
   /*
    * Pictures whose receipt has gone, cleared once per launch.

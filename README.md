@@ -368,6 +368,7 @@ src/lib/          the decision logic — pure, tested, no React
   quota.ts        what the free tier counts, and when it is full
   pricing.ts      the one price, what each build offers, and what a tap on it is allowed to claim
   app-store.ts    the unlock on iPhone: what StoreKit's answers mean for the plan, and what each outcome says
+  review-prompt.ts when the iPhone app asks iOS for the App Store rating prompt: the second real refund on, once a version, 120 days apart
   storage.ts      localStorage persistence, and the shape a stored state is
   backup.ts       reading a backup file back in, and merging it by id
   save-file.ts    where a backup actually lands — Files on iOS, a download on the web

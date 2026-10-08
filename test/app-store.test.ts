@@ -194,7 +194,7 @@ describe('what the app says', () => {
 describe('the reducer, as StoreKit answers', () => {
   const base = (plan: 'free' | 'pro' = 'free', appStorePrice: string | null = null): AppState => ({
     version: 1, receipts: [], updates: [], onboardingSeen: true,
-    settings: { ...DEFAULT_SETTINGS, plan, appStorePrice }, alertsLate: {}, alertsSent: [],
+    settings: { ...DEFAULT_SETTINGS, plan, appStorePrice }, alertsLate: {}, reviewAsked: null, alertsSent: [],
     screen: 'settings', selId: null, obStep: 0, celebrating: null, shared: 'no', upgrading: false, store: STORE_ASKING,
     sharedText: null, embedded: false, justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null, restored: null,
   });
