@@ -1190,6 +1190,102 @@ if (!/Deadline alerts/.test(settingsText)) {
 
 
 /*
+ * Apple's rating prompt, asked for as a money-back celebration is left
+ * (lib/review-prompt.ts decides; packages/purchases asks StoreKit).
+ *
+ * The bridge counts the asks, as a phone would take them: whether Apple then
+ * shows its dialog is Apple's business and the app never hears. What is held
+ * here is the app's half, on the bundle that ships:
+ * - a first real refund asks nothing;
+ * - a second asks exactly once, and only once the celebration is left;
+ * - a third straight after asks nothing;
+ * - samples, celebrated while they are all there is, ask nothing.
+ * test/review-prompt.test.ts holds the rule at each of its edges.
+ */
+{
+  const VERSION = JSON.parse(readFileSync(`${ROOT}package.json`, 'utf8')).version;
+  const ymd = (back) => {
+    const d = new Date(Date.now() - back * 86_400_000);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const row = (id, item, demo = false) => ({
+    id, store: 'Argos', item, cat: 'kitchen', amount: 2499, purchasedOn: ymd(2), windowDays: 30,
+    policy: '30 days to return', distance: false, status: 'active', ...(demo ? { demo: true } : {}),
+  });
+  const boot = async (rows) => {
+    const c = await browser.newContext({ viewport: { width: 402, height: 874 } });
+    // Owned, so neither the cap nor the shelf has anything to say here.
+    await answeringBridge(c, { appStore: { price: '£9.99', owned: 'owned' } });
+    await c.addInitScript((lib) => {
+      if (localStorage.getItem('kept.v1') === null) localStorage.setItem('kept.v1', lib);
+    }, JSON.stringify({
+      version: 1, onboardingSeen: true, updates: [], alertsSent: [],
+      settings: { plan: 'pro', appStorePrice: '£9.99', deadlineAlerts: false, policyWatch: false, remindersExplained: true },
+      receipts: rows,
+    }));
+    const p = await c.newPage();
+    const errs = [];
+    p.on('pageerror', (e) => errs.push(String(e)));
+    await p.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
+    await p.waitForTimeout(700);
+    return { c, p, errs };
+  };
+  const asks = (p) => p.evaluate(() => window.__keptStore().reviews);
+  /** Refund one receipt from its own screen, and leave the celebration; what was asked while it showed. */
+  const refund = async (p, item) => {
+    await p.getByText(item, { exact: true }).first().click({ timeout: 5000 }).catch(() => {});
+    await p.waitForTimeout(300);
+    await p.getByRole('button', { name: 'Got my money back', exact: true }).first().click({ timeout: 5000 }).catch(() => {});
+    await p.waitForTimeout(600);
+    const celebrated = (await p.getByRole('heading', { name: 'Money back', exact: true }).count()) === 1;
+    const during = await asks(p);
+    await p.getByRole('button', { name: 'Back to receipts', exact: true }).click({ timeout: 5000 }).catch(() => {});
+    await p.waitForTimeout(600);
+    return { celebrated, during, after: await asks(p) };
+  };
+
+  // Three of the person's own, refunded one after another.
+  {
+    const { c, p, errs } = await boot([row('r_rate_1', 'Kettle'), row('r_rate_2', 'Toaster'), row('r_rate_3', 'Blender')]);
+    const first = await refund(p, 'Kettle');
+    const second = await refund(p, 'Toaster');
+    const third = await refund(p, 'Blender');
+    if (![first, second, third].every((r) => r.celebrated)) {
+      failures.push({ what: 'could not refund a receipt to check when the rating prompt is asked for', saw: [first, second, third].map((r) => r.celebrated).join(', ') });
+    } else {
+      if (first.after !== 0) failures.push({ what: 'a first real refund asked for the rating prompt', saw: `${first.after} asks` });
+      if (second.during !== 0) failures.push({ what: 'the rating prompt was asked for over the celebration, not after it', saw: `${second.during} asks while it showed` });
+      if (second.after !== 1) failures.push({ what: 'a second real refund did not ask for the rating prompt exactly once', saw: `${second.after} asks` });
+      if (third.after !== second.after) failures.push({ what: 'a third refund straight after the second asked for the rating prompt again', saw: `${third.after} asks` });
+      const kept = await p.evaluate(() => JSON.parse(localStorage.getItem('kept.v1') ?? '{}').reviewAsked ?? null);
+      const today = await p.evaluate(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      });
+      if (kept?.version !== VERSION || kept?.on !== today) {
+        failures.push({ what: 'the ask was not remembered with the day and the version that made it', saw: JSON.stringify(kept) });
+      }
+    }
+    if (errs.length > 0) failures.push({ what: 'the rating prompt run raised page errors', saw: errs.join(' | ') });
+    await c.close();
+  }
+
+  // Samples only, so each refund IS celebrated, as the demonstration it is.
+  {
+    const { c, p, errs } = await boot([row('s_rate_1', 'Sample kettle', true), row('s_rate_2', 'Sample toaster', true), row('s_rate_3', 'Sample blender', true)]);
+    // A sample's row says so before its name.
+    const runs = [await refund(p, 'sample · Sample kettle'), await refund(p, 'sample · Sample toaster'), await refund(p, 'sample · Sample blender')];
+    if (!runs.every((r) => r.celebrated)) {
+      failures.push({ what: 'could not refund a sample to check it asks nothing', saw: runs.map((r) => r.celebrated).join(', ') });
+    } else if (runs.at(-1).after !== 0) {
+      failures.push({ what: 'a sample’s refund asked for the rating prompt', saw: `${runs.at(-1).after} asks` });
+    }
+    if (errs.length > 0) failures.push({ what: 'the sample refunds raised page errors', saw: errs.join(' | ') });
+    await c.close();
+  }
+}
+
+/*
  * The first screens say what the iPhone app does that the web cannot.
  *
  * Step two on the web says the clocks are checked "every time you open it",

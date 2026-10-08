@@ -1,6 +1,7 @@
 import Foundation
 import Capacitor
 import StoreKit
+import UIKit
 
 /// The one thing kept sells — unlimited receipts, paid for once — through the
 /// App Store, with StoreKit 2.
@@ -26,7 +27,8 @@ public class PurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "products", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "purchase", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "entitlement", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "restore", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "restore", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "requestReview", returnType: CAPPluginReturnPromise)
     ]
 
     /// Transactions that arrive outside a purchase call:
@@ -190,6 +192,24 @@ public class PurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
                 let why = PurchasesPlugin.reason(error)
                 call.resolve(["outcome": why == "cancelled" ? "cancelled" : "failed", "reason": why])
             }
+        }
+    }
+
+    /// Asks iOS for the App Store's rating prompt, in the app's own window.
+    /// When to ask is decided in `lib/review-prompt.ts`. Apple decides whether
+    /// the dialog appears (at most three times a year, and perhaps never) and
+    /// does not say, so this always answers with nothing. On iOS 13 there is no
+    /// way to ask for a particular window, and it does not ask.
+    @objc func requestReview(_ call: CAPPluginCall) {
+        Task { @MainActor in
+            if let scene = self.bridge?.viewController?.view.window?.windowScene {
+                if #available(iOS 16.0, *) {
+                    AppStore.requestReview(in: scene)
+                } else if #available(iOS 14.0, *) {
+                    SKStoreReviewController.requestReview(in: scene)
+                }
+            }
+            call.resolve()
         }
     }
 
