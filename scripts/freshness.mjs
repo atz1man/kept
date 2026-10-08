@@ -384,7 +384,7 @@ async function worksAfter(page, outcome, step) {
     return false;
   }
   const said = await page.evaluate(() => document.querySelector('main')?.innerText ?? '').catch(() => '');
-  problems.push(`${step}: neither read nor reloaded${/couldn.t read that file/i.test(said) ? ' — "kept couldn\'t read that file"' : ''}`);
+  problems.push(`${step}: neither read nor reloaded${/couldn.t read that file/i.test(said) ? ' — "Quids In couldn\'t read that file"' : ''}`);
   return false;
 }
 

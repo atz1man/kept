@@ -2574,7 +2574,7 @@ await page.waitForTimeout(500);
 // screen change — which is earlier in the DOM and made this read the wrong
 // element the day it was added.
 const spoken = await page.getByRole('status').allTextContents();
-const refused = spoken.some((t) => (t ?? '').includes('not a kept backup'));
+const refused = spoken.some((t) => (t ?? '').includes('not a Quids In backup'));
 await page.getByRole('button', { name: 'Receipts', exact: true }).click();
 await page.waitForTimeout(300);
 results['a file that is not a backup is refused, and nothing is lost'] =
