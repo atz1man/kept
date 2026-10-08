@@ -203,7 +203,7 @@ export function copyFor(rung: AlertRung, r: Receipt, daysLeft: number, deadline:
    * never say wrongly: the shop may well give longer.
    */
   const checked = windowChecked(r);
-  const unchecked = `Kept hasn’t checked ${possessive(r.store)} returns policy, so check the receipt.`;
+  const unchecked = `Quids In hasn’t checked ${possessive(r.store)} returns policy, so check the receipt.`;
   /*
    * And for a floor (`floorClock`), the date is not the date at all: counted
    * from the order because nobody said when the parcel came, it is the
@@ -253,7 +253,7 @@ export function copyFor(rung: AlertRung, r: Receipt, daysLeft: number, deadline:
           }
         : {
             title: 'The saved window has passed',
-            body: `${what} — the ${r.windowDays} days saved for it are up. Kept hasn’t checked ${possessive(r.store)} returns policy, so check the receipt: the shop may give longer. If it turns out to be faulty, you still have rights.`,
+            body: `${what} — the ${r.windowDays} days saved for it are up. Quids In hasn’t checked ${possessive(r.store)} returns policy, so check the receipt: the shop may give longer. If it turns out to be faulty, you still have rights.`,
           };
     case 'reject': {
       // `daysLeft` and `deadline` are the RIGHT's here. After it, the shop

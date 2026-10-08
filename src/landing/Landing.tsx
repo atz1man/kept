@@ -20,7 +20,7 @@ import { Card, Eyebrow, OpenAppButton, SectionTitle, WRAP } from './sections/pri
 const PROBLEMS = [
   { art: <HaulArt />, title: 'The haul is the easy part', body: 'Five shops, one afternoon, five different return clocks — all already ticking.' },
   { art: <LostReceiptsArt />, title: 'Receipts go to die', body: 'Jacket pockets, kitchen drawers, a 9,000-email inbox. Proof of purchase, permanently lost.' },
-  { art: <FinePrintArt />, title: 'Nobody reads clause 14b', body: '“30 days from dispatch, unworn, tags attached, exclusions apply.” Kept reads it so you never have to.' },
+  { art: <FinePrintArt />, title: 'Nobody reads clause 14b', body: '“30 days from dispatch, unworn, tags attached, exclusions apply.” Quids In reads it so you never have to.' },
 ];
 
 /**
@@ -59,17 +59,17 @@ const SMALL_PRINT = ['Zara', 'Uniqlo', 'ASOS'].map((name, i) => {
 const days = (name: string) => findStore(name)?.windowDays ?? 0;
 
 const WHY: { n: string; title: string; body: string; link?: { href: string; label: string } }[] = [
-  { n: '01', title: 'Knows the real policies', body: `IKEA’s ${days('IKEA')} days, Boots’ ${days('Boots')}, Apple’s ${days('Apple')} — Kept’s own list of windows for ${STORE_COUNT} major UK retailers, plus the gotchas: Zara’s clock starts at dispatch, Uniqlo won’t refund online orders in store.` },
+  { n: '01', title: 'Knows the real policies', body: `IKEA’s ${days('IKEA')} days, Boots’ ${days('Boots')}, Apple’s ${days('Apple')} — Quids In’s own list of windows for ${STORE_COUNT} major UK retailers, plus the gotchas: Zara’s clock starts at dispatch, Uniqlo won’t refund online orders in store.` },
   // The two numbers the whole legal half of the product turns on, taken from
   // the module that computes them rather than typed again here. They were
   // prose, beside three shop windows that had already been made derived for
   // exactly this reason.
-  { n: '02', title: 'Knows your legal rights', body: `The Consumer Rights Act gives you ${REJECT_DAYS} days to reject faulty goods for a full refund, and online orders carry a ${COOLING_OFF_DAYS}-day cooling-off by law. Kept shows the legal deadline beside the shop’s own.`, link: { href: '/rights/', label: 'What the law gives you →' } },
+  { n: '02', title: 'Knows your legal rights', body: `The Consumer Rights Act gives you ${REJECT_DAYS} days to reject faulty goods for a full refund, and online orders carry a ${COOLING_OFF_DAYS}-day cooling-off by law. Quids In shows the legal deadline beside the shop’s own.`, link: { href: '/rights/', label: 'What the law gives you →' } },
   // Scanning is read on the phone and never uploaded, and it never saves by
   // itself: what it read is shown to be checked first, because OCR on a
   // creased thermal slip is not always right. The copy says so.
-  { n: '03', title: 'Paste or scan, done', body: 'Paste an order email, or photograph a till receipt, and Kept reads the store, total and date on your phone and sets the deadline. You check what it read before anything is saved.' },
-  { n: '04', title: 'When it breaks', body: 'Put a warranty length on a receipt and Kept counts it down beside the return window. If something goes wrong, it says what the law gives you that day — a refund, or a free repair — and drafts the letter to the shop, with the right section of the Consumer Rights Act in it.' },
+  { n: '03', title: 'Paste or scan, done', body: 'Paste an order email, or photograph a till receipt, and Quids In reads the store, total and date on your phone and sets the deadline. You check what it read before anything is saved.' },
+  { n: '04', title: 'When it breaks', body: 'Put a warranty length on a receipt and Quids In counts it down beside the return window. If something goes wrong, it says what the law gives you that day — a refund, or a free repair — and drafts the letter to the shop, with the right section of the Consumer Rights Act in it.' },
   // "No server" was the loose word — the app is served from one and downloads
   // the policy feed from it on every launch. Naming the one call, and its
   // direction, is a better privacy claim than denying it.
@@ -77,7 +77,7 @@ const WHY: { n: string; title: string; body: string; link?: { href: string; labe
   // "a heads-up when something must go back this week" implied a background
   // service. See notify.ts: a web app cannot wake itself, and the onboarding
   // was corrected for this exact claim while these two lines kept making it.
-  { n: '06', title: 'Deadline alerts', body: 'A clear countdown on every item, works offline, and an alert the moment you open kept with something due this week. No background service, because a web app cannot wake itself — so it checks every time you come back.' },
+  { n: '06', title: 'Deadline alerts', body: 'A clear countdown on every item, works offline, and an alert the moment you open Quids In with something due this week. No background service, because a web app cannot wake itself — so it checks every time you come back.' },
 ];
 
 /**
@@ -95,7 +95,7 @@ export function Landing() {
   return (
     <div style={{ minHeight: '100vh', background: color.canvas }}>
       <header style={{ ...WRAP, padding: '20px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-        <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 10 }} aria-label="kept home">
+        <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 10 }} aria-label="Quids In home">
           <Logo size={30} />
           <Wordmark />
         </a>
@@ -103,7 +103,7 @@ export function Landing() {
           <a href="#how">How it works</a>
           <a href="#pricing">Pricing</a>
           <a className="k-primary" href="/app/" style={{ display: 'flex', alignItems: 'center', gap: 8, background: color.accent, color: color.white, padding: '10px 20px', borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}>
-            Open kept
+            Open Quids In
           </a>
         </nav>
       </header>
@@ -124,7 +124,7 @@ export function Landing() {
             Know every return deadline before it passes.
           </h1>
           <p style={{ fontSize: 17.5, lineHeight: 1.6, color: color.body, maxWidth: 520, margin: '24px 0 0' }}>
-            Kept remembers every receipt, knows each shop’s real return policy and your legal rights — and shows you what is about to run out the moment you open it.
+            Quids In remembers every receipt, knows each shop’s real return policy and your legal rights — and shows you what is about to run out the moment you open it.
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 32, flexWrap: 'wrap' }}>
             <OpenAppButton />
@@ -156,7 +156,7 @@ export function Landing() {
           <div style={{ borderRadius: 32, overflow: 'hidden', border: `1px solid ${color.border}`, boxShadow: shadow.lift, background: color.canvas, margin: '0 auto', maxWidth: 402 }}>
             <iframe
               src="/app/?embed=1"
-              title="kept — live app demo"
+              title="Quids In — live app demo"
               loading="lazy"
               style={{ width: '100%', height: 812, border: 0, display: 'block' }}
             />
@@ -196,9 +196,9 @@ export function Landing() {
       {/* Policy watch */}
       <section style={{ ...WRAP }}>
         <Eyebrow>Policy watch</Eyebrow>
-        <SectionTitle>Shops rewrite the rules quietly. kept checks your receipts when they do.</SectionTitle>
+        <SectionTitle>Shops rewrite the rules quietly. Quids In checks your receipts when they do.</SectionTitle>
         <p style={{ fontSize: 16, color: color.muted, margin: '14px 0 0', maxWidth: 560, lineHeight: 1.6 }}>
-          Retailers change return windows and never send a memo. When one does, kept’s list changes and every
+          Retailers change return windows and never send a memo. When one does, Quids In’s list changes and every
           receipt you hold is checked against it. A purchase keeps the terms it was made under; you just find out
           when the shop moves the goalposts for the next one. And the small print is already in there:
         </p>
@@ -218,7 +218,7 @@ export function Landing() {
       {/* Why kept */}
       <section id="how" style={{ background: color.white, borderTop: `1px solid ${color.borderHair}`, borderBottom: `1px solid ${color.borderHair}`, padding: '80px 28px' }}>
         <div style={{ maxWidth: 1160, margin: '0 auto' }}>
-          <Eyebrow>Why Kept</Eyebrow>
+          <Eyebrow>Why Quids In</Eyebrow>
           <SectionTitle maxWidth={640}>The shop’s clock, the law’s clock, and yours — on one screen.</SectionTitle>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 12, marginTop: 44 }}>
             {WHY.map((w) => (

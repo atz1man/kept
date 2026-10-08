@@ -44,10 +44,10 @@ interface Props {
 }
 
 const RESTORE_FAILURES = {
-  'not-json': 'That file isn’t readable — pick the .json file kept exported.',
-  'not-a-kept-backup': 'That’s a JSON file, but not a kept backup.',
+  'not-json': 'That file isn’t readable — pick the .json file Quids In exported.',
+  'not-a-kept-backup': 'That’s a JSON file, but not a Quids In backup.',
   'nothing-usable': 'That backup’s receipts couldn’t be read — nothing was changed.',
-  'too-large': 'That file is too large to be a kept backup — nothing was changed.',
+  'too-large': 'That file is too large to be a Quids In backup — nothing was changed.',
 } as const;
 
 export function Settings({ settings, receipts, embedded, onExport, onRestore, restored, storageKept, onWipe, onClearSamples, onUpgrade, onChange, offer, store, onRestorePurchase }: Props) {
@@ -215,7 +215,7 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
             everywhere. */}
         {CONTACT_EMAIL && (
           <div style={{ fontSize: 13, color: color.muted, lineHeight: 1.5 }}>
-            <a href={`mailto:${CONTACT_EMAIL}?subject=kept%20feedback`} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, fontWeight: 600, color: color.ink }}>
+            <a href={`mailto:${CONTACT_EMAIL}?subject=Quids%20In%20feedback`} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, fontWeight: 600, color: color.ink }}>
               Send feedback
             </a>{' '}
             — {CONTACT_EMAIL}
@@ -353,7 +353,7 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
           <div style={{ fontSize: 13, color: color.body, lineHeight: 1.55, marginTop: 8 }}>
             {isNative()
               ? 'Paid once, through the App Store. There is no subscription here to cancel.'
-              : 'Nothing was charged and no card was taken — kept cannot accept payments yet. There is no subscription here to cancel.'}
+              : 'Nothing was charged and no card was taken — Quids In cannot accept payments yet. There is no subscription here to cancel.'}
           </div>
           {isNative() && <div role="status">{store.note && <Note note={store.note} />}</div>}
         </section>
@@ -397,7 +397,7 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
               <span style={{ fontSize: 14, color: color.muted, textAlign: 'right' }}>With app updates</span>
             </div>
             <div style={{ fontSize: 12, color: color.muted, lineHeight: 1.5, marginTop: 6 }}>
-              The list of policy changes comes with app updates. kept downloads nothing.
+              The list of policy changes comes with app updates. Quids In downloads nothing.
             </div>
           </div>
         )}
@@ -440,7 +440,7 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
         <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, marginTop: 12, padding: 18 }}>
           <div style={{ fontWeight: 600, fontSize: 15 }}>Sample receipts</div>
           <p style={{ fontSize: 13, color: color.muted, lineHeight: 1.55, marginTop: 6, marginBottom: 0 }}>
-            The receipts marked sample show what kept does. Removing them leaves your own receipts exactly as they are.
+            The receipts marked sample show what Quids In does. Removing them leaves your own receipts exactly as they are.
           </p>
           <Pressable className="k-secondary"
             onClick={onClearSamples}
@@ -523,7 +523,7 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
       </section>
 
       <p style={{ fontSize: 11, color: color.muted, textAlign: 'center', marginTop: 16, lineHeight: 1.6 }}>
-        kept · {TAGLINE} — get your money back
+        Quids In · {TAGLINE} — get your money back
         <br />
         {LEGAL_DISCLAIMER}
       </p>

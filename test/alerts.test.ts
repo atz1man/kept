@@ -149,7 +149,7 @@ describe('the copy people actually see', () => {
   });
 });
 
-describe('a window Kept has not checked is not stated as the shop\'s', () => {
+describe('a window Quids In has not checked is not stated as the shop\'s', () => {
   // Most shops a person uses are not in the table; their windows are a guess
   // or a number typed in, and the reminders are where they are acted on.
   // `closingIn` dates the purchase for a 30-day window; these carry others.
@@ -161,18 +161,18 @@ describe('a window Kept has not checked is not stated as the shop\'s', () => {
     const a = dueAlerts([corner(-1)], TODAY, URGENT, none)[0];
     expect(a.title).toBe('The saved window has passed');
     expect(a.title).not.toMatch(/has closed/);
-    expect(a.body).toMatch(/Kept hasn’t checked Corner Shop’s returns policy, so check the receipt: the shop may give longer/);
+    expect(a.body).toMatch(/Quids In hasn’t checked Corner Shop’s returns policy, so check the receipt: the shop may give longer/);
     expect(a.body).toContain('still have rights');
   });
 
   it('says whose last day it is', () => {
     const a = dueAlerts([corner(0)], TODAY, URGENT, none)[0];
     expect(a.title).toBe('The saved window ends today');
-    expect(a.body).toMatch(/the 28 days saved for it end today\. Kept hasn’t checked Corner Shop’s returns policy/);
+    expect(a.body).toMatch(/the 28 days saved for it end today\. Quids In hasn’t checked Corner Shop’s returns policy/);
   });
 
   it('says so on the earlier rungs too', () => {
-    for (const n of [2, 7]) expect(dueAlerts([corner(n)], TODAY, URGENT, none)[0].body).toMatch(/Kept hasn’t checked Corner Shop’s returns policy, so check the receipt\.$/);
+    for (const n of [2, 7]) expect(dueAlerts([corner(n)], TODAY, URGENT, none)[0].body).toMatch(/Quids In hasn’t checked Corner Shop’s returns policy, so check the receipt\.$/);
   });
 
   it('treats a table shop with a different window typed in as unchecked too', () => {
@@ -217,7 +217,7 @@ describe('a window Kept has not checked is not stated as the shop\'s', () => {
     // Zara counts from dispatch, and its window is not one Kept has checked.
     const a = dueAlerts([closingIn(-1)], TODAY, URGENT, none)[0];
     expect(a.title).toBe('The saved window may have passed');
-    expect(a.body).toMatch(/Zara counts from dispatch, so it may still be open — add the day it was dispatched to know\. Kept hasn’t checked Zara’s returns policy/);
+    expect(a.body).toMatch(/Zara counts from dispatch, so it may still be open — add the day it was dispatched to know\. Quids In hasn’t checked Zara’s returns policy/);
     expect(dueAlerts([closingIn(0)], TODAY, URGENT, none)[0].title).toBe('The saved window may end today');
   });
 

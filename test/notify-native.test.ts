@@ -173,7 +173,7 @@ describe('what the row says', () => {
     const row = alertsRow({ permission: 'default', preference: false, native: true });
     expect(row.disabled).toBe(false);
     expect(row.detail).toBe('Off');
-    expect(row.note).toContain('even if kept is closed');
+    expect(row.note).toContain('even if Quids In is closed');
   });
 
   it('does not promise a closed-app alert in a browser', async () => {

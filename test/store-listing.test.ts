@@ -99,8 +99,8 @@ describe('what it says a paste does', () => {
      * so the listing is held to that sentence rather than to anyone's memory.
      */
     const add = readFileSync(join(ROOT, 'src', 'app', 'screens', 'Add.tsx'), 'utf8');
-    expect(add).toContain('kept reads the store, total and date');
-    const claim = listing.description.match(/kept reads ([^—\n]+)/)?.[1] ?? '';
+    expect(add).toContain('Quids In reads the store, total and date');
+    const claim = listing.description.match(/Quids In reads ([^—\n]+)/)?.[1] ?? '';
     expect(claim.length).toBeGreaterThan(0);
     expect(claim).not.toMatch(/\bitem|name|product|what (?:it|you)/i);
   });
@@ -134,7 +134,8 @@ describe('the keywords', () => {
   });
 
   it('do not spend characters on the app’s own name, which is indexed already', () => {
-    expect(listing.keywords.toLowerCase().split(',')).not.toContain('kept');
+    const words = listing.keywords.toLowerCase().split(',');
+    for (const own of ['quids in', 'quids', 'quidsin']) expect(words).not.toContain(own);
   });
 });
 

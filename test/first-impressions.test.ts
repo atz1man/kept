@@ -67,7 +67,7 @@ describe('what the first screens say about reminders', () => {
     expect(nativeBodies[0]).toMatch(/if you allow/i);
   });
 
-  it('never promises the web a reminder while Kept is closed', () => {
-    for (const body of bodies) expect(body).not.toMatch(/remind|even with Kept (shut|closed)/i);
+  it('never promises the web a reminder while Quids In is closed', () => {
+    for (const body of bodies) expect(body).not.toMatch(/remind|even with Quids In (shut|closed)/i);
   });
 });

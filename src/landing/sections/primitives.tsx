@@ -54,7 +54,7 @@ export function OpenAppButton({ large }: { large?: boolean }) {
         <span style={{ display: 'block', fontSize: 10, fontWeight: 600, letterSpacing: 0, opacity: 0.8 }}>
           Nothing to install
         </span>
-        <span style={{ display: 'block', fontSize: 17, fontWeight: 600, lineHeight: 1.1 }}>Open kept</span>
+        <span style={{ display: 'block', fontSize: 17, fontWeight: 600, lineHeight: 1.1 }}>Open Quids In</span>
       </span>
     </a>
   );

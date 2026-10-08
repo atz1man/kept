@@ -18,7 +18,7 @@ const config: CapacitorConfig = {
   // plausible-looking, in the same spirit as SOCIAL_PROOF_IS_PLACEHOLDER and
   // TABLE_CHECKED_ON.
   appId: 'uk.co.kept.REPLACE_ME',
-  appName: 'kept',
+  appName: 'Quids In',
   webDir: 'dist-ios',
   ios: {
     // The app draws its own cream ground; a white flash between the launch

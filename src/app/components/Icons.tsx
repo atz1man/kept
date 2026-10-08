@@ -72,16 +72,20 @@ export function LogoDashed({ size = 72 }: { size?: number }) {
 
 export function Wordmark({ size = 24 }: { size?: number }) {
   return (
-    // data-logotype: WCAG 1.4.3 exempts text that is part of a logo or brand
-    // name from the contrast minimum, and the green full stop is part of the
-    // wordmark. Marked in the DOM rather than waved through,
-    // so scripts/contrast.mjs applies the real exception to the real element
-    // instead of carrying a hand-kept allowlist that would rot.
+    /*
+     * The name, set the way "kept." was — the display face at 600, pulled in
+     * half a pixel — in ink throughout. The old mark's green full stop needed
+     * WCAG 1.4.3's logotype exemption (`data-logotype`, which
+     * scripts/contrast.mjs honours); this one is plain ink and does not, so
+     * the contrast sweep measures it like any other text.
+     *
+     * nowrap: the name is two words now, and "Quids" over "In" in a header
+     * squeezed at 320px is a different mark.
+     */
     <span
-      data-logotype
-      style={{ fontFamily: font.figures, fontSize: size, fontWeight: 600, letterSpacing: '-0.5px', lineHeight: 1 }}
+      style={{ fontFamily: font.figures, fontSize: size, fontWeight: 600, letterSpacing: '-0.5px', lineHeight: 1, whiteSpace: 'nowrap' }}
     >
-      kept<span style={{ color: color.accent }}>.</span>
+      Quids In
     </span>
   );
 }

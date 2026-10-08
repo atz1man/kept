@@ -30,7 +30,7 @@ import type { Plan } from './quota';
  * it: the door is still there, and it opens once the phone is online.
  */
 
-/** The unlock's product id in App Store Connect and in ios/App/Kept.storekit. Never reused once live. */
+/** The unlock's product id in App Store Connect and in ios/App/Kept.storekit. Never reused once live, and not renamed with the app: a product id is permanent in App Store Connect. */
 export const UNLOCK_PRODUCT_ID = 'kept.unlimited';
 
 /** How long to wait for the App Store to say what it sells, or what was bought, before treating it as unreachable. */
@@ -233,7 +233,7 @@ export function noteFor(outcome: Outcome): StoreNote | null {
     case 'purchased':
       return { tone: 'ok', text: UNLOCKED };
     case 'pending':
-      return { tone: 'wait', text: 'Waiting for approval. kept unlocks by itself as soon as the purchase is approved.' };
+      return { tone: 'wait', text: 'Waiting for approval. Quids In unlocks by itself as soon as the purchase is approved.' };
     case 'cancelled':
       return null;
     case 'unverified':
@@ -255,13 +255,13 @@ export function noteFor(outcome: Outcome): StoreNote | null {
 function failedWords(reason: FailReason): string {
   switch (reason) {
     case 'network':
-      return `${UNREACHABLE} If the purchase went through, kept unlocks by itself.`;
+      return `${UNREACHABLE} If the purchase went through, Quids In unlocks by itself.`;
     case 'not-allowed':
       return PURCHASES_OFF;
     case 'not-for-sale':
       // Certain: the purchase never started, because there was nothing to buy.
       return 'The App Store isn’t selling the unlock here right now, so nothing was charged.';
     case 'unknown':
-      return 'The purchase didn’t go through. If you were charged, kept unlocks by itself as soon as the App Store confirms it.';
+      return 'The purchase didn’t go through. If you were charged, Quids In unlocks by itself as soon as the App Store confirms it.';
   }
 }

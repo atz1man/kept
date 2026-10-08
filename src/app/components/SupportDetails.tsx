@@ -36,7 +36,7 @@ export function SupportDetails({ receipts, error }: { receipts: SupportFacts['re
     }
   };
 
-  const version = text?.split('\n')[0] ?? `Kept ${__KEPT_VERSION__}`;
+  const version = text?.split('\n')[0] ?? `Quids In ${__KEPT_VERSION__}`;
   return (
     <div data-support>
       <div style={{ fontFamily: font.figures, fontSize: 13.5, fontWeight: 600, color: color.bodyStrong }}>{version}</div>

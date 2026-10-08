@@ -294,10 +294,10 @@ export function alertsRow(
   const note =
     permission === 'denied'
       ? native
-        ? 'iOS is blocking notifications for kept. Turn them back on in Settings › Notifications › kept.'
-        : 'Your browser is blocking notifications for kept. Turn them back on in site settings.'
+        ? 'iOS is blocking notifications for Quids In. Turn them back on in Settings › Notifications › Quids In.'
+        : 'Your browser is blocking notifications for Quids In. Turn them back on in site settings.'
       : native
-        ? 'Lodged with iOS in advance, so they arrive at 9am on the day even if kept is closed. Turning this off cancels the ones already waiting.'
-        : 'Checked each time you open kept. Nothing arrives while kept is closed — a web app cannot wake itself.';
+        ? 'Lodged with iOS in advance, so they arrive at 9am on the day even if Quids In is closed. Turning this off cancels the ones already waiting.'
+        : 'Checked each time you open Quids In. Nothing arrives while Quids In is closed — a web app cannot wake itself.';
   return { on, disabled: permission === 'unsupported' || permission === 'denied', detail, note };
 }

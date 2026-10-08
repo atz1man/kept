@@ -67,15 +67,15 @@ export function Rights() {
       <Section title="Changed your mind about something from a shop?">
         The law gives no right to return something bought in person just because you have changed your mind. That
         return is the shop’s own promise, with its own window and its own idea of when the clock starts — the day you
-        paid, the day it was dispatched, or the day it arrived. That is the part kept has built in for{' '}
+        paid, the day it was dispatched, or the day it arrived. That is the part Quids In has built in for{' '}
         {STORE_COUNT} UK retailers, beside the legal clocks above.
       </Section>
 
       <Section title="Every clock, on one screen">
-        Every receipt in kept shows the shop’s window beside the legal ones that apply to it — one for something bought
+        Every receipt in Quids In shows the shop’s window beside the legal ones that apply to it — one for something bought
         in a shop, two for something bought online — and says which of them closes first. Nothing leaves your
         phone.{' '}
-        <a href="/app/" style={{ color: color.ink, fontWeight: 600 }}>Open kept →</a>
+        <a href="/app/" style={{ color: color.ink, fontWeight: 600 }}>Open Quids In →</a>
       </Section>
 
       <Fine>

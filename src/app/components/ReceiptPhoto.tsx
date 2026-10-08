@@ -141,7 +141,7 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
       ) : (
         <>
           <div style={{ fontSize: 12.5, color: color.muted, lineHeight: 1.5, marginBottom: 10 }}>
-            Kept keeps the picture on this phone. It does not read it — the shop, total and date are the ones you
+            Quids In keeps the picture on this phone. It does not read it — the shop, total and date are the ones you
             entered.
           </div>
           <Pressable
@@ -156,7 +156,7 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
             <div role="alert" style={{ fontSize: 12.5, color: color.danger, fontWeight: 600, marginTop: 8 }}>
               {failed === 'save'
                 ? 'That photo could not be saved, so it has not been kept. There may be no room left on the phone.'
-                : 'The camera could not be opened. Check that kept is allowed to use the camera in Settings.'}
+                : 'The camera could not be opened. Check that Quids In is allowed to use the camera in Settings.'}
             </div>
           )}
         </>

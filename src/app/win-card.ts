@@ -79,7 +79,7 @@ export async function renderWinCard(card: WinCard): Promise<Blob | null> {
   ctx.textBaseline = 'alphabetic';
   ctx.fillStyle = color.ink;
   ctx.font = `700 64px ${font.display}`;
-  ctx.fillText('kept.', pad, 170);
+  ctx.fillText('Quids In', pad, 170);
 
   ctx.fillStyle = color.muted;
   ctx.font = `600 36px ${font.figures}`;
@@ -124,7 +124,7 @@ export async function renderWinCard(card: WinCard): Promise<Blob | null> {
   ctx.textAlign = 'center';
   ctx.fillStyle = color.muted;
   ctx.font = `500 32px ${font.figures}`;
-  ctx.fillText('Kept — return deadlines, watched', WIN_CARD.width / 2, WIN_CARD.height - 90);
+  ctx.fillText('Quids In — return deadlines, watched', WIN_CARD.width / 2, WIN_CARD.height - 90);
 
   return new Promise((resolve) => canvas.toBlob((b) => resolve(b), 'image/png'));
 }

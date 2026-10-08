@@ -161,12 +161,12 @@ export function shareRoute(native: boolean): ShareRoute {
       heading: 'Coming from your email app?',
       // Named as missing rather than described as impossible: it is a target
       // this app does not ship yet, not a thing iOS refuses.
-      body: 'Copy the order email and paste it above. Sharing straight from Mail into kept needs a share extension this build does not have yet.',
+      body: 'Copy the order email and paste it above. Sharing straight from Mail into Quids In needs a share extension this build does not have yet.',
     };
   }
   return {
     steps: true,
     heading: 'Coming from your email app?',
-    body: 'On Android, add kept to your home screen and it appears in the share sheet — the order lands here already read. On iPhone, paste it above instead.',
+    body: 'On Android, add Quids In to your home screen and it appears in the share sheet — the order lands here already read. On iPhone, paste it above instead.',
   };
 }

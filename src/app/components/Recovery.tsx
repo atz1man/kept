@@ -56,7 +56,7 @@ export class Recovery extends Component<{ children: ReactNode }, State> {
     // leaves the device. The console was the whole of the reporting, and no
     // one holding a phone can open a console; so the error is also kept here,
     // for the person to read and copy into a message themselves (below).
-    console.error('kept could not render:', error, info.componentStack);
+    console.error('Quids In could not render:', error, info.componentStack);
     this.setState({ error: { message: `${error?.name ?? 'Error'}: ${error?.message ?? String(error)}`, where: info.componentStack ?? undefined } });
   }
 
@@ -106,17 +106,17 @@ export class Recovery extends Component<{ children: ReactNode }, State> {
         }}
       >
         <h1 tabIndex={-1} style={{ fontFamily: font.display, fontSize: 26, fontWeight: 600, margin: 0 }}>
-          Something in kept broke
+          Something in Quids In broke
         </h1>
         {demo ? (
           <p style={{ fontSize: 14.5, lineHeight: 1.55, color: color.body, margin: 0 }}>
-            This is the demo. It keeps nothing, so nothing has been lost, and the receipts you keep in kept itself are
+            This is the demo. It keeps nothing, so nothing has been lost, and the receipts you keep in Quids In itself are
             not touched by it.
           </p>
         ) : (
           <>
             <p style={{ fontSize: 14.5, lineHeight: 1.55, color: color.body, margin: 0 }}>
-              Your receipts are still on this device and nothing has been deleted. Save a copy before anything else — kept
+              Your receipts are still on this device and nothing has been deleted. Save a copy before anything else — Quids In
               keeps them here and nowhere else, so a file on your phone is the only backup there is.
             </p>
             <button className="k-primary"

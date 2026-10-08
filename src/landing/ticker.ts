@@ -78,7 +78,7 @@ export function tickerLines(): string[] {
   return [
     `ZARA: ${gotchaOf('Zara')}`,
     windowLine('ASOS'),
-    `${longest.name.toUpperCase()}: ${longest.windowDays} days, and nothing in kept’s list beats it`,
+    `${longest.name.toUpperCase()}: ${longest.windowDays} days, and nothing in Quids In’s list beats it`,
     `THE LAW: ${REJECT_DAYS} days to reject faulty goods, whatever the shop’s own window says`,
     `UNIQLO: ${gotchaOf('Uniqlo')}`,
   ];

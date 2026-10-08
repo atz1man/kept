@@ -367,7 +367,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
           <div style={{ borderTop: `1px solid ${color.borderHair}`, padding: '15px 18px' }}>
             <div style={cardLabel}>Warranty</div>
             <div style={{ fontSize: 14, marginTop: 5, lineHeight: 1.5, color: color.bodyStrong }}>
-              None recorded. Most electricals and furniture come with one — add its length and Kept counts it down
+              None recorded. Most electricals and furniture come with one — add its length and Quids In counts it down
               beside the return window.
             </div>
             <Pressable

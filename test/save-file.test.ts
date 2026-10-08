@@ -172,8 +172,8 @@ describe('the name on the file', () => {
   it('says what it is a backup of, and when it was taken', async () => {
     const { backupFilename } = await import('../src/lib/save-file');
     const day = new Date('2026-08-31T22:30:00Z');
-    expect(backupFilename('backup', day)).toBe('kept-backup-2026-08-31.json');
-    expect(backupFilename('rescue', day)).toBe('kept-rescue-2026-08-31.json');
+    expect(backupFilename('backup', day)).toBe('quids-in-backup-2026-08-31.json');
+    expect(backupFilename('rescue', day)).toBe('quids-in-rescue-2026-08-31.json');
   });
 
   it('is dated by the local calendar, not by UTC', async () => {
@@ -181,7 +181,7 @@ describe('the name on the file', () => {
     // October in UTC; `toISOString` put the next day on the file. In London
     // the same slip happens after midnight in summer.
     const { backupFilename } = await import('../src/lib/save-file');
-    expect(backupFilename('backup', new Date(2026, 8, 30, 21, 0))).toBe('kept-backup-2026-09-30.json');
+    expect(backupFilename('backup', new Date(2026, 8, 30, 21, 0))).toBe('quids-in-backup-2026-09-30.json');
   });
 });
 
@@ -202,12 +202,15 @@ describe('the Documents directory being reachable at all', () => {
     }
   });
 
-  it('names the folder a person will see, which is the display name', () => {
-    // "Files › On My iPhone › kept" is only true while CFBundleDisplayName is
-    // kept; the sentence and the plist have to agree or the instruction sends
-    // someone to a folder that is not there.
+  it('names the folder a person will see, which is the display name', async () => {
+    const { savedWhere } = await import('../src/lib/save-file');
+    // "Files › On My iPhone › Quids In" is only true while CFBundleDisplayName
+    // is Quids In; the sentence and the plist have to agree or the instruction
+    // sends someone to a folder that is not there. Read back out of the
+    // sentence too, so the next rename cannot move one and not the other.
     const plist = readFileSync(PLIST, 'utf8');
     const shown = plist.match(/<key>CFBundleDisplayName<\/key>\s*<string>([^<]*)<\/string>/)?.[1];
-    expect(shown).toBe('kept');
+    expect(shown).toBe('Quids In');
+    expect(savedWhere({ to: 'files', name: 'x.json' })).toContain(`On My iPhone › ${shown},`);
   });
 });

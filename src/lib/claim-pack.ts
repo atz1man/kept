@@ -93,7 +93,7 @@ const sameDay = (a: string | undefined, b: string) => a !== undefined && a === b
 
 /** The letters as kept drafted them, and what that is worth. */
 export const LETTERS_NOTE =
-  'As kept drafted them on the day they were marked sent. If you changed the wording before sending, your own sent copy is the one that counts.';
+  'As Quids In drafted them on the day they were marked sent. If you changed the wording before sending, your own sent copy is the one that counts.';
 
 export function claimPack(r: Receipt, today: Date): ClaimPack {
   const d = derive(r, today);
@@ -262,7 +262,7 @@ export function claimPackText(p: ClaimPack): string {
     'If the shop won’t put it right',
     ...p.escalation,
     '',
-    `Made with kept on ${fmtDateLong(p.madeOn)}. ${p.disclaimer}`,
+    `Made with Quids In on ${fmtDateLong(p.madeOn)}. ${p.disclaimer}`,
   ].join('\n');
 }
 
@@ -316,13 +316,13 @@ ${p.standing.length ? `<h2>Where it stands</h2>${p.standing.map((s) => `<p>${e(s
 ${p.letters.length ? `<h2>Letters sent</h2><p class="lede">${e(LETTERS_NOTE)}</p>${p.letters.map((l) => `<h3>${e(l.title)}, sent ${e(fmtDateLong(l.sentOn))}</h3><pre>${e(l.text)}</pre>`).join('')}` : ''}
 ${photoBase64 ? `<h2>Proof of purchase</h2><img alt="Photo of the receipt" src="data:image/jpeg;base64,${photoBase64.replace(/[^A-Za-z0-9+/=]/g, '')}">` : ''}
 <h2>If the shop won’t put it right</h2>${p.escalation.map((s) => `<p>${e(s)}</p>`).join('')}
-<footer>Made with kept on ${e(fmtDateLong(p.madeOn))}. ${e(p.disclaimer)}</footer>
+<footer>Made with Quids In on ${e(fmtDateLong(p.madeOn))}. ${e(p.disclaimer)}</footer>
 </body></html>
 `;
 }
 
-/** "kept-claim-sony-2026-10-04.html" — the shop and the day, so two packs do not collide. */
+/** "quids-in-claim-sony-2026-10-04.html" — the shop and the day, so two packs do not collide. */
 export function claimPackFilename(r: Receipt, today: Date): string {
   const slug = r.store.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30);
-  return `kept-claim-${slug || 'receipt'}-${toISODate(today)}.html`;
+  return `quids-in-claim-${slug || 'receipt'}-${toISODate(today)}.html`;
 }

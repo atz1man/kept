@@ -525,7 +525,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
     <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px' }}>
       <h1 tabIndex={-1} style={{ fontSize: 24, fontWeight: 600, padding: '10px 2px 4px', margin: 0 }}>Add a receipt</h1>
       <p style={{ fontSize: 13, color: color.muted, padding: '0 2px 14px', margin: 0 }}>
-        Paste an order email — kept reads the store, total and date.
+        Paste an order email — Quids In reads the store, total and date.
       </p>
 
       <label htmlFor="paste" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
@@ -568,7 +568,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
         <div style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, padding: 18, marginTop: 14, boxShadow: shadow.raised }}>
           <div style={{ fontWeight: 600, fontSize: 15 }}>That’s your {FREE_TIER_LIMIT} free receipts</div>
           <div style={{ fontSize: 13, color: color.body, lineHeight: 1.55, marginTop: 6 }}>
-            Kept has tracked {trackedTotal} for free. Return something you are already tracking, or mark one you are keeping, and a slot frees up —
+            Quids In has tracked {trackedTotal} for free. Return something you are already tracking, or mark one you are keeping, and a slot frees up —
             or unlock unlimited once, and one missed return pays for it.
           </div>
           <UnlockOffer
@@ -645,9 +645,9 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
                 {knownFromTyped
                   ? inForce && effectiveWindow !== knownFromTyped.windowDays
                     ? `${knownFromTyped.name} — ${effectiveWindow} days, from a policy change on ${fmtDateLong(fromISODate(inForce.changedOn))}.`
-                    : `${knownFromTyped.name} — ${effectiveWindow} days, from Kept’s list.`
+                    : `${knownFromTyped.name} — ${effectiveWindow} days, from Quids In’s list.`
                   : typedIn || correcting
-                    ? 'Name the shop. If it is one Kept has checked, its real window is used.'
+                    ? 'Name the shop. If it is one Quids In has checked, its real window is used.'
                     : 'We could not find a shop we know in that paste. Name it and we will use its real window if we have it.'}
               </div>
             </div>
@@ -798,10 +798,10 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
               ) : (
                 <div id="add-window-note" style={{ fontSize: 12.5, color: color.muted, marginTop: 5 }}>
                   {windowEdited && effectiveWindow !== knownWindow
-                    ? `Your number, not ${policy ? `${policy.name}’s ${knownWindow}` : 'Kept’s guess'}. The receipt keeps it.`
+                    ? `Your number, not ${policy ? `${policy.name}’s ${knownWindow}` : 'Quids In’s guess'}. The receipt keeps it.`
                     : policy
                     ? `${policy.name} gives ${knownWindow} days${inForce ? `, since a policy change on ${fmtDateLong(fromISODate(inForce.changedOn))}` : ''}.`
-                    : `Not a shop Kept has checked, so ${UNKNOWN_STORE_WINDOW_DAYS} days is a guess — check the receipt or the shop’s site.`}
+                    : `Not a shop Quids In has checked, so ${UNKNOWN_STORE_WINDOW_DAYS} days is a guess — check the receipt or the shop’s site.`}
                 </div>
               )}
             </div>
@@ -908,7 +908,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
         {scanFailed === 'offline'
           ? 'Scanning in a browser needs a connection, to fetch the reader. Paste or type the details, or scan again when you are back online.'
           : scanFailed
-          ? 'kept couldn’t read that photo. Try again flat, straight and in good light — or paste or type the details.'
+          ? 'Quids In couldn’t read that photo. Try again flat, straight and in good light — or paste or type the details.'
           : scanning !== null
             ? 'Reading it on this phone. Nothing is uploaded.'
             : 'Read on this phone — the photo is never uploaded. Check what it read before you save.'}
@@ -945,9 +945,9 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
         {fileFailed === 'too-big'
           ? 'That file is far bigger than a receipt. Choose the receipt itself — a PDF, a saved email or a photo.'
           : fileFailed === 'not-a-receipt'
-            ? 'kept can read PDFs, saved emails (.eml), web pages and photos. That file is none of those.'
+            ? 'Quids In can read PDFs, saved emails (.eml), web pages and photos. That file is none of those.'
             : fileFailed
-              ? 'kept couldn’t read that file. Open it and paste its text above, or type the details in.'
+              ? 'Quids In couldn’t read that file. Open it and paste its text above, or type the details in.'
               : 'E-receipts, invoices and saved order emails — read on this phone, never uploaded.'}
       </div>
 
@@ -979,7 +979,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
             <ArrowRight stroke={color.fainter} />
             <Step icon={<ShareGlyph />} label="Tap share" />
             <ArrowRight stroke={color.fainter} />
-            <Step icon={<LogoMark size={18} />} label="Pick kept — done" dark />
+            <Step icon={<LogoMark size={18} />} label="Pick Quids In — done" dark />
           </div>
         )}
       </div>

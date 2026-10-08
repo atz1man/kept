@@ -148,7 +148,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
         >
           <h2 id="reminders-title" style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Reminders for your deadlines</h2>
           <p style={{ margin: '6px 0 0', fontSize: 13.5, lineHeight: 1.5, color: color.bodyStrong }}>
-            Kept can lodge each deadline with iOS, so a reminder arrives at 9am on the day, even with Kept shut. iOS
+            Quids In can lodge each deadline with iOS, so a reminder arrives at 9am on the day, even with Quids In shut. iOS
             asks for permission once, so this is what it is for.
           </p>
           <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
@@ -800,7 +800,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
       <LogoDashed />
       <div style={{ fontFamily: font.display, fontSize: 22, fontWeight: 600, letterSpacing: '-0.5px' }}>Nothing tracked yet</div>
       <div style={{ fontSize: 14, color: color.muted, lineHeight: 1.6, marginTop: 8 }}>
-        Bought something this week? The return clock is already ticking. Add your first receipt and kept takes it from there.
+        Bought something this week? The return clock is already ticking. Add your first receipt and Quids In takes it from there.
       </div>
       <Pressable
         className="k-primary"
