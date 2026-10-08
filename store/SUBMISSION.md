@@ -77,6 +77,8 @@ look-alike page would dress itself in it.
 | | Step | Who | Where |
 |---|---|---|---|
 | ☐ | TestFlight to 5–10 people; watch for a *second* receipt | **you** | APN-27 — who to ask, what to ask them, and what counts as a failure: `store/TESTFLIGHT.md` |
+| ☐ | Raise `version` in `package.json` with every App Store version | **you**, each release | The rating prompt asks at most once per version (`src/lib/review-prompt.ts`), and the version it compares is that one, not Xcode's. Left at one number, it asks once and never again |
+| ✅ | The rating prompt: Apple's own (StoreKit), asked only as the celebration of a person's *second* real refund is left, once per version, 120 days apart | done | `test/review-prompt.test.ts`; `npm run ios` counts the asks. A reviewer meets it only by refunding two receipts of their own (samples never ask), so it is not in `reviewNotes`. TestFlight never shows the dialog; a development build always does, and a Release build on a device shows it as Apple decides |
 | ☐ | Submit for review | **you** | APN-28 |
 
 ### Questions the review team may ask, answered in `store/listing.json` → `reviewNotes`

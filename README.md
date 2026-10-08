@@ -1575,6 +1575,16 @@ walks it all on the bundle that ships, with StoreKit emulated in the bridge:
 `ios/App/Kept.storekit` lets the same flows run in the Simulator without App
 Store Connect (`store/SUBMISSION.md`, section 4b).
 
+**A rating is asked for once the app has earned one.** The same plugin asks
+iOS for Apple's own rating prompt (`requestReview`), as the person leaves the
+celebration of their second real refund or a later one: never over the
+celebration, never about a sample, never in the landing page's demo, and at
+most once per app version with 120 days between asks
+(`lib/review-prompt.ts`). Apple shows the dialog at most three times a year
+and may show nothing; the app neither knows nor cares, and nothing is sent
+anywhere. There is no web version of it. `npm run ios` refunds three
+receipts in a row and counts exactly one ask, after the second.
+
 ### The date it was already holding
 
 The Add screen asks for the day the parcel landed — both statutory clocks run
