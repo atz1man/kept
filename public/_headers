@@ -1,0 +1,112 @@
+# Response headers for the static host — Cloudflare Pages reads this file, and
+# Netlify reads the same format. Vite copies public/ into dist/, so it ships
+# with every build. test/hosting.test.ts holds it to what is written here.
+#
+# One rule about the format decides how this file is laid out: when several
+# rules match a path, the host sends the headers of ALL of them, and the same
+# header named twice is joined into one comma-separated value. So Cache-Control
+# is never set on /* — "no-cache" there would be glued onto "immutable" below —
+# and each path that needs one gets exactly one rule that sets it.
+
+# On every path:
+#
+# Content-Security-Policy — the one part of the policy a <meta> cannot carry:
+# who may put these pages in a frame. 'self' because the landing page frames
+# /app/ as its demo; nobody else, or a look-alike page could dress itself in
+# the app. The rest of the policy stays in the <meta> every page already has
+# (src/lib/csp.ts) and is NOT repeated here: a header and a meta are both
+# enforced, so a copy that drifted would silently tighten the app, and a build
+# given VITE_FEED_ORIGIN has a policy this one file cannot know.
+#
+# X-Content-Type-Options — a file is what it says it is. The worker already
+# refuses HTML answering for a script (sw.js, `fits`); this stops the browser
+# guessing either way.
+#
+# Referrer-Policy — shops' returns pages are opened with rel="noreferrer", and
+# the privacy page says the app sends nothing with them, "not even that you
+# came from Quids In". This makes that true of every request, not only of the
+# links that remembered the attribute.
+#
+# Strict-Transport-Security — HTTPS only, for a year. Deliberately no
+# includeSubDomains and no preload: both reach beyond this site, and preload
+# cannot be quickly undone. Those are the domain owner's decisions.
+#
+# Permissions-Policy — only what the app uses. camera=(self) for receipt
+# scanning: on the web that is a file input with capture="environment", which
+# this does not gate, but a camera opened in a page must stay with this origin.
+# web-share and clipboard-write=(self): the win card and the letters go out
+# through the share sheet or the clipboard (App.tsx, Letter.tsx,
+# SupportDetails.tsx). Everything else is off, the demo frame included.
+/*
+  Content-Security-Policy: frame-ancestors 'self'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Strict-Transport-Security: max-age=31536000
+  Permissions-Policy: camera=(self), web-share=(self), clipboard-write=(self), clipboard-read=(), geolocation=(), microphone=(), payment=(), usb=(), serial=(), hid=(), bluetooth=(), midi=(), display-capture=(), accelerometer=(), gyroscope=(), magnetometer=(), browsing-topics=()
+
+# Content-hashed: a changed file is a new name, so a copy may be kept for ever.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Everything below changes at a FIXED url, so it must be asked about again
+# every time (no-cache = may be stored, must be revalidated; an unchanged file
+# costs a 304).
+#
+# The pages matter most. The worker's launch is network first and goes through
+# the HTTP cache, and a host deploys atomically, so last build's hashed files
+# are gone the moment the new one is live. An /app/ cached for an hour would,
+# for that hour, open a shell naming files the server no longer has. The
+# worker script is checked past the HTTP cache by browsers anyway, and its
+# precache and the stale-tab check (main.tsx) both ask with cache: 'no-cache';
+# saying no-cache here too means no browser or proxy is left to disagree.
+/sw.js
+  Cache-Control: no-cache
+
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/app/
+  Cache-Control: no-cache
+/app/index.html
+  Cache-Control: no-cache
+/privacy/
+  Cache-Control: no-cache
+/privacy/index.html
+  Cache-Control: no-cache
+/rights/
+  Cache-Control: no-cache
+/rights/index.html
+  Cache-Control: no-cache
+
+# What an installed app is: its name, its icons and its share target. The
+# share target has changed method before (GET to POST, see sw.js), and the
+# browser refreshes an install from whatever this answers.
+/manifest.webmanifest
+  Cache-Control: no-cache
+
+# The verified policy changes, and the signature that must cover exactly the
+# bytes the feed answered with. The worker fetches both network first (sw.js,
+# FRESH); an hour-old copy from the HTTP cache would undo that.
+/policy-feed.json
+  Cache-Control: no-cache
+/policy-feed.sig
+  Cache-Control: no-cache
+
+# Not content-hashed, and the icon has just changed in the rebrand, so
+# "immutable" would pin the old one on every device that had seen it. A day
+# instead: the font and the favicon are on every page, so a day spares a
+# request per view, and a changed one still reaches everybody by tomorrow.
+# The worker is not held to the day: it precaches both with
+# cache: 'no-cache' at every install.
+/fonts/*
+  Cache-Control: public, max-age=86400
+/icons/*
+  Cache-Control: public, max-age=86400
+
+# The receipt reader's worker, cores and model, at fixed paths because
+# tesseract finds them by directory. Revalidated rather than kept for a day: a
+# new worker.min.js read beside a day-old core of another version would break
+# scanning, and a 304 costs nothing next to ten megabytes.
+/ocr/*
+  Cache-Control: no-cache
