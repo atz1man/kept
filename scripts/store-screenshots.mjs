@@ -164,9 +164,22 @@ await shoot('paste-an-order-email');
     stop();
     process.exit(1);
   }
-  // The card, not the paste box above it: that is the moment before Save.
-  await sp.getByText('Read from your photo', { exact: true }).scrollIntoViewIfNeeded();
-  await sp.evaluate(() => window.scrollBy(0, -24));
+  /*
+   * From the top: the header, the text the camera read, and the card it
+   * filled — the moment before Save. This used to scroll to the card with
+   * `window.scrollBy`, which moved nothing (the screen scrolls inside its own
+   * element, not the window), and the header it left in view still said
+   * "Paste an order email" above a photo's read. The header now says where
+   * the text came from; the shot is refused if it does not, rather than
+   * selling the scan under the paste's sentence.
+   */
+  const header = (await sp.locator('h1 + p').first().innerText()).trim();
+  if (!/^Read from your photo/.test(header)) {
+    console.error(`✗ the scan's header reads "${header}", not a photo's read — the screenshot would contradict its own card`);
+    await browser.close();
+    stop();
+    process.exit(1);
+  }
   await sp.waitForTimeout(400);
   const path = `${OUT}/${String(shots.length + 1).padStart(2, '0')}-scan-a-till-receipt.png`;
   await sp.screenshot({ path });
