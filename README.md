@@ -78,6 +78,43 @@ naming the mismatch, which is the first thing that will happen if only one is
 edited. That is the point of it — the check exists for the day this is done for
 real, and it does not care what the identifier is, only that the three agree.
 
+## Hosting
+
+The website is the static build and nothing else — there is no server of
+Quids In's own. On Cloudflare Pages:
+
+1. **Workers & Pages → Create → Pages → Connect to Git**, and pick this
+   repository (it is still called `kept`).
+2. Build settings: framework preset **None**, build command `npm run build`,
+   build output directory `dist`. Under environment variables, set
+   `NODE_VERSION` to `22`, the version CI builds with.
+3. Deploy, check the `*.pages.dev` address, then **Custom domains → Set up a
+   custom domain** and point DNS where it says.
+
+The headers come from `public/_headers`, which the build copies into `dist/`
+and Cloudflare reads from there — frame-ancestors (the one part of the content
+security policy a `<meta>` cannot carry), nosniff, no referrer, HTTPS, a
+permissions policy that allows the camera and nothing else it does not use,
+and the caching a deploy depends on: hashed files kept for a year, while the
+pages, `sw.js`, the manifest and the feed are revalidated every time, or a
+phone would open last deploy's shell after this one. Each line says why in the
+file, and `test/hosting.test.ts` holds it. There is no `_redirects`: every page
+is a real directory with its own `index.html`, and there is nothing for a
+fallback to catch.
+
+Turn nothing on that writes into the page. **Web Analytics** stays off: the
+privacy policy says there are no analytics, and its beacon is a script from
+another host, which the content security policy refuses anyway. So do
+**Rocket Loader**, **Email Address Obfuscation**, Zaraz and anything else that
+injects a script or rewrites the HTML on the way out — the policy allows only
+this build's own scripts, so an injected one is blocked, and one that rewrites
+the app's own script tags can leave a blank page.
+
+Once it is up, `curl -sI https://your.domain/app/` should show the headers
+above, with `cache-control: no-cache`. One request a static host cannot answer
+is a share into an install whose worker has gone: see "A shared email stays on
+the phone" below.
+
 ## iOS
 
 Quids In is a native app by **wrapping** the web app, not by being rewritten.
@@ -2272,6 +2309,20 @@ and has since gone (site data cleared under an icon left on the home screen, or
 a first install that failed and has not been retried). The email then crosses
 the network in a request body — not an address, and not history — and the page
 reads nothing out of a POST, so the share is lost there rather than read.
+
+On a static host that case is worse than a lost share: there is no page to
+open at all. A static host serves files to GET and HEAD and has no code to
+answer a POST with — `vite preview` answers it `404`, and Cloudflare Pages,
+with no Functions, will refuse it too (what status it sends is not something
+its documentation states; `curl -si -X POST https://your.domain/app/` says).
+So someone who shares into an install whose worker has gone sees the host's
+error page instead of the app, and the share is lost. A `_redirects` rule
+cannot fix it, because redirects match a path and not a method, and `/app/`
+redirected to itself is a loop for every ordinary launch. The fix, if that case
+ever matters, is a Pages Function on `/app/` that answers a POST with a `303`
+to `/app/` and reads nothing — which means running code on the server, and is
+not done here. With the worker in control, which is every share on a healthy
+install, the POST never leaves the phone.
 
 An older worker also kept the shared address: before the launch stopped being
 written to the cache, the shell was kept with the URL it was fetched from, and
