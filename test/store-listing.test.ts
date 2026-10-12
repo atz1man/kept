@@ -8,6 +8,7 @@ import { FREE_TIER_LIMIT } from '../src/lib/quota';
 import { UNLOCK_PRODUCT_ID } from '../src/lib/app-store';
 import { feedOrigin, feedRefreshes } from '../src/lib/feed-origin';
 import { loadEnv } from 'vite';
+import { addSubtitle } from '../src/lib/receipt-scan';
 
 /**
  * The App Store listing, held to the app it describes.
@@ -97,9 +98,10 @@ describe('what it says a paste does', () => {
      * item, the total and the date", and it was the screenshot of an empty
      * "What is it?" field that caught it. The add screen states what it reads,
      * so the listing is held to that sentence rather than to anyone's memory.
+     * The sentence is the header's answer for a paste, which the screen draws
+     * from `addSubtitle` (test/receipt-scan.test.ts holds it to that).
      */
-    const add = readFileSync(join(ROOT, 'src', 'app', 'screens', 'Add.tsx'), 'utf8');
-    expect(add).toContain('Quids In reads the store, total and date');
+    expect(addSubtitle('paste')).toContain('Quids In reads the store, total and date');
     const claim = listing.description.match(/Quids In reads ([^—\n]+)/)?.[1] ?? '';
     expect(claim.length).toBeGreaterThan(0);
     expect(claim).not.toMatch(/\bitem|name|product|what (?:it|you)/i);
