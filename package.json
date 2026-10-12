@@ -26,6 +26,7 @@
     "feed:wiring": "node scripts/feed-wiring.mjs",
     "bundle-id": "node scripts/set-bundle-id.mjs",
     "store:screenshots": "node scripts/store-screenshots.mjs",
+    "store:frames": "node --experimental-strip-types scripts/store-frames.mjs",
     "preflight": "node scripts/preflight.mjs",
     "check:retailers": "node scripts/check-retailers.mjs",
     "check:candidates": "node scripts/check-retailers.mjs --candidates",

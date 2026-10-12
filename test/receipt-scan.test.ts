@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { fieldsFound, fromScan, readBestOf, readScan, scanFailure, type Thresholding, readFlattenedOrAsTaken } from '../src/lib/receipt-scan';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { addSubtitle, boxSource, fieldsFound, fromScan, readBestOf, readScan, scanFailure, type Thresholding, readFlattenedOrAsTaken } from '../src/lib/receipt-scan';
 import { toCheck } from '../src/lib/confidence';
 import { parseReceiptText } from '../src/lib/parse';
 
@@ -436,5 +438,44 @@ describe('the flattened read, and the photo as taken behind it', () => {
 
   it('keeps the flattened read on a tie — it is the one with the receipt straight', async () => {
     expect((await readFlattenedOrAsTaken(reader(NO_TOTAL), reader('BOOTS\n29/09/2026\nThanks'), TODAY_)).text).toBe(NO_TOTAL);
+  });
+});
+
+describe('the add screen says where the text in its box came from', () => {
+  const OCR = 'ARGOS\nTOTAL 199.99\n26/09/2026 14:32';
+
+  it('a photo, while the box holds what the camera read', () => {
+    expect(boxSource(OCR, OCR, 'photo')).toBe('photo');
+    expect(addSubtitle('photo')).toMatch(/^Read from your photo/);
+    expect(addSubtitle('photo')).not.toMatch(/paste|email/i);
+  });
+
+  it('a file, while the box holds what the file gave', () => {
+    expect(boxSource(OCR, OCR, 'file')).toBe('file');
+    expect(addSubtitle('file')).toMatch(/^Read from your file/);
+    expect(addSubtitle('file')).not.toMatch(/paste|email/i);
+  });
+
+  it('a paste once the read text is edited, or before anything was read', () => {
+    expect(boxSource(`${OCR} `, OCR, 'photo')).toBe('paste');
+    expect(boxSource('', null, 'photo')).toBe('paste');
+    expect(addSubtitle('paste')).toBe('Paste an order email — Quids In reads the store, total and date.');
+  });
+
+  it('in the app’s voice: no exclamation marks, and reading stays on the phone', () => {
+    for (const s of ['paste', 'photo', 'file'] as const) expect(addSubtitle(s)).not.toContain('!');
+    expect(addSubtitle('photo')).toContain('on this phone');
+  });
+
+  it('and the screen draws its header from it rather than a fixed sentence', () => {
+    /*
+     * The defect was the header being a literal: after a till receipt was
+     * read, it still said to paste an order email, above a card saying "Read
+     * from your photo". The card's label and the header now take one answer.
+     */
+    const add = readFileSync(join(__dirname, '..', 'src', 'app', 'screens', 'Add.tsx'), 'utf8');
+    expect(add).toContain('{addSubtitle(source)}');
+    expect(add).toContain('const source = boxSource(text, scannedText, readFrom);');
+    expect(add).not.toContain(addSubtitle('paste'));
   });
 });

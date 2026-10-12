@@ -3,7 +3,7 @@ import { color, font, radius, shadow } from '../../tokens';
 import { addDays, fmtDate, fmtDateLong, fmtDateNear, fromISODate, toISODate } from '../../lib/dates';
 import { money } from '../../lib/money';
 import { parseReceiptText, UNKNOWN_STORE_WINDOW_DAYS, type ParsedReceipt } from '../../lib/parse';
-import { readScan, scanFailure, type Misread, type UnsureWord } from '../../lib/receipt-scan';
+import { addSubtitle, boxSource, readScan, scanFailure, type Misread, type UnsureWord } from '../../lib/receipt-scan';
 import { checkCount, checkWords, toCheck } from '../../lib/confidence';
 import { arrivalProblem, MAX_WINDOW_DAYS, purchaseProblem, readAmount, windowStartFor } from '../../lib/draft';
 import { makeReceiptId } from '../../lib/receipts';
@@ -410,7 +410,8 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
   // nothing once the fields are open for correcting, and the reader's own
   // scores and the camera's corrections only while the box still holds the
   // text the reader produced.
-  const asScanned = scannedText !== null && text === scannedText;
+  const source = boxSource(text, scannedText, readFrom);
+  const asScanned = source !== 'paste';
   const checks = parsed && !typedIn && !correcting ? toCheck(parsed, asScanned ? scanUnsure : [], asScanned ? scanMisread : []) : {};
   const boughtError = dateTyped ? purchaseProblem(boughtOn, today) : undefined;
   const purchasedOn = parsed ? (!dateTyped || boughtError ? parsed.purchasedOn : boughtOn) : '';
@@ -525,7 +526,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
     <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px' }}>
       <h1 tabIndex={-1} style={{ fontSize: 24, fontWeight: 600, padding: '10px 2px 4px', margin: 0 }}>Add a receipt</h1>
       <p style={{ fontSize: 13, color: color.muted, padding: '0 2px 14px', margin: 0 }}>
-        Paste an order email — Quids In reads the store, total and date.
+        {addSubtitle(source)}
       </p>
 
       <label htmlFor="paste" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
@@ -593,7 +594,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
           <div style={{ fontFamily: font.figures, fontSize: 11, letterSpacing: 0, color: color.accentInk, fontWeight: 600 }}>
             {/* Its own element: where the card's findings came from is one
                 fact, how many of them to check is another. */}
-            <span>{typedIn ? 'Type it in' : scannedText !== null && text === scannedText ? (readFrom === 'file' ? 'Read from your file' : 'Read from your photo') : 'Found in your paste'}</span>
+            <span>{typedIn ? 'Type it in' : source === 'file' ? 'Read from your file' : source === 'photo' ? 'Read from your photo' : 'Found in your paste'}</span>
             {checkCount(checks) > 0 && <span style={{ color: color.cautionInk }}>{` · ${checkCount(checks)} to check`}</span>}
           </div>
           <div style={{ marginTop: 12 }}>
@@ -728,7 +729,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
               <label htmlFor="add-bought" style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>
                 {typedIn || correcting
                   ? 'Bought on'
-                  : `Bought on — ${scannedText !== null && text === scannedText ? 'not on the photo' : 'the email didn’t say'}`}
+                  : `Bought on — ${asScanned ? 'not on the photo' : 'the email didn’t say'}`}
               </label>
               <input
                 id="add-bought"

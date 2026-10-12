@@ -449,3 +449,32 @@ export function fromVision(pages: readonly VisionPage[]): string {
     ),
   );
 }
+
+/**
+ * Where the text in the add screen's box came from: the camera's or a file's
+ * read while the box still holds exactly what that read produced, a paste
+ * otherwise. Edit the text and it is the person's own again.
+ */
+export type BoxSource = 'paste' | 'photo' | 'file';
+
+export function boxSource(text: string, scannedText: string | null, readFrom: 'photo' | 'file'): BoxSource {
+  return scannedText !== null && text === scannedText ? readFrom : 'paste';
+}
+
+/**
+ * The line under "Add a receipt". It was one fixed sentence about pasting an
+ * order email, so after a till receipt was photographed and read the header
+ * still told the person to paste an email, above a box holding the camera's
+ * text and a card saying "Read from your photo". Read on the phone, as the
+ * scan row beneath says.
+ */
+export function addSubtitle(source: BoxSource): string {
+  switch (source) {
+    case 'photo':
+      return 'Read from your photo on this phone — check the store, total and date below.';
+    case 'file':
+      return 'Read from your file on this phone — check the store, total and date below.';
+    default:
+      return 'Paste an order email — Quids In reads the store, total and date.';
+  }
+}
