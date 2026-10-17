@@ -9,6 +9,7 @@ import { UNLOCK_PRODUCT_ID } from '../src/lib/app-store';
 import { feedOrigin, feedRefreshes } from '../src/lib/feed-origin';
 import { loadEnv } from 'vite';
 import { addSubtitle } from '../src/lib/receipt-scan';
+import { COMPANY } from '../src/lib/brand';
 
 /**
  * The App Store listing, held to the app it describes.
@@ -25,7 +26,7 @@ import { addSubtitle } from '../src/lib/receipt-scan';
 const ROOT = join(__dirname, '..');
 const listing = JSON.parse(readFileSync(join(ROOT, 'store', 'listing.json'), 'utf8')) as {
   name: string; subtitle: string; promotionalText: string; description: string; keywords: string;
-  reviewNotes: string; price: string;
+  reviewNotes: string; price: string; copyright: string;
   privacy: { tracking: boolean; dataCollected: boolean; statement: string };
   urls: Record<string, string>;
 };
@@ -243,5 +244,23 @@ describe('what the review notes say about the policy list', () => {
       expect(listing.reviewNotes).toMatch(/comes with app updates/i);
       expect(listing.reviewNotes).not.toMatch(/may download|downloads? an updated/i);
     }
+  });
+});
+
+describe('the copyright line', () => {
+  /*
+   * App Store Connect asks for one, and it is the seller's name a customer
+   * reads under the app. Apple matches the seller to the enrolled
+   * organisation, so the holder is the company exactly as `COMPANY` names it —
+   * not "Quids In", which is a product, and not a person.
+   */
+  it('names the company that publishes the app, as the register has it', () => {
+    expect(listing.copyright).toBe(`© ${listing.copyright.match(/\d{4}/)?.[0]} ${COMPANY.name}`);
+  });
+
+  it('carries a year no later than this one', () => {
+    const year = Number(listing.copyright.match(/^© (\d{4}) /)?.[1]);
+    expect(year).toBeGreaterThanOrEqual(2026);
+    expect(year).toBeLessThanOrEqual(new Date().getFullYear() + 1);
   });
 });

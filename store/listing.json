@@ -1,5 +1,5 @@
 {
-  "_readme": "App Store Connect listing for Quids In. Paste each field as written. Held to the app by test/store-listing.test.ts: Apple's length limits, every figure against the constant it restates, the privacy answers against PrivacyInfo.xcprivacy and the in-app sentence, and no retailer names in the keywords. Fields marked REPLACE_ME need your domain before submission.",
+  "_readme": "App Store Connect listing for Quids In. Paste each field as written. Held to the app by test/store-listing.test.ts: Apple's length limits, every figure against the constant it restates, the privacy answers against PrivacyInfo.xcprivacy and the in-app sentence, no retailer names in the keywords, and the copyright holder against the company in src/lib/brand.ts. Fields marked REPLACE_ME need your domain before submission.",
   "name": "Quids In: UK Returns & Refunds",
   "subtitle": "Receipts, refunds, your rights",
   "promotionalText": "Every receipt, the shop’s real return window and the legal rights running alongside it — on your phone, with nothing uploaded and no account to make.",
@@ -8,6 +8,7 @@
   "primaryCategory": "Finance",
   "secondaryCategory": "Productivity",
   "ageRating": "4+",
+  "copyright": "© 2026 AP Nexus Engineering Limited",
   "price": "Free, with one in-app purchase: Unlimited receipts, paid once",
   "privacy": {
     "tracking": false,

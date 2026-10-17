@@ -8,7 +8,11 @@ account, a decision, or an address only you can give.
 
 | | Step | Who | Where |
 |---|---|---|---|
-| ☐ | Apple Developer Program membership | **you** | developer.apple.com |
+| ☐ | Apple Developer Program membership, enrolled as an **organisation**, so the seller on the App Store is **AP Nexus Engineering Limited** (company no. 15036434) rather than a person | **you** | developer.apple.com → Enroll → Organization. The name Apple shows as the seller is the legal entity's, and the listing's copyright (`store/listing.json`) and the website's footer already say the same company |
+| ☐ | A D-U-N-S number for the company, under its registered name and registered office exactly as Companies House has them (`COMPANY` in `src/lib/brand.ts`) | **you** | Apple's D-U-N-S lookup during enrolment, or Dun & Bradstreet. Organisation enrolment cannot be finished without one, and a fresh number can take days to issue, so ask for it first |
+| ☐ | The website live on a domain associated with the company, with the trading disclosure in its footer | **you** | Apple checks during enrolment that the website belongs to the organisation. The disclosure is already on every public page (below); what is missing is the domain itself, which is the same one the listing's `REPLACE_ME` and the hosting row below wait on |
+| ☐ | A work email on that same domain, for the enrolment's contact | **you** | Apple asks for an address at the company's domain, not a personal one. It can be the address `CONTACT_EMAIL` is set to |
+| ✅ | The company's trading disclosure — registered name, number, registered office, England and Wales — on the landing page, the privacy page and the rights page, and the company named as the app's operator in the privacy policy | done | `COMPANY` in `src/lib/brand.ts`, set once and rendered by `src/pages/Disclosure.tsx`. `test/company.test.ts` renders each page and checks every fact; `npm run agreement` holds every page, Settings and the listing to the same name and number; `npm run preflight` fails without it |
 | ☐ | Register the App ID, then `npm run bundle-id uk.co.yourname.kept` | **you** | APN-21 |
 | ☐ | A contact address for privacy questions → `CONTACT_EMAIL` in `src/lib/brand.ts` | **you** | the page shows a red notice until it is set |
 | ☐ | Your domain → replace `REPLACE_ME` in `store/listing.json` | **you** | |
@@ -50,6 +54,7 @@ is on it too. Green before you Archive — `test/preflight.test.ts` holds the ch
 | | Step | Who | Where |
 |---|---|---|---|
 | ✅ | Name (**Quids In: UK Returns & Refunds**, 30 characters exactly), subtitle, promotional text, description, keywords, review notes | done | `store/listing.json`, held by `test/store-listing.test.ts`. The app was renamed from kept because two apps called "Kept" are already on the store |
+| ✅ | Copyright: **© 2026 AP Nexus Engineering Limited** | done | `store/listing.json` → `copyright`, held to `COMPANY` by `test/store-listing.test.ts`. Raise the year with a release in a new year |
 | ✅ | Privacy answers: **Data Not Collected**, no tracking | done | matches `PrivacyInfo.xcprivacy`. The purchase does not change this, as far as this repository can tell: Apple takes the payment and kept has no server to receive anything about it. The privacy page says so under "Buying the unlock". Confirm against Apple's current guidance when you answer |
 | ✅ | Screenshot storyboard at 1290 × 2796 — four shots (deadlines, the two clocks, a pasted order, a scanned till receipt), from the iOS bundle booted as native, UK locale | done | `npm run build:ios && npm run store:screenshots && npm run store:frames` — the raw shots go to `store/screenshots/iphone-6.9/`, and the captioned frames to upload, same size, to `store/screenshots/framed/iphone-6.9/`. The captions are claims, held to the app by `test/store-frames.test.ts`. They show the seed's retailer data, so they wait on APN-16 like the listing does |
 | ☐ | Retake the screenshots in the Simulator, for the real status bar | **you** (Mac) | `xcrun simctl io booted screenshot` |
