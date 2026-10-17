@@ -1,6 +1,6 @@
 import { color } from '../tokens';
 import { Fine, ProsePage, Section } from '../pages/Prose';
-import { CONTACT_EMAIL } from '../lib/brand';
+import { COMPANY, CONTACT_EMAIL, REGISTERED_OFFICE } from '../lib/brand';
 import { isNative } from '../lib/mirror';
 import { FEED_ORIGIN, feedRefreshes } from '../lib/feed-origin';
 
@@ -20,7 +20,7 @@ import { FEED_ORIGIN, feedRefreshes } from '../lib/feed-origin';
 
 
 /** Moves whenever what this page says moves. */
-export const UPDATED_ON = '5 October 2026';
+export const UPDATED_ON = '17 October 2026';
 
 export function Privacy() {
   return (
@@ -28,6 +28,20 @@ export function Privacy() {
       title="Privacy"
       lede="Everything lives on this device. No account, nothing uploaded, no one reading your purchases. This page says exactly what that means."
     >
+        {/* A policy has to say whose it is. The company is named from
+            lib/brand.ts, like the footer under this page. "Controller" is
+            said carefully: UK GDPR gives that role to whoever decides how
+            personal data is used, and the company receives none — so the page
+            names who is responsible, and says plainly what there is to be
+            responsible for. */}
+        <Section id="who" title="Who runs Quids In">
+          Quids In is made and published by {COMPANY.name}, a company registered in {COMPANY.jurisdiction} (company
+          no. {COMPANY.number}), whose registered office is {REGISTERED_OFFICE}. The company is responsible for the
+          app and for what this page says. Under UK data protection law it would be the controller of any personal
+          data Quids In collected — but, as the rest of this page explains, Quids In collects none: the company never
+          receives your receipts, your photographs or anything else about you.
+        </Section>
+
         <Section title="What Quids In collects">
           Nothing. There is no account, no sign-in and no server that receives your receipts. Quids In has no analytics,
           no advertising and no crash-reporting service, and it shares nothing with anyone, because it holds nothing

@@ -24,7 +24,7 @@ import { PLACEHOLDER, bundleIdProblem } from './set-bundle-id.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname;
 
-/** The four source files the placeholders live in, read as text. */
+/** The source files the placeholders live in, read as text. */
 export function readTree(root = ROOT) {
   const read = (p) => readFileSync(join(root, p), 'utf8');
   return {
@@ -40,6 +40,37 @@ export function readTree(root = ROOT) {
 function constant(source, name) {
   const m = source.match(new RegExp(`export const ${name}\\b[^=]*=\\s*([^;]+);`));
   return m ? m[1].trim() : undefined;
+}
+
+/**
+ * The trading disclosure the law asks the company's website for, and the
+ * seller Apple's organisation enrolment matches the website to. Read out of
+ * the `COMPANY` object as text, like every other check here: a name that is a
+ * company's, a number Companies House could have issued (eight digits, or a
+ * two-letter prefix and six), a registered office with a postcode, and the
+ * part of the UK the company is registered in.
+ */
+export function companyProblem(brand) {
+  const block = brand.match(/export const COMPANY\b[^=]*=\s*\{([\s\S]*?)\n\}/)?.[1];
+  if (block === undefined) return 'no COMPANY in src/lib/brand.ts — no page says who publishes the app';
+  const field = (k) => block.match(new RegExp(`\\b${k}: '([^']*)'`))?.[1];
+  const name = field('name');
+  if (!name || !/\b(?:Limited|Ltd|LLP|plc)\.?$/i.test(name)) return `COMPANY.name is not a company's name: ${JSON.stringify(name)}`;
+  const number = field('number');
+  if (!number || !/^(?:\d{8}|[A-Z]{2}\d{6})$/.test(number)) return `COMPANY.number is not a company number: ${JSON.stringify(number)}`;
+  if (!/\bpostcode: '[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}'/.test(block)) return 'COMPANY.registeredOffice has no postcode';
+  const jurisdiction = field('jurisdiction');
+  if (!['England and Wales', 'Scotland', 'Northern Ireland'].includes(jurisdiction)) {
+    return `COMPANY.jurisdiction is not a part of the UK a company registers in: ${JSON.stringify(jurisdiction)}`;
+  }
+  // The prefix says where: SC is Scotland, NI Northern Ireland, and a bare
+  // number England and Wales. A disclosure that disagrees with its own number
+  // is a false statement on the page the law asked for.
+  const expected = number.startsWith('SC') ? 'Scotland' : number.startsWith('NI') ? 'Northern Ireland' : 'England and Wales';
+  if (/^\d/.test(number) || ['SC', 'NI'].includes(number.slice(0, 2))) {
+    if (jurisdiction !== expected) return `COMPANY.number ${number} is registered in ${expected}, not ${jurisdiction}`;
+  }
+  return null;
 }
 
 /**
@@ -62,6 +93,12 @@ export function preflight(tree, env = {}) {
     'the privacy policy has a contact address',
     email === undefined ? 'no CONTACT_EMAIL in src/lib/brand.ts' : email === 'null' ? 'CONTACT_EMAIL is null — the page shows a red notice' : null,
     'set CONTACT_EMAIL to an address someone reads',
+  );
+
+  add(
+    'the website names the company that publishes it',
+    companyProblem(tree.brand),
+    'set COMPANY in src/lib/brand.ts from the Companies House register: name, number, registered office, jurisdiction',
   );
 
   let listingProblem = null;

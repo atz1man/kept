@@ -1,15 +1,20 @@
 import type { ReactNode } from 'react';
 import { color, font } from '../tokens';
+import { CompanyDisclosure } from './Disclosure';
 
 /**
  * The shell for the site's plain reading pages — privacy, rights. One column,
  * the app's own type and colours, and a way back at the top: in the iOS app
  * there is no browser chrome, and "/" is the app itself.
+ *
+ * The page ends in the company's trading disclosure, outside `<main>` as the
+ * page's own footer, so both reading pages carry it without either one being
+ * able to forget it.
  */
 export function ProsePage({ title, lede, children }: { title: string; lede: ReactNode; children: ReactNode }) {
   return (
-    <main style={{ background: color.canvas, color: color.ink, fontFamily: font.ui, minHeight: '100vh' }}>
-      <div style={{ maxWidth: 680, margin: '0 auto', padding: '44px 20px 80px' }}>
+    <div style={{ background: color.canvas, color: color.ink, fontFamily: font.ui, minHeight: '100vh' }}>
+      <main style={{ maxWidth: 680, margin: '0 auto', padding: '44px 20px 0' }}>
         <a href="/" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, fontFamily: font.display, fontWeight: 600, fontSize: 18, color: color.ink, textDecoration: 'none' }}>
           ← Quids In
         </a>
@@ -18,8 +23,13 @@ export function ProsePage({ title, lede, children }: { title: string; lede: Reac
         </h1>
         <p style={{ fontSize: 18, lineHeight: 1.6, color: color.bodyStrong, marginTop: 16 }}>{lede}</p>
         {children}
-      </div>
-    </main>
+      </main>
+      <footer style={{ maxWidth: 680, margin: '0 auto', padding: '44px 20px 80px' }}>
+        <div style={{ borderTop: `1px solid ${color.borderHair}`, paddingTop: 20 }}>
+          <CompanyDisclosure />
+        </div>
+      </footer>
+    </div>
   );
 }
 
