@@ -67,11 +67,44 @@ describe('npm run preflight', () => {
     // a rejection or an untrue listing.
     const byName = new Map((preflight(today) as Result[]).map((r) => [r.name, r.blocking]));
     expect(byName.get('policy updates are signed')).toBe(false);
-    expect([...byName.values()].filter(Boolean)).toHaveLength(4);
+    expect([...byName.values()].filter(Boolean)).toHaveLength(5);
   });
 
   it('refuses a bundle identifier Apple would', () => {
     const r = { ...ready(), capacitorConfig: today.capacitorConfig.replace(/appId: '[^']+'/, "appId: 'uk_co_me'") };
     expect(failing(preflight(r))).toEqual(['the bundle identifier is yours']);
+  });
+});
+
+describe('the company check', () => {
+  /*
+   * The one line that is green on today's tree, because the owner has filled
+   * it in — so its other direction is what needs holding: take COMPANY out,
+   * or get one of its facts wrong, and the gate goes red again, alone.
+   */
+  const COMPANY_CHECK = 'the website names the company that publishes it';
+  const withBrand = (brand: string) => failing(preflight({ ...ready(), brand }));
+
+  it('passes the company this repository names', () => {
+    expect(failing(preflight(ready()))).not.toContain(COMPANY_CHECK);
+    expect(today.brand).toMatch(/export const COMPANY\b/);
+  });
+
+  it('fails a tree with no COMPANY, and only on that line', () => {
+    const brand = ready().brand.replace(/export const COMPANY\b[\s\S]*?\n\} as const;/, '');
+    expect(brand).not.toMatch(/export const COMPANY\b/);
+    expect(withBrand(brand)).toEqual([COMPANY_CHECK]);
+  });
+
+  it.each([
+    ['a name that is not a company\'s', /name: 'AP Nexus Engineering Limited'/, "name: 'Quids In'"],
+    ['a number Companies House would not issue', /number: '15036434'/, "number: '1503643'"],
+    ['an office with no postcode', /postcode: 'EC1R 3DB'/, "postcode: ''"],
+    ['a jurisdiction that is not a part of the UK', /jurisdiction: 'England and Wales'/, "jurisdiction: 'UK'"],
+    ['a jurisdiction its own number contradicts', /number: '15036434'/, "number: 'SC150364'"],
+  ])('fails %s', (_, from, to) => {
+    const brand = ready().brand.replace(from, to);
+    expect(brand).not.toBe(ready().brand);
+    expect(withBrand(brand)).toEqual([COMPANY_CHECK]);
   });
 });
