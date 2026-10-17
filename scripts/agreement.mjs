@@ -348,6 +348,61 @@ if (!TAGLINE) {
     }
   }
 }
+/*
+ * --- The company, on every page that names it ------------------------------
+ *
+ * The trading disclosure is a legal statement: registered name, number,
+ * registered office and jurisdiction, on the landing footer and both reading
+ * pages, with the name again in Settings and as the listing's copyright
+ * holder. All of it is drawn from `COMPANY` in lib/brand.ts, and this holds
+ * the rendered pages to that object — read out of the source, like the
+ * tagline above, so this file is not a further copy. Every company number a
+ * page states is collected and compared, not just looked for: a page that
+ * says the right number once and a stale one in its own copy is the
+ * disagreement this file exists for.
+ */
+const brandSource = readFileSync(new URL('../src/lib/brand.ts', import.meta.url), 'utf8');
+const companyBlock = (brandSource.match(/export const COMPANY\b[^=]*=\s*\{([\s\S]*?)\n\}/) ?? [])[1];
+const companyField = (k) => (companyBlock?.match(new RegExp(`\\b${k}: '([^']*)'`)) ?? [])[1];
+const COMPANY_NAME = companyField('name');
+const COMPANY_NUMBER = companyField('number');
+if (!COMPANY_NAME || !COMPANY_NUMBER) {
+  disagreements.push({ what: 'lib/brand.ts no longer exports a COMPANY with a name and a number this check can read', saw: [String(COMPANY_NAME), String(COMPANY_NUMBER)] });
+} else {
+  const readPage = async (path) => {
+    const p = await ctx.newPage();
+    await p.goto(`${ORIGIN}${path}`, { waitUntil: 'networkidle' });
+    const t = await p.evaluate(() => document.body.innerText);
+    await p.close();
+    return t;
+  };
+  const surfaces = [
+    ['the landing page', onPage.text, true],
+    ['the privacy page', (await readPage('/privacy/')).toLowerCase(), true],
+    ['the rights page', (await readPage('/rights/')).toLowerCase(), true],
+    // Settings carries the name only; the full disclosure is the website's.
+    ['Settings', inApp.text, false],
+  ];
+  const listingCopyright = JSON.parse(readFileSync(new URL('../store/listing.json', import.meta.url), 'utf8')).copyright ?? '';
+  for (const [where, text, full] of surfaces) {
+    if (!text.includes(COMPANY_NAME.toLowerCase())) {
+      disagreements.push({ what: `${where} does not name the company lib/brand.ts owns`, saw: [COMPANY_NAME, where] });
+    }
+    if (!full) continue;
+    const numbers = [...text.matchAll(/company (?:no\.?|number)\s*:?\s*([a-z]{0,2}\d{5,8})/g)].map((m) => m[1].toUpperCase());
+    if (numbers.length === 0) {
+      disagreements.push({ what: `${where} states no company number`, saw: [COMPANY_NUMBER, where] });
+    } else {
+      agree(`the company number, on ${where} and in lib/brand.ts`, COMPANY_NUMBER, ...numbers);
+    }
+  }
+  agree(
+    'the copyright holder in store/listing.json and the company in lib/brand.ts',
+    COMPANY_NAME,
+    listingCopyright.replace(/^©\s*\d{4}\s+/, ''),
+  );
+}
+
 agree(
   'the prices, on the pricing cards and in Settings',
   [...inApp.prices].sort().join(' '),

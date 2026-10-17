@@ -28,3 +28,40 @@ export const TAGLINE_LEAD = TAGLINE[0].toUpperCase() + TAGLINE.slice(1);
 // Read from here by the privacy page and by Settings' "Send feedback", and by
 // `npm run preflight`, which stays red while it is null.
 export const CONTACT_EMAIL: string | null = null;
+
+/**
+ * Who publishes Quids In, as the Companies House register has it.
+ *
+ * The app is sold by a UK limited company, and the Companies (Trading
+ * Disclosures) Regulations 2008 want the company's website to say which one:
+ * its registered name, its number, its registered office and the part of the
+ * UK it is registered in. Apple's organisation enrolment checks the same thing
+ * from the other side — that the website belongs to the seller. Four facts a
+ * typo makes untrue, on pages that are a legal statement rather than copy, so
+ * they live here once and every page draws them from this object: the landing
+ * footer and both reading pages (`pages/Disclosure.tsx`), the line in
+ * Settings, and the privacy policy's "Who runs Quids In".
+ *
+ * Read by `npm run preflight`, which stays red without it, and by
+ * `npm run agreement`, which holds every page that names the company to it.
+ * Not a placeholder: these are the register's own entries, checked by the
+ * owner. An `SC` or `NI` number would mean Scotland or Northern Ireland, and
+ * `jurisdiction` would have to change with it.
+ */
+export const COMPANY = {
+  /** The register's form, in capitals, for anywhere that quotes it exactly. */
+  registeredName: 'AP NEXUS ENGINEERING LIMITED',
+  /** The same name as it is written in a sentence. */
+  name: 'AP Nexus Engineering Limited',
+  number: '15036434',
+  registeredOffice: {
+    lines: ['C/O Golder Baqa Ltd', 'Ground Floor', "1 Baker's Row"],
+    town: 'London',
+    postcode: 'EC1R 3DB',
+    country: 'United Kingdom',
+  },
+  jurisdiction: 'England and Wales',
+} as const;
+
+/** "C/O Golder Baqa Ltd, Ground Floor, 1 Baker's Row, London EC1R 3DB" — UK pages need no country. */
+export const REGISTERED_OFFICE = [...COMPANY.registeredOffice.lines, `${COMPANY.registeredOffice.town} ${COMPANY.registeredOffice.postcode}`].join(', ');

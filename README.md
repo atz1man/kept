@@ -420,12 +420,12 @@ src/lib/          the decision logic — pure, tested, no React
   photos.ts       the paper slip on the filesystem, never read
   embed.ts        whether this page is the landing page's demo, which every store turns away
   csp.ts          the content security policy every built page carries: this build's scripts, this origin, and a configured feed host, nothing else
-  brand.ts        the tagline, in the one place all three surfaces read
+  brand.ts        the tagline, and the company that publishes the app — each in the one place every surface reads
 src/app/          the nine screens and their chrome
 src/landing/      the marketing page
 src/privacy/      the privacy policy — its own entry, so it ships inside the iOS bundle too
 src/rights/       your rights when you take something back — the app's own legal constants and sentences, published
-src/pages/        the shell both reading pages share
+src/pages/        the shell both reading pages share, and the company's trading disclosure every public page ends on
 src/tokens.ts     every colour, shadow and typeface in one place
 store/            the App Store listing, held to the app by a test, and the route to submission
 ```

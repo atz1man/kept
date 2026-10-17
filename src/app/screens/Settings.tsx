@@ -8,7 +8,7 @@ import { MAX_BACKUP_BYTES, parseBackup, restoredNote, type ImportSummary, type R
 import { backupFilename, saveJsonFile, savedWhere, type SaveOutcome } from '../../lib/save-file';
 import { alertsRow, currentNotifyState, notifyState, requestNotifyPermission, type NotifyState } from '../notify';
 import type { Receipt } from '../../lib/types';
-import { CONTACT_EMAIL, TAGLINE } from '../../lib/brand';
+import { COMPANY, CONTACT_EMAIL, TAGLINE } from '../../lib/brand';
 import { LEGAL_DISCLAIMER } from '../../lib/legal';
 import { checkedCount, CHECKED_ON, STORE_COUNT, tableCheck } from '../../lib/stores';
 import { discardSetAside, setAsideData, URGENT_DAYS_MAX, URGENT_DAYS_MIN, type Settings as SettingsShape } from '../../lib/storage';
@@ -524,6 +524,10 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
 
       <p style={{ fontSize: 11, color: color.muted, textAlign: 'center', marginTop: 16, lineHeight: 1.6 }}>
         Quids In · {TAGLINE} — get your money back
+        <br />
+        {/* The seller, by the name App Review sees on the listing. The full
+            disclosure is the website's; one line here is enough. */}
+        Made by {COMPANY.name}
         <br />
         {LEGAL_DISCLAIMER}
       </p>

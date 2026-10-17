@@ -6,6 +6,7 @@ import { STORE_COUNT, findStore } from '../lib/stores';
 import { COOLING_OFF_DAYS, REJECT_DAYS } from '../lib/legal';
 import { TAGLINE, TAGLINE_LEAD } from '../lib/brand';
 import { tickerLines } from './ticker';
+import { CompanyDisclosure } from '../pages/Disclosure';
 import { FinePrintArt, HaulArt, LostReceiptsArt } from './sections/ProblemArt';
 import { Card, Eyebrow, OpenAppButton, SectionTitle, WRAP } from './sections/primitives';
 
@@ -297,6 +298,11 @@ export function Landing() {
           <div className="k-inline-links">
             local-first receipt &amp; return tracking · <a href="#how">how it works</a> · <a href="#pricing">pricing</a> · <a href="/rights/">your rights</a> · <a href="/privacy/">privacy</a>
           </div>
+        </div>
+        {/* The trading disclosure the law asks the company's website for —
+            the same line, from the same object, as the reading pages. */}
+        <div style={{ maxWidth: 1160, margin: '18px auto 0' }}>
+          <CompanyDisclosure />
         </div>
       </footer>
     </div>
