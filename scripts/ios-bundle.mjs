@@ -286,10 +286,10 @@ await page.waitForTimeout(500);
 const settingsText = await page.evaluate(() => document.body.innerText);
 if (!/Deadline alerts/.test(settingsText)) {
   failures.push({ what: 'could not open Settings to check the iOS build sells nothing', saw: '' });
-} else if (/£\d|Free plan|free receipts|Unlocked/.test(settingsText)) {
+} else if (/£\d|Free plan|free receipts|open receipts|Unlocked/.test(settingsText)) {
   failures.push({
     what: 'the iOS build shows a price or a plan, which App Review reads as unlocking outside In-App Purchase',
-    saw: (settingsText.match(/.*(£\d|Free plan|free receipts|Unlocked).*/) ?? [''])[0],
+    saw: (settingsText.match(/.*(£\d|Free plan|free receipts|open receipts|Unlocked).*/) ?? [''])[0],
   });
 }
 
@@ -968,7 +968,7 @@ if (!/Deadline alerts/.test(settingsText)) {
     const { p } = run;
     await tab(p, 'Settings');
     const before = await body(p);
-    if (!/Free plan/.test(before) || !/10 of 10 free receipts/.test(before) || (await buyButton(p).count()) !== 1) {
+    if (!/Free plan/.test(before) || !/10 of 10 open receipts/.test(before) || (await buyButton(p).count()) !== 1) {
       failures.push({ what: 'the iPhone build does not offer the unlock at the App Store’s price, beside the free plan’s count', saw: near(before, 'Free plan') });
     }
     if ((await p.getByRole('button', { name: 'Restore purchase', exact: true }).count()) !== 1) {
@@ -1120,7 +1120,7 @@ if (!/Deadline alerts/.test(settingsText)) {
     await p.evaluate(() => window.__refund());
     await p.waitForTimeout(800);
     const t = await body(p);
-    if ((await plan(p)) !== 'free' || !/10 of 10 free receipts/.test(t) || !/refunded/.test(t)) {
+    if ((await plan(p)) !== 'free' || !/10 of 10 open receipts/.test(t) || !/refunded/.test(t)) {
       failures.push({ what: 'a refund did not put the cap back, with the reason', saw: `plan ${await plan(p)} · ${near(t, 'Free plan')}` });
     }
     await done(run, 'a refund');
@@ -1179,7 +1179,7 @@ if (!/Deadline alerts/.test(settingsText)) {
     const run = await boot({ price: null });
     await tab(run.p, 'Settings');
     const t = await body(run.p);
-    if (/£\d|Free plan|free receipts/.test(t)) failures.push({ what: 'the app offered an unlock the App Store does not sell', saw: near(t, '£') });
+    if (/£\d|Free plan|free receipts|open receipts/.test(t)) failures.push({ what: 'the app offered an unlock the App Store does not sell', saw: near(t, '£') });
     await pasteOne(run.p);
     if (!(await run.p.getByRole('button', { name: 'Save receipt', exact: true }).isEnabled().catch(() => false))) {
       failures.push({ what: 'a cap stood where nothing could be bought to lift it', saw: (await body(run.p)).slice(0, 200) });
