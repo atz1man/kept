@@ -733,7 +733,8 @@ for (const cancel of [false, true]) {
     await field.fill(tomorrow);
     await dp.waitForTimeout(150);
     seen.futureRefused = /in the future/.test(await dp.locator('#add-bought-note').innerText()) &&
-      (await dp.getByRole('button', { name: 'Save receipt' }).isDisabled());
+      // And the button says why, as every other refusal on this card does.
+      (await dp.getByRole('button', { name: 'Fix the purchase date' }).isDisabled().catch(() => false));
     await field.fill(earlier);
     await dp.waitForTimeout(150);
     await dp.getByRole('button', { name: 'Save receipt' }).click();
@@ -1304,6 +1305,11 @@ for (const cancel of [false, true]) {
     await tp.locator('#add-store').fill('boots');
     await tp.locator('#add-total').fill('15');
     await tp.waitForTimeout(200);
+    // A blank card has no paste to say it was an order, so it asks where it
+    // was bought instead of assuming online and a right to cancel.
+    seen.asksHow = await tp.getByRole('button', { name: 'Say where you bought it' }).isDisabled().catch(() => false);
+    await tp.getByRole('radio', { name: 'In a shop' }).click();
+    await tp.waitForTimeout(200);
     seen.followsShop = (await tp.locator('#add-window').inputValue()) === '35';
     await tp.locator('#add-window').fill('0');
     seen.zeroRefused = await tp.getByRole('button', { name: 'Fix the return window' }).isDisabled();
@@ -1312,9 +1318,9 @@ for (const cancel of [false, true]) {
     await tp.waitForTimeout(400);
     const today = await tp.evaluate(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
     const c = await stored('Face cream');
-    seen.typed = c?.store === 'Boots' && c?.amount === 1500 && c?.windowDays === 60 && c?.purchasedOn === today;
+    seen.typed = c?.store === 'Boots' && c?.amount === 1500 && c?.windowDays === 60 && c?.purchasedOn === today && c?.distance === false;
   }
-  const ok = seen.offered && seen.heldWhatWasRead && seen.corrected && seen.typeOffered && seen.blank && seen.followsShop && seen.zeroRefused && seen.typed;
+  const ok = seen.offered && seen.heldWhatWasRead && seen.corrected && seen.typeOffered && seen.blank && seen.asksHow && seen.followsShop && seen.zeroRefused && seen.typed;
   results['what was read can be corrected before saving, and a receipt can be typed in from nothing'] = !!ok;
   if (!ok) problems.push(`correct or type: ${JSON.stringify(seen)}`);
   await tCtx.close();
