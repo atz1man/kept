@@ -58,7 +58,7 @@ export function ClaimPack({ receipt, today, onBack }: { receipt: Receipt; today:
   const button = { flex: '1 1 auto', width: 'auto', padding: 13, textAlign: 'center', borderRadius: radius.control, fontWeight: 600, fontSize: 14 } as const;
 
   return (
-    <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px' }}>
+    <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px', scrollPaddingBottom: 120 }}>
       <div style={{ display: 'flex', alignItems: 'center', margin: '4px -2px 10px' }}>
         <Pressable
           onClick={onBack}

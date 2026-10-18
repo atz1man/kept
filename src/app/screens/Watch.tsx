@@ -57,7 +57,7 @@ export function Watch({ updates, receipts, today, watching, refreshes, onOpen }:
       tabIndex={0}
       role="region"
       aria-label="Coming up and policy changes"
-      style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px' }}
+      style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px', scrollPaddingBottom: 120 }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 2px 4px' }}>
         <span className="k-pulse" style={{ width: 8, height: 8, borderRadius: 999, background: color.accent }} />

@@ -836,11 +836,19 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
        * actually did ("12 restored · 2 already here"), and bouncing to the
        * list would throw that away at the moment it matters most.
        */
-      const m = mergeBackup(state.receipts, action.backup.receipts);
+      /*
+       * A backup with the person's own receipts in it replaces the samples,
+       * as their first real receipt would have. Restoring onto a new phone
+       * — the moment a backup exists for — left the five samples mixed in
+       * with the forty real ones, under "Remove the samples" a person then
+       * had to find. A backup of samples alone changes nothing.
+       */
+      const base = action.backup.receipts.some((r) => !r.demo) ? reducer(state, { type: 'clear-samples' }, today) : state;
+      const m = mergeBackup(base.receipts, action.backup.receipts);
       return {
-        ...state,
+        ...base,
         receipts: m.receipts,
-        alertsSent: pruneSent(state.alertsSent, m.receipts),
+        alertsSent: pruneSent(base.alertsSent, m.receipts),
         selId: null,
         restored: { added: m.added, alreadyHere: m.alreadyHere, skipped: action.backup.skipped },
       };
