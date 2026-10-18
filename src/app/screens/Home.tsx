@@ -119,7 +119,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
   }, [searching, shown, matchCount]);
 
   return (
-    <div style={{ flex: 1, overflow: 'auto', padding: `6px 16px ${undoShowing ? 212 : 120}px` }}>
+    <div style={{ flex: 1, overflow: 'auto', padding: `6px 16px ${undoShowing ? 212 : 120}px`, scrollPaddingBottom: undoShowing ? 212 : 120 }}>
       <header className="k-fade" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 2px 16px' }}>
         <h1 tabIndex={-1} style={{ display: 'flex', alignItems: 'center', gap: 9, margin: 0, fontWeight: 400, minWidth: 0 }}>
           <Logo size={28} />

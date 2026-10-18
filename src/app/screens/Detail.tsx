@@ -139,7 +139,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
   );
 
   return (
-    <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px' }}>
+    <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px', scrollPaddingBottom: 120 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, margin: '4px -2px 10px' }}>
         {/* Text controls, the way a phone's own navigation bar draws them:
             boxed buttons up here were two more cards on a screen of cards. */}

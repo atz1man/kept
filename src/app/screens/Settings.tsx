@@ -14,7 +14,7 @@ import { checkedCount, CHECKED_ON, STORE_COUNT, tableCheck } from '../../lib/sto
 import { discardSetAside, setAsideData, URGENT_DAYS_MAX, URGENT_DAYS_MIN, type Settings as SettingsShape } from '../../lib/storage';
 import { restoreOnlyOffered, type Offer } from '../../lib/pricing';
 import type { StoreView } from '../../lib/app-store';
-import { countedAgainstQuota, FREE_TIER_LIMIT } from '../../lib/quota';
+import { countedAgainstQuota, FREE_TIER_LIMIT, meterWords } from '../../lib/quota';
 import { Pressable } from '../components/Pressable';
 import { Note, RestorePurchase, UnlockOffer } from '../components/UnlockOffer';
 import { SupportDetails } from '../components/SupportDetails';
@@ -183,7 +183,7 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
   const usagePct = Math.min(100, (used / FREE_TIER_LIMIT) * 100);
 
   return (
-    <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px' }}>
+    <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px', scrollPaddingBottom: 120 }}>
       <h1 tabIndex={-1} style={{ fontSize: 24, fontWeight: 600, padding: '10px 2px 14px', margin: 0 }}>Settings</h1>
 
       <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, padding: 18 }}>
@@ -312,12 +312,12 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
             <span style={{ fontWeight: 600, fontSize: 15 }}>Free plan</span>
             <span style={{ fontFamily: font.figures, fontSize: 12, color: color.muted }}>
-              {used} of {FREE_TIER_LIMIT} open receipts
+              {meterWords(used)}
             </span>
           </div>
           <div
             role="progressbar"
-            aria-valuenow={used}
+            aria-valuenow={Math.min(used, FREE_TIER_LIMIT)}
             aria-valuemin={0}
             aria-valuemax={FREE_TIER_LIMIT}
             aria-label="Open receipts on the free plan"

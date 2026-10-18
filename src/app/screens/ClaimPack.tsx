@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { color, font, radius, shadow } from '../../tokens';
-import { claimPack, claimPackFilename, claimPackHtml, claimPackText, DEADLINE_WORDS, deadlineState, LETTERS_NOTE, type PackEvent } from '../../lib/claim-pack';
+import { claimPack, claimPackFilename, claimPackHtml, claimPackText, DEADLINE_WORDS, deadlineState, deadlineTile, LETTERS_NOTE, type PackEvent } from '../../lib/claim-pack';
 import { daysBetween, fmtDateLong } from '../../lib/dates';
 import { readPhoto } from '../../lib/photos';
 import { savedWhere, saveTextFile } from '../../lib/save-file';
@@ -50,15 +50,14 @@ export function ClaimPack({ receipt, today, onBack }: { receipt: Receipt; today:
   };
 
   const recorded = pack.timeline.filter((e) => e.kind === 'happened').length;
-  // A floor that has gone by may still be open, so it counts as open here.
-  const open = pack.timeline.filter((e) => e.kind === 'deadline' && deadlineState(e) !== 'passed').length;
+  const deadlines = deadlineTile(pack.timeline);
   // Where "today" falls in the timeline: after everything on or before it.
   const todayAt = pack.timeline.findIndex((e) => daysBetween(today, e.on) > 0);
 
   const button = { flex: '1 1 auto', width: 'auto', padding: 13, textAlign: 'center', borderRadius: radius.control, fontWeight: 600, fontSize: 14 } as const;
 
   return (
-    <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px' }}>
+    <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px', scrollPaddingBottom: 120 }}>
       <div style={{ display: 'flex', alignItems: 'center', margin: '4px -2px 10px' }}>
         <Pressable
           onClick={onBack}
@@ -98,7 +97,7 @@ export function ClaimPack({ receipt, today, onBack }: { receipt: Receipt; today:
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, marginTop: 16 }}>
           {[
             [recorded, recorded === 1 ? 'thing on record' : 'things on record'],
-            [open, open === 1 ? 'deadline open' : 'deadlines open'],
+            deadlines,
             [pack.letters.length, pack.letters.length === 1 ? 'letter sent' : 'letters sent'],
           ].map(([n, label]) => (
             <div key={label} style={{ background: color.surfaceAlt, borderRadius: radius.card, padding: '10px 10px 9px' }}>
