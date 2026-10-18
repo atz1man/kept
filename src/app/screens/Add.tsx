@@ -528,7 +528,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
   const deadline = parsed ? fmtDateNear(addDays(fromISODate(windowStart ?? purchasedOn), effectiveWindow), today) : '';
 
   return (
-    <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px' }}>
+    <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px', scrollPaddingBottom: 120 }}>
       <h1 tabIndex={-1} style={{ fontSize: 24, fontWeight: 600, padding: '10px 2px 4px', margin: 0 }}>Add a receipt</h1>
       <p style={{ fontSize: 13, color: color.muted, padding: '0 2px 14px', margin: 0 }}>
         {addSubtitle(source)}
