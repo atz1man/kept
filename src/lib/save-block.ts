@@ -19,7 +19,7 @@
  * And a purchase date in the future greyed the button out while it still
  * read "Save receipt" — the one refusal with no word for itself.
  */
-export type SaveBlock = 'quota' | 'arrival' | 'bought' | 'store' | 'how' | 'total' | 'window';
+export type SaveBlock = 'quota' | 'store' | 'total' | 'bought' | 'how' | 'arrival' | 'window';
 
 export function saveBlock(s: {
   quotaFull: boolean;
@@ -30,12 +30,14 @@ export function saveBlock(s: {
   needsTotal: boolean;
   windowError?: string;
 }): SaveBlock | null {
+  // In the order the card asks them, top to bottom, so the button names the
+  // first field still wrong rather than one further down.
   if (s.quotaFull) return 'quota';
-  if (s.arrivalError) return 'arrival';
-  if (s.boughtError) return 'bought';
   if (s.needsStore) return 'store';
-  if (s.distance === null) return 'how';
   if (s.needsTotal) return 'total';
+  if (s.boughtError) return 'bought';
+  if (s.distance === null) return 'how';
+  if (s.arrivalError) return 'arrival';
   if (s.windowError) return 'window';
   return null;
 }

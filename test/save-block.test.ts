@@ -28,10 +28,12 @@ describe('what stops the Add card saving', () => {
     expect(SAVE_LABEL[block!]).not.toBe(SAVE_LABEL.none);
   });
 
-  it('asks top to bottom: the shop before where it was bought, then the total', () => {
+  it('asks top to bottom, as the card lays them out: shop, total, date, where, arrival, window', () => {
     expect(saveBlock({ ...ready, needsStore: true, distance: null, needsTotal: true })).toBe('store');
-    expect(saveBlock({ ...ready, distance: null, needsTotal: true })).toBe('how');
-    expect(saveBlock({ ...ready, needsTotal: true, windowError: 'x' })).toBe('total');
+    expect(saveBlock({ ...ready, distance: null, needsTotal: true })).toBe('total');
+    expect(saveBlock({ ...ready, distance: null, boughtError: 'x' })).toBe('bought');
+    expect(saveBlock({ ...ready, distance: null, arrivalError: 'x' })).toBe('how');
+    expect(saveBlock({ ...ready, distance: true, arrivalError: 'x', windowError: 'x' })).toBe('arrival');
     expect(saveBlock({ ...ready, quotaFull: true, needsStore: true })).toBe('quota');
   });
 

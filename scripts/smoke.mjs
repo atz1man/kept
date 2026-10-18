@@ -1301,6 +1301,14 @@ for (const cancel of [false, true]) {
     await tp.waitForTimeout(200);
     seen.blank = /^Type it in$/m.test(await tp.locator('main').innerText()) &&
       (await tp.getByRole('button', { name: 'Add the shop to save' }).isDisabled());
+    // Asked in the order a receipt is read: the shop, what it cost, when,
+    // then where — "Arrived on" used to come before the date it is checked
+    // against, and before the total.
+    seen.inOrder = await tp.evaluate(() => {
+      const top = (el) => el?.getBoundingClientRect().top ?? NaN;
+      const ys = ['#add-store', '#add-total', '#add-bought', '[role="radiogroup"]'].map((q) => top(document.querySelector(q)));
+      return ys.every((y, i) => Number.isFinite(y) && (i === 0 || y > ys[i - 1]));
+    });
     await tp.locator('#add-item').fill('Face cream');
     await tp.locator('#add-store').fill('boots');
     await tp.locator('#add-total').fill('15');
@@ -1320,7 +1328,7 @@ for (const cancel of [false, true]) {
     const c = await stored('Face cream');
     seen.typed = c?.store === 'Boots' && c?.amount === 1500 && c?.windowDays === 60 && c?.purchasedOn === today && c?.distance === false;
   }
-  const ok = seen.offered && seen.heldWhatWasRead && seen.corrected && seen.typeOffered && seen.blank && seen.asksHow && seen.followsShop && seen.zeroRefused && seen.typed;
+  const ok = seen.offered && seen.heldWhatWasRead && seen.corrected && seen.typeOffered && seen.blank && seen.inOrder && seen.asksHow && seen.followsShop && seen.zeroRefused && seen.typed;
   results['what was read can be corrected before saving, and a receipt can be typed in from nothing'] = !!ok;
   if (!ok) problems.push(`correct or type: ${JSON.stringify(seen)}`);
   await tCtx.close();

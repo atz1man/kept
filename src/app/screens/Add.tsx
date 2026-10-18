@@ -658,46 +658,6 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
               </div>
             </div>
           )}
-          <HowBought id="add-how" value={distance} onChange={setDistance} />
-          {online && (
-            <div style={{ marginTop: 12 }}>
-              <label htmlFor="add-arrived" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: color.bodyStrong, marginBottom: 6 }}>
-                Arrived on
-              </label>
-              {/* No `min`. Chromium fills in the invariant parts of a narrow
-                  range, so an EMPTY optional field rendered as "08/dd/2026"
-                  whenever the purchase was recent — which is most of the time
-                  on this screen — and an optional field that looks partly
-                  filled reads as one that is set. Measured against the same
-                  input with a wide range and with none, which both show
-                  mm/dd/yyyy. The rule is enforced below, with a reason, which
-                  is better feedback than a picker that silently refuses. */}
-              <input
-                id="add-arrived"
-                type="date"
-                value={arrivedOn}
-                max={toISODate(today)}
-                aria-invalid={!!arrivalError}
-                aria-describedby="add-arrived-note"
-                onChange={(e) => setArrivedOn(e.target.value)}
-                style={{
-                  width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: radius.control,
-                  border: `1px solid ${arrivalError ? color.danger : color.border}`, background: color.white,
-                  fontFamily: font.figures, fontSize: 14.5, color: color.ink,
-                }}
-              />
-              {arrivalError ? (
-                <div id="add-arrived-note" role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: color.danger, marginTop: 5 }}>
-                  {arrivalError}
-                </div>
-              ) : (
-                <div id="add-arrived-note" style={{ fontSize: 12.5, color: color.muted, marginTop: 5 }}>
-                  Optional. Your legal rights start the day it lands, so this makes those dates exact instead of the
-                  earliest they could be.
-                </div>
-              )}
-            </div>
-          )}
           {!typedIn && !correcting && <Row label="Store" value={effectiveStore || 'Not recognised'} mono={false} check={checks.store && checkWords('store', checks.store)} />}
           {totalTyped ? (
             <div style={{ margin: '4px 0 10px' }}>
@@ -759,6 +719,50 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
                   {typedIn || correcting
                     ? 'Every deadline counts from this day.'
                     : 'Set to today as a guess. Every deadline counts from this day, so change it if you bought it earlier.'}
+                </div>
+              )}
+            </div>
+          )}
+          {/* Asked after what was bought and when: "Arrived on" came before the
+              purchase date it is checked against and before the total, so the
+              blank card read out of order — the arrival hint ("your rights start
+              the day it lands") above the day it was bought. */}
+          <HowBought id="add-how" value={distance} onChange={setDistance} />
+          {online && (
+            <div style={{ marginTop: 12 }}>
+              <label htmlFor="add-arrived" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: color.bodyStrong, marginBottom: 6 }}>
+                Arrived on
+              </label>
+              {/* No `min`. Chromium fills in the invariant parts of a narrow
+                  range, so an EMPTY optional field rendered as "08/dd/2026"
+                  whenever the purchase was recent — which is most of the time
+                  on this screen — and an optional field that looks partly
+                  filled reads as one that is set. Measured against the same
+                  input with a wide range and with none, which both show
+                  mm/dd/yyyy. The rule is enforced below, with a reason, which
+                  is better feedback than a picker that silently refuses. */}
+              <input
+                id="add-arrived"
+                type="date"
+                value={arrivedOn}
+                max={toISODate(today)}
+                aria-invalid={!!arrivalError}
+                aria-describedby="add-arrived-note"
+                onChange={(e) => setArrivedOn(e.target.value)}
+                style={{
+                  width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: radius.control,
+                  border: `1px solid ${arrivalError ? color.danger : color.border}`, background: color.white,
+                  fontFamily: font.figures, fontSize: 14.5, color: color.ink,
+                }}
+              />
+              {arrivalError ? (
+                <div id="add-arrived-note" role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: color.danger, marginTop: 5 }}>
+                  {arrivalError}
+                </div>
+              ) : (
+                <div id="add-arrived-note" style={{ fontSize: 12.5, color: color.muted, marginTop: 5 }}>
+                  Optional. Your legal rights start the day it lands, so this makes those dates exact instead of the
+                  earliest they could be.
                 </div>
               )}
             </div>
