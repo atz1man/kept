@@ -22,11 +22,12 @@
 import { chromium } from 'playwright';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { ukIsoDay } from './uk-day.mjs';
 import { candidateStatus, channelIn, leftTheSite, clockIn, looksBlocked, proposal, readSources, readTable, returnsLinks, verdict, windowSentences } from './retailer-check-lib.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const EXEC = process.env.CHROMIUM_PATH;
-const today = new Date().toISOString().slice(0, 10);
+const today = ukIsoDay();
 
 const args = process.argv.slice(2);
 const candidatesMode = args.includes('--candidates');

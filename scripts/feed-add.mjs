@@ -25,6 +25,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { readSources, readTable } from './retailer-check-lib.mjs';
+import { ukIsoDay } from './uk-day.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -97,7 +98,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const res = addEntry(doc, parseArgs(process.argv.slice(2)), {
     table: readTable(readFileSync(join(ROOT, 'src/lib/stores.ts'), 'utf8')),
     sources: readSources(join(ROOT, 'store/retailer-sources.json')),
-    today: new Date().toISOString().slice(0, 10),
+    today: ukIsoDay(),
   });
   if (res.error) {
     console.error(`✗ ${res.error}`);

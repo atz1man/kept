@@ -17,6 +17,7 @@
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { ukIsoDay } from './uk-day.mjs';
 import { checkedNames, manualRecord, readSources, readTable, withCheckedOn } from './retailer-check-lib.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname;
@@ -24,9 +25,7 @@ const STORES = join(ROOT, 'src/lib/stores.ts');
 const source = readFileSync(STORES, 'utf8');
 const table = readTable(source);
 const own = readSources(join(ROOT, 'store/retailer-sources.json'));
-const pad = (n) => String(n).padStart(2, '0');
-const now = new Date();
-const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+const today = ukIsoDay();
 
 const [name, url, ...quotes] = process.argv.slice(2);
 
