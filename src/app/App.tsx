@@ -423,7 +423,7 @@ export function App() {
           policyAlert={policyAlert}
           changedIds={changedIds}
           onOpen={(id) => dispatch({ type: 'open', id })}
-          undoShowing={!!(state.justReturned || state.justSent || state.justAdded || state.justKept || state.justDeleted || state.justUnswapped)}
+          undoShowing={!!(state.justReturned || state.justSent || state.justAdded || state.justKept || state.justDeleted || state.justUnswapped || state.justSwapped)}
           onSwipe={(id) => {
             // The same next step the receipt's own screen leads with: an
             // online order goes back in the post, and the money follows later.
@@ -612,6 +612,15 @@ export function App() {
           key={state.justKept.join()}
           label={state.justKept.length === 1 ? 'Moved to Keeping it' : `Moved ${state.justKept.length} to Keeping it`}
           onUndo={() => dispatch({ type: 'undo-keep' })}
+          onDismiss={() => dispatch({ type: 'dismiss-undo' })}
+        />
+      )}
+
+      {state.justSwapped && (
+        <UndoBar
+          key={`swapped:${state.justSwapped}`}
+          label={`Marked ${state.receipts.find((r) => r.id === state.justSwapped)?.item ?? 'it'} swapped`}
+          onUndo={() => dispatch({ type: 'undo-swap' })}
           onDismiss={() => dispatch({ type: 'dismiss-undo' })}
         />
       )}

@@ -32,6 +32,34 @@ const state = (receipts: Receipt[]): AppState => ({
 const swap = (s: AppState, id = 'a') => reducer(s, { type: 'exchange', id, newId: 'swapin' }, TODAY);
 const find = (s: AppState, id: string) => s.receipts.find((r) => r.id === id)!;
 
+describe('a swap can be taken back from its own bar', () => {
+  // The one settling tap with no undo bar: it opened a new receipt carrying
+  // the same name and dates, so it looked as though nothing had happened.
+  it('offers "Undo" straight away, naming the one that went back', () => {
+    expect(swap(state([receipt('a')])).justSwapped).toBe('a');
+  });
+
+  it('undoes to the original in hand, on its own screen, with the swap-in gone and nothing left to undo', () => {
+    const s = reducer(swap(state([receipt('a'), receipt('b')])), { type: 'undo-swap' }, TODAY);
+    expect(find(s, 'a')).toEqual(receipt('a'));
+    expect(s.receipts.some((r) => r.id === 'swapin')).toBe(false);
+    expect(find(s, 'b')).toEqual(receipt('b'));
+    expect(s).toMatchObject({ screen: 'detail', selId: 'a', justSwapped: null, justUnswapped: null });
+  });
+
+  it('goes away when dismissed, or when anything else is done', () => {
+    expect(reducer(swap(state([receipt('a')])), { type: 'dismiss-undo' }, TODAY).justSwapped).toBeFalsy();
+    expect(reducer(swap(state([receipt('a'), receipt('b')])), { type: 'return', id: 'b' }, TODAY).justSwapped).toBeFalsy();
+  });
+
+  it('refuses once the swap-in has a life of its own, as "Not swapped after all" does', () => {
+    const sent = reducer(swap(state([receipt('a')])), { type: 'send', id: 'swapin' } as never, TODAY);
+    const s = reducer({ ...sent, justSwapped: 'a' }, { type: 'undo-swap' }, TODAY);
+    expect(find(s, 'a').status).toBe('returned');
+    expect(s.justSwapped).toBeFalsy();
+  });
+});
+
 describe('swapping it for another', () => {
   it('settles the one that went back with nothing recovered', () => {
     const s = swap(state([receipt('a'), receipt('b')]));

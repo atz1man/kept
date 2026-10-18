@@ -67,6 +67,13 @@ export interface AppState extends KeptState {
    */
   justUnswapped: { id: string; returnedOn?: string; swapIns: Receipt[] } | null;
   /**
+   * The receipt just swapped, while "Undo" is on offer. A swap was the one
+   * settling tap with no undo bar: it opened a new receipt carrying the same
+   * name and dates, so it looked as if nothing had happened, and the way back
+   * ("Not swapped after all") sat on the other receipt's screen.
+   */
+  justSwapped?: string | null;
+  /**
    * What the last restore did, for the sentence under the button. Decided by
    * the reducer, because the reducer is what did it: the screen used to merge
    * a copy of the receipts it had rendered with, after waiting for the file.
@@ -139,6 +146,7 @@ export type Action =
   /** The file as read: merged by the reducer against the receipts it lands on. */
   | { type: 'restore'; backup: ImportSummary }
   | { type: 'undo-unswap' }
+  | { type: 'undo-swap' }
   | { type: 'alerted'; keys: string[] }
   /** A plan iOS now holds: its late single-shot lodgings are remembered (schedule.ts `recordLate`). */
   | { type: 'lodged'; plan: readonly PlannedAlert[] }
@@ -204,7 +212,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       return {
         ...state,
         justDeleted: null,
-        justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null,
+        justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null, justSwapped: null,
         // Said once, where it happened: a Settings visit next week is not told
         // about last week's restore.
         restored: null,
@@ -231,8 +239,8 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
        */
       const held = state.receipts.some((r) => r.id === action.id);
       return held
-        ? { ...state, justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null, screen: 'detail', selId: action.id }
-        : { ...state, justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null, screen: 'home', selId: null };
+        ? { ...state, justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null, justSwapped: null, screen: 'detail', selId: action.id }
+        : { ...state, justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null, justSwapped: null, screen: 'home', selId: null };
     }
     case 'ob-next':
       return state.obStep >= ONBOARDING_STEPS - 1
@@ -261,7 +269,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       const undo = {
         // No `sentOn` to hold: a return never clears it, so undo finds it on the receipt.
         justReturned: { id: r.id, was: { status: r.status, keptOn: r.keptOn } },
-        justSent: null, justUnswapped: null,
+        justSent: null, justUnswapped: null, justSwapped: null,
         justDeleted: null,
         justKept: null,
         justAdded: null,
@@ -320,7 +328,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         alertsSent: [...new Set([...state.alertsSent, ...inheritedKeys(state.alertsSent, r, swapIn, today)])],
         screen: 'detail',
         selId: swapIn.id,
-        justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null,
+        justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null, justSwapped: r.id,
       };
     }
     case 'unexchange': {
@@ -340,9 +348,19 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
           .map((x) => (x.id === r.id ? { ...x, status: 'active' as const, returnedOn: undefined, exchanged: undefined } : x)),
         // Offered back like a delete, because it is one. One undo at a time.
         justUnswapped: { id: r.id, returnedOn: r.returnedOn, swapIns: state.receipts.filter((x) => x.swappedFrom === r.id) },
-        justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null,
+        justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null, justSwapped: null,
         alertsSent: state.justDeleted ? pruneSent(state.alertsSent, state.receipts) : state.alertsSent,
       };
+    }
+    case 'undo-swap': {
+      // The swap taken back from its own bar: the original in hand again, on
+      // its own screen, and the receipt the swap made gone — exactly what
+      // "Not swapped after all" does, without then offering to undo the undo.
+      const id = state.justSwapped;
+      if (!id) return state;
+      const after = reducer({ ...state, justSwapped: null }, { type: 'unexchange', id }, today);
+      if (after.receipts === state.receipts) return { ...state, justSwapped: null };
+      return { ...after, justUnswapped: null, screen: 'detail', selId: id };
     }
     case 'undo-unswap': {
       const held = state.justUnswapped;
@@ -361,7 +379,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
           ),
           ...missing,
         ],
-        justUnswapped: null,
+        justUnswapped: null, justSwapped: null,
       };
     }
     case 'split': {
@@ -379,7 +397,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         alertsSent: [...new Set([...state.alertsSent, ...inheritedKeys(state.alertsSent, r, part, today)])],
         screen: 'detail',
         selId: part.id,
-        justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null,
+        justDeleted: null, justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null, justSwapped: null,
       };
     }
     case 'unsplit': {
@@ -576,7 +594,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         // people meant to open. One undo on offer at a time.
         ...(action.undoable
           ? {
-              justSent: r.id, justUnswapped: null,
+              justSent: r.id, justUnswapped: null, justSwapped: null,
               justReturned: null,
               justKept: null,
               justAdded: null,
@@ -639,7 +657,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         justAdded: null,
         // One undo on offer at a time; a delete's is forgotten as if dismissed.
         justDeleted: null,
-        justReturned: null, justSent: null, justUnswapped: null,
+        justReturned: null, justSent: null, justUnswapped: null, justSwapped: null,
         alertsSent: state.justDeleted ? pruneSent(state.alertsSent, state.receipts) : state.alertsSent,
       };
     }
@@ -695,7 +713,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         // was the only action in the app with no way out — a backup is not an
         // undo.
         justDeleted: removed,
-        justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null,
+        justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null, justSwapped: null,
         // Forget what we said about receipts that no longer exist, so the
         // sent-list cannot grow without bound over years of use — but NOT yet
         // about this one. It is on offer to undo, and an undo that brought
@@ -725,6 +743,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
       if (state.justReturned) return { ...state, justReturned: null, justSent: null };
       if (state.justSent) return { ...state, justSent: null };
       if (state.justUnswapped) return { ...state, justUnswapped: null };
+      if (state.justSwapped) return { ...state, justSwapped: null };
       return state.justDeleted
         ? { ...state, justDeleted: null, alertsSent: pruneSent(state.alertsSent, state.receipts) }
         : state;
@@ -741,7 +760,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         justAdded: action.receipt.id,
         justDeleted: null,
         justKept: null,
-        justReturned: null, justSent: null, justUnswapped: null,
+        justReturned: null, justSent: null, justUnswapped: null, justSwapped: null,
         alertsSent: state.justDeleted ? pruneSent(state.alertsSent, state.receipts) : state.alertsSent,
       };
     case 'undo-add': {
@@ -872,7 +891,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         // must write the same thing.
         updates: seedUpdates(today),
         justDeleted: null,
-        justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null,
+        justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null, justSwapped: null,
         restored: null,
         selId: null,
         screen: 'home',
@@ -900,6 +919,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         justAdded: gone(state.justAdded) ? null : state.justAdded,
         justSent: gone(state.justSent) ? null : state.justSent,
         justUnswapped: gone(state.justUnswapped?.id ?? null) ? null : state.justUnswapped,
+        justSwapped: gone(state.justSwapped ?? null) ? null : state.justSwapped,
         ...(gone(state.selId) ? { selId: null, screen: 'home' as const } : {}),
       };
     }
@@ -1001,7 +1021,7 @@ export function useApp() {
         sharedText: incoming,
         embedded: demo,
         justDeleted: null,
-        justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null,
+        justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null, justSwapped: null,
         restored: null,
         selId: null,
         obStep: 0,
