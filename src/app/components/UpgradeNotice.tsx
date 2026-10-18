@@ -28,13 +28,36 @@ export function UpgradeNotice({ onUnlock, onCancel }: { onUnlock: () => void; on
   // to the first button, out from under whoever was reading the sheet.
   const cancel = useRef(onCancel);
   cancel.current = onCancel;
+  //
+  // And it is modal for a keyboard too. It said `aria-modal` and Tab walked
+  // out of it — "Not now", then the tab bar behind the dimmed page — and on
+  // closing, focus landed on the Settings tab rather than the price that
+  // opened it. Tab now cycles inside the sheet, and closing hands focus back
+  // to whatever had it before.
   useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     sheet.current?.querySelector('button')?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') cancel.current();
+      if (e.key !== 'Tab' || !sheet.current) return;
+      const stops = [...sheet.current.querySelectorAll<HTMLElement>('button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])')];
+      if (stops.length === 0) return;
+      const first = stops[0];
+      const last = stops[stops.length - 1];
+      const at = document.activeElement;
+      if (e.shiftKey && (at === first || !sheet.current.contains(at))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (at === last || !sheet.current.contains(at))) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      if (opener?.isConnected) opener.focus();
+    };
   }, []);
 
   return (

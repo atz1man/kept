@@ -3680,6 +3680,20 @@ results['tapping a price does not pretend to charge for it'] =
   (await planOf()) === 'free' &&
   /charge/i.test(noticeSaid) &&
   !!pressed && noticeSaid.includes(pressed);
+// A modal for a keyboard as well as a screen reader: Tab stays inside it,
+// and Escape hands focus back to the price that opened it. It walked out to
+// the tab bar behind, and came back to the Settings tab.
+let trapped = true;
+for (let i = 0; i < 4; i += 1) {
+  await page.keyboard.press('Tab');
+  trapped &&= await page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]'));
+}
+await page.keyboard.press('Escape');
+await page.waitForTimeout(300);
+results['the price sheet keeps focus while open, and gives it back to the price'] =
+  trapped && (await page.evaluate(() => /^Unlock unlimited · £/.test(document.activeElement?.textContent ?? '')));
+await priceButton.click({ timeout: 2000 }).catch(() => {});
+await page.waitForTimeout(300);
 // And it must be leaveable without buying anything. The clicks below are
 // guarded because the failure this section exists to catch removes the sheet
 // entirely: an unguarded click would kill the harness before it printed a
