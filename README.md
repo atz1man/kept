@@ -26,7 +26,7 @@ which is the only real test that claim ever had.
 ```bash
 npm install
 npm run dev        # landing page at /, app at /app/
-npm test           # 759 unit tests over the decision logic
+npm test           # the unit tests over the decision logic (2,600+)
 npm run typecheck  # strict, noUnusedLocals
 npm run build      # both entries
 ```
@@ -35,7 +35,7 @@ The browser checks need a built preview server:
 
 ```bash
 npm run build && npx vite preview --port 5183 &
-npm run smoke      # 61 end-to-end checks, including a midnight rollover
+npm run smoke      # the end-to-end checks (150+), including a midnight rollover
 npm run contrast   # WCAG AA sweep over every rendered text node, and the same page on a dark device
 npm run a11y       # axe-core audit of every screen, plus focus management and the focus ring
 npm run layout     # 320px and 402px, adversarial content, empty states, covered buttons, crushed names,
