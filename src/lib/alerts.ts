@@ -3,7 +3,7 @@ import { REPLY_DAYS } from './fault-letter';
 import { REFUND_CHASE_DAYS, REJECT_DAYS } from './legal';
 import { money } from './money';
 import { derive, floorClock, floorWords, refundOf } from './receipts';
-import { refundIsStatutory } from './refund-chase';
+import { REG34_CLOCK, refundIsStatutory } from './refund-chase';
 import { windowChecked } from './stores';
 import type { Receipt } from './types';
 import { possessive } from './words';
@@ -274,7 +274,7 @@ export function copyFor(rung: AlertRung, r: Receipt, daysLeft: number, deadline:
       return {
         title: 'Has the refund come through?',
         body: `${what} — it went back on ${fmtDate(deadline)}.${
-          refundIsStatutory(r) ? ` For an online order, the shop has ${REFUND_CHASE_DAYS} days from getting it back to refund you.` : ''
+          refundIsStatutory(r) ? ` For an online order, the shop must refund you within ${REG34_CLOCK}.` : ''
         } If the money has not arrived, chase it.`,
       };
     case 'credit':

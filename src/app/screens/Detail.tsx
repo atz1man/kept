@@ -20,7 +20,7 @@ import { SplitPanel } from '../components/SplitPanel';
 import { canSplit } from '../../lib/split';
 import { RefundForm } from '../components/RefundForm';
 import { Letter } from '../components/Letter';
-import { readReturnRef, refundChase, refundChaseLine, refundIsStatutory, refundLetter } from '../../lib/refund-chase';
+import { readReturnRef, REG34_CLOCK, refundChase, refundChaseLine, refundIsStatutory, refundLetter } from '../../lib/refund-chase';
 import { possessive } from '../../lib/words';
 
 /** 2π × 40, the circumference of the ring the countdown draws on. */
@@ -510,7 +510,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
             <div style={{ fontSize: 13, color: color.muted, lineHeight: 1.5, marginTop: 4 }}>
               Waiting for the refund.
               {receipt.sentOn && ` If it has not arrived by ${fmtDateLong(addDays(fromISODate(receipt.sentOn), REFUND_CHASE_DAYS))}, chase it`}
-              {receipt.sentOn && (refundIsStatutory(receipt) ? ` — for an online order, the shop has ${REFUND_CHASE_DAYS} days from getting it back.` : '.')}
+              {receipt.sentOn && (refundIsStatutory(receipt) ? ` — for an online order, the shop has ${REG34_CLOCK}.` : '.')}
             </div>
             <ReturnRefField receipt={receipt} onSetReturnRef={onSetReturnRef} />
           </div>

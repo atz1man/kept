@@ -396,7 +396,7 @@ describe('a refund still to come', () => {
   });
 
   it('states the legal fortnight only for an online order', () => {
-    expect(refunds([sentAgo(14)])[0].body).toMatch(/For an online order, the shop has 14 days from getting it back/);
+    expect(refunds([sentAgo(14)])[0].body).toMatch(/For an online order, the shop must refund you within 14 days from getting it back, or from your proof of postage if that came first/);
     expect(refunds([sentAgo(14, { distance: false })])[0].body).not.toMatch(/online order/);
     expect(refunds([sentAgo(14)])[0].body).toMatch(/^Zara · Wool coat — it went back on .+\. .*If the money has not arrived, chase it\.$/);
   });
@@ -419,7 +419,7 @@ describe('a refund still to come', () => {
     // after it: the regulations do apply, and the reminder says so.
     const noticed = asos({ cancelledOn: '2026-09-10' });
     expect(refundChase(noticed, today)!.statutory).toBe(true);
-    expect(body(noticed)).toMatch(/ For an online order, the shop has 14 days from getting it back to refund you\. /);
+    expect(body(noticed)).toMatch(/ For an online order, the shop must refund you within 14 days from getting it back, or from your proof of postage if that came first\. /);
   });
 
   it('is never about a sample', () => {

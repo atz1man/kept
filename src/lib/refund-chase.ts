@@ -83,6 +83,19 @@ export function refundChase(r: Receipt, today: Date): RefundChase | null {
   return { due, late: daysBetween(due, today) >= 0, statutory: refundIsStatutory(r) };
 }
 
+/**
+ * The shop's refund clock under reg. 34, in one sentence for every surface.
+ *
+ * Three surfaces stated it, two of them as "14 days from getting it back",
+ * while the date beside it — the day to chase from — was counted from the day
+ * it was SENT. Reg. 34 runs the fourteen days from the shop getting the
+ * goods back or from the consumer's evidence of having sent them, whichever
+ * is earlier; with proof of postage that is the posting day, which is the
+ * date shown. The late panel already said both halves, in its own words;
+ * the sent-back line and the reminder now say them too.
+ */
+export const REG34_CLOCK = `${REFUND_CHASE_DAYS} days from getting it back, or from your proof of postage if that came first`;
+
 /** What the late panel says above the letter. */
 export function refundChaseLine(c: RefundChase): string {
   return c.statutory

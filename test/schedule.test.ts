@@ -89,7 +89,7 @@ describe('what gets lodged with the system', () => {
     });
     const refund = (r: Receipt) => plan([r]).find((p) => p.rung === 'refund')!.body;
     expect(refund(went(19))).not.toMatch(/days from getting it back/);
-    expect(refund(went(6))).toMatch(/For an online order, the shop has 14 days from getting it back to refund you\./);
+    expect(refund(went(6))).toMatch(/For an online order, the shop must refund you within 14 days from getting it back, or from your proof of postage if that came first\./);
   });
 });
 
