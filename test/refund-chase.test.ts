@@ -112,7 +112,7 @@ describe('the receipt’s own screen, while the refund is awaited', () => {
     expect(outside).not.toMatch(/days from getting it back/);
     // Five days after it: inside, and the card and the late panel both say so.
     const inside = screen(posted(20, 25));
-    expect(inside).toContain(`chase it — for an online order, the shop has ${REFUND_CHASE_DAYS} days from getting it back.`);
+    expect(inside).toContain(`chase it — for an online order, the shop has ${REFUND_CHASE_DAYS} days from getting it back, or from your proof of postage if that came first.`);
     expect(inside).toContain('cancellation period, so the shop had');
   });
 });
