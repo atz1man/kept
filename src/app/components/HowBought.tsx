@@ -14,7 +14,7 @@ import { Pressable } from './Pressable';
  * "online", and a switch would leave a screen reader announcing one of the two
  * real answers as "not the other one".
  */
-export function HowBought({ id, value, onChange }: { id: string; value: boolean; onChange: (distance: boolean) => void }) {
+export function HowBought({ id, value, onChange }: { id: string; value: boolean | null; onChange: (distance: boolean) => void }) {
   const options: { distance: boolean; label: string }[] = [
     { distance: false, label: 'In a shop' },
     { distance: true, label: 'Online or phone' },

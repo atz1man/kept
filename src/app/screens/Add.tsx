@@ -3,6 +3,7 @@ import { color, font, radius, shadow } from '../../tokens';
 import { addDays, fmtDate, fmtDateLong, fmtDateNear, fromISODate, toISODate } from '../../lib/dates';
 import { money } from '../../lib/money';
 import { parseReceiptText, UNKNOWN_STORE_WINDOW_DAYS, type ParsedReceipt } from '../../lib/parse';
+import { SAVE_LABEL, saveBlock } from '../../lib/save-block';
 import { addSubtitle, boxSource, readScan, scanFailure, type Misread, type UnsureWord } from '../../lib/receipt-scan';
 import { checkCount, checkWords, toCheck } from '../../lib/confidence';
 import { arrivalProblem, MAX_WINDOW_DAYS, purchaseProblem, readAmount, windowStartFor } from '../../lib/draft';
@@ -82,8 +83,11 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
    * It used to be hardcoded true, which told every receipt anyone added by hand
    * that they had a 14-day right to cancel for any reason. Someone who bought
    * it over a counter has no such right, and finds that out at the counter.
+   * A card typed in by hand has no paste to go on, so it starts UNANSWERED
+   * (null) and cannot be saved until it is (`saveBlock`).
    */
-  const [distance, setDistance] = useState(true);
+  const [distance, setDistance] = useState<boolean | null>(true);
+  const online = distance === true;
   /**
    * The shop, when the paste did not name one Kept knows.
    *
@@ -209,7 +213,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
     setScannedText(null);
     setScanShot(null);
     setItem('');
-    setDistance(true);
+    setDistance(null);
     setStoreName('');
     setTotalText('');
     setBoughtOn(toISODate(today));
@@ -416,7 +420,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
   const boughtError = dateTyped ? purchaseProblem(boughtOn, today) : undefined;
   const purchasedOn = parsed ? (!dateTyped || boughtError ? parsed.purchasedOn : boughtOn) : '';
   const inForce = policy && parsed ? windowInForceFor(policy.name, purchasedOn, updates) : undefined;
-  const knownWindow = inForce?.days ?? (policy ? windowFor(policy, distance) : undefined) ?? (storeTyped ? UNKNOWN_STORE_WINDOW_DAYS : parsed?.windowDays ?? 0);
+  const knownWindow = inForce?.days ?? (policy ? windowFor(policy, online) : undefined) ?? (storeTyped ? UNKNOWN_STORE_WINDOW_DAYS : parsed?.windowDays ?? 0);
   /*
    * The window, as a field, when the card is typed in or being corrected. A
    * shop Kept has not checked gets 28 days as a guess, and until now that
@@ -439,7 +443,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
    * and the app saved it anyway, which starts both statutory clocks early and
    * reports a live right as expired.
    */
-  const arrivalError = parsed && distance && arrivedOn ? arrivalProblem(arrivedOn, purchasedOn, today) : undefined;
+  const arrivalError = parsed && online && arrivedOn ? arrivalProblem(arrivedOn, purchasedOn, today) : undefined;
 
   const totalTyped = !!parsed && (parsed.amount === null || correcting);
   const typedTotal = totalTyped && totalText.trim() ? readAmount(totalText) : null;
@@ -447,7 +451,8 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
   const totalError = typedTotal && !typedTotal.ok ? typedTotal.error : undefined;
   const needsTotal = !!parsed && amount === null;
   const needsStore = !!parsed && storeTyped && !typed;
-  const cannotSave = quotaFull || !!arrivalError || needsTotal || !!boughtError || !!windowError || (typedIn && needsStore);
+  const block = parsed ? saveBlock({ quotaFull, arrivalError, boughtError, distance, needsStore, needsTotal, windowError }) : null;
+  const cannotSave = block !== null;
 
   /*
    * Where the clock starts, once, for the save AND the deadline preview. The
@@ -460,8 +465,8 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
   const windowStart = parsed
     ? windowStartFor(savedStore, {
         dispatchedOn: parsed.dispatchedOn ?? undefined,
-        arrivedOn: distance ? arrivedOn : undefined,
-        distance,
+        arrivedOn: online ? arrivedOn : undefined,
+        distance: online,
       })
     : undefined;
 
@@ -509,11 +514,11 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
        */
       ...(windowStart ? { windowStartsOn: windowStart } : {}),
       windowDays: effectiveWindow,
-      ...(distance && arrivedOn ? { arrivedOn } : {}),
+      ...(online && arrivedOn ? { arrivedOn } : {}),
       ...(parsed.orderRef ? { orderRef: parsed.orderRef } : {}),
       ...(!typedIn && parsed.lines.length ? { lines: parsed.lines } : {}),
-      policy: policyFor(store, effectiveWindow, inForce?.changedOn, distance),
-      distance,
+      policy: policyFor(store, effectiveWindow, inForce?.changedOn, online),
+      distance: online,
       gotcha: policy?.gotcha,
       status: 'active',
     });
@@ -654,7 +659,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
             </div>
           )}
           <HowBought id="add-how" value={distance} onChange={setDistance} />
-          {distance && (
+          {online && (
             <div style={{ marginTop: 12 }}>
               <label htmlFor="add-arrived" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: color.bodyStrong, marginBottom: 6 }}>
                 Arrived on
@@ -853,17 +858,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
               cursor: cannotSave ? 'not-allowed' : 'pointer',
             }}
           >
-            {quotaFull
-              ? 'Unlock unlimited to save this'
-              : arrivalError
-                ? 'Fix the arrival date'
-                : typedIn && needsStore
-                  ? 'Add the shop to save'
-                  : needsTotal
-                    ? 'Add the total to save'
-                    : windowError
-                      ? 'Fix the return window'
-                      : 'Save receipt'}
+            {SAVE_LABEL[block ?? 'none']}
           </Pressable>
         </div>
       )}
