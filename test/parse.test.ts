@@ -814,6 +814,26 @@ describe('what was bought', () => {
     expect(parse('Argos\nItem: Toaster\nGift wrap £2.00\nTotal £31.99').item).toBe('Toaster');
   });
 
+  it('names a price that sits on a "Qty" or "Price" line after the line above it', () => {
+    // Zara puts the price on `Qty: 1   £29.99` under the name and a colour
+    // line; Argos on `Price: £59.99`. The leftover label was the receipt's
+    // name — a card reading "Qty: 1", a basket of two lines both called that.
+    const zara = parse('ZARA\nRibbed knit jumper\nColour: Ecru  Size: M\nQty: 1   £29.99\n\nWide-leg trousers\nColour: Black  Size: 10\nQty: 1   £35.99\n\nTotal £65.98');
+    expect(zara.item).toBe('Ribbed knit jumper');
+    expect(zara.lines.map((l) => l.item)).toEqual(['Ribbed knit jumper', 'Wide-leg trousers']);
+    expect(parse('Argos\nTower 1.7L Kettle\nPrice: £59.99\n\nTotal: £59.99').item).toBe('Tower 1.7L Kettle');
+    expect(parse('Argos\nTower 1.7L Kettle\nUnit price £59.99\nTotal: £59.99').item).toBe('Tower 1.7L Kettle');
+  });
+
+  it('gives a bare price line no name when what is above it is not one', () => {
+    // Above the label is another price, or nothing: no guess, rather than a
+    // wrong one that reads like the answer.
+    expect(parse('Argos\nSubtotal £59.99\nPrice: £59.99\nTotal: £59.99').item).toBeNull();
+    expect(parse('Argos\nPrice: £59.99\nTotal: £59.99').item).toBeNull();
+    // A name beginning with a label word is still a name.
+    expect(parse('Argos\nPrice Tag Gun £12.00\nTotal £12.00').item).toBe('Price Tag Gun');
+  });
+
   it('does not take the shop’s own name for the item', () => {
     // An unambiguous name: "Boots £12.00" alone could be walking boots, and
     // the parser rightly does not take it for the shop.
@@ -872,6 +892,20 @@ describe('the order number', () => {
     expect(ref('Argos\nOrder #W1234567\nTotal £10.00')).toBe('W1234567');
     expect(ref('Argos\norder id: w1234567\nTotal £10.00')).toBe('W1234567');
     expect(ref('Argos\nOrder ref. 55512\nTotal £10.00')).toBe('55512');
+  });
+
+  it('reads an order number printed in groups whole, as the shop wrote it', () => {
+    // Argos: the token stopped at the first space, and "Order 1187" went
+    // onto the card, the claim pack and the refund letter.
+    expect(ref('Argos\nOrder number: 1187 2236 4410\nTotal £10.00')).toBe('1187 2236 4410');
+    expect(ref('Argos\nOrder no. 600123 456\nTotal £10.00')).toBe('600123 456');
+  });
+
+  it('reads "Your order 52318876401", with no "number" in between, only as a long run of digits', () => {
+    expect(ref('ZARA\nYour order 52318876401\nTotal £10.00')).toBe('52318876401');
+    expect(ref('Argos\nOrder 600123456 has shipped\nTotal £10.00')).toBe('600123456');
+    expect(ref('Argos\nYour order 15 October\nTotal £10.00')).toBeNull();
+    expect(ref('Argos\nYour order 12345 is on its way\nTotal £10.00')).toBeNull();
   });
 
   it('never takes a date, a total or a short code for one', () => {

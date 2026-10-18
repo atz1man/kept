@@ -1106,6 +1106,38 @@ function cleanItem(raw: string, long: 'shorten' | 'refuse' = 'refuse'): string |
   return s;
 }
 
+/*
+ * A priced line that is ONLY its label once the price is taken off: "Qty: 1",
+ * "Price", "Unit price", "Each". Zara writes `Qty: 1   £29.99` under the name
+ * and Argos `Price: £59.99`, and those leftovers were the receipt's name — a
+ * card reading "Qty: 1", and a basket split into two lines both called that.
+ */
+const LABEL_ONLY = /^(?:qty|quantity|price|unit\s+price|item\s+price|each|cost|amount)\b[\s:x×\d]*$/i;
+/** "Colour: Ecru  Size: M" — a detail of the thing above it, never its name. */
+const ATTRIBUTE = /^\s*(?:colou?r|size|style|variant|fit|length|width|model|sku|article|ref)\b\s*[:\-–]/i;
+/** How far above a bare price line its name may sit, past detail lines. */
+const NAME_REACH = 3;
+
+/**
+ * The name of a priced line whose own text is only a label: the nearest line
+ * above it that is not blank, not a detail ("Colour: …") and not money. None
+ * when that line is anything else — another price, a heading the parser
+ * cannot tell from one — because a wrong name reads like the answer.
+ */
+function nameAbove(segments: string[], i: number, storeWords: string[]): string | null {
+  for (let j = i - 1, seen = 0; j >= 0 && seen < NAME_REACH; j--) {
+    const line = segments[j].trim();
+    if (!line) continue;
+    seen++;
+    if (ATTRIBUTE.test(line)) continue;
+    if (/£\s?\d/.test(line) || NOT_AN_ITEM.test(line)) return null;
+    const name = cleanItem(line, 'shorten');
+    if (!name || LABEL_ONLY.test(name) || storeWords.includes(name.toLowerCase())) return null;
+    return name;
+  }
+  return null;
+}
+
 /**
  * What was bought, read conservatively. Three rules, most explicit first, and
  * nothing when none of them holds: a wrong guess in an editable field costs a
@@ -1119,12 +1151,29 @@ function cleanItem(raw: string, long: 'shorten' | 'refuse' = 'refuse'): string |
  * digits, so "Order Total" and "Order date" can never be read as one.
  */
 const ORDER_REF =
-  /\b(?:order|receipt|transaction|trans|booking)\s*(?:number|no\.?|num|#|id|ref(?:erence)?)\s*[:#.]?\s*#?\s*([A-Z0-9][A-Z0-9-]{3,29})\b/i;
+  /\b(?:order|receipt|transaction|trans|booking)\s*(?:number|no\.?|num|#|id|ref(?:erence)?)\s*[:#.]?\s*#?\s*([A-Z0-9][A-Z0-9-]{3,29}(?: \d{3,6})*)\b/i;
+/*
+ * The two shapes that rule missed, both real:
+ *
+ * - DIGITS IN GROUPS. Argos prints "Order number: 1187 2236 4410", and the
+ *   token stopped at the first space — "Order 1187" on the card, the claim
+ *   pack and the refund letter, a reference that matches nothing. Groups of
+ *   three to six digits after the first are read as part of it, kept as
+ *   written, since that is how the shop's own form will show it.
+ * - "Your order 52318876401", as Zara writes it, with no "number" between.
+ *   Read only as a run of six or more digits straight after "order", so
+ *   "Order 15 October" and "order total" stay what they are.
+ */
+const BARE_ORDER = /\b(?:your\s+)?order\s+#?(\d{6,20})(?![\w-])/i;
 
 function pickOrderRef(text: string): string | null {
   for (const line of text.split('\n')) {
     const m = ORDER_REF.exec(line);
     if (m && (m[1].match(/\d/g) ?? []).length >= 4) return m[1].toUpperCase();
+  }
+  for (const line of text.split('\n')) {
+    const m = BARE_ORDER.exec(line);
+    if (m) return m[1];
   }
   return null;
 }
@@ -1144,9 +1193,11 @@ function pickItem(text: string, store: StorePolicy | null): string | null {
   }
   // A line with a price on it that is not money about the order.
   const storeWords = store ? [store.name, ...store.aliases].map((w) => w.toLowerCase()) : [];
-  for (const segment of text.split(/\n|·/)) {
+  const segments = text.split(/\n|·/);
+  for (const [i, segment] of segments.entries()) {
     if (!/£\s?\d/.test(segment) || NOT_AN_ITEM.test(segment)) continue;
-    const s = cleanItem(segment);
+    const own = cleanItem(segment);
+    const s = own && LABEL_ONLY.test(own) ? nameAbove(segments, i, storeWords) : own;
     if (!s) continue;
     if (storeWords.includes(s.toLowerCase())) continue;
     return s;
@@ -1178,13 +1229,15 @@ export const MAX_LINES = 30;
 function pickLines(text: string, store: StorePolicy | null, total: Pence | null): { item: string; pence: Pence }[] {
   const storeWords = store ? [store.name, ...store.aliases].map((w) => w.toLowerCase()) : [];
   const out: { item: string; pence: Pence }[] = [];
-  for (const segment of text.split(/\n|·/)) {
+  const segments = text.split(/\n|·/);
+  for (const [i, segment] of segments.entries()) {
     if (!/£\s?\d/.test(segment) || NOT_AN_ITEM.test(segment)) continue;
     if (/(?:-\s?£|£\s?-)\s?\d/.test(segment)) continue;
     const prices = amountsIn(segment);
     const pence = prices[prices.length - 1];
     if (!pence) continue;
-    const item = cleanItem(segment.replace(/^\s*(?:qty\s*:?\s*)?\d{1,2}\s*[x×]\s+/i, ''), 'shorten');
+    const own = cleanItem(segment.replace(/^\s*(?:qty\s*:?\s*)?\d{1,2}\s*[x×]\s+/i, ''), 'shorten');
+    const item = own && LABEL_ONLY.test(own) ? nameAbove(segments, i, storeWords) : own;
     if (!item || storeWords.includes(item.toLowerCase())) continue;
     out.push({ item, pence });
   }
