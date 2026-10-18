@@ -30,6 +30,8 @@ export interface ComingUp {
   /** What happens on the day, in the list's own words. */
   what: string;
   demo: boolean;
+  /** Its day has passed and it is still owed: a refund nobody has seen. */
+  overdue: boolean;
 }
 
 /** Same-day order: the one with money on a clock first. */
@@ -37,19 +39,26 @@ const ORDER: Record<ComingKind, number> = { return: 0, reject: 1, refund: 2, cre
 
 export function comingUp(receipts: readonly Receipt[], today: Date, days: number = COMING_UP_DAYS): ComingUp[] {
   const out: ComingUp[] = [];
-  const within = (d: Date) => {
-    const n = daysBetween(today, d);
-    return n >= 0 && n <= days;
-  };
+  /*
+   * A day that has passed is gone from the list — a closed window is not a
+   * thing to do — with one exception: a refund still not come. Its date is
+   * when it became worth chasing, and the list dropped it that same night,
+   * so the one entry with money owed on it left Watch at exactly the moment
+   * there was something to do about it. It stays, marked overdue, until the
+   * receipt is marked returned (`status` leaves 'sent').
+   */
   const push = (r: Receipt, date: Date, kind: ComingKind, what: string) => {
-    if (within(date)) out.push({ receiptId: r.id, date, kind, what, demo: !!r.demo });
+    const n = daysBetween(today, date);
+    const overdue = n < 0 && kind === 'refund';
+    if ((n >= 0 || overdue) && n <= days) out.push({ receiptId: r.id, date, kind, what, demo: !!r.demo, overdue });
   };
   for (const r of receipts) {
     // "(or later)" on a floor (`deadlineIsFloor`), as the right to reject
     // already says it below: counted from the order, the day is the earliest.
     if (r.status === 'active') push(r, derive(r, today).deadline, 'return', `Last day to return it${deadlineIsFloor(r) ? ' (or later)' : ''}`);
     if (r.status === 'sent' && r.sentOn) {
-      push(r, addDays(fromISODate(r.sentOn), REFUND_CHASE_DAYS), 'refund', 'Refund due — chase it if it has not come');
+      const due = addDays(fromISODate(r.sentOn), REFUND_CHASE_DAYS);
+      push(r, due, 'refund', daysBetween(today, due) < 0 ? 'Refund overdue — chase it' : 'Refund due — chase it if it has not come');
     }
     const reject = rejectWatched(r, today);
     if (reject) push(r, reject.ends, 'reject', `Last day to reject it if it’s faulty${reject.hedged ? ' (or later)' : ''}`);
