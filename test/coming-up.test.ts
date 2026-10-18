@@ -38,6 +38,31 @@ describe('what is coming up', () => {
     ]);
   });
 
+  it('keeps a refund on the list once it is overdue, and says so, until it comes', () => {
+    // It used to drop off the night it became worth chasing — the one entry
+    // with money owed on it, gone the moment there was something to do.
+    const late = r('late', 60, { status: 'sent', sentOn: iso(-(REFUND_CHASE_DAYS + 5)) });
+    const [c] = comingUp([late], TODAY);
+    expect([c.kind, toISODate(c.date), c.overdue]).toEqual(['refund', iso(-5), true]);
+    expect(c.what).toBe('Refund overdue — chase it');
+    // Overdue comes before anything still ahead.
+    expect(days(comingUp([r('soon', 29), late], TODAY)).map(([id]) => id)).toEqual(['late', 'soon']);
+    // On the day itself it is due, not overdue; once back, it is gone.
+    const due = comingUp([r('due', 60, { status: 'sent', sentOn: iso(-REFUND_CHASE_DAYS) })], TODAY)[0];
+    expect([due.overdue, due.what]).toEqual([false, 'Refund due — chase it if it has not come']);
+    expect(comingUp([{ ...late, status: 'returned', returnedOn: iso(0) }], TODAY).filter((x) => x.kind === 'refund')).toEqual([]);
+  });
+
+  it('drops every other passed day: a closed window or an old reply date is not a thing to do', () => {
+    const list = comingUp([
+      r('closed', 31),
+      r('fault', 100, { status: 'kept', faultClaim: { sentOn: iso(-(REPLY_DAYS + 3)) } }),
+      r('credit', 100, { status: 'returned', returnedOn: iso(-50), credit: { expires: iso(-1) } }),
+    ], TODAY);
+    expect(list.filter((c) => c.kind !== 'reject' && c.kind !== 'warranty')).toEqual([]);
+    expect(list.every((c) => !c.overdue)).toBe(true);
+  });
+
   it('lists a guarantee ending, on a receipt with one, and not one years away', () => {
     const ending = r('g', 0, { status: 'kept', purchasedOn: toISODate(addMonths(TODAY, -12)), warranty: { months: 12 } });
     expect(comingUp([ending], TODAY).map((c) => c.kind)).toEqual(['warranty']);

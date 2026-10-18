@@ -79,7 +79,7 @@ export function Watch({ updates, receipts, today, watching, refreshes, onOpen }:
           {ahead.map((c) => {
             const r = byId.get(c.receiptId)!;
             const n = daysBetween(today, c.date);
-            const when = n === 0 ? 'today' : n === 1 ? 'tomorrow' : `in ${n} days`;
+            const when = n < 0 ? `${-n} day${n === -1 ? '' : 's'} overdue` : n === 0 ? 'today' : n === 1 ? 'tomorrow' : `in ${n} days`;
             return (
               <li key={`${c.receiptId}:${c.kind}`} style={{ listStyle: 'none' }}>
                 <Pressable
