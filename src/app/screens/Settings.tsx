@@ -14,7 +14,7 @@ import { checkedCount, CHECKED_ON, STORE_COUNT, tableCheck } from '../../lib/sto
 import { discardSetAside, setAsideData, URGENT_DAYS_MAX, URGENT_DAYS_MIN, type Settings as SettingsShape } from '../../lib/storage';
 import { restoreOnlyOffered, type Offer } from '../../lib/pricing';
 import type { StoreView } from '../../lib/app-store';
-import { countedAgainstQuota, FREE_TIER_LIMIT } from '../../lib/quota';
+import { countedAgainstQuota, FREE_TIER_LIMIT, meterWords } from '../../lib/quota';
 import { Pressable } from '../components/Pressable';
 import { Note, RestorePurchase, UnlockOffer } from '../components/UnlockOffer';
 import { SupportDetails } from '../components/SupportDetails';
@@ -312,12 +312,12 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
             <span style={{ fontWeight: 600, fontSize: 15 }}>Free plan</span>
             <span style={{ fontFamily: font.figures, fontSize: 12, color: color.muted }}>
-              {used} of {FREE_TIER_LIMIT} open receipts
+              {meterWords(used)}
             </span>
           </div>
           <div
             role="progressbar"
-            aria-valuenow={used}
+            aria-valuenow={Math.min(used, FREE_TIER_LIMIT)}
             aria-valuemin={0}
             aria-valuemax={FREE_TIER_LIMIT}
             aria-label="Open receipts on the free plan"

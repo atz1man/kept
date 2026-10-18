@@ -32,6 +32,21 @@ export function quotaFull(receipts: readonly Receipt[], plan: Plan): boolean {
   return plan === 'free' && countedAgainstQuota(receipts) >= FREE_TIER_LIMIT;
 }
 
+/**
+ * The free plan's meter, in words.
+ *
+ * "39 of 10 open receipts" is what it said after a backup from an unlocked
+ * phone was restored onto a new one — a count that reads as a bug, under a
+ * progress bar that was full and an `aria-valuenow` above its own maximum,
+ * which is invalid. Past the limit it says what is true: how many are open,
+ * and what the free plan holds.
+ */
+export function meterWords(used: number): string {
+  return used > FREE_TIER_LIMIT
+    ? `${used} open receipts — the free plan holds ${FREE_TIER_LIMIT}`
+    : `${used} of ${FREE_TIER_LIMIT} open receipts`;
+}
+
 export function quotaRemaining(receipts: readonly Receipt[], plan: Plan): number {
   if (plan !== 'free') return Infinity;
   return Math.max(0, FREE_TIER_LIMIT - countedAgainstQuota(receipts));
