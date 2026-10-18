@@ -550,6 +550,47 @@ if (ringsSeen < 3) ringless.push(['the focus-ring check', `only ${ringsSeen} foc
 lostFocus.push(...ringless);
 
 /*
+ * And never behind the tab bar (WCAG 2.2 SC 2.4.11, Focus Not Obscured).
+ *
+ * The bar is docked over the bottom of every screen, and tabbing scrolls the
+ * focused control into view — to the bottom edge of the scroller, which is
+ * under the bar. Measured: Settings' "Copy details for support" was focused
+ * wholly behind it, and rows on Home and Detail sat half under it. Each
+ * screen's scroller carries a scroll-padding as tall as its bottom padding
+ * now, so a control is scrolled clear of the bar. Controls only: a scrolling
+ * region is itself focusable and is always taller than the space left.
+ */
+const hiddenPage = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
+await hiddenPage.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+await hiddenPage.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+await hiddenPage.waitForTimeout(400);
+const obscured = new Set();
+let controlsSeen = 0;
+for (const [screen, open] of [
+  ['home', async () => {}],
+  ['a receipt', async () => hiddenPage.getByRole('button', { name: /Currys, JBL/ }).click()],
+  ['settings', async () => hiddenPage.getByRole('button', { name: 'Settings', exact: true }).click()],
+]) {
+  await open();
+  await hiddenPage.waitForTimeout(400);
+  for (let i = 0; i < 60; i += 1) {
+    await hiddenPage.keyboard.press('Tab');
+    const seen = await hiddenPage.evaluate(() => {
+      const el = document.activeElement;
+      const nav = document.querySelector('nav[aria-label="Main"]');
+      if (!el || !nav || nav.contains(el) || !el.matches('button, a[href], input, select, textarea, [role="radio"]')) return null;
+      const a = el.getBoundingClientRect();
+      return { what: (el.getAttribute('aria-label') || el.textContent || el.tagName).trim().slice(0, 40), under: a.bottom > nav.getBoundingClientRect().top + 1 };
+    });
+    if (!seen) continue;
+    controlsSeen += 1;
+    if (seen.under) obscured.add(`${screen}: "${seen.what}"`);
+  }
+}
+if (controlsSeen < 10) lostFocus.push(['the tab-bar check', `only ${controlsSeen} focused control(s) were measured`]);
+for (const o of obscured) lostFocus.push([`focus on ${o}`, 'is behind the tab bar']);
+
+/*
  * Forced colours: the state that erases every colour the app chose.
  *
  * Windows high contrast replaces backgrounds and fills with the user's own

@@ -183,7 +183,7 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
   const usagePct = Math.min(100, (used / FREE_TIER_LIMIT) * 100);
 
   return (
-    <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px' }}>
+    <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px', scrollPaddingBottom: 120 }}>
       <h1 tabIndex={-1} style={{ fontSize: 24, fontWeight: 600, padding: '10px 2px 14px', margin: 0 }}>Settings</h1>
 
       <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, padding: 18 }}>
