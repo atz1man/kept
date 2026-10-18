@@ -63,7 +63,7 @@ export function Edit({ receipt, today, onSave, onCancel }: Props) {
       : null;
 
   return (
-    <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px' }}>
+    <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px', scrollPaddingBottom: 120 }}>
       <Pressable
         onClick={onCancel}
         style={{

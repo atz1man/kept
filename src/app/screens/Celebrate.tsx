@@ -61,7 +61,7 @@ export function Celebrate({ amount, cost, store, inTime, recovered, shared, line
     // refund form opening under the card pushed its own buttons beneath the
     // tab bar with no way to reach them. The middle grows to centre the card
     // and never shrinks below its content.
-    <div className="k-fade" style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', padding: `6px 20px ${undoShowing ? 196 : 104}px` }}>
+    <div className="k-fade" style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', padding: `6px 20px ${undoShowing ? 196 : 104}px`, scrollPaddingBottom: undoShowing ? 196 : 104 }}>
       <div style={{ flex: '1 0 auto', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         {/* The money arriving, drawn as the home screen draws the balance: the
             hero's gradient, declared at its lightest stop so the contrast
