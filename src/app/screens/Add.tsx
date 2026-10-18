@@ -200,8 +200,22 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
 
   const read = () => readText(text);
 
+  /*
+   * The blank card renders ABOVE the button that opens it, and focus stayed
+   * on the button: the next Tab went to the tab bar, then the page, and only
+   * then wrapped round to "What is it?". Walked keyboard-only, the card was
+   * the last thing reached. Focus goes to its first field once it is there.
+   */
+  const focusFirstField = useRef(false);
+  useEffect(() => {
+    if (!focusFirstField.current) return;
+    focusFirstField.current = false;
+    document.getElementById('add-item')?.focus();
+  });
+
   /** The same card, blank: every field is one the person fills in. */
   const typeItIn = () => {
+    focusFirstField.current = true;
     setParsed({
       store: null, policy: null, amount: null, purchasedOn: toISODate(today), dateFound: false,
       arrivedOn: null, dispatchedOn: null, windowDays: UNKNOWN_STORE_WINDOW_DAYS, item: null, orderRef: null, lines: [],

@@ -279,8 +279,12 @@ await page.waitForTimeout(300);
 await audit(page, 'add receipt · correcting', findings);
 // Typed in from nothing, with a window refused: the blank card, the
 // disabled save, and the window's refusal exist only here.
-await page.getByRole('button', { name: 'Type it in yourself' }).click();
+await page.getByRole('button', { name: 'Type it in yourself' }).focus();
+await page.keyboard.press('Enter');
 await page.waitForTimeout(300);
+// The card opens ABOVE the button: focus has to move to it, or the next Tab
+// leaves for the tab bar and the card is the last thing a keyboard reaches.
+const typedInFocus = await page.evaluate(() => document.activeElement?.id ?? '');
 await page.fill('#add-window', '0');
 await page.waitForTimeout(200);
 await audit(page, 'add receipt · typed in', findings);
@@ -474,6 +478,7 @@ await audit(lp, 'rights', findings);
 const focusCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
 const focusPage = await focusCtx.newPage();
 const lostFocus = [];
+if (typedInFocus !== 'add-item') lostFocus.push(['"Type it in yourself"', `left focus on ${typedInFocus ? `#${typedInFocus}` : 'the button'}, below the card it opened, not on "What is it?"`]);
 await focusPage.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
 for (const [label, go] of [
   ['onboarding → home', async () => focusPage.getByRole('button', { name: 'Skip' }).click()],
