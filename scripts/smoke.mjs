@@ -2116,6 +2116,15 @@ for (const cancel of [false, true]) {
   const swapIn = after.find((r) => r.swappedFrom === 'r_jeans');
   seen.settled = orig?.status === 'returned' && orig?.exchanged === true;
   seen.copied = !!swapIn && swapIn.status === 'active' && swapIn.purchasedOn === orig?.purchasedOn;
+  // The one settling tap that had no undo bar: it says what it did, and
+  // its Undo puts the original back in hand on its own screen.
+  seen.barSays = (await wp.getByText('Marked Jeans, 32 waist swapped').count()) === 1;
+  await wp.getByRole('button', { name: 'Undo', exact: true }).click({ timeout: 3000 }).catch(() => {});
+  await wp.waitForTimeout(300);
+  const unswapped = await stored();
+  seen.barUndoes = unswapped.length === 1 && unswapped[0].status === 'active' && /I've sent it back|Got my money back|Swapped it for another/.test(await wp.locator('main').innerText());
+  await wp.getByRole('button', { name: 'Swapped it for another' }).click({ timeout: 3000 }).catch(() => {});
+  await wp.waitForTimeout(300);
   await wp.getByRole('button', { name: 'Back', exact: true }).click({ timeout: 3000 }).catch(() => {});
   await wp.waitForTimeout(300);
   seen.rowSays = (await wp.getByRole('button', { name: /^Next, Jeans, 32 waist, swapped for another$/ }).count()) === 1;
