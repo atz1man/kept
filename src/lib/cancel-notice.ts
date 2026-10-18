@@ -2,6 +2,7 @@ import { addDays, daysBetween, fmtDateLong, fromISODate } from './dates';
 import { COOLING_OFF_DAYS, REFUND_CHASE_DAYS, RETURN_AFTER_CANCEL_DAYS } from './legal';
 import { money } from './money';
 import type { Receipt } from './types';
+import { signOff } from './sign-off';
 
 /**
  * Cancelling an online order, in writing, and what follows from the day.
@@ -67,6 +68,6 @@ export function cancelLetter(r: Receipt): string {
     '',
     `I am giving this notice within the ${COOLING_OFF_DAYS}-day cancellation period under the Consumer Contracts (Information, Cancellation and Additional Charges) Regulations 2013. Please tell me how you would like the goods returned. Under regulation 34, the refund is due within ${REFUND_CHASE_DAYS} days of your receiving them back, or of my supplying evidence of having sent them, if that is earlier, and includes the standard delivery charge if I paid one.`,
     '',
-    'Yours faithfully,',
+    ...signOff({ address: true }),
   ].join('\n');
 }

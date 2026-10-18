@@ -2,6 +2,7 @@ import { addDays, addMonths, daysBetween, fmtDateLong, fromISODate, lastDayOfMon
 import { PRESUMED_FAULT_MONTHS, presumedFaultEnds, REJECT_DAYS } from './legal';
 import { money } from './money';
 import type { Receipt } from './types';
+import { signOff } from './sign-off';
 
 /**
  * "Something wrong with it?" — the rights, turned into the letter.
@@ -134,7 +135,7 @@ export function faultLetter(r: Receipt, today: Date, whatsWrong: string): string
     '',
     `Please reply within ${REPLY_DAYS} days to tell me what you will do.`,
     '',
-    'Yours faithfully,',
+    ...signOff(),
   ].join('\n');
 }
 
@@ -186,6 +187,6 @@ export function finalRejectLetter(r: Receipt, today: Date, whatsWrong: string): 
     '',
     `Please reply within ${REPLY_DAYS} days to tell me what you will do.`,
     '',
-    'Yours faithfully,',
+    ...signOff(),
   ].join('\n');
 }

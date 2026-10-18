@@ -4,6 +4,7 @@ import { cancelledInTime } from './cancel-notice';
 import { COOLING_OFF_DAYS, REFUND_CHASE_DAYS } from './legal';
 import { money } from './money';
 import type { Receipt } from './types';
+import { signOff } from './sign-off';
 
 /**
  * "Has the refund come through?" — and what to do when it has not.
@@ -125,6 +126,6 @@ export function refundLetter(r: Receipt, today: Date): string | null {
     '',
     `Please reply within ${REPLY_DAYS} days to confirm when the money will reach me.`,
     '',
-    'Yours faithfully,',
+    ...signOff(),
   ].join('\n');
 }

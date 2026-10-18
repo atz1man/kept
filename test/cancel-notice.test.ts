@@ -50,7 +50,8 @@ describe('the notice, while the cancellation period runs', () => {
     expect(letter).toContain(`I am cancelling my contract for the following goods: “Trainers”, £60.00, ordered on ${fmtDateLong(addDays(TODAY, -3))}, received on ${fmtDateLong(addDays(TODAY, -2))}.`);
     expect(letter).toContain('Consumer Contracts (Information, Cancellation and Additional Charges) Regulations 2013');
     expect(letter).toContain('Under regulation 34, the refund is due within 14 days');
-    expect(letter.endsWith('Yours faithfully,')).toBe(true);
+    // The model form asks for the consumer's name and address.
+    expect(letter.endsWith('Yours faithfully,\n\n[Your name]\n[Your address]')).toBe(true);
     expect(cancelLetter(order(3, { arrivedOn: undefined }))).not.toContain('received on');
   });
 });
