@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { color, radius } from '../../tokens';
 import { photoAsFile, readPhoto } from '../../lib/photos';
+import { hasBlanks } from '../../lib/sign-off';
 import type { Receipt } from '../../lib/types';
 import { Pressable } from './Pressable';
 
@@ -74,6 +75,11 @@ export function Letter({ letter, title, receipt }: { letter: string; title: stri
       >
         {letter}
       </div>
+      {hasBlanks(letter) && (
+        <div style={{ fontSize: 12.5, marginTop: 6, color: color.muted }}>
+          Put your name where the letter says [Your name]{letter.includes('[Your address]') ? ', and your address under it,' : ''} before you send it.
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
         <Pressable

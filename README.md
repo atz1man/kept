@@ -389,6 +389,7 @@ src/lib/          the decision logic — pure, tested, no React
   coming-up.ts    every dated thing ahead, across every receipt, in one list
   schedule.ts     the same decisions, lodged with iOS days in advance
   words.ts        fitting a name someone typed into the middle of a sentence
+  sign-off.ts     how every letter to a shop ends, and the blanks the person fills in
   contrast.ts     WCAG luminance and ratio, used to hold the palette to AA
   share.ts        reading an order email shared in from another app
   parse.ts        the paste parser (on-device, rule-based)
