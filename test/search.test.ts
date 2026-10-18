@@ -25,6 +25,29 @@ describe('matching', () => {
     expect(search(set, 'argos').map((r) => r.item)).toEqual(['Kenwood kMix stand mixer']);
   });
 
+  it('finds what people actually type: no apostrophe, a basket line, a price', () => {
+    const shop = { ...make('Sainsbury\u2019s', 'Big shop'), lines: [{ item: 'Electric toothbrush', pence: 2999 }, { item: 'Towels', pence: 1500 }] };
+    const kettle = { ...make('Argos', 'Kettle'), amount: toPence(29.99) };
+    const dearer = { ...make('Argos', 'Toaster'), amount: toPence(129.99) };
+    const lib = [shop, kettle, dearer];
+    expect(search(lib, 'sainsburys').map((r) => r.item)).toEqual(['Big shop']);
+    expect(search(lib, "sainsbury's").map((r) => r.item)).toEqual(['Big shop']);
+    expect(search(lib, 'toothbrush').map((r) => r.item)).toEqual(['Big shop']);
+    // A price is matched exactly, to the total or a line — never as part of a
+    // dearer one: "29.99" is not the £129.99 toaster.
+    expect(search(lib, '29.99').map((r) => r.item)).toEqual(['Big shop', 'Kettle']);
+    expect(search(lib, '£129.99').map((r) => r.item)).toEqual(['Toaster']);
+    expect(search(lib, '£15').map((r) => r.item)).toEqual(['Big shop']);
+    // A bare number is left to the text, where an order number would be.
+    expect(search(lib, '29').map((r) => r.item)).toEqual([]);
+  });
+
+  it('keeps the characters that mean something: M&S is not M or S', () => {
+    const lib = [make('M&S', 'Towels'), make('Argos', 'Mixer stand'), make('Currys', 'Order', 'o1')];
+    expect(search(lib, 'm&s').map((r) => r.store)).toEqual(['M&S']);
+    expect(search([{ ...make('Amazon', 'Cable'), orderRef: '204-1234567' }], '204-1234567')).toHaveLength(1);
+  });
+
   it('finds by item', () => {
     expect(search(set, 'headphones').map((r) => r.store)).toEqual(['Currys']);
   });

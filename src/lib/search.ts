@@ -8,15 +8,44 @@ import type { Receipt } from './types';
  * "what must go back this week" and useless for "where did I put the
  * headphones".
  *
- * Deliberately plain: substring matching over the two fields a person
- * remembers, the shop and the thing. No fuzzy matching and no ranking — a
- * search that returns near-misses in a list about money and deadlines invites
- * acting on the wrong row.
+ * Deliberately plain: substring matching over what a person remembers —
+ * the shop, the thing, what else was in the basket — and an exact price. No
+ * fuzzy matching and no ranking — a search that returns near-misses in a list
+ * about money and deadlines invites acting on the wrong row.
  */
+
+/*
+ * What people actually type, found by trying it on a forty-receipt library:
+ * "sainsburys" for Sainsbury's, "toothbrush" for one line of a basket, and
+ * "29.99" for the kettle that cost that. None was found.
+ *
+ * An apostrophe is dropped on both sides, nothing more: hyphens and
+ * ampersands carry meaning ("M&S", "204-1234567") and dropping them would
+ * turn a precise query into a loose one. A price is matched EXACTLY against
+ * the receipt's own figures, never as a substring — "29.99" must not find a
+ * £129.99 receipt, which is the near-miss this file refuses everywhere else.
+ */
+const normal = (s: string) => s.toLowerCase().replace(/['’‘`]/g, '');
+const PRICE = /^£?(\d+)(?:\.(\d{1,2}))?$/;
+
+/** The receipt's figures in pence: its total and each line it lists. */
+function figures(receipt: Receipt): number[] {
+  return [receipt.amount, ...(receipt.lines ?? []).map((l) => l.pence)];
+}
+
+function priceMatches(term: string, receipt: Receipt): boolean {
+  const m = PRICE.exec(term);
+  if (!m) return false;
+  // "29" is a price only when written as one: a bare number is as likely
+  // part of an order number, and is left to the text below.
+  if (m[2] === undefined && !term.startsWith('£')) return false;
+  const pence = Number(m[1]) * 100 + Number((m[2] ?? '0').padEnd(2, '0'));
+  return figures(receipt).includes(pence);
+}
 
 /** Every whitespace-separated term must appear somewhere. */
 export function matches(receipt: Receipt, query: string): boolean {
-  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const terms = normal(query.trim()).split(/\s+/).filter(Boolean);
   // Deleting this line changes no answer — `.every` on an empty list is
   // already true — and it survived being deleted for exactly that reason.
   // Kept as the sentence rather than the implication: an empty query matches
@@ -26,8 +55,10 @@ export function matches(receipt: Receipt, query: string): boolean {
   // The order number too: "which one was 204-1234567" is a question people
   // arrive with, from an email or a returns label, holding nothing else. And
   // a return's tracking number, which is what the courier's email quotes.
-  const haystack = `${receipt.store} ${receipt.item} ${receipt.orderRef ?? ''} ${receipt.returnRef ?? ''}`.toLowerCase();
-  return terms.every((t) => haystack.includes(t));
+  // And each line of a basket: what was in it is as much the thing bought.
+  const lines = (receipt.lines ?? []).map((l) => l.item).join(' ');
+  const haystack = normal(`${receipt.store} ${receipt.item} ${lines} ${receipt.orderRef ?? ''} ${receipt.returnRef ?? ''}`);
+  return terms.every((t) => haystack.includes(t) || priceMatches(t, receipt));
 }
 
 export function search(receipts: readonly Receipt[], query: string): Receipt[] {
