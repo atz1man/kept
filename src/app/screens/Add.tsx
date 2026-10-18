@@ -567,7 +567,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
 
       {quotaFull && offer.kind !== 'none' && (
         <div style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, padding: 18, marginTop: 14, boxShadow: shadow.raised }}>
-          <div style={{ fontWeight: 600, fontSize: 15 }}>That’s your {FREE_TIER_LIMIT} free receipts</div>
+          <div style={{ fontWeight: 600, fontSize: 15 }}>That’s {FREE_TIER_LIMIT} receipts open, the free plan’s limit</div>
           <div style={{ fontSize: 13, color: color.body, lineHeight: 1.55, marginTop: 6 }}>
             Quids In has tracked {trackedTotal} for free. Return something you are already tracking, or mark one you are keeping, and a slot frees up —
             or unlock unlimited once, and one missed return pays for it.

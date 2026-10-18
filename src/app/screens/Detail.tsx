@@ -212,7 +212,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13, color: color.muted, fontWeight: 600 }}>
-              {settled ? 'The window ran to' : unsure ? 'Earliest it could close' : d.expired ? 'Window closed' : 'Return by'}
+              {settled ? (d.expired ? 'The window ran to' : 'The window runs to') : unsure ? 'Earliest it could close' : d.expired ? 'Window closed' : 'Return by'}
             </div>
             <div style={{ fontFamily: font.figures, fontSize: 26, fontWeight: 700, letterSpacing: '-0.03em', marginTop: 4 }}>
               {deadlineText}

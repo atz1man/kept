@@ -312,7 +312,7 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
             <span style={{ fontWeight: 600, fontSize: 15 }}>Free plan</span>
             <span style={{ fontFamily: font.figures, fontSize: 12, color: color.muted }}>
-              {used} of {FREE_TIER_LIMIT} free receipts
+              {used} of {FREE_TIER_LIMIT} open receipts
             </span>
           </div>
           <div
@@ -320,10 +320,16 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
             aria-valuenow={used}
             aria-valuemin={0}
             aria-valuemax={FREE_TIER_LIMIT}
-            aria-label="Free receipts used"
+            aria-label="Open receipts on the free plan"
             style={{ height: 6, borderRadius: 999, background: color.surfaceDeep, marginTop: 10, overflow: 'hidden' }}
           >
             <div style={{ height: '100%', background: color.accent, borderRadius: 999, width: `${usagePct}%` }} />
+          </div>
+          {/* "2 of 10 free receipts", read by someone who had saved three,
+              said ten in a lifetime. The count is of OPEN ones (quota.ts):
+              say so, or the free plan reads smaller than it is. */}
+          <div style={{ fontSize: 12.5, color: color.muted, marginTop: 8 }}>
+            Ones you have returned or kept do not count, so a return frees a slot.
           </div>
 
           {/* One price: the landing page's on the web, the App Store's on iPhone — see lib/pricing.ts. */}

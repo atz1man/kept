@@ -236,7 +236,7 @@ await page.waitForTimeout(400);
 const meter = await page.evaluate(() => {
   // \d+, not a hard 10: pinning the number here means this check quietly
   // finds nothing the day the free tier changes size, and reports a pass.
-  const el = [...document.querySelectorAll('span')].find((s) => /of \d+ free receipts/.test(s.textContent ?? ''));
+  const el = [...document.querySelectorAll('span')].find((s) => /of \d+ open receipts/.test(s.textContent ?? ''));
   return el?.textContent?.trim() ?? '';
 });
 agree('receipts counted, by the meter and on the list', (meter.match(/^(\d+)/) ?? [])[1], String(activeCount));
@@ -290,7 +290,7 @@ const inApp = await page.evaluate(() => {
     .filter((t) => /^Unlock unlimited · £\d+\.\d{2}/.test(t));
   const free = ([...document.querySelectorAll('span')]
     .map((s) => s.textContent ?? '')
-    .find((t) => /of \d+ free receipts/.test(t)) ?? '').match(/of (\d+) free/)?.[1];
+    .find((t) => /of \d+ open receipts/.test(t)) ?? '').match(/of (\d+) open/)?.[1];
   return { prices: tiers.map((t) => (t.match(/£[\d.]+/) ?? [])[0]).filter(Boolean), free, text: document.body.innerText.toLowerCase() };
 });
 
