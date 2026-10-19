@@ -124,55 +124,42 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
         <Avatar store={receipt.store} cat={receipt.cat} />
 
         <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Wraps, and the name keeps a floor.
-              At 320px there is about 134px for this whole block and the
-              POLICY CHANGED chip wants 95 of it, so with the chip refusing to
-              shrink the name absorbed every pixel: "Zara" rendered 4px wide of
-              32. Nothing failed — a squeezed name neither overflows the page
-              nor covers a button — which is why the layout sweep now measures
-              it. The chip drops to its own line when the two will not fit,
-              instead of eating the one word that says whose return this is. */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, rowGap: 4, minWidth: 0, flexWrap: 'wrap' }}>
-            {/* Truncated like the item beneath it. A store name is free text —
-                the edit form accepts anything — and an untruncated one wrapped
-                to five lines on a 320px phone while the item it belongs to was
-                still being clipped to one. */}
-            {/* data-name is read by the layout sweep, which measures whether
-                anything beside this has squeezed it past reading. */}
-            <span data-name style={{ fontWeight: 600, fontSize: 15.5, letterSpacing: '-0.015em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: MIN_NAME_PX }}>
-              {receipt.store}
-            </span>
-            {policyChanged && (
-              <span style={{ fontSize: 10.5, fontWeight: 550, color: color.accentInk, background: color.accentSoft, padding: '1px 6px', borderRadius: 4, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                Policy changed
-              </span>
-            )}
-
-          </div>
-          {/* A fresh install opens on five receipts nobody added, and until
-              this they were indistinguishable from real ones — which also made
-              the "0 of 10 free receipts" beside them look like a bug rather
-              than a deliberate generosity.
-
-              On the ITEM line, not up beside the store name as a chip. Tried
-              that: on a row that also carries POLICY CHANGED the store was
-              crushed to "Cu…" and "Z…" on a 402px phone — two characters of
-              the one word that says whose return this is. Nothing failed;
-              every sweep was green, because a squeezed name does not overflow
-              and does not cover a button.
-
-              And BEFORE the item, not after it. Tried that too: this line
-              truncates from the tail, so at 320px every row read "Kenwood
-              kMix stan…" and the marker vanished on exactly the phone with
-              the least room to explain itself. */}
-          <div style={{ fontSize: 13, color: color.muted, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {receipt.demo && <span>sample · </span>}
-            {/* Before the item for the same reason as "sample": this line
-                truncates from the tail. Until it arrives, the count beside it
-                runs from the order and is the earliest it can be. */}
-            {onItsWay && <span>on its way · </span>}
+          {/*
+           * Titled by the THING, with the shop beneath it.
+           *
+           * The shop led, and a list of four Currys rows read "Currys,
+           * Currys, Currys, Currys" with the one word that told them apart —
+           * the item — cut off on the line below behind "sample ·". What a
+           * person looks for in this list is the thing they bought; the
+           * Watch tab's Coming up list is titled the same way.
+           *
+           * The title keeps a floor (`data-name`, read by the layout sweep):
+           * a squeezed title neither overflows the page nor covers a button,
+           * so nothing else would notice it read "Ke…".
+           */}
+          <span data-name style={{ display: 'block', fontWeight: 600, fontSize: 15.5, letterSpacing: '-0.015em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: MIN_NAME_PX }}>
             {receipt.item}
+          </span>
+          {/*
+           * The shop, and what is true of this receipt besides its deadline.
+           * Everything here is short and leads with what matters most, because
+           * the line truncates from the tail: the sample tag first (a fresh
+           * install opens on five receipts nobody added, and that must never
+           * be lost at 320px), then the shop, then the rest.
+           */}
+          <div style={{ fontSize: 13, color: color.muted, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {receipt.demo && <SampleTag />}
+            {receipt.store}
+            {/* Until it arrives, the count beside it runs from the order and
+                is the earliest it can be. */}
+            {onItsWay && <span> · on its way</span>}
           </div>
+          {/* A line of its own, in words, only where it applies — and words
+              rather than the filled chip that sat beside the name, which
+              took 95px of a 134px title on a small phone. Appended to the
+              shop's line instead, it was the first thing cut: "Zara · on its
+              way · po…" on the seeded list at 390px. */}
+          {policyChanged && <div style={{ fontSize: 12, fontWeight: 500, color: color.accentInk, marginTop: 1 }}>Policy changed</div>}
         </div>
 
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -186,5 +173,28 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
         </div>
       </button>
     </li>
+  );
+}
+
+/**
+ * A receipt nobody bought, said once per row as a small tag rather than as
+ * "sample ·" in front of every line: the samples must read as samples (they
+ * are ours, not yours), and the tag does that without spending the words the
+ * row needs for the item. Its own words are in the row's accessible name
+ * ("(sample)"), so it is hidden from assistive tech here.
+ */
+export function SampleTag() {
+  return (
+    <span
+      data-sample
+      aria-hidden="true"
+      style={{
+        display: 'inline-block', fontSize: 10.5, fontWeight: 600, lineHeight: '15px', letterSpacing: '0.02em',
+        padding: '0 5px', marginRight: 6, verticalAlign: 1, color: color.muted,
+        border: `1px solid ${color.border}`, borderRadius: 4,
+      }}
+    >
+      Sample
+    </span>
   );
 }

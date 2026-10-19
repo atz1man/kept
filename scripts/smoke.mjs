@@ -132,6 +132,21 @@ function report(crash) {
 }
 reportOnCrash(report);
 
+/**
+ * The tab the bar says you are on: every tab marked current, joined, or
+ * '' for no tab lit — which is what the claim pack had. A tab marked current
+ * whose glyph is not drawn solid, or one drawn solid and not marked, is named
+ * with a "?" so the two can never disagree unseen.
+ */
+async function litTabs(p) {
+  return p.evaluate(() =>
+    [...document.querySelectorAll('nav[aria-label="Main"] button')]
+      .map((b) => ({ name: (b.textContent ?? '').trim(), current: b.getAttribute('aria-current') === 'page', solid: b.querySelector('svg[data-glyph="filled"]') !== null }))
+      .filter((t) => t.current || t.solid)
+      .map((t) => (t.current && t.solid ? t.name : `${t.name}?`))
+      .join(', '));
+}
+
 /*
  * A fresh install opens onboarding at its FIRST card.
  *
@@ -473,9 +488,10 @@ for (const cancel of [false, true]) {
     // has ended and its row says so; the headphones' 24 months run into 2027.
     const rows = await bp.evaluate(() => {
       const h = [...document.querySelectorAll('h2')].find((x) => x.textContent.includes('Keeping'));
-      return [...(h?.nextElementSibling?.querySelectorAll('li') ?? [])].map((li) => li.textContent);
+      // The row's name leads with the shop; its text leads with the item.
+      return [...(h?.nextElementSibling?.querySelectorAll('li') ?? [])].map((li) => `${li.querySelector('button')?.getAttribute('aria-label') ?? ''} | ${li.textContent}`);
     });
-    const rowFor = (store) => rows.find((t) => t.startsWith(store)) ?? '';
+    const rowFor = (store) => (rows.find((t) => t.startsWith(`${store}, `)) ?? '').split(' | ')[1] ?? '';
     results['a kept row says how long its guarantee runs'] =
       /cover ended/.test(rowFor('Argos')) && !/covered until/.test(rowFor('Argos')) &&
       /covered until \d+ \w+ 2027/.test(rowFor('Currys'));
@@ -1013,6 +1029,21 @@ for (const cancel of [false, true]) {
     await cp.waitForTimeout(300);
     seen.listed = (await cp.getByRole('button', { name: /Zara, Wool.*refund late/ }).count()) === 1 &&
       (await cp.getByRole('button', { name: /waiting for the refund/ }).count()) === 0;
+    // At the TOP of the list, above every deadline heading, in the list's own
+    // row style. It was the last row on the screen, under Later, so the one
+    // receipt where a shop owed money was the one a person scrolled past.
+    seen.lateOnTop = await cp.evaluate(() => {
+      const heads = [...document.querySelectorAll('main h2')].map((h) => h.textContent ?? '');
+      const at = heads.findIndex((h) => /^Refund late/.test(h));
+      const group = document.querySelector('main [data-late-refunds]');
+      const rows = [...(group?.querySelectorAll('li button') ?? [])];
+      return at >= 0 &&
+        heads.some((h) => /^(Due soon|Later)/.test(h)) &&
+        heads.slice(0, at).every((h) => !/^(May still be open|Window closed|Due soon|Later|Sent back)/.test(h)) &&
+        group?.classList.contains('k-group') === true &&
+        rows.length === 2 && rows.every((b) => /refund late/.test(b.getAttribute('aria-label') ?? '')) &&
+        rows.every((b) => b.querySelector('[data-name]')?.textContent !== 'Zara' && b.querySelector('[data-name]')?.textContent !== 'Currys');
+    });
     const chaseFor = async (row) => {
       await cp.getByRole('button', { name: row }).first().click();
       await cp.waitForTimeout(300);
@@ -1033,6 +1064,8 @@ for (const cancel of [false, true]) {
     seen.online?.panel && /regulation 34/.test(seen.online.letter) && /The tracking reference is JD0002 1234\./.test(seen.online.letter) && seen.online.copied &&
     seen.counter?.panel && /Please make it now, or tell me why/.test(seen.counter.letter) && !/regulation|cancel/i.test(seen.counter.letter);
   results['a late refund is chased in a letter, citing the regulations only where they apply, with the tracking number kept'] = !!ok;
+  results['a late refund is listed at the top of the receipts, above every deadline, in the list’s own rows'] = seen.lateOnTop === true;
+  if (seen.lateOnTop !== true) problems.push(`late refund on top: ${JSON.stringify(seen.lateOnTop)}`);
   if (!ok) problems.push(`refund chase: ${JSON.stringify(seen)?.slice(0, 400)}`);
   await cCtx.close();
 }
@@ -1108,12 +1141,18 @@ for (const cancel of [false, true]) {
  * thing they name, within the same tap — so a browser still counts the file
  * picker as something the person asked for — and only once: coming back to
  * Add later from the tab bar does not open a picker nobody asked for.
+ *
+ * And they are only the ways in that SAVE a tap. "Paste" and "Policies" sat
+ * beside them and were the Add and Watch tabs again, a second control for a
+ * place already one tap away in the bar below.
  */
 {
   const qCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
   const qp = await qCtx.newPage();
   await qp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
   await qp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await qp.waitForTimeout(300);
+  const offered = await qp.getByRole('navigation', { name: 'Quick actions' }).getByRole('button').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')));
   const chooserFrom = async (name) => {
     const chooser = qp.waitForEvent('filechooser', { timeout: 3000 }).catch(() => null);
     await qp.getByRole('button', { name }).click();
@@ -1123,19 +1162,57 @@ for (const cancel of [false, true]) {
   const scan = await chooserFrom('Scan a receipt');
   await qp.getByRole('button', { name: 'Receipts', exact: true }).click();
   const upload = await chooserFrom('Upload a PDF or email');
-  await qp.getByRole('button', { name: 'Receipts', exact: true }).click();
-  await qp.getByRole('button', { name: 'Paste an order email' }).click();
-  await qp.waitForTimeout(200);
-  const pasteFocused = await qp.evaluate(() => document.activeElement?.id === 'paste');
   // Back to Add from the tab bar: no picker this time.
   await qp.getByRole('button', { name: 'Receipts', exact: true }).click();
   const again = qp.waitForEvent('filechooser', { timeout: 1500 }).then(() => true).catch(() => false);
   await qp.getByRole('button', { name: 'Add a receipt' }).click();
   const reopened = await again;
   results['each quick action starts Add doing what it says, once'] =
-    scan === 'add-photo|image/*' && /^add-file\|.*application\/pdf/.test(upload ?? '') && pasteFocused && !reopened;
-  if (!results['each quick action starts Add doing what it says, once']) problems.push(`quick actions: ${JSON.stringify({ scan, upload, pasteFocused, reopened })}`);
+    scan === 'add-photo|image/*' && /^add-file\|.*application\/pdf/.test(upload ?? '') && !reopened;
+  results['the quick actions are only the ways in the tab bar does not already offer'] =
+    JSON.stringify(offered) === JSON.stringify(['Scan a receipt', 'Upload a PDF or email']);
+  if (!results['each quick action starts Add doing what it says, once'] || !results['the quick actions are only the ways in the tab bar does not already offer']) {
+    problems.push(`quick actions: ${JSON.stringify({ offered, scan, upload, reopened })}`);
+  }
   await qCtx.close();
+}
+
+/*
+ * The receipts list is titled by the THING. It led with the shop, so the
+ * samples read "Currys" four times over with the items — the one word that
+ * tells them apart — cut off behind "sample ·" on the line beneath. Each row's
+ * title is now its item, the shop is beneath it, and a sample says so once,
+ * with a tag, rather than in front of every line.
+ */
+{
+  const tCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const tp = await tCtx.newPage();
+  await tp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await tp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await tp.waitForTimeout(400);
+  const stored = await tp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.map((r) => ({ store: r.store, item: r.item, demo: !!r.demo })));
+  const rows = await tp.locator('main ul.k-group li button[aria-label]').evaluateAll((els) => els.map((b) => ({
+    label: b.getAttribute('aria-label') ?? '',
+    title: b.querySelector('[data-name]')?.textContent?.trim() ?? '',
+    tagged: b.querySelector('[data-sample]') !== null,
+  })));
+  const seen = {
+    rows: rows.length,
+    // Every row's title is the item its accessible name carries, never the shop.
+    titledByItem: rows.length >= 5 && rows.every((r) => {
+      const held = stored.find((x) => r.label.startsWith(`${x.store}, ${x.item}`));
+      return !!held && r.title === held.item && r.title !== held.store;
+    }),
+    titlesDiffer: new Set(rows.map((r) => r.title)).size === rows.length,
+    samplesTagged: rows.every((r) => r.tagged === / \(sample\)/.test(r.label)),
+    // In the lists. The next-to-close card above them is one sentence and
+    // keeps its "Sample · " lead, as the hero check below asks of it.
+    noRepeatedPrefix: !(await tp.locator('main ul.k-group').allInnerTexts()).some((t) => /sample ·/i.test(t)),
+  };
+  const ok = seen.titledByItem && seen.titlesDiffer && seen.samplesTagged && seen.noRepeatedPrefix;
+  results['each receipt row is titled by its item, with the shop beneath and a sample tagged once'] = !!ok;
+  if (!ok) problems.push(`row titles: ${JSON.stringify({ ...seen, first: rows[0] })}`);
+  await tCtx.close();
 }
 
 /*
@@ -1726,7 +1803,7 @@ for (const cancel of [false, true]) {
   await xp.waitForTimeout(300);
   const after = await stored();
   seen.onlyMine = after.length === 1 && after[0].id === 'r_mine';
-  seen.listClean = !/sample ·/.test(await xp.locator('main').innerText()) && (await xp.getByRole('button', { name: /^Argos, Desk lamp/ }).count()) === 1;
+  seen.listClean = (await xp.locator('main [data-sample]').count()) === 0 && !/sample ·/.test(await xp.locator('main').innerText()) && (await xp.getByRole('button', { name: /^Argos, Desk lamp/ }).count()) === 1;
   seen.offerGone = (await offer().count()) === 0;
   await xp.reload({ waitUntil: 'networkidle' });
   await xp.waitForTimeout(300);
@@ -2448,6 +2525,7 @@ results['the legal rights section opens and closes, and says which'] =
   (await legalToggle.getAttribute('aria-expanded')) === 'true';
 await page.getByRole('button', { name: 'Edit', exact: true }).click();
 await page.waitForTimeout(300);
+results['the tab bar lights Receipts while a receipt is edited'] = (await litTabs(page)) === 'Receipts';
 const editDeadline = (await page.locator('#e-window-hint').textContent()) ?? '';
 results['both screens name the same deadline for a dispatch-clocked receipt'] =
   !!detailDeadline && editDeadline.includes(detailDeadline);
@@ -2489,6 +2567,10 @@ await page.getByRole('button', { name: /^Zara, / }).click();
 await page.waitForTimeout(300);
 await page.getByRole('button', { name: /^Claim pack/ }).click();
 await page.waitForTimeout(400);
+// The tab bar says where you are: a claim pack is opened from a receipt, so
+// Receipts is lit. It lit nothing here — the bar tested for the list and the
+// receipt and no other screen.
+results['the tab bar lights Receipts on the claim pack, and only Receipts'] = (await litTabs(page)) === 'Receipts';
 {
   const shape = await page.evaluate(() => ({
     h1: document.querySelector('main h1')?.textContent?.trim() ?? '',
@@ -2862,7 +2944,7 @@ results['a delivery date in the paste is read, not asked for'] =
  * return can be made after the shop's window shuts, by goodwill or the
  * faulty-goods route. Same fault as the celebrate card: a claim about timing
  * that nothing checked. And the money-back rows are hand-built rather than a
- * ReceiptRow, so the "sample ·" marker added to the list never reached them —
+ * ReceiptRow, so the sample marker added to the list never reached them —
  * a demo receipt stopped saying what it was the moment it was ticked off, on
  * the list where "which of these were mine" is the question.
  */
@@ -2883,6 +2965,11 @@ results['a delivery date in the paste is read, not asked for'] =
   await donePage.reload({ waitUntil: 'networkidle' });
   await donePage.waitForTimeout(700);
   const inTime = await donePage.locator('main').innerText();
+  // The returned row titled by its item, still carrying the sample tag.
+  const sampleTagged = await donePage.evaluate(() => {
+    const row = [...document.querySelectorAll('#money-back-list li button')].find((b) => /JBL Tune 770NC/.test(b.querySelector('[data-name]')?.textContent ?? ''));
+    return !!row && row.querySelector('[data-sample]') !== null;
+  });
   await donePage.evaluate(eval(markAll(true)));
   await donePage.reload({ waitUntil: 'networkidle' });
   await donePage.waitForTimeout(700);
@@ -2892,7 +2979,7 @@ results['a delivery date in the paste is read, not asked for'] =
     !/Every return made it back in time/.test(late) &&
     // The money is true either way.
     /recovered — not bad/.test(late);
-  results['a sample receipt still says so once it is returned'] = /sample · JBL Tune 770NC/.test(inTime);
+  results['a sample receipt still says so once it is returned'] = /JBL Tune 770NC/.test(inTime) && sampleTagged;
   await doneCtx.close();
 }
 

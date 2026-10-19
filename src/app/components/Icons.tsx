@@ -193,37 +193,73 @@ export function Warning({ stroke: s = color.ink }: { stroke?: string }) {
   );
 }
 
-export function ReceiptGlyph({ size = 18, stroke: s = color.ink }: { size?: number; stroke?: string }) {
+/*
+ * The tab bar's four glyphs come in two weights, the way a phone's own tab
+ * bars draw them: outlined, and FILLED for the tab you are on. Filled by
+ * shape, not by a second colour: the details are holes cut with
+ * `fillRule="evenodd"`, so under forced colours — where every fill and
+ * stroke becomes the one system colour — the current tab is still the solid
+ * one. `data-glyph` names which is drawn, for the a11y sweep.
+ */
+
+export function ReceiptGlyph({ size = 18, stroke: s = color.ink, filled = false }: { size?: number; stroke?: string; filled?: boolean }) {
+  if (filled) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 18 18" aria-hidden="true" data-glyph="filled">
+        <path
+          fillRule="evenodd"
+          fill={s}
+          d="M3.2 1.2h11.6a1 1 0 011 1v14.2l-2.8-1.9-2 1.4-2-1.4-2 1.4-2-1.4-2.8 1.9V2.2a1 1 0 011-1zM6 5.3a.7.7 0 000 1.4h6a.7.7 0 000-1.4H6zm0 3a.7.7 0 000 1.4h6a.7.7 0 000-1.4H6z"
+        />
+      </svg>
+    );
+  }
   return (
-    <svg width={size} height={size} viewBox="0 0 18 18" aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 18 18" aria-hidden="true" data-glyph="outline">
       <path d="M3 2h12v13l-2-1.4L11 15l-2-1.4L7 15l-2-1.4L3 15V2z" fill="none" stroke={s} strokeWidth="1.6" strokeLinejoin="round" />
       <path d="M6 6h6M6 9h6" stroke={s} strokeWidth="1.4" strokeLinecap="round" />
     </svg>
   );
 }
 
-export function BellGlyph({ size = 18, stroke: s = color.ink }: { size?: number; stroke?: string }) {
+export function BellGlyph({ size = 18, stroke: s = color.ink, filled = false }: { size?: number; stroke?: string; filled?: boolean }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 18 18" aria-hidden="true">
-      <path d="M9 2a5 5 0 015 5c0 3.5 1.5 4.5 1.5 4.5h-13S4 10.5 4 7a5 5 0 015-5z" fill="none" stroke={s} strokeWidth="1.6" strokeLinejoin="round" />
+    <svg width={size} height={size} viewBox="0 0 18 18" aria-hidden="true" data-glyph={filled ? 'filled' : 'outline'}>
+      <path d="M9 2a5 5 0 015 5c0 3.5 1.5 4.5 1.5 4.5h-13S4 10.5 4 7a5 5 0 015-5z" fill={filled ? s : 'none'} stroke={s} strokeWidth="1.6" strokeLinejoin="round" />
       <path d="M7.5 14.5a1.6 1.6 0 003 0" fill="none" stroke={s} strokeWidth="1.6" strokeLinecap="round" />
     </svg>
   );
 }
 
-export function GearGlyph({ size = 18, stroke: s = color.ink }: { size?: number; stroke?: string }) {
+export function GearGlyph({ size = 18, stroke: s = color.ink, filled = false }: { size?: number; stroke?: string; filled?: boolean }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 18 18" aria-hidden="true">
-      <circle cx="9" cy="9" r="2.6" fill="none" stroke={s} strokeWidth="1.6" />
+    <svg width={size} height={size} viewBox="0 0 18 18" aria-hidden="true" data-glyph={filled ? 'filled' : 'outline'}>
+      {filled ? (
+        // A solid wheel the spokes join, with the axle cut out of it.
+        <path fillRule="evenodd" fill={s} d="M14.6 9a5.6 5.6 0 11-11.2 0 5.6 5.6 0 0111.2 0zM11.2 9a2.2 2.2 0 10-4.4 0 2.2 2.2 0 004.4 0z" />
+      ) : (
+        <circle cx="9" cy="9" r="2.6" fill="none" stroke={s} strokeWidth="1.6" />
+      )}
       <path d="M9 1.5v2.2M9 14.3v2.2M1.5 9h2.2M14.3 9h2.2M3.7 3.7l1.6 1.6M12.7 12.7l1.6 1.6M14.3 3.7l-1.6 1.6M5.3 12.7l-1.6 1.6" stroke={s} strokeWidth="1.6" strokeLinecap="round" />
     </svg>
   );
 }
 
 /** A plus in an outlined rounded square — the Add tab, drawn like its neighbours. */
-export function PlusGlyph({ size = 18, stroke: s = color.ink }: { size?: number; stroke?: string } = {}) {
+export function PlusGlyph({ size = 18, stroke: s = color.ink, filled = false }: { size?: number; stroke?: string; filled?: boolean } = {}) {
+  if (filled) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 18 18" aria-hidden="true" data-glyph="filled">
+        <path
+          fillRule="evenodd"
+          fill={s}
+          d="M6 1.8h6A4.2 4.2 0 0116.2 6v6a4.2 4.2 0 01-4.2 4.2H6A4.2 4.2 0 011.8 12V6A4.2 4.2 0 016 1.8zM8.3 5.3v3h-3v1.4h3v3h1.4v-3h3V8.3h-3v-3H8.3z"
+        />
+      </svg>
+    );
+  }
   return (
-    <svg width={size} height={size} viewBox="0 0 18 18" aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 18 18" aria-hidden="true" data-glyph="outline">
       <rect x="2.5" y="2.5" width="13" height="13" rx="3.5" fill="none" stroke={s} strokeWidth="1.4" />
       <path d="M9 6v6M6 9h6" stroke={s} strokeWidth="1.4" strokeLinecap="round" />
     </svg>
