@@ -104,7 +104,7 @@ export function refundChaseLine(c: RefundChase): string {
 }
 
 /** The letter, or null until the refund is late. */
-export function refundLetter(r: Receipt, today: Date): string | null {
+export function refundLetter(r: Receipt, today: Date, name?: string): string | null {
   const c = refundChase(r, today);
   if (!c || !c.late || !r.sentOn) return null;
   const bought = fmtDateLong(fromISODate(r.purchasedOn));
@@ -139,6 +139,6 @@ export function refundLetter(r: Receipt, today: Date): string | null {
     '',
     `Please reply within ${REPLY_DAYS} days to confirm when the money will reach me.`,
     '',
-    ...signOff(),
+    ...signOff({ name }),
   ].join('\n');
 }

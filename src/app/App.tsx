@@ -30,6 +30,7 @@ import { Watch } from './screens/Watch';
 import { offerOf, quotaFull, useApp } from './state';
 import { useAppStore } from './purchases';
 import { backTarget, screenDepth } from './back';
+import { LetterNameContext, type LetterName } from './letter-name';
 
 export function App() {
   const { state, dispatch, today, saveFailed } = useApp();
@@ -83,6 +84,10 @@ export function App() {
     }
   }, [state.screen, state.embedded]);
   const { screen, settings } = state;
+  const letterName = useMemo<LetterName>(
+    () => ({ name: settings.letterName, setName: (name) => dispatch({ type: 'settings', patch: { letterName: name } }) }),
+    [settings.letterName, dispatch],
+  );
 
   // The web build's library lives only in this browser; ask it to keep it.
   // Not from the landing page's demo frame, which stores nothing.
@@ -407,6 +412,9 @@ export function App() {
       <div className="k-sr" role="status" aria-live="polite">{announced}</div>
 
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      {/* The name letters are signed with, for every letter on every screen
+          (letter-name.ts), and the one place it is changed from one. */}
+      <LetterNameContext.Provider value={letterName}>
       {onboarding && (
         <Onboarding
           step={state.obStep}
@@ -573,6 +581,7 @@ export function App() {
           undoShowing={!!state.justReturned}
         />
       )}
+      </LetterNameContext.Provider>
 
       </main>
 

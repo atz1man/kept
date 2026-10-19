@@ -15,6 +15,7 @@ import { awaitingArrival, countsAsMoney, deadlineIsFloor, derive, makeReceiptId,
 import { mergeBackup, type ImportSummary, type RestoreReport } from '../lib/backup';
 import { windowStartFor } from '../lib/draft';
 import { readReturnRef } from '../lib/refund-chase';
+import { readLetterName } from '../lib/sign-off';
 import { freshState, load, onExternalChange, save, type KeptState, type Settings } from '../lib/storage';
 import { seedUpdates } from '../lib/seed';
 import { quotaFull as quotaFullFor } from '../lib/quota';
@@ -885,8 +886,13 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
        */
       const base = action.backup.receipts.some((r) => !r.demo) ? reducer(state, { type: 'clear-samples' }, today) : state;
       const m = mergeBackup(base.receipts, action.backup.receipts);
+      // The name letters are signed with comes back with the receipts, as
+      // they do: only where this phone has none. See `ImportSummary`.
+      const fromFile = readLetterName(action.backup.letterName);
+      const takeName = !readLetterName(base.settings.letterName) && fromFile !== '';
       return {
         ...base,
+        settings: takeName ? { ...base.settings, letterName: fromFile } : base.settings,
         receipts: m.receipts,
         alertsSent: pruneSent(base.alertsSent, m.receipts),
         selId: null,
@@ -938,6 +944,10 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         // storage.ts for why the held news goes too, and why these two paths
         // must write the same thing.
         updates: seedUpdates(today),
+        // The settings stay, but not the name letters are signed with: that is
+        // who the person is, and erasing everything has to take it. The same
+        // as `erasedFrom` writes to the store.
+        settings: { ...state.settings, letterName: '' },
         justDeleted: null,
         justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null, justSwapped: null,
         restored: null,

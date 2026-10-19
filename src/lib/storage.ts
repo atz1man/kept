@@ -6,6 +6,7 @@ import { chooseSource, holdMirrorWrites, isNative, mirrorWritesHeld, readMirrorW
 import { erasePhotos } from './photos';
 import { readFeed } from './policy-feed';
 import { readReviewAsked, type ReviewAsked } from './review-prompt';
+import { readLetterName } from './sign-off';
 import { seedReceipts, seedUpdates } from './seed';
 import type { PolicyUpdate, Receipt } from './types';
 import { DEFAULT_URGENT_DAYS } from './urgency';
@@ -76,6 +77,14 @@ export interface Settings {
    * own card, either way.
    */
   remindersExplained: boolean;
+  /**
+   * The name the letters to shops are signed with, or '' when none was given
+   * (lib/sign-off.ts). The one thing here that says who the person is, so it
+   * is kept like everything else, on this phone and nowhere else, and it goes
+   * where the receipts go: into the backup file they export, and out with
+   * Erase everything, which keeps the other settings (`erasedFrom`).
+   */
+  letterName: string;
 }
 
 export interface KeptState {
@@ -125,6 +134,7 @@ export const DEFAULT_SETTINGS: Settings = {
   deadlineAlerts: true,
   policyWatch: true,
   remindersExplained: false,
+  letterName: '',
 };
 
 export function freshState(today: Date): KeptState {
@@ -205,6 +215,7 @@ function readSettings(raw: unknown): Settings {
     deadlineAlerts: bool(s.deadlineAlerts, DEFAULT_SETTINGS.deadlineAlerts),
     policyWatch: bool(s.policyWatch, DEFAULT_SETTINGS.policyWatch),
     remindersExplained: bool(s.remindersExplained, DEFAULT_SETTINGS.remindersExplained),
+    letterName: readLetterName(s.letterName),
   };
 }
 
@@ -588,7 +599,8 @@ export function wipe(): void {
    * seen — because that is what the reducer's `wipe` does a moment later, and
    * two paths writing different post-erase states would be the same fact
    * disagreeing with itself. The receipts, the record of having spoken about
-   * them, and the held policy news go; see `erasedFrom` for the last.
+   * them, the name letters are signed with, and the held policy news go; see
+   * `erasedFrom` for the last two.
    */
   const erased = erasedFrom(existing);
   // "Erase everything" includes what a bad launch set aside: it is the same
@@ -623,6 +635,15 @@ function erasedFrom(raw: string | null): string {
     const parsed: unknown = JSON.parse(raw ?? '');
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
       const { updates: _news, ...rest } = parsed as Record<string, unknown>;
+      // The settings stay, as the reducer's `wipe` keeps them, all but the
+      // name letters are signed with: that is the person, not a preference,
+      // and an erase that left it would leave the one thing that says whose
+      // phone this was.
+      const settings = rest.settings;
+      if (settings && typeof settings === 'object' && !Array.isArray(settings)) {
+        const { letterName: _name, ...kept } = settings as Record<string, unknown>;
+        rest.settings = kept;
+      }
       return JSON.stringify({ ...rest, receipts: [], alertsSent: [], alertsLate: {} });
     }
   } catch {

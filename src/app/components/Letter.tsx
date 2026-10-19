@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { color, radius } from '../../tokens';
 import { photoAsFile, readPhoto } from '../../lib/photos';
-import { hasBlanks } from '../../lib/sign-off';
+import { MAX_LETTER_NAME, readLetterName, signedAs, YOUR_ADDRESS, YOUR_NAME } from '../../lib/sign-off';
+import { useLetterName } from '../letter-name';
+import { inputStyle } from './Field';
 import type { Receipt } from '../../lib/types';
 import { Pressable } from './Pressable';
 
@@ -14,7 +16,7 @@ import { Pressable } from './Pressable';
  * from it — including the receipt's photo, which shops ask for as proof of
  * purchase in both cases.
  */
-export function Letter({ letter, title, receipt, name = 'letter' }: {
+export function Letter({ letter: drafted, title, receipt, name = 'letter' }: {
   letter: string;
   title: string;
   receipt: Receipt;
@@ -27,6 +29,22 @@ export function Letter({ letter, title, receipt, name = 'letter' }: {
    */
   name?: string;
 }) {
+  /*
+   * Signed here, with the name kept in the settings, so every letter is signed
+   * the same way whichever screen drafted it. With no name, the placeholder
+   * stays, and the field under the letter asks for one — right here, because
+   * a person halfway through a letter should not have to leave it for
+   * Settings. Asked for once: the field stays on screen for this visit, so
+   * the name can be typed and corrected without it vanishing at the first
+   * letter, and is not offered again once there is a name.
+   */
+  const { name: signer, setName } = useLetterName();
+  const letter = signedAs(drafted, signer);
+  const [asking] = useState(() => !readLetterName(signer));
+  const askName = asking && !!setName;
+  const fieldId = `sign-${name.replace(/\W+/g, '-')}`;
+  const nameBlank = letter.includes(YOUR_NAME);
+  const addressBlank = letter.includes(YOUR_ADDRESS);
   const [said, setSaid] = useState<'no' | 'copied' | 'shared' | 'failed'>('no');
   const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
   // A letter that changed is a letter not yet copied.
@@ -87,9 +105,37 @@ export function Letter({ letter, title, receipt, name = 'letter' }: {
       >
         {letter}
       </div>
-      {hasBlanks(letter) && (
+      {askName && (
+        <div style={{ marginTop: 10 }}>
+          {/* "Sign it as" on the first letter. A second letter on the same
+              screen (the final rejection, above the first) names itself, so
+              the two fields are not two boxes with one name; neither name
+              contains "The letter", which the letter's own box is found by. */}
+          <label htmlFor={fieldId} style={{ display: 'block', fontSize: 13, fontWeight: 600, color: color.bodyStrong, marginBottom: 6 }}>
+            {name === 'letter' ? 'Sign it as…' : `Sign the ${name.replace(/ letter$/, '')} as…`}
+          </label>
+          <input
+            id={fieldId}
+            type="text"
+            autoComplete="name"
+            autoCapitalize="words"
+            maxLength={MAX_LETTER_NAME}
+            placeholder="Your name"
+            value={signer}
+            onChange={(e) => setName?.(e.target.value)}
+            aria-describedby={`${fieldId}-hint`}
+            style={inputStyle(false)}
+          />
+          <div id={`${fieldId}-hint`} style={{ fontSize: 12.5, marginTop: 5, color: color.muted }}>
+            Saved on this phone and used for every letter. You can change it in Settings.
+          </div>
+        </div>
+      )}
+      {((nameBlank && !askName) || addressBlank) && (
         <div style={{ fontSize: 12.5, marginTop: 6, color: color.muted }}>
-          Put your name where the letter says [Your name]{letter.includes('[Your address]') ? ', and your address under it,' : ''} before you send it.
+          {nameBlank && !askName
+            ? `Put your name where the letter says [Your name]${addressBlank ? ', and your address under it,' : ''} before you send it.`
+            : 'Put your address under your name before you send it.'}
         </div>
       )}
 

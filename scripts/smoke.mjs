@@ -690,6 +690,71 @@ for (const cancel of [false, true]) {
 }
 
 /*
+ * The letters are signed with the person's name. They ended "[Your name]",
+ * with a note asking for it to be changed before sending, and a letter copied
+ * in a hurry went to the shop signed that way. The name is given once — in
+ * Settings, or in the field under a letter that still has the blank — kept in
+ * the settings on this phone, and every letter ends with it.
+ */
+{
+  const nCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const np = await nCtx.newPage();
+  await np.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await np.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await np.waitForTimeout(300);
+  const stored = () => np.evaluate(() => JSON.parse(localStorage.getItem('kept.v1') ?? '{}').settings?.letterName ?? null);
+  const faultLetterText = async () => {
+    await np.getByRole('button', { name: 'Receipts', exact: true }).click();
+    await np.waitForTimeout(300);
+    await np.getByRole('button', { name: /Currys, JBL/ }).first().click();
+    await np.waitForTimeout(300);
+    await np.getByRole('button', { name: 'Something wrong with it?' }).click();
+    await np.waitForTimeout(200);
+    return (await np.getByLabel('The letter', { exact: true }).innerText().catch(() => '')).trimEnd();
+  };
+  const seen = {};
+
+  // In the letter itself, before any name: the field is there, and fills it in.
+  const blank = await faultLetterText();
+  seen.blankFirst = blank.endsWith('[Your name]');
+  const field = np.getByLabel('Sign it as…', { exact: true });
+  seen.asked = (await field.count()) === 1;
+  if (seen.asked) {
+    await field.fill('Sam Jones');
+    await np.waitForTimeout(200);
+    const signed = (await np.getByLabel('The letter', { exact: true }).innerText().catch(() => '')).trimEnd();
+    seen.signedInline = signed.endsWith('Yours faithfully,\n\nSam Jones') && !signed.includes('[Your name]');
+    seen.storedInline = (await stored()) === 'Sam Jones';
+  }
+  await np.getByRole('button', { name: 'Back', exact: true }).click();
+  await np.waitForTimeout(300);
+
+  // In Settings: changed there, and the letter follows, with nothing left to ask.
+  await np.getByRole('button', { name: 'Settings', exact: true }).click();
+  await np.waitForTimeout(300);
+  const setting = np.getByLabel('Your name (for letters)', { exact: true });
+  seen.settingShows = (await setting.inputValue().catch(() => null)) === 'Sam Jones';
+  // Filled only where it exists, so a build without it reads as this check failing, not the run stopping.
+  if ((await setting.count()) === 1) await setting.fill('Jane Smith');
+  await np.waitForTimeout(200);
+  seen.storedSetting = (await stored()) === 'Jane Smith';
+  const letter = await faultLetterText();
+  seen.ends = letter.endsWith('Jane Smith');
+  seen.noPlaceholder = !letter.includes('[Your name]');
+  seen.noField = (await np.getByLabel('Sign it as…', { exact: true }).count()) === 0;
+  seen.noNote = !(await np.locator('[data-fault-panel]').innerText()).includes('Put your name where');
+
+  // And after a reload: it was kept, not only held on screen.
+  await np.reload({ waitUntil: 'networkidle' });
+  await np.waitForTimeout(300);
+  seen.reloaded = (await faultLetterText()).endsWith('Jane Smith');
+
+  results['letters are signed with the name given, in Settings or under the letter, and kept'] = Object.values(seen).length === 11 && Object.values(seen).every(Boolean);
+  if (!results['letters are signed with the name given, in Settings or under the letter, and kept']) problems.push(`letter name: ${JSON.stringify(seen)}`);
+  await nCtx.close();
+}
+
+/*
  * A return can be taken back where it was made. The swipe that marks one
  * fires on a row you might have meant to open; delete had an undo and this
  * did not. Returned from its screen, celebrated, then undone from the bar:
