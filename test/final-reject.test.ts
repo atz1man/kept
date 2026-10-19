@@ -29,7 +29,7 @@ describe('the final right to reject, after a repair that did not work', () => {
   it('names section 24(5), the day the fault was reported, and asks for a refund', () => {
     const letter = finalRejectLetter(faulty(60, { orderRef: 'CU-9' }), TODAY, 'It still trips the fuse')!;
     expect(letter.split('\n').slice(0, 4)).toEqual(['Dear Currys,', '', 'Final right to reject: Kettle', 'Order number: CU-9']);
-    expect(letter).toContain(`I wrote to you about a fault on ${fmtDateLong(addDays(TODAY, -46))}, and the goods were repaired or replaced, but the fault has not been put right. The problem now: It still trips the fuse.`);
+    expect(letter).toContain(`I wrote to you about a fault on ${fmtDateLong(addDays(TODAY, -46))}, and the goods were repaired or replaced, but the fault has not been put right. It still trips the fuse.`);
     expect(letter).toContain('section 24(5)');
     expect(letter).toContain('I am exercising my final right to reject them, and I am asking for a refund.');
   });

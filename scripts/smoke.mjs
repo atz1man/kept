@@ -663,7 +663,7 @@ for (const cancel of [false, true]) {
   const old = await letterFor(/IKEA, MALM/, '');
   results['something wrong: a new purchase is rejected for a refund, in a letter carrying their words'] =
     !!fresh && /reject it for a full refund/.test(fresh.panel) && /section 22/.test(fresh.letter) &&
-    /The problem: The left ear cup crackles\./.test(fresh.letter) && !/section 23/.test(fresh.letter) &&
+    /It has developed a fault\. The left ear cup crackles\./.test(fresh.letter) && !/section 23/.test(fresh.letter) &&
     fresh.copied === fresh.letter && /Copied ✓/.test(fresh.said);
   if (!results['something wrong: a new purchase is rejected for a refund, in a letter carrying their words']) problems.push(`fault fresh: ${JSON.stringify(fresh)?.slice(0, 300)}`);
   results['something wrong: an older one asks for a repair, and claims no presumption it has lost'] =
@@ -1604,17 +1604,21 @@ for (const cancel of [false, true]) {
   await wp.waitForTimeout(300);
   const rows = wp.getByRole('button', { name: /: Last day to return it\./ });
   const labels = await rows.evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')));
+  // Each row is titled by the thing, as Home's list is: rows titled by the
+  // event read "Last day to return it" four times over with the item cut off.
+  const titles = await wp.locator('[data-coming-title]').allTextContents();
   const seen = {
     listed: labels.length >= 3,
     soonestFirst: /in 2 days: .*Currys, JBL/.test(labels[0] ?? ''),
+    titledByItem: titles.length >= 3 && titles[0].startsWith('JBL') && new Set(titles).size === titles.length,
   };
   if (seen.listed) {
     await rows.first().click();
     await wp.waitForTimeout(300);
     seen.opens = (await wp.getByRole('heading', { level: 1, name: 'Currys' }).count()) === 1;
   }
-  const ok = seen.listed && seen.soonestFirst && seen.opens;
-  results['the Watch tab opens on what is coming up, soonest first, and each row opens its receipt'] = !!ok;
+  const ok = seen.listed && seen.soonestFirst && seen.titledByItem && seen.opens;
+  results['the Watch tab opens on what is coming up, soonest first, each row titled by its item, and each row opens its receipt'] = !!ok;
   if (!ok) problems.push(`coming up: ${JSON.stringify({ ...seen, first: labels[0] })}`);
   await wCtx.close();
 }
@@ -2031,7 +2035,7 @@ for (const cancel of [false, true]) {
   await fp.getByLabel(/what’s wrong with it now/i).fill('Still trips it', { timeout: 3000 }).catch(() => {});
   await fp.waitForTimeout(200);
   const text = (await fp.locator('[data-final-reject]').innerText().catch(() => '')) ?? '';
-  seen.letter = /Final right to reject: Kettle/.test(text) && /section 24\(5\)/.test(text) && /The problem now: Still trips it\./.test(text) && /section 24\(10\)/.test(text);
+  seen.letter = /Final right to reject: Kettle/.test(text) && /section 24\(5\)/.test(text) && /has not been put right\. Still trips it\./.test(text) && /section 24\(10\)/.test(text);
   /*
    * Both letters are on screen now, and each is found by its own name: two
    * boxes called "The letter" and two buttons called "Copy the letter" left a
@@ -2277,7 +2281,7 @@ for (const cancel of [false, true]) {
   const rest = rows.find((r) => r.id === 'r_basket');
   const part = rows.find((r) => r.splitFrom === 'r_basket');
   seen.split = rest?.amount === 3500 && part?.amount === 2500 && part?.item === 'Hairdryer' && part?.purchasedOn === rest?.purchasedOn && part?.warranty?.months === 24;
-  seen.partOpen = /Split out of the Boots receipt for Shopping\./.test((await sp.locator('[data-split-part]').innerText().catch(() => '')) ?? '');
+  seen.partOpen = /Split from your Boots receipt for Shopping\./.test((await sp.locator('[data-split-part]').innerText().catch(() => '')) ?? '');
   // The part goes back on its own; the rest stays in hand with its guarantee.
   await sp.getByRole('button', { name: 'Got my money back' }).click({ timeout: 3000 }).catch(() => {});
   await sp.waitForTimeout(400);

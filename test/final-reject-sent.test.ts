@@ -143,7 +143,7 @@ describe('the final rejection, in the claim pack', () => {
     expect(letters.map((l) => [l.title, toISODate(l.sentOn)])).toEqual([['Fault letter', iso(-190)], ['Final rejection letter', iso(-100)]]);
     expect(letters[1].text).toBe(finalRejectLetter(r, addDays(TODAY, -100), 'Still trips it'));
     expect(letters[1].text).toContain('section 24(10)');
-    expect(letters[1].text).toContain('The problem now: Still trips it.');
+    expect(letters[1].text).toContain('has not been put right. Still trips it.');
     expect(claimPackText(claimPack(r, TODAY))).toContain(`Final rejection letter, sent ${fmtDateLong(addDays(TODAY, -100))}`);
   });
 });
