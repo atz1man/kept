@@ -64,8 +64,11 @@ describe('what the Add screen teaches about sharing', () => {
   it('sends someone in the iOS app to the paste box instead', () => {
     const route = shareRoute(true);
     expect(route.body).toMatch(/paste/i);
-    // And says why, rather than leaving a capability quietly missing.
-    expect(route.body).toMatch(/share extension/i);
+    // And says why, rather than leaving a capability quietly missing —
+    // without calling the released app unfinished: the old line said Quids In
+    // "needs a share extension this build does not have yet".
+    expect(route.body).toMatch(/Mail can’t/);
+    expect(route.body).not.toMatch(/\bbuild\b|\byet\b|share extension/i);
   });
 
   it('names the platform the share sheet route works on, rather than guessing', () => {

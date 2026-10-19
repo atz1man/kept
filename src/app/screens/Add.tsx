@@ -7,7 +7,8 @@ import { SAVE_LABEL, saveBlock } from '../../lib/save-block';
 import { addSubtitle, boxSource, readScan, scanFailure, type Misread, type UnsureWord } from '../../lib/receipt-scan';
 import { checkCount, checkWords, toCheck } from '../../lib/confidence';
 import { arrivalProblem, MAX_WINDOW_DAYS, purchaseProblem, readAmount, windowStartFor } from '../../lib/draft';
-import { makeReceiptId } from '../../lib/receipts';
+import { deadlineIsFloor, makeReceiptId } from '../../lib/receipts';
+import { passedDeadline } from '../../lib/passed-deadline';
 import { findStore, policyFor, windowFor } from '../../lib/stores';
 import { windowInForceFor } from '../../lib/policy-feed';
 import type { Offer } from '../../lib/pricing';
@@ -542,7 +543,9 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
     setSaving(false);
   };
 
-  const deadline = parsed ? fmtDateNear(addDays(fromISODate(windowStart ?? purchasedOn), effectiveWindow), today) : '';
+  const deadlineDay = addDays(fromISODate(windowStart ?? purchasedOn), effectiveWindow);
+  const deadline = parsed ? fmtDateNear(deadlineDay, today) : '';
+  const deadlineGone = parsed ? passedDeadline(deadlineDay, today, deadlineIsFloor({ store: savedStore, distance: online, windowStartsOn: windowStart })) : null;
 
   /*
    * The ways in, in the order this phone is likeliest to use them. In the
@@ -899,7 +902,12 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
           ) : (
             <Row label="Return window" value={`${effectiveWindow} days`} mono={false} />
           )}
-          <Row label="Deadline" value={deadline} mono accent />
+          <Row label="Deadline" value={deadline} mono accent={!deadlineGone} />
+          {deadlineGone && (
+            <div data-deadline-gone style={{ fontSize: 12.5, fontWeight: 600, color: color.danger, marginTop: 4, textAlign: 'right' }}>
+              {deadlineGone}
+            </div>
+          )}
           {/* A camera misreads a total; a paste can carry two shops' names.
               What was read is offered back as fields, holding the values it
               read, rather than left as facts that can only be fixed after
