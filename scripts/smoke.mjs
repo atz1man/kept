@@ -663,7 +663,7 @@ for (const cancel of [false, true]) {
   const old = await letterFor(/IKEA, MALM/, '');
   results['something wrong: a new purchase is rejected for a refund, in a letter carrying their words'] =
     !!fresh && /reject it for a full refund/.test(fresh.panel) && /section 22/.test(fresh.letter) &&
-    /The problem: The left ear cup crackles\./.test(fresh.letter) && !/section 23/.test(fresh.letter) &&
+    /It has developed a fault\. The left ear cup crackles\./.test(fresh.letter) && !/section 23/.test(fresh.letter) &&
     fresh.copied === fresh.letter && /Copied ✓/.test(fresh.said);
   if (!results['something wrong: a new purchase is rejected for a refund, in a letter carrying their words']) problems.push(`fault fresh: ${JSON.stringify(fresh)?.slice(0, 300)}`);
   results['something wrong: an older one asks for a repair, and claims no presumption it has lost'] =
@@ -2035,7 +2035,7 @@ for (const cancel of [false, true]) {
   await fp.getByLabel(/what’s wrong with it now/i).fill('Still trips it', { timeout: 3000 }).catch(() => {});
   await fp.waitForTimeout(200);
   const text = (await fp.locator('[data-final-reject]').innerText().catch(() => '')) ?? '';
-  seen.letter = /Final right to reject: Kettle/.test(text) && /section 24\(5\)/.test(text) && /The problem now: Still trips it\./.test(text) && /section 24\(10\)/.test(text);
+  seen.letter = /Final right to reject: Kettle/.test(text) && /section 24\(5\)/.test(text) && /has not been put right\. Still trips it\./.test(text) && /section 24\(10\)/.test(text);
   const ok = Object.values(seen).every(Boolean);
   results['after a fault letter, the final right to reject is one tap away'] = ok;
   if (!ok) problems.push(`final reject: ${JSON.stringify({ ...seen, text: text.slice(0, 160) })}`);
@@ -2252,7 +2252,7 @@ for (const cancel of [false, true]) {
   const rest = rows.find((r) => r.id === 'r_basket');
   const part = rows.find((r) => r.splitFrom === 'r_basket');
   seen.split = rest?.amount === 3500 && part?.amount === 2500 && part?.item === 'Hairdryer' && part?.purchasedOn === rest?.purchasedOn && part?.warranty?.months === 24;
-  seen.partOpen = /Split out of the Boots receipt for Shopping\./.test((await sp.locator('[data-split-part]').innerText().catch(() => '')) ?? '');
+  seen.partOpen = /Split from your Boots receipt for Shopping\./.test((await sp.locator('[data-split-part]').innerText().catch(() => '')) ?? '');
   // The part goes back on its own; the rest stays in hand with its guarantee.
   await sp.getByRole('button', { name: 'Got my money back' }).click({ timeout: 3000 }).catch(() => {});
   await sp.waitForTimeout(400);

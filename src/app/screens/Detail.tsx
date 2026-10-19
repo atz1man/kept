@@ -582,7 +582,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
       {/* A part split out of a basket says where it came from, and can go back in. */}
       {splitFromReceipt && onUnsplit && (
         <div data-split-part style={{ marginTop: 14, fontSize: 13.5, lineHeight: 1.5, color: color.body, textAlign: 'center' }}>
-          Split out of the {splitFromReceipt.store} receipt for {splitFromReceipt.item}.{' '}
+          Split from your {splitFromReceipt.store} receipt for {splitFromReceipt.item}.{' '}
           <Pressable
             onClick={onUnsplit}
             style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', fontSize: 13.5, fontWeight: 600, textDecoration: 'underline' }}

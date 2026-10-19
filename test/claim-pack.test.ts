@@ -132,7 +132,7 @@ describe('the letters', () => {
     expect(letter.title).toBe('Fault letter');
     expect(letter.text).toMatch(/I am rejecting the goods/);
     expect(letter.text).not.toMatch(/repair or replace/);
-    expect(letter.text).toMatch(/The problem: It leaks\./);
+    expect(letter.text).toMatch(/It has developed a fault\. It leaks\./);
   });
 
   it('include the cancellation notice, dated, and nothing that was never recorded as sent', () => {

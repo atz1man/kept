@@ -59,6 +59,19 @@ function handedOver(r: Receipt): { from: Date; hedged: boolean } {
   return { from: fromISODate(r.arrivedOn ?? r.purchasedOn), hedged: r.distance && r.arrivedOn === undefined };
 }
 
+/**
+ * What the person typed about the fault, as a sentence of its own in their
+ * words. It was introduced with "The problem: …", which put whatever they
+ * typed after a colon — "The problem: It leaks", a capital after a colon,
+ * which is not how British English writes it, while lowercasing their text
+ * would turn "Samsung" into "samsung". Standing alone it needs neither: the
+ * first letter capitalised, a full stop if they did not end with one.
+ */
+export function asSentence(text: string): string {
+  const t = text.charAt(0).toUpperCase() + text.slice(1);
+  return /[.!?]$/.test(t) ? t : `${t}.`;
+}
+
 export function faultAdvice(r: Receipt, today: Date): FaultAdvice {
   const { from, hedged } = handedOver(r);
   const rejectEnds = addDays(from, REJECT_DAYS);
@@ -127,7 +140,7 @@ export function faultLetter(r: Receipt, today: Date, whatsWrong: string): string
     // Quoted where it is known: the first thing the shop will look it up by.
     ...(r.orderRef ? [`Order number: ${r.orderRef}`] : []),
     '',
-    `On ${bought} I bought “${r.item}” from you for ${money(r.amount)}${arrived}. ${problem ? `The problem: ${problem}${/[.!?]$/.test(problem) ? '' : '.'}` : 'It has developed a fault.'}`,
+    `On ${bought} I bought “${r.item}” from you for ${money(r.amount)}${arrived}. It has developed a fault.${problem ? ` ${asSentence(problem)}` : ''}`,
     '',
     'Under the Consumer Rights Act 2015, goods must be of satisfactory quality, fit for purpose and as described (sections 9 to 11). These goods are not.',
     '',
@@ -176,7 +189,7 @@ export function finalRejectLetter(r: Receipt, today: Date, whatsWrong: string): 
     `Final right to reject: ${r.item}`,
     ...(r.orderRef ? [`Order number: ${r.orderRef}`] : []),
     '',
-    `On ${bought} I bought “${r.item}” from you for ${money(r.amount)}${arrived}. I wrote to you about a fault on ${reported}, and the goods were repaired or replaced, but the fault has not been put right.${problem ? ` The problem now: ${problem}${/[.!?]$/.test(problem) ? '' : '.'}` : ''}`,
+    `On ${bought} I bought “${r.item}” from you for ${money(r.amount)}${arrived}. I wrote to you about a fault on ${reported}, and the goods were repaired or replaced, but the fault has not been put right.${problem ? ` ${asSentence(problem)}` : ''}`,
     '',
     'Under the Consumer Rights Act 2015, section 24(5), as a repair or replacement has not put the goods right, I am exercising my final right to reject them, and I am asking for a refund.',
     ...(noDeduction

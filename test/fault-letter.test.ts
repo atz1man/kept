@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { addDays, addMonths, toISODate } from '../src/lib/dates';
-import { CLAIM_YEARS, REPLY_DAYS, faultAdvice, faultLetter } from '../src/lib/fault-letter';
+import { CLAIM_YEARS, REPLY_DAYS, asSentence, faultAdvice, faultLetter } from '../src/lib/fault-letter';
 import { PRESUMED_FAULT_MONTHS, REJECT_DAYS } from '../src/lib/legal';
 import { toPence } from '../src/lib/money';
 import type { Receipt } from '../src/lib/types';
@@ -85,7 +85,7 @@ describe('the letter', () => {
     const letter = faultLetter(counter(addDays(TODAY, -5)), TODAY, 'It leaks from the door seal')!;
     expect(letter).toMatch(/^Dear Currys,/);
     expect(letter).toContain('I bought “Bosch dishwasher” from you for £429.00');
-    expect(letter).toContain('The problem: It leaks from the door seal.');
+    expect(letter).toContain('It has developed a fault. It leaks from the door seal.');
     expect(letter).toContain('short-term right to reject (section 22)');
     expect(letter).toContain('full refund');
     expect(letter).not.toContain('section 23');
@@ -128,7 +128,19 @@ describe('the letter', () => {
 
   it('takes the fault as the person wrote it, tidied to one line and one full stop', () => {
     const letter = faultLetter(counter(addDays(TODAY, -5)), TODAY, '  Screen went black\n after a week!  ')!;
-    expect(letter).toContain('The problem: Screen went black after a week!\n');
+    expect(letter).toContain('It has developed a fault. Screen went black after a week!\n');
+  });
+
+  it('sets the fault down as a sentence of its own, not after a colon', () => {
+    // "The problem: It leaks" put a capital after a colon. Standing alone,
+    // what they typed takes a capital and a full stop and nothing else — their
+    // own capitals, a brand name among them, are left as they wrote them.
+    const lower = faultLetter(counter(addDays(TODAY, -5)), TODAY, 'leaks from the base')!;
+    expect(lower).toContain('It has developed a fault. Leaks from the base.\n');
+    expect(lower).not.toContain('The problem');
+    const brand = faultLetter(counter(addDays(TODAY, -5)), TODAY, 'the Samsung app will not pair')!;
+    expect(brand).toContain('The Samsung app will not pair.');
+    expect(asSentence('done already.')).toBe('Done already.');
   });
 
   it('asks for a reply in the days it says', () => {
