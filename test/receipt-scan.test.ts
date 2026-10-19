@@ -484,7 +484,7 @@ describe('the add screen says where the text in its box came from', () => {
      * from your photo". The card's label and the header now take one answer.
      */
     const add = readFileSync(join(__dirname, '..', 'src', 'app', 'screens', 'Add.tsx'), 'utf8');
-    expect(add).toContain('{addSubtitle(source, scanFirst)}');
+    expect(add).toContain("{addSubtitle(collapsed ? source : 'paste', scanFirst)}");
     expect(add).toContain('const source = boxSource(text, scannedText, readFrom);');
     expect(add).not.toContain(addSubtitle('paste'));
   });

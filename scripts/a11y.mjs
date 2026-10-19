@@ -264,7 +264,9 @@ await audit(page, 'add receipt', findings);
 
 // The parser names no shop rather than guessing one, so the add screen asks.
 // That field, its hint, and the hint's second wording once a known shop is
-// typed are three things nothing else on any screen renders.
+// typed are three things nothing else on any screen renders. Each read starts
+// from the ways in, which the card stands in for until Start again.
+await page.getByRole('button', { name: 'Start again' }).click();
 await page.fill('#paste', 'Your Vinted order · walking boots · Total £40.00 · 20 Aug 2026');
 await page.getByRole('button', { name: 'Read it' }).click();
 await page.waitForTimeout(400);
@@ -279,6 +281,7 @@ await page.waitForTimeout(300);
 await audit(page, 'add receipt · correcting', findings);
 // Typed in from nothing, with a window refused: the blank card, the
 // disabled save, and the window's refusal exist only here.
+await page.getByRole('button', { name: 'Start again' }).click();
 await page.getByRole('button', { name: 'Type it in yourself' }).focus();
 await page.keyboard.press('Enter');
 await page.waitForTimeout(300);
@@ -288,6 +291,9 @@ const typedInFocus = await page.evaluate(() => document.activeElement?.id ?? '')
 await page.fill('#add-window', '0');
 await page.waitForTimeout(200);
 await audit(page, 'add receipt · typed in', findings);
+await page.getByRole('button', { name: 'Start again' }).click();
+await page.waitForTimeout(200);
+await audit(page, 'add receipt · started again', findings);
 await page.fill('#paste', 'Your Apple order · Total £129.00 · 25 Aug');
 await page.getByRole('button', { name: 'Read it' }).click();
 await page.waitForTimeout(400);

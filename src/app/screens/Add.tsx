@@ -59,6 +59,16 @@ const wayInChevron = { fontSize: 22, lineHeight: 1, color: color.muted, flexShri
 const wayInFirst = { background: color.accent, color: color.white, padding: '17px 16px', fontSize: 16.5, boxShadow: shadow.raised } as const;
 const wayInFirstIcon = { ...wayInIcon, background: color.onHeroGlass } as const;
 
+/*
+ * The tab bar’s height above the home indicator (62px, measured), which
+ * the save bar rides on, and the save bar's own. The scroller's scroll-padding
+ * grows by the second while the bar is there, so a field focused near the
+ * bottom is scrolled clear of both bars rather than behind the one this
+ * screen added.
+ */
+const TAB_BAR_PX = 62;
+const SAVE_BAR_PX = 72;
+
 /** A pencil, for typing a receipt in by hand. */
 function PencilGlyph() {
   return (
@@ -250,6 +260,48 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
     setWindowEdited(false);
     setCorrecting(true);
   };
+
+  /*
+   * Once something is on the card, the ways in step aside. They used to stay
+   * round it — the camera above, the paste box, the file and type-in rows and
+   * the share note below — so a read ended in a long scroll with the card
+   * somewhere in the middle and Save under the fold, and nothing said which of
+   * the dozen things on screen was next. The card is the next thing, so it is
+   * the only thing; "Start again" puts the ways back.
+   */
+  const collapsed = parsed !== null;
+  const scroller = useRef<HTMLDivElement>(null);
+  const wasCollapsed = useRef(collapsed);
+
+  /**
+   * Back to the ways in, the card gone. The box keeps what it held, as it
+   * always has after a read: a scan's text is there to be put right and read
+   * again, which is also why the photo stays on offer until that text changes.
+   */
+  const startAgain = () => {
+    setParsed(null);
+    setError(false);
+    setTypedIn(false);
+    setCorrecting(false);
+  };
+
+  /*
+   * The control pressed to get here has just gone — with the ways in, or with
+   * the card — and focus went with it. The card's own label takes it after a
+   * read (a typed-in card has already put it in "What is it?"), so a screen
+   * reader hears where the findings came from. Start again hands it to the
+   * paste box on the web, and to the heading on a phone, where focusing the
+   * box would put the keyboard over the camera button. The screen goes back
+   * to its top either way, which is where the card or the first way in is.
+   */
+  useEffect(() => {
+    if (wasCollapsed.current === collapsed) return;
+    wasCollapsed.current = collapsed;
+    if (scroller.current) scroller.current.scrollTop = 0;
+    if (document.activeElement !== document.body && document.activeElement !== null) return;
+    const target = collapsed ? 'add-found' : isNative() ? null : 'paste';
+    (target ? document.getElementById(target) : document.querySelector<HTMLElement>('main h1'))?.focus({ preventScroll: true });
+  }, [collapsed]);
 
   /**
    * Read a photo of a till receipt into the paste box, then read that as a
@@ -554,8 +606,8 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
    * the camera was the second thing offered, below an "or". Walked as a
    * shopper at a till, the first thing to do was scroll. On the web the
    * receipt is usually an order email in another tab, so paste stays first
-   * there. The card a read produces sits straight under whichever way came
-   * first, so the result lands where the person is looking.
+   * there. Once something is read the ways all step aside and the card
+   * takes their place under the heading (see `collapsed`).
    */
   const scanFirst = isNative();
   const pasteWay = (
@@ -594,23 +646,6 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
   );
   const scanWay = (
     <>
-          {/* Opens the camera on a phone, the file picker elsewhere. */}
-          <input
-            ref={photoInput}
-            id="add-photo"
-            type="file"
-            accept="image/*"
-            capture="environment"
-            hidden
-            aria-hidden="true"
-            tabIndex={-1}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              // Cleared so choosing the same photo again still fires.
-              e.target.value = '';
-              if (f) void scanPhoto(f);
-            }}
-          />
           <Pressable
             className={scanFirst ? 'k-primary' : 'k-row-white'}
             onClick={startScan}
@@ -638,13 +673,59 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
   );
 
   return (
-    <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px', scrollPaddingBottom: 120 }}>
+    /*
+     * The room under the last thing is a spacer at the end rather than the
+     * scroller's own bottom padding, as on the other screens: a sticky box is
+     * held inside the scroller's padding, so with 120px of it the save bar
+     * stopped 120px short of the tab bar and floated mid-card.
+     */
+    <div ref={scroller} className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 0', scrollPaddingBottom: collapsed ? 120 + SAVE_BAR_PX : 120 }}>
       <h1 tabIndex={-1} style={{ fontSize: 24, fontWeight: 600, padding: '10px 2px 4px', margin: 0 }}>Add a receipt</h1>
       <p style={{ fontSize: 13, color: color.muted, padding: '0 2px 14px', margin: 0 }}>
-        {addSubtitle(source, scanFirst)}
+        {/* "Read from your photo — check … below" only while there is a card
+            below to check; after Start again the ways in are back, and the
+            header introduces them. */}
+        {addSubtitle(collapsed ? source : 'paste', scanFirst)}
       </p>
 
-      {scanFirst ? scanWay : pasteWay}
+      {/* Mounted whatever is showing: they are how a way chosen on the home
+          screen starts, and they are never seen. */}
+      {/* Opens the camera on a phone, the file picker elsewhere. */}
+      <input
+        ref={photoInput}
+        id="add-photo"
+        type="file"
+        accept="image/*"
+        capture="environment"
+        hidden
+        aria-hidden="true"
+        tabIndex={-1}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          // Cleared so choosing the same photo again still fires.
+          e.target.value = '';
+          if (f) void scanPhoto(f);
+        }}
+      />
+      {/* The receipt that came as a file: a PDF e-receipt or invoice, an
+          order email saved from the mail app, an order page saved from the
+          browser. The picker shows files on a phone and a computer alike. */}
+      <input
+        ref={fileInput}
+        id="add-file"
+        type="file"
+        accept="application/pdf,.pdf,message/rfc822,.eml,text/html,.html,.htm,text/plain,.txt,image/*"
+        hidden
+        aria-hidden="true"
+        tabIndex={-1}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = '';
+          if (f) void readFile(f);
+        }}
+      />
+
+      {!collapsed && (scanFirst ? scanWay : pasteWay)}
       {error && (
         <div className="k-fade" role="alert" style={{ display: 'flex', gap: 10, background: color.surface, border: `1px solid ${color.dangerBorder}`, borderRadius: 12, padding: '14px 16px', marginTop: 14 }}>
           <Warning stroke={color.danger} />
@@ -679,12 +760,24 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
       )}
 
       {parsed && (
-        <div className="k-fade" style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, padding: 18, marginTop: 16, boxShadow: shadow.raised }}>
-          <div style={{ fontFamily: font.figures, fontSize: 11, letterSpacing: 0, color: color.accentInk, fontWeight: 600 }}>
-            {/* Its own element: where the card's findings came from is one
-                fact, how many of them to check is another. */}
-            <span>{typedIn ? 'Type it in' : source === 'file' ? 'Read from your file' : source === 'photo' ? 'Read from your photo' : 'Found in your paste'}</span>
-            {checkCount(checks) > 0 && <span style={{ color: color.cautionInk }}>{` · ${checkCount(checks)} to check`}</span>}
+        <div className="k-fade" style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, padding: 18, marginTop: quotaFull && offer.kind !== 'none' ? 14 : 4, boxShadow: shadow.raised }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, margin: '-12px 0 -10px' }}>
+            {/* Takes focus when the card arrives, since the control that
+                brought it has gone with the ways in. */}
+            <div id="add-found" tabIndex={-1} style={{ fontFamily: font.figures, fontSize: 11, letterSpacing: 0, color: color.accentInk, fontWeight: 600, minWidth: 0 }}>
+              {/* Its own element: where the card's findings came from is one
+                  fact, how many of them to check is another. */}
+              <span>{typedIn ? 'Type it in' : source === 'file' ? 'Read from your file' : source === 'photo' ? 'Read from your photo' : 'Found in your paste'}</span>
+              {checkCount(checks) > 0 && <span style={{ color: color.cautionInk }}>{` · ${checkCount(checks)} to check`}</span>}
+            </div>
+            {/* Small and quiet: the card is the thing to finish, and this is
+                the way out of it, back to the ways in. */}
+            <Pressable
+              onClick={startAgain}
+              style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', flexShrink: 0, fontSize: 13.5, fontWeight: 500, color: color.accentInk }}
+            >
+              Start again
+            </Pressable>
           </div>
           <div style={{ marginTop: 12 }}>
             <label htmlFor="add-item" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: color.bodyStrong, marginBottom: 6 }}>
@@ -934,6 +1027,25 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
                 : 'The photo is not kept: this is no longer what it read'}
             </label>
           )}
+        </div>
+      )}
+      {parsed && (
+        /*
+         * Save rides above the tab bar while the card is longer than the
+         * screen, and comes to rest under the card once its end is in view.
+         * Under the card it was the last thing on a long card, below the fold
+         * on a phone. The page's own ground, opaque, so nothing of the card
+         * shows through it while it passes underneath.
+         */
+        <div
+          data-save-bar
+          style={{
+            position: 'sticky', bottom: `calc(${TAB_BAR_PX}px + env(safe-area-inset-bottom, 0px))`, zIndex: 20,
+            margin: '14px -16px 0', padding: '10px 16px 12px',
+            background: color.canvas,
+            borderTop: `1px solid ${color.borderHair}`,
+          }}
+        >
           {/* The cap is claimed on the pricing page, in Settings and on the
               card above; a Save that quietly ignored it would make all three
               of those decorative. */}
@@ -944,7 +1056,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
             onClick={() => void save()}
             disabled={cannotSave || saving}
             style={{
-              marginTop: 14, padding: 13, textAlign: 'center',
+              padding: 13, textAlign: 'center',
               background: cannotSave ? color.surfaceAlt : color.accent,
               color: cannotSave ? color.muted : color.white, border: 0,
               borderRadius: radius.control, fontWeight: 600, fontSize: 14,
@@ -956,6 +1068,9 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
         </div>
       )}
 
+      {!collapsed && (
+        <>
+
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
         <div style={{ flex: 1, height: 1.5, background: color.border }} />
         <span style={{ fontSize: 12, color: color.muted }}>or</span>
@@ -964,23 +1079,6 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
 
       {scanFirst ? pasteWay : scanWay}
 
-      {/* The receipt that came as a file: a PDF e-receipt or invoice, an
-          order email saved from the mail app, an order page saved from the
-          browser. The picker shows files on a phone and a computer alike. */}
-      <input
-        ref={fileInput}
-        id="add-file"
-        type="file"
-        accept="application/pdf,.pdf,message/rfc822,.eml,text/html,.html,.htm,text/plain,.txt,image/*"
-        hidden
-        aria-hidden="true"
-        tabIndex={-1}
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          e.target.value = '';
-          if (f) void readFile(f);
-        }}
-      />
       <Pressable
         className="k-row-white"
         onClick={() => fileInput.current?.click()}
@@ -1033,6 +1131,9 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
           </div>
         )}
       </div>
+        </>
+      )}
+      <div aria-hidden="true" style={{ height: 120 }} />
     </div>
   );
 }

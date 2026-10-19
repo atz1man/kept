@@ -335,7 +335,9 @@ async function walkApp(page, sweep) {
 
   // The parser names no shop rather than guessing one, so the add screen asks.
   // That field, its hint, and the hint's second wording once a known shop is
-  // typed are three things nothing else on any screen renders.
+  // typed are three things nothing else on any screen renders. Each read
+  // starts from the ways in, which the card stands in for until Start again.
+  await page.getByRole('button', { name: 'Start again' }).click();
   await page.fill('#paste', 'Your Vinted order · walking boots · Total £40.00 · 20 Aug 2026');
   await page.getByRole('button', { name: 'Read it' }).click();
   await page.waitForTimeout(400);
@@ -350,11 +352,14 @@ async function walkApp(page, sweep) {
   await sweep('add receipt · correcting');
   // Typed in from nothing, with a window refused: the blank card, the
   // disabled save, and the window's refusal exist only here.
+  await page.getByRole('button', { name: 'Start again' }).click();
   await page.getByRole('button', { name: 'Type it in yourself' }).click();
   await page.waitForTimeout(300);
   await page.fill('#add-window', '0');
   await page.waitForTimeout(200);
   await sweep('add receipt · typed in');
+  await page.getByRole('button', { name: 'Start again' }).click();
+  await page.waitForTimeout(200);
   await page.fill('#paste', 'Your Apple order · Total £129.00 · 25 Aug');
   await page.getByRole('button', { name: 'Read it' }).click();
   await page.waitForTimeout(400);
@@ -507,6 +512,13 @@ async function walkNative(page, sweep) {
   await page.getByRole('button', { name: 'Read it' }).click();
   await page.waitForTimeout(400);
   await sweep('add receipt · read');
+  // The card typed in from nothing, as the iPhone draws it: Save greyed on
+  // the save bar over the card, a state no other walk puts on a phone.
+  await page.getByRole('button', { name: 'Start again' }).click();
+  await page.waitForTimeout(200);
+  await page.getByRole('button', { name: 'Type it in yourself' }).click();
+  await page.waitForTimeout(300);
+  await sweep('add receipt · typed in');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.waitForTimeout(400);
   await sweep('settings');
