@@ -13,9 +13,11 @@ import { LEGAL_DISCLAIMER } from '../../lib/legal';
 import { checkedCount, CHECKED_ON, STORE_COUNT, tableCheck } from '../../lib/stores';
 import { discardSetAside, setAsideData, URGENT_DAYS_MAX, URGENT_DAYS_MIN, type Settings as SettingsShape } from '../../lib/storage';
 import { restoreOnlyOffered, type Offer } from '../../lib/pricing';
+import { MAX_LETTER_NAME, readLetterName } from '../../lib/sign-off';
 import type { StoreView } from '../../lib/app-store';
 import { countedAgainstQuota, FREE_TIER_LIMIT, meterWords } from '../../lib/quota';
 import { Pressable } from '../components/Pressable';
+import { inputStyle } from '../components/Field';
 import { Note, RestorePurchase, UnlockOffer } from '../components/UnlockOffer';
 import { SupportDetails } from '../components/SupportDetails';
 
@@ -168,13 +170,18 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
    * samples, above a tap that erased the visitor's real library instead.
    */
   const noun = receipts.length === 1 ? 'receipt' : 'receipts';
+  // The name letters are signed with goes too, and is said to: it is the one
+  // thing stored here that says who the person is.
+  const named = !!readLetterName(settings.letterName);
+  const andName = named ? ' and your name for letters' : '';
   const eraseSays = embedded
     ? confirmingWipe
       ? `This clears the ${receipts.length} ${noun} in this demo. Nothing stored on this device is touched, and reloading the page starts the demo again.`
       : 'Clears the receipts in this demo. Nothing stored on this device is touched.'
     : confirmingWipe
-      ? `This removes all ${receipts.length} ${noun} from this device. There is no undo — export a backup first if you might want them.`
-      : 'Removes every receipt stored here. Your data is yours; taking it back is part of that.';
+      ? `This removes all ${receipts.length} ${noun}${andName} from this device. There is no undo — export a backup first if you might want them.`
+      : `Removes every receipt stored here${andName}. Your data is yours; taking it back is part of that.`;
+  const nothingStored = receipts.length === 0 && !named;
 
   const free = settings.plan === 'free';
   // The meter has to count what the cap counts, or it reports a wall the app
@@ -440,6 +447,31 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
         </div>
       </section>
 
+      {/* The name the letters are signed with. They ended "[Your name]", with
+          a note asking for it to be changed before sending, and a letter
+          copied in a hurry went out signed that way. Asked for here and under
+          any letter that still has the blank; kept with the settings, on this
+          phone (lib/sign-off.ts). */}
+      <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, marginTop: 12, padding: '15px 18px' }}>
+        <label htmlFor="letter-name" style={{ fontSize: 14, fontWeight: 600, display: 'block' }}>
+          Your name (for letters)
+        </label>
+        <input
+          id="letter-name"
+          type="text"
+          autoComplete="name"
+          autoCapitalize="words"
+          maxLength={MAX_LETTER_NAME}
+          value={settings.letterName}
+          onChange={(e) => onChange({ letterName: e.target.value })}
+          aria-describedby="letter-name-hint"
+          style={{ ...inputStyle(false), marginTop: 10 }}
+        />
+        <div id="letter-name-hint" style={{ fontSize: 12, color: color.muted, lineHeight: 1.5, marginTop: 6 }}>
+          Signs the letters Quids In drafts to shops. It stays on this phone.
+        </div>
+      </section>
+
       {/* The samples, on their own: Erase everything was the only way to be
           rid of all of them, and it takes the real receipts too. */}
       {receipts.some((r) => r.demo) && (
@@ -486,16 +518,16 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
           <Pressable
             className="k-soft"
             onClick={() => setConfirmingWipe(true)}
-            disabled={receipts.length === 0}
+            disabled={nothingStored}
             style={{
               marginTop: 12, padding: 12, textAlign: 'center', background: color.surfaceAlt,
               borderRadius: radius.control, fontWeight: 600, fontSize: 13,
-              color: receipts.length === 0 ? color.muted : color.danger,
-              opacity: receipts.length === 0 ? 0.55 : 1,
-              cursor: receipts.length === 0 ? 'not-allowed' : 'pointer',
+              color: nothingStored ? color.muted : color.danger,
+              opacity: nothingStored ? 0.55 : 1,
+              cursor: nothingStored ? 'not-allowed' : 'pointer',
             }}
           >
-            {receipts.length === 0 ? 'Nothing stored' : 'Erase everything'}
+            {nothingStored ? 'Nothing stored' : 'Erase everything'}
           </Pressable>
         )}
       </section>
