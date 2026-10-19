@@ -4196,6 +4196,37 @@ results['erasing clears the disk and does not reseed'] =
  * not answered the question, so it does not get to say yes.
  */
 results['nothing is fetched from a third party'] = requestsSeen > 0 && foreign.size === 0;
+/*
+ * A deadline already gone says so on the add card. An order from months ago
+ * read "Deadline 8 Sept" in the accent colour, exactly like one due next week,
+ * and saving it was the first anyone heard that the window had closed.
+ */
+{
+  const gCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const gp = await gCtx.newPage();
+  await gp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await gp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await gp.getByRole('button', { name: 'Add a receipt' }).click();
+  await gp.waitForTimeout(300);
+  const day = (back) => {
+    const d = new Date(); d.setDate(d.getDate() - back);
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+  const gone = async (paste) => {
+    await gp.fill('#paste', paste);
+    await gp.getByRole('button', { name: 'Read it' }).click();
+    await gp.waitForTimeout(400);
+    return (await gp.locator('[data-deadline-gone]').count()) === 1;
+  };
+  const seen = {
+    old: await gone(`Your Currys order · Total £129.00 · ${day(120)}`),
+    recent: !(await gone(`Your Currys order · Total £129.00 · ${day(2)}`)),
+  };
+  results['a deadline already gone is said to be gone on the add card, and a live one is not'] = seen.old && seen.recent;
+  if (!(seen.old && seen.recent)) problems.push(`deadline gone on add: ${JSON.stringify(seen)}`);
+  await gCtx.close();
+}
+
 results['no console or page errors'] = problems.length === 0;
 
 /*
