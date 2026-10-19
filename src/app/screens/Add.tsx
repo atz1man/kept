@@ -682,7 +682,10 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
     <div ref={scroller} className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 0', scrollPaddingBottom: collapsed ? 120 + SAVE_BAR_PX : 120 }}>
       <h1 tabIndex={-1} style={{ fontSize: 24, fontWeight: 600, padding: '10px 2px 4px', margin: 0 }}>Add a receipt</h1>
       <p style={{ fontSize: 13, color: color.muted, padding: '0 2px 14px', margin: 0 }}>
-        {addSubtitle(source, scanFirst)}
+        {/* "Read from your photo — check … below" only while there is a card
+            below to check; after Start again the ways in are back, and the
+            header introduces them. */}
+        {addSubtitle(collapsed ? source : 'paste', scanFirst)}
       </p>
 
       {/* Mounted whatever is showing: they are how a way chosen on the home
