@@ -193,7 +193,10 @@ body {
   color: var(--k-ink);
   -webkit-font-smoothing: antialiased;
   /* Tabular figures everywhere: money and day counts line up in a column,
-     the way a statement does. */
+     the way a statement does. Not at display sizes: a figure set at 20px or
+     more stands alone, there is no column to hold, and Geist's tabular "1"
+     carries a foot that at 44px reads as a slab serif. Those sites set
+     `fontVariantNumeric: 'proportional-nums'` inline. */
   font-variant-numeric: tabular-nums;
 }
 
@@ -304,6 +307,17 @@ a:hover { color: var(--k-accent-ink); }
 .k-ink:hover { background: var(--k-ink-hover) !important; }
 
 textarea:focus { outline: 2px solid var(--k-focus); box-shadow: 0 0 0 4px var(--k-focus-halo) !important; }
+/*
+ * A field takes ONE ring, on its own edge. The ring above stands 2px off the
+ * element, which round a button is the point — and round a field is a second
+ * outline drawn outside the field's own border, the two separated by a gap:
+ * the Home search box read as a box inside a box. Drawn over the border
+ * instead, the field's edge becomes the ring. The halo is kept, outside it,
+ * for the grounds it is there for; on the page it is the page's own colour.
+ */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus-visible,
+textarea:focus-visible,
+select:focus-visible { outline-offset: -1px; }
 
 @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes pulseDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }

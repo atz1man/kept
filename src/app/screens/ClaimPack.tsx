@@ -5,8 +5,10 @@ import { daysBetween, fmtDateLong } from '../../lib/dates';
 import { readPhoto } from '../../lib/photos';
 import { savedWhere, saveTextFile } from '../../lib/save-file';
 import type { Receipt } from '../../lib/types';
+import { Avatar } from '../components/Avatar';
 import { ChevronLeft, Tick } from '../components/Icons';
 import { Pressable } from '../components/Pressable';
+import { useLetterName } from '../letter-name';
 
 /**
  * The claim pack, on screen: the same document the file carries, drawn as a
@@ -14,7 +16,10 @@ import { Pressable } from '../components/Pressable';
  * can be read at a glance. See lib/claim-pack.ts for what goes in it and why.
  */
 export function ClaimPack({ receipt, today, onBack }: { receipt: Receipt; today: Date; onBack: () => void }) {
-  const pack = useMemo(() => claimPack(receipt, today), [receipt, today]);
+  // The letters it reproduces are signed as the ones on the receipt's screen
+  // are: with the name kept on this phone, or "[Your name]" until there is one.
+  const { name } = useLetterName();
+  const pack = useMemo(() => claimPack(receipt, today, name), [receipt, today, name]);
   const [photo, setPhoto] = useState<string | null>(null);
   const [said, setSaid] = useState<string | null>(null);
   useEffect(() => {
@@ -49,8 +54,16 @@ export function ClaimPack({ receipt, today, onBack }: { receipt: Receipt; today:
     }
   };
 
+  // What the first tile counts: the ticked dots on the timeline — the dates
+  // something happened on (bought, arrived, sent back), as against the
+  // deadlines, which are computed. "things on record" said none of that.
   const recorded = pack.timeline.filter((e) => e.kind === 'happened').length;
-  const deadlines = deadlineTile(pack.timeline);
+  const [deadlineCount, deadlineLabel, toCheck] = deadlineTile(pack.timeline);
+  const tiles: [number, string, number][] = [
+    [recorded, recorded === 1 ? 'date recorded' : 'dates recorded', 0],
+    [deadlineCount, deadlineLabel, toCheck],
+    [pack.letters.length, pack.letters.length === 1 ? 'letter sent' : 'letters sent', 0],
+  ];
   // Where "today" falls in the timeline: after everything on or before it.
   const todayAt = pack.timeline.findIndex((e) => daysBetween(today, e.on) > 0);
 
@@ -73,19 +86,10 @@ export function ClaimPack({ receipt, today, onBack }: { receipt: Receipt; today:
 
       <div data-pack-hero style={{ background: color.surface, borderRadius: radius.hero, padding: 18, border: `1px solid ${color.borderHair}`, boxShadow: shadow.lift }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div
-            aria-hidden="true"
-            style={{
-              width: 48, height: 48, flexShrink: 0, borderRadius: 14, display: 'grid', placeItems: 'center',
-              // A solid ground under the gradient: what the contrast sweep measures,
-              // and what paints if the gradient does not. White is 4.8:1 on
-              // the lighter end and more on this one.
-              backgroundColor: color.accentHover, backgroundImage: `linear-gradient(${color.accentTile}, ${color.accentHover})`, color: color.white,
-              fontFamily: font.display, fontSize: 22, fontWeight: 700,
-            }}
-          >
-            {(receipt.store.trim()[0] ?? '?').toUpperCase()}
-          </div>
+          {/* The shop as every other screen draws it: its initials, round, in
+              its category's colour. This was a solid indigo square here and
+              nowhere else. */}
+          <Avatar store={receipt.store} cat={receipt.cat} size={48} />
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: color.accentInk, letterSpacing: 0.3 }}>CLAIM PACK</div>
             <h1 tabIndex={-1} style={{ fontSize: 20, fontWeight: 600, margin: '2px 0 0', overflowWrap: 'anywhere' }}>{receipt.item}</h1>
@@ -95,14 +99,17 @@ export function ClaimPack({ receipt, today, onBack }: { receipt: Receipt; today:
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, marginTop: 16 }}>
-          {[
-            [recorded, recorded === 1 ? 'thing on record' : 'things on record'],
-            deadlines,
-            [pack.letters.length, pack.letters.length === 1 ? 'letter sent' : 'letters sent'],
-          ].map(([n, label]) => (
-            <div key={label} style={{ background: color.surfaceAlt, borderRadius: radius.card, padding: '10px 10px 9px' }}>
-              <div style={{ fontFamily: font.figures, fontSize: 22, fontWeight: 600, lineHeight: 1.1 }}>{n}</div>
+          {tiles.map(([n, label, check]) => (
+            <div key={label} data-pack-tile style={{ background: color.surfaceAlt, borderRadius: radius.card, padding: '10px 10px 9px' }}>
+              <div style={{ fontFamily: font.figures, fontVariantNumeric: 'proportional-nums', fontSize: 22, fontWeight: 600, lineHeight: 1.1 }}>{n}</div>
               <div style={{ fontSize: 12, color: color.muted, marginTop: 2 }}>{label}</div>
+              {/* Amber, the colour the app asks for a look in: neither the
+                  accent (press me) nor red (a deadline is close). */}
+              {check > 0 && (
+                <span data-pack-check style={{ display: 'inline-block', marginTop: 6, fontSize: 11, fontWeight: 600, background: color.caution, color: color.cautionInk, padding: '1px 7px', borderRadius: radius.chip, whiteSpace: 'nowrap' }}>
+                  {check} to check
+                </span>
+              )}
             </div>
           ))}
         </div>
@@ -268,10 +275,14 @@ function Event({ e, last }: { e: PackEvent; last: boolean }) {
 function TodayMarker({ today }: { today: Date }) {
   return (
     <div data-today style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 14px' }}>
-      <span style={{ fontSize: 11, fontWeight: 700, color: color.canvas, background: color.ink, padding: '2px 8px', borderRadius: radius.chip }}>
+      {/* The accent's tint and its ink, which turn over with the scheme. It
+          was the ink on the canvas: near-black in daylight, and on a dark
+          phone a white slab with a white rule beside it — the brightest
+          thing on the screen, for a marker. */}
+      <span style={{ fontSize: 11, fontWeight: 700, color: color.accentInk, background: color.accentSoft, padding: '2px 8px', borderRadius: radius.chip, whiteSpace: 'nowrap' }}>
         Today · {fmtDateLong(today)}
       </span>
-      <span aria-hidden="true" style={{ flex: 1, height: 2, background: color.ink, borderRadius: 1 }} />
+      <span aria-hidden="true" style={{ flex: 1, height: 2, background: color.accent, borderRadius: 1 }} />
     </div>
   );
 }

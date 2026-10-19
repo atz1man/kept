@@ -255,7 +255,7 @@ export function Landing() {
                   Pay once
                 </div>
                 <div style={{ fontWeight: 600, fontSize: 15, color: color.muted }}>{t.name}</div>
-                <div style={{ fontFamily: font.figures, fontSize: 36, fontWeight: 600, marginTop: 10, color: color.ink }}>
+                <div style={{ fontFamily: font.figures, fontVariantNumeric: 'proportional-nums', fontSize: 36, fontWeight: 600, marginTop: 10, color: color.ink }}>
                   {t.price}
                   <span style={{ fontSize: 15, color: color.muted, fontWeight: 500 }}>{t.suffix}</span>
                 </div>
@@ -268,7 +268,7 @@ export function Landing() {
             ) : (
               <div key={t.name} style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, padding: '30px 26px' }}>
                 <div style={{ fontWeight: 600, fontSize: 15, color: color.muted }}>{t.name}</div>
-                <div style={{ fontFamily: font.figures, fontSize: 36, fontWeight: 600, marginTop: 10 }}>
+                <div style={{ fontFamily: font.figures, fontVariantNumeric: 'proportional-nums', fontSize: 36, fontWeight: 600, marginTop: 10 }}>
                   {t.price}
                   <span style={{ fontSize: 15, color: color.muted, fontWeight: 500 }}>{t.suffix}</span>
                 </div>

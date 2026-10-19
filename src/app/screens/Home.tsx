@@ -8,7 +8,7 @@ import { midSentence } from '../../lib/words';
 import { TAGLINE_LEAD } from '../../lib/brand';
 import { heroCount, urgency, windowRemaining } from '../../lib/urgency';
 import type { Receipt } from '../../lib/types';
-import { ArrowRight, CameraGlyph, Logo, LogoDashed, ReceiptGlyph, Tick, Wordmark } from '../components/Icons';
+import { ArrowRight, CameraGlyph, Logo, LogoDashed, ReceiptGlyph, SearchGlyph, Tick, Wordmark } from '../components/Icons';
 import { Avatar } from '../components/Avatar';
 import type { AddStart } from './Add';
 import { Pressable } from '../components/Pressable';
@@ -220,18 +220,26 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
           <label htmlFor="receipt-search" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
             Search your receipts
           </label>
-          <input
-            id="receipt-search"
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search shop or item"
-            style={{
-              width: '100%', boxSizing: 'border-box', padding: '11px 14px', borderRadius: radius.control,
-              border: `1px solid ${color.border}`, background: color.surface,
-              fontFamily: font.ui, fontSize: 14.5, color: color.ink,
-            }}
-          />
+          {/* A magnifier at the head of the box, as a phone's own search
+              fields draw one, so it reads as search before anything is typed
+              in it. Decorative: the label names the field. */}
+          <div style={{ position: 'relative' }}>
+            <span style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+              <SearchGlyph />
+            </span>
+            <input
+              id="receipt-search"
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search shop or item"
+              style={{
+                width: '100%', boxSizing: 'border-box', padding: '11px 14px 11px 37px', borderRadius: radius.control,
+                border: `1px solid ${color.border}`, background: color.surface,
+                fontFamily: font.ui, fontSize: 14.5, color: color.ink,
+              }}
+            />
+          </div>
           <div className="k-sr" role="status" aria-live="polite">{spokenCount}</div>
         </div>
       )}
@@ -670,6 +678,11 @@ function HeroCard({ receipt, today, onOpen }: { receipt: Receipt; today: Date; o
   // own may not have. Said as that, in ink rather than red.
   const unsure = closed && floor !== null;
   const accent = d.daysLeft <= 3 && !unsure ? color.danger : color.ink;
+  // The date is one word to a reader: "by 21 Oct" broke as "by 21 / Oct" on
+  // a narrow phone, the day at the end of one line and its month on the next.
+  // Held together here rather than in `fmtDate`, whose strings every test and
+  // sweep compares; a date in a sentence is the one place it can break.
+  const on = <span data-date style={{ whiteSpace: 'nowrap' }}>{fmtDateNear(d.deadline, today)}</span>;
 
   return (
     <Pressable
@@ -699,7 +712,7 @@ function HeroCard({ receipt, today, onOpen }: { receipt: Receipt; today: Date; o
           sentence wraps inside its own column rather than dropping below a
           44px number and leaving it stranded on a line of its own. */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 8 }}>
-        <span style={{ fontFamily: font.figures, fontSize: 44, fontWeight: 700, letterSpacing: '-0.05em', color: accent, lineHeight: 1, flexShrink: 0 }}>
+        <span style={{ fontFamily: font.figures, fontVariantNumeric: 'proportional-nums', fontSize: 44, fontWeight: 700, letterSpacing: '-0.05em', color: accent, lineHeight: 1, flexShrink: 0 }}>
           {count}
         </span>
         <span style={{ fontSize: 16, fontWeight: 600, color: color.bodyStrong, lineHeight: 1.3, letterSpacing: '-0.01em' }}>
@@ -709,11 +722,13 @@ function HeroCard({ receipt, today, onOpen }: { receipt: Receipt; today: Date; o
       <div style={{ fontSize: 13, color: color.muted, marginTop: 8, lineHeight: 1.45 }}>
         {/* As every row says it: a figure about a purchase nobody made is labelled. */}
         {receipt.demo && 'Sample · '}
-        {unsure
-          ? `${receipt.store} · counted from your order its window ended ${fmtDateNear(d.deadline, today)}, but the shop counts from ${floorWords(floor).countsFrom} — ${floorWords(floor).addIt} to know`
-          : closed
-          ? `${receipt.store} · the shop’s window shut on ${fmtDateNear(d.deadline, today)} — your legal rights may not have`
-          : `${receipt.store} · ${money(receipt.amount)} back if it goes back by ${fmtDateNear(d.deadline, today)}`}
+        {unsure ? (
+          <>{receipt.store} · counted from your order its window ended {on}, but the shop counts from {floorWords(floor).countsFrom} — {floorWords(floor).addIt} to know</>
+        ) : closed ? (
+          <>{receipt.store} · the shop’s window shut on {on} — your legal rights may not have</>
+        ) : (
+          <>{receipt.store} · {money(receipt.amount)} back if it goes back by {on}</>
+        )}
       </div>
       {/* How much of the window is spent, as a bar that fills towards the
           deadline in the colour the count is in. Decorative: the number and
@@ -782,7 +797,7 @@ function Balance({ returnable, keptBack, live, dueThisWeek, samples }: {
         {/* As every row says it: a figure about purchases nobody made is labelled. */}
         {samples && <span style={chip}>Samples</span>}
       </div>
-      <div data-balance="returnable" style={{ position: 'relative', fontFamily: font.figures, fontSize: 46, fontWeight: 700, letterSpacing: '-0.05em', lineHeight: 1.05, marginTop: 6 }}>
+      <div data-balance="returnable" style={{ position: 'relative', fontFamily: font.figures, fontVariantNumeric: 'proportional-nums', fontSize: 46, fontWeight: 700, letterSpacing: '-0.05em', lineHeight: 1.05, marginTop: 6 }}>
         {pounds}
         <span style={{ fontSize: 28, letterSpacing: '-0.03em' }}>{pence}</span>
       </div>

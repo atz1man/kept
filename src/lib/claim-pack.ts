@@ -76,21 +76,27 @@ export const DEADLINE_WORDS: Record<DeadlineState, string> = {
 };
 
 /**
- * The deadlines tile at the top of the pack: a count, and what it counts.
+ * The deadlines tile at the top of the pack: a count, what it counts, and how
+ * many other dates want checking.
  *
  * It counted an `unsure` date as open — "3 deadlines open" over an order
  * eight months old, whose three dates were each "At least …" and long gone.
  * The pack goes to a bank or a complaints team, and that headline overstated
  * the person's position to exactly them. An unsure date is not open: it is a
  * date to check, and the tile says so in those words, the chip's own.
+ *
+ * The count to check is its own number rather than a tail on the label:
+ * "deadlines open · 1 to check" ran to three lines in a third of a phone's
+ * width, so the screen sets it as a chip under the label. Zero when there is
+ * nothing to check, and zero too when the tile already counts the dates to
+ * check, so it is never said twice.
  */
-export function deadlineTile(timeline: readonly PackEvent[]): [number, string] {
+export function deadlineTile(timeline: readonly PackEvent[]): [number, string, number] {
   const states = timeline.filter((e) => e.kind === 'deadline').map(deadlineState);
   const open = states.filter((s) => s === 'open').length;
   const check = states.filter((s) => s === 'unsure').length;
-  if (open === 0 && check > 0) return [check, check === 1 ? 'date to check' : 'dates to check'];
-  const label = open === 1 ? 'deadline open' : 'deadlines open';
-  return [open, check > 0 ? `${label} · ${check} to check` : label];
+  if (open === 0 && check > 0) return [check, check === 1 ? 'date to check' : 'dates to check', 0];
+  return [open, open === 1 ? 'deadline open' : 'deadlines open', check];
 }
 
 export interface PackLetter {

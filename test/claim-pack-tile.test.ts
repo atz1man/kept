@@ -11,16 +11,16 @@ const ev = (passed: boolean, hedged: boolean, kind: PackEvent['kind'] = 'deadlin
 
 describe('the claim pack’s deadline count', () => {
   it('does not call a hedged date that has gone by open', () => {
-    expect(deadlineTile([ev(true, true), ev(true, true), ev(true, true)])).toEqual([3, 'dates to check']);
-    expect(deadlineTile([ev(true, true)])).toEqual([1, 'date to check']);
+    expect(deadlineTile([ev(true, true), ev(true, true), ev(true, true)])).toEqual([3, 'dates to check', 0]);
+    expect(deadlineTile([ev(true, true)])).toEqual([1, 'date to check', 0]);
   });
 
   it('counts a date still ahead as open, and says how many others to check', () => {
-    expect(deadlineTile([ev(false, false), ev(false, true)])).toEqual([2, 'deadlines open']);
-    expect(deadlineTile([ev(false, false), ev(true, true)])).toEqual([1, 'deadline open · 1 to check']);
+    expect(deadlineTile([ev(false, false), ev(false, true)])).toEqual([2, 'deadlines open', 0]);
+    expect(deadlineTile([ev(false, false), ev(true, true)])).toEqual([1, 'deadline open', 1]);
   });
 
   it('counts a passed date as nothing, and what happened as no deadline', () => {
-    expect(deadlineTile([ev(true, false), ev(false, false, 'happened')])).toEqual([0, 'deadlines open']);
+    expect(deadlineTile([ev(true, false), ev(false, false, 'happened')])).toEqual([0, 'deadlines open', 0]);
   });
 });

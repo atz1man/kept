@@ -749,7 +749,18 @@ for (const cancel of [false, true]) {
   await np.waitForTimeout(300);
   seen.reloaded = (await faultLetterText()).endsWith('Jane Smith');
 
-  results['letters are signed with the name given, in Settings or under the letter, and kept'] = Object.values(seen).length === 11 && Object.values(seen).every(Boolean);
+  // And the claim pack, which reproduces each letter as it went: signed the
+  // same way, not left at "[Your name]" while the screen it came from was not.
+  await np.getByRole('button', { name: 'I’ve sent the letter', exact: true }).click({ timeout: 3000 }).catch(() => {});
+  await np.waitForTimeout(300);
+  await np.getByRole('button', { name: /^Claim pack/ }).click({ timeout: 3000 }).catch(() => {});
+  await np.waitForTimeout(400);
+  await np.locator('details summary', { hasText: /sent/ }).first().click({ timeout: 3000 }).catch(() => {});
+  await np.waitForTimeout(200);
+  const packed = ((await np.locator('details').first().innerText().catch(() => '')) ?? '').trimEnd();
+  seen.packSigned = packed.endsWith('Jane Smith') && !packed.includes('[Your name]');
+
+  results['letters are signed with the name given, in Settings or under the letter, and kept'] = Object.values(seen).length === 12 && Object.values(seen).every(Boolean);
   if (!results['letters are signed with the name given, in Settings or under the letter, and kept']) problems.push(`letter name: ${JSON.stringify(seen)}`);
   await nCtx.close();
 }
@@ -4483,6 +4494,171 @@ results['nothing is fetched from a third party'] = requestsSeen > 0 && foreign.s
   results['a deadline already gone is said to be gone on the add card, and a live one is not'] = seen.old && seen.recent;
   if (!(seen.old && seen.recent)) problems.push(`deadline gone on add: ${JSON.stringify(seen)}`);
   await gCtx.close();
+}
+
+/*
+ * The design audit's small things, each asked of the rendered page rather
+ * than of the source, because each was a thing a person saw.
+ */
+{
+  // A date in a sentence is one word. "by 21 Oct" broke as "by 21 / Oct" at
+  // the edge of the next-to-close card. Where a line breaks moves with the
+  // width, so every width a phone has is tried rather than one that happens
+  // to fall between words: the date must sit on one line at all of them.
+  const dCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const dp = await dCtx.newPage();
+  await dp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await dp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await dp.waitForTimeout(400);
+  const splits = [];
+  let measured = 0;
+  for (let w = 300; w <= 430; w += 2) {
+    await dp.setViewportSize({ width: w, height: 874 });
+    const lines = await dp.evaluate(() => {
+      // The card's sentence, found by its words, and the date at its end
+      // measured as a range of text — whatever elements it is drawn in.
+      const line = [...document.querySelectorAll('main div')].find((el) => / by \d{1,2} [A-Z][a-z]{2}( \d{4})?$/.test(el.textContent ?? '') && el.children.length <= 1);
+      if (!line) return null;
+      const text = line.textContent ?? '';
+      const at = text.search(/\d{1,2} [A-Z][a-z]{2}( \d{4})?$/);
+      const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+      const range = document.createRange();
+      let seen = 0;
+      let started = false;
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        const len = n.textContent.length;
+        if (!started && seen + len > at) { range.setStart(n, at - seen); started = true; }
+        if (started) range.setEnd(n, len);
+        seen += len;
+      }
+      return new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top))).size;
+    });
+    if (lines === null) continue;
+    measured += 1;
+    if (lines > 1) splits.push(w);
+  }
+  results['the next-to-close date never breaks across lines, at any phone width'] = measured > 30 && splits.length === 0;
+  if (!results['the next-to-close date never breaks across lines, at any phone width']) problems.push(`date split: measured ${measured} widths, split at ${splits.join(', ')}`);
+
+  // Display figures are proportional; the columns stay tabular. Geist's
+  // tabular "1" has a foot that, at 44px, reads as a slab serif.
+  await dp.setViewportSize({ width: 402, height: 874 });
+  const nums = await dp.evaluate(() => {
+    const big = [...document.querySelectorAll('main *')].filter((el) => {
+      const own = [...el.childNodes].some((n) => n.nodeType === 3 && /\d/.test(n.textContent));
+      return own && parseFloat(getComputedStyle(el).fontSize) >= 20;
+    });
+    const row = document.querySelector('main li button');
+    const money = row && [...row.querySelectorAll('*')].find((el) => /^£[\d,.]+$/.test(el.textContent ?? ''));
+    return {
+      big: big.length,
+      tabularBig: big.filter((el) => /tabular-nums/.test(getComputedStyle(el).fontVariantNumeric)).map((el) => el.textContent.trim().slice(0, 12)),
+      rowTabular: !!money && /tabular-nums/.test(getComputedStyle(money).fontVariantNumeric),
+    };
+  });
+  results['figures at 20px or more are proportional, and a row’s money stays tabular'] = nums.big >= 2 && nums.tabularBig.length === 0 && nums.rowTabular;
+  if (!results['figures at 20px or more are proportional, and a row’s money stays tabular']) problems.push(`numerals: ${JSON.stringify(nums)}`);
+
+  // The search field: a magnifier, and ONE ring when it has focus — on the
+  // field's own edge, not a second outline 2px outside its border.
+  await dp.evaluate(() => {
+    const st = JSON.parse(localStorage.getItem('kept.v1'));
+    const base = st.receipts[0];
+    st.receipts = st.receipts.concat(['Sony WH-1000XM5', 'Dyson V15', 'Le Creuset casserole', 'Adidas Sambas'].map((item, i) => ({ ...base, id: `auditmore${i}`, item, status: 'active' })));
+    localStorage.setItem('kept.v1', JSON.stringify(st));
+  });
+  await dp.reload({ waitUntil: 'networkidle' });
+  await dp.waitForTimeout(500);
+  const box = dp.getByRole('searchbox', { name: 'Search your receipts' });
+  if ((await box.count()) === 0) {
+    results['the search field has a magnifier and a single focus ring'] = false;
+    problems.push('search: no search field on a library big enough to offer one');
+  } else {
+    await box.focus();
+    const field = await box.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      const glyph = el.parentElement?.querySelector('svg');
+      const g = glyph?.getBoundingClientRect();
+      const f = el.getBoundingClientRect();
+      return {
+        glyph: !!glyph && g.left >= f.left && g.right <= f.left + 44 && g.top >= f.top && g.bottom <= f.bottom,
+        visible: el.matches(':focus-visible'),
+        offset: parseFloat(cs.outlineOffset),
+        outline: parseFloat(cs.outlineWidth),
+      };
+    });
+    results['the search field has a magnifier and a single focus ring'] = field.glyph && field.visible && field.outline >= 2 && field.offset <= 0;
+    if (!results['the search field has a magnifier and a single focus ring']) problems.push(`search field: ${JSON.stringify(field)}`);
+  }
+  await dCtx.close();
+}
+{
+  // The claim pack in the dark. Its header drew the shop as a solid indigo
+  // square no other screen used; its tiles said "things on record" and set
+  // "deadlines open · 1 to check" across three lines; and its Today marker
+  // was the ink on the canvas — on a dark phone, a white slab and a white rule.
+  const pCtx = await browser.newContext({ viewport: { width: 402, height: 874 }, colorScheme: 'dark' });
+  const pp = await pCtx.newPage();
+  await pp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await pp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await pp.waitForTimeout(300);
+  await pp.getByRole('button', { name: /^Zara, / }).click();
+  await pp.waitForTimeout(300);
+  await pp.getByRole('button', { name: /^Claim pack/ }).click();
+  await pp.waitForTimeout(400);
+  const pack = await pp.evaluate(() => {
+    const lum = (c) => {
+      const m = c.match(/[\d.]+/g)?.map(Number) ?? [0, 0, 0];
+      return (0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2]) / 255;
+    };
+    const hero = document.querySelector('[data-pack-hero]');
+    // The shared Avatar: a round face with the category badge on its rim.
+    const face = hero && [...hero.querySelectorAll('[aria-hidden="true"]')].find((el) => el.getBoundingClientRect().width === 48);
+    const round = !!face && [...face.querySelectorAll('span')].some((sp) => getComputedStyle(sp).borderRadius === '50%' && sp.getBoundingClientRect().width === 48) && !!face.querySelector('svg');
+    const tiles = [...(hero?.querySelectorAll(':scope > div:nth-of-type(2) > div') ?? [])].map((t) => {
+      const label = t.children[1];
+      const lh = parseFloat(getComputedStyle(label).lineHeight) || parseFloat(getComputedStyle(label).fontSize) * 1.2;
+      return { label: label.textContent.trim(), lines: Math.round(label.getBoundingClientRect().height / lh), chip: t.children[2]?.textContent?.trim() ?? '' };
+    });
+    const today = document.querySelector('[data-today]');
+    const pill = today?.children[0];
+    const rule = today?.children[1];
+    return {
+      round,
+      tiles,
+      pill: pill ? lum(getComputedStyle(pill).backgroundColor) : 1,
+      rule: rule ? lum(getComputedStyle(rule).backgroundColor) : 1,
+    };
+  });
+  results['the claim pack draws the shop with the shared avatar'] = pack.round;
+  results['the claim pack’s tiles say what they count in two lines at most, with dates to check as a chip'] =
+    pack.tiles.length === 3 && pack.tiles.every((t) => t.lines <= 2 && !t.label.includes('·') && !/on record/.test(t.label)) &&
+    pack.tiles.some((t) => /^\d+ to check$/.test(t.chip));
+  results['the claim pack’s Today marker is not a white slab in the dark'] = pack.pill < 0.5 && pack.rule < 0.6;
+  if (!(pack.round && pack.pill < 0.5 && pack.rule < 0.6)) problems.push(`claim pack, dark: ${JSON.stringify(pack)}`);
+  if (!results['the claim pack’s tiles say what they count in two lines at most, with dates to check as a chip']) problems.push(`claim pack tiles: ${JSON.stringify(pack.tiles)}`);
+  await pCtx.close();
+}
+{
+  // Onboarding from the top. Centred, its picture began about 300pt down a
+  // 390×844 phone; top-aligned it begins just under the wordmark, and the
+  // heading sits in the upper part of the screen.
+  const oCtx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const op = await oCtx.newPage();
+  await op.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await op.waitForTimeout(500);
+  const ob = await op.evaluate(() => {
+    const h1 = document.querySelector('main h1');
+    const art = h1?.previousElementSibling;
+    const skip = [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Skip');
+    return {
+      gap: art && skip ? Math.round(art.getBoundingClientRect().top - skip.getBoundingClientRect().bottom) : null,
+      headingAt: h1 ? h1.getBoundingClientRect().top / window.innerHeight : null,
+    };
+  });
+  results['onboarding starts at the top, its heading in the upper part of the screen'] = ob.gap !== null && ob.gap <= 60 && ob.headingAt < 0.4;
+  if (!results['onboarding starts at the top, its heading in the upper part of the screen']) problems.push(`onboarding: ${JSON.stringify(ob)}`);
+  await oCtx.close();
 }
 
 results['no console or page errors'] = problems.length === 0;

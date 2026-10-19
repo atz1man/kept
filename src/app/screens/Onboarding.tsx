@@ -81,7 +81,12 @@ export function Onboarding({ step, onNext, onSkip }: Props) {
         </Pressable>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+      {/* From the top, as a phone's own first-run screens set it. Centred,
+          the picture and the words floated in the middle of a tall phone
+          under about 300pt of nothing, and moved every time the copy's
+          length did; top-aligned they start in the same place on every card,
+          and the space a tall phone has to spare goes above the dots. */}
+      <div data-onboarding-content style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', paddingTop: 28, position: 'relative', overflow: 'hidden' }}>
         <div style={{ height: 190, borderRadius: radius.cardLg, overflow: 'hidden', marginBottom: 26, background: color.surfaceAlt }}>
           {step === 0 ? <FirstArt /> : <StepArt step={step} />}
         </div>
@@ -165,7 +170,7 @@ function FirstArt() {
     <div role="img" aria-label="Receipts gathered in one place, with what is still returnable at the top" style={{ height: '100%', boxSizing: 'border-box', padding: 12, display: 'flex', flexDirection: 'column', gap: 7 }}>
       <div aria-hidden="true" style={{ backgroundColor: color.heroEnd, backgroundImage: gradient.hero, color: color.white, borderRadius: 16, padding: '10px 13px' }}>
         <div style={{ fontSize: 10, fontWeight: 600, color: color.onHeroSoft }}>Still returnable</div>
-        <div style={{ fontFamily: font.figures, fontSize: 24, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.1 }}>
+        <div style={{ fontFamily: font.figures, fontVariantNumeric: 'proportional-nums', fontSize: 24, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1.1 }}>
           £153<span style={{ fontSize: 15 }}>.99</span>
         </div>
       </div>
@@ -189,7 +194,7 @@ function StepArt({ step }: { step: number }) {
         <circle r="38" fill={color.surface} stroke={color.surfaceDeep} strokeWidth="7" />
         <circle r="38" fill="none" stroke={stroke} strokeWidth="7" strokeLinecap="round"
           strokeDasharray="239" strokeDashoffset={offset} transform="rotate(-90)" />
-        <text y="7" textAnchor="middle" fontSize="22" fontWeight="700" fill={stroke} fontFamily={font.figures}>{days}</text>
+        <text y="7" textAnchor="middle" fontSize="22" fontWeight="700" fill={stroke} fontFamily={font.figures} style={{ fontVariantNumeric: 'proportional-nums' }}>{days}</text>
         <text y="64" textAnchor="middle" fontSize="10" fontWeight="500" fill={color.muted} fontFamily={font.ui}>{label}</text>
       </g>
     );

@@ -266,6 +266,16 @@ export function PlusGlyph({ size = 18, stroke: s = color.ink, filled = false }: 
   );
 }
 
+/** A magnifier, for the search field: drawn at the weight of the tab glyphs. */
+export function SearchGlyph({ size = 16, stroke: s = color.muted }: { size?: number; stroke?: string } = {}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" aria-hidden="true" data-glyph="search">
+      <circle cx="7" cy="7" r="4.9" fill="none" stroke={s} strokeWidth="1.6" />
+      <path d="M10.6 10.6L14 14" stroke={s} strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function CameraGlyph({ size = 18, stroke: s = color.ink }: { size?: number; stroke?: string } = {}) {
   return (
     <svg width={size} height={(size * 16) / 18} viewBox="0 0 18 16" aria-hidden="true">
