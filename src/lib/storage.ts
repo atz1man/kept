@@ -121,11 +121,33 @@ export interface KeptState {
 }
 
 /**
- * The bounds the Settings slider offers. Kept here rather than in the screen
- * because they are also what a stored value has to satisfy to be believed.
+ * What a stored urgency threshold has to satisfy to be believed. Kept here
+ * rather than in the screen because `readSettings` checks every launch's
+ * value against them, whatever the screen happens to offer.
  */
 export const URGENT_DAYS_MIN = 2;
 export const URGENT_DAYS_MAX = 21;
+
+/**
+ * The thresholds Settings offers, as a menu. It was a range slider, which no
+ * iPhone settings screen uses, from two days to three weeks in single steps —
+ * nineteen positions where four answers cover the question.
+ */
+export const URGENT_DAYS_CHOICES = [3, 5, 7, 14] as const;
+
+/**
+ * The menu's entries for the value stored now. The slider could store any day
+ * from two to twenty-one, and those values are still believed on load, so one
+ * of them is listed in its place among the four rather than shown as a choice
+ * nobody made — a menu that cannot show what is stored would read 3 days while
+ * the app counted 10.
+ */
+export function urgentDayChoices(current: number): number[] {
+  const believed = Number.isInteger(current) && current >= URGENT_DAYS_MIN && current <= URGENT_DAYS_MAX;
+  const all = new Set<number>(URGENT_DAYS_CHOICES);
+  if (believed) all.add(current);
+  return [...all].sort((a, b) => a - b);
+}
 
 export const DEFAULT_SETTINGS: Settings = {
   urgentDays: DEFAULT_URGENT_DAYS,

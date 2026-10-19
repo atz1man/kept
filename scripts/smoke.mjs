@@ -1914,6 +1914,95 @@ for (const cancel of [false, true]) {
 }
 
 /*
+ * Settings is an iPhone settings list, not a stack of cards of prose. Found by
+ * a design audit, not by any sweep: every control worked and said what it
+ * did, and the screen still read as a web page — paragraphs in rounded boxes,
+ * a range slider for a setting with four sensible answers, and Erase
+ * everything mid-page, above the urgency setting and Help. Three things are
+ * held here, each measured on the screen as drawn:
+ * - the groups are `.k-group` lists, with a hairline between rows;
+ * - Erase everything is the last group and the last control on the screen,
+ *   before and after the first tap asks;
+ * - the urgency threshold is a menu that writes what it shows, and still
+ *   shows a value the old slider stored that is not one of the four.
+ */
+{
+  const seen = {};
+  const gCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const gp = await gCtx.newPage();
+  await gp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await gp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await gp.getByRole('button', { name: 'Settings', exact: true }).click();
+  await gp.waitForTimeout(300);
+  // The screen's own scroller, found from its heading, so the tab bar's
+  // buttons — which follow it in the document — are not counted as its controls.
+  const shape = () =>
+    gp.evaluate(() => {
+      const h1 = [...document.querySelectorAll('h1')].find((h) => h.textContent?.trim() === 'Settings');
+      const screen = h1?.parentElement;
+      if (!screen) return null;
+      const groups = [...screen.querySelectorAll('ul.k-group')];
+      const separated = groups.filter((g) => {
+        const rows = [...g.children].filter((c) => c.tagName === 'LI');
+        return rows.length >= 2 && rows.slice(1).every((r) => parseFloat(getComputedStyle(r).borderTopWidth) >= 1 && getComputedStyle(r).borderTopStyle !== 'none');
+      });
+      const controls = [...screen.querySelectorAll('button, a[href], input:not([type="file"]), select, textarea, summary')].filter(
+        (el) => !el.closest('[hidden]') && el.getClientRects().length > 0,
+      );
+      const last = controls.at(-1);
+      return {
+        groups: groups.length,
+        separated: separated.length,
+        ranges: screen.querySelectorAll('input[type="range"]').length,
+        lastControl: last?.textContent?.trim() ?? null,
+        lastInLastGroup: !!last && groups.length > 0 && groups.at(-1).contains(last),
+      };
+    });
+  const before = await shape();
+  seen.grouped = !!before && before.groups >= 5 && before.separated >= 3;
+  seen.eraseLast = before?.lastControl === 'Erase everything' && before.lastInLastGroup;
+  seen.noSlider = before?.ranges === 0;
+  // The first tap only asks, and the question stays at the end of the screen.
+  await gp.getByRole('button', { name: 'Erase everything' }).click({ timeout: 2000 }).catch(() => {});
+  await gp.waitForTimeout(200);
+  const asking = await shape();
+  seen.askLast = asking?.lastControl === 'Erase everything' && asking.lastInLastGroup && (await gp.getByRole('button', { name: 'Keep them' }).count()) === 1;
+  await gp.getByRole('button', { name: 'Keep them' }).click({ timeout: 2000 }).catch(() => {});
+
+  const stored = () => gp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1') ?? '{}').settings?.urgentDays ?? null);
+  const urgent = gp.getByLabel('Call it urgent under', { exact: true });
+  seen.isMenu = (await urgent.evaluate((el) => el.tagName).catch(() => null)) === 'SELECT';
+  const offered = await urgent.evaluate((el) => [...(el.options ?? [])].map((o) => o.value)).catch(() => []);
+  seen.offers = JSON.stringify(offered) === JSON.stringify(['3', '5', '7', '14']);
+  await urgent.selectOption('14', { timeout: 2000 }).catch(() => {});
+  await gp.waitForTimeout(200);
+  seen.writes14 = (await stored()) === 14;
+  await urgent.selectOption('3', { timeout: 2000 }).catch(() => {});
+  await gp.waitForTimeout(200);
+  seen.writes3 = (await stored()) === 3;
+  // A threshold the slider could store and the menu does not offer: shown as
+  // itself, in its place, and left alone until the person picks another.
+  await gp.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('kept.v1'));
+    s.settings.urgentDays = 10;
+    localStorage.setItem('kept.v1', JSON.stringify(s));
+  });
+  await gp.reload({ waitUntil: 'networkidle' });
+  await gp.getByRole('button', { name: 'Settings', exact: true }).click();
+  await gp.waitForTimeout(300);
+  const kept10 = await urgent
+    .evaluate((el) => ({ value: el.value, options: [...(el.options ?? [])].map((o) => o.value), shown: el.selectedOptions?.[0]?.textContent }))
+    .catch(() => null);
+  seen.showsStored = kept10?.value === '10' && kept10.shown === '10 days' && JSON.stringify(kept10.options) === JSON.stringify(['3', '5', '7', '10', '14']);
+  seen.leavesStored = (await stored()) === 10;
+  await gCtx.close();
+
+  const ok = Object.values(seen).length === 10 && Object.values(seen).every(Boolean);
+  results['Settings is grouped lists, ends with Erase everything, and sets urgency from a menu'] = ok;
+  if (!ok) problems.push(`settings shape: ${JSON.stringify({ seen, before, asking, offered, kept10 })}`);
+}
+
+/*
  * Rights are shown while the thing is still with its owner. A returned
  * online order said "you can cancel for any reason until …, n days left"
  * about a right already used; one on its way back did the same. Bought three

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { color, font, radius } from '../../tokens';
 import { isNative } from '../../lib/mirror';
 import { FEED_ORIGIN, feedRefreshes } from '../../lib/feed-origin';
@@ -11,13 +11,13 @@ import type { Receipt } from '../../lib/types';
 import { COMPANY, CONTACT_EMAIL, TAGLINE } from '../../lib/brand';
 import { LEGAL_DISCLAIMER } from '../../lib/legal';
 import { checkedCount, CHECKED_ON, STORE_COUNT, tableCheck } from '../../lib/stores';
-import { discardSetAside, setAsideData, URGENT_DAYS_MAX, URGENT_DAYS_MIN, type Settings as SettingsShape } from '../../lib/storage';
+import { discardSetAside, setAsideData, urgentDayChoices, type Settings as SettingsShape } from '../../lib/storage';
 import { restoreOnlyOffered, type Offer } from '../../lib/pricing';
 import { MAX_LETTER_NAME, readLetterName } from '../../lib/sign-off';
 import type { StoreView } from '../../lib/app-store';
 import { countedAgainstQuota, FREE_TIER_LIMIT, meterWords } from '../../lib/quota';
 import { Pressable } from '../components/Pressable';
-import { inputStyle } from '../components/Field';
+import { ChevronRight, ChevronUpDown } from '../components/Icons';
 import { Note, RestorePurchase, UnlockOffer } from '../components/UnlockOffer';
 import { SupportDetails } from '../components/SupportDetails';
 
@@ -191,160 +191,293 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
 
   return (
     <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px', scrollPaddingBottom: 120 }}>
-      <h1 tabIndex={-1} style={{ fontSize: 24, fontWeight: 600, padding: '10px 2px 14px', margin: 0 }}>Settings</h1>
+      <h1 tabIndex={-1} style={{ fontSize: 24, fontWeight: 600, padding: '10px 2px 0', margin: 0 }}>Settings</h1>
 
-      <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, padding: 18 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ width: 7, height: 7, borderRadius: 999, background: color.accent }} />
-          <span style={{ fontWeight: 600, fontSize: 15 }}>Private by design</span>
-        </div>
-        <p style={{ fontSize: 13, color: color.muted, lineHeight: 1.55, marginTop: 6, marginBottom: 0 }}>
-          {/* "No server" was the loose word: this app is served from one, and
-              downloads the policy feed from it every launch — which the Watch
-              tab says two taps away. "Nothing uploaded" is both accurate and
-              the stronger claim, and it is the wording the onboarding already
-              uses. */}
-          Everything lives on this device. No account, nothing uploaded, no one reading your purchases.
-        </p>
+      {/*
+        * The order is an iPhone settings screen's: what is kept and where it
+        * goes first, then what the app does unprompted, then the reference it
+        * works from, the person's own details, the plan, and help — and the
+        * one thing that cannot be undone last, on its own. Erase everything
+        * used to sit mid-page, above the urgency setting and Help, a
+        * thumb's slip from a scroll past it.
+        */}
+      <Group
+        marker="privacy"
+        head="Privacy and backup"
+        headId="set-privacy"
+        between={
+          <>
+            {setAside && (
+              <div
+                style={{
+                  marginTop: 10, padding: '10px 13px', borderRadius: 12, fontSize: 12.5, lineHeight: 1.5,
+                  background: color.dangerChipBg, color: color.ink,
+                }}
+              >
+                <div style={{ fontWeight: 600 }}>
+                  An earlier launch found receipts it couldn’t read, and kept them aside rather than lose them.
+                </div>
+                <Pressable
+                  className="k-row-white k-secondary"
+                  onClick={() => void saveSetAside()}
+                  style={{ marginTop: 8, padding: '10px 14px', minHeight: 44, background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
+                >
+                  Save them as a file
+                </Pressable>
+              </div>
+            )}
+            {backupNote && (
+              <div
+                role="status"
+                style={{
+                  marginTop: 10, padding: '10px 13px', borderRadius: 12, fontSize: 12.5, fontWeight: 600, lineHeight: 1.5,
+                  background: backupNote.tone === 'ok' ? color.accentSoft : color.dangerChipBg,
+                  color: backupNote.tone === 'ok' ? color.ink : color.danger,
+                }}
+              >
+                {backupNote.text}
+              </div>
+            )}
+          </>
+        }
+        foot={
+          <>
+            {/* "No server" was the loose word: this app is served from one, and
+                downloads the policy feed from it every launch — which the Watch
+                tab says two taps away. "Nothing uploaded" is both accurate and
+                the stronger claim, and it is the wording the onboarding already
+                uses. */}
+            <p>
+              <span style={{ fontWeight: 600, color: color.ink }}>Private by design.</span>{' '}
+              Everything lives on this device. No account, nothing uploaded, no one reading your purchases.
+            </p>
+            {!embedded && !isNative() && storageNote(storageKept) && <p>{storageNote(storageKept)}</p>}
+            {/* Said where the button is: a backup carries every receipt and its
+                dates, and the photos stay on the phone. The listing promises both
+                a restore on a new phone and a photo kept with each receipt, and
+                nothing said the two do not travel together. */}
+            {isNative() && <p>A backup carries every receipt and its dates. Photos of receipts stay on this phone.</p>}
+          </>
+        }
+      >
         {/* Guideline 5.1.1 wants the policy reachable inside the app, not only
             from the store listing. A plain link: /privacy/ is built into the
             iOS bundle beside the app, so it opens with no network. */}
-        <a
-          href="/privacy/"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, minHeight: 44, fontSize: 13.5, fontWeight: 600, color: color.accentInk }}
-        >
-          Privacy policy<span aria-hidden="true" style={{ fontSize: 17, lineHeight: 1 }}>›</span>
-        </a>
-        {/* The one channel back from people using it: kept measures nothing
-            about them, by design, so what testers write is the whole of the
-            feedback. Shown only once there is an address someone reads, and
-            the address is printed, because a mail link does not open
-            everywhere. */}
-        {CONTACT_EMAIL && (
-          <div style={{ fontSize: 13, color: color.muted, lineHeight: 1.5 }}>
-            <a href={`mailto:${CONTACT_EMAIL}?subject=Quids%20In%20feedback`} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, fontWeight: 600, color: color.accentInk, textDecoration: 'underline', textUnderlineOffset: 3 }}>
-              Send feedback
-            </a>{' '}
-            — {CONTACT_EMAIL}
-          </div>
-        )}
-        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-          <Pressable
-            className="k-row-white k-secondary"
-            onClick={() => void exportNow()}
-            style={{ flex: 1, padding: 12, textAlign: 'center', background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
-          >
-            Export a backup
+        <li>
+          <a href="/privacy/" className="k-cell k-row-plain">
+            <span className="k-cell-label">Privacy policy</span>
+            <ChevronRight />
+          </a>
+        </li>
+        <li>
+          <Pressable className="k-cell k-row-plain" onClick={() => void exportNow()}>
+            <span className="k-cell-action">Export a backup</span>
           </Pressable>
-          {/* Export without restore is a dead end. With no account, this file is
-              the only way anything moves to a new phone. */}
-          <Pressable
-            className="k-row-white k-secondary"
-            onClick={() => fileInput.current?.click()}
-            style={{ flex: 1, padding: 12, textAlign: 'center', background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
-          >
-            Restore
+        </li>
+        {/* Export without restore is a dead end. With no account, this file is
+            the only way anything moves to a new phone. */}
+        <li>
+          <Pressable className="k-cell k-row-plain" onClick={() => fileInput.current?.click()}>
+            <span className="k-cell-action">Restore</span>
           </Pressable>
-        </div>
-        {!embedded && !isNative() && storageNote(storageKept) && (
-          <div style={{ fontSize: 12.5, color: color.muted, lineHeight: 1.5, marginTop: 8 }}>{storageNote(storageKept)}</div>
-        )}
-        {/* Said where the button is: a backup carries every receipt and its
-            dates, and the photos stay on the phone. The listing promises both
-            a restore on a new phone and a photo kept with each receipt, and
-            nothing said the two do not travel together. */}
-        {isNative() && (
-          <div style={{ fontSize: 12.5, color: color.muted, lineHeight: 1.5, marginTop: 8 }}>
-            A backup carries every receipt and its dates. Photos of receipts stay on this phone.
-          </div>
-        )}
-        <input
-          ref={fileInput}
-          type="file"
-          accept="application/json,.json"
-          hidden
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) void restore(f);
-            // Cleared so picking the same file twice fires change again.
-            e.target.value = '';
-          }}
-        />
-        {setAside && (
-          <div
-            style={{
-              marginTop: 10, padding: '10px 13px', borderRadius: 12, fontSize: 12.5, lineHeight: 1.5,
-              background: color.dangerChipBg, color: color.ink,
-            }}
-          >
-            <div style={{ fontWeight: 600 }}>
-              An earlier launch found receipts it couldn’t read, and kept them aside rather than lose them.
-            </div>
-            <Pressable
-              className="k-row-white k-secondary"
-              onClick={() => void saveSetAside()}
-              style={{ marginTop: 8, padding: '10px 14px', minHeight: 44, background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
+        </li>
+      </Group>
+      <input
+        ref={fileInput}
+        type="file"
+        accept="application/json,.json"
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void restore(f);
+          // Cleared so picking the same file twice fires change again.
+          e.target.value = '';
+        }}
+      />
+
+      <Group marker="alerts" head="Alerts" headId="set-alerts" foot={<p>{alerts.note}</p>}>
+        <li>
+          <Toggle
+            label="Deadline alerts"
+            value={alerts.on}
+            detail={alerts.detail}
+            disabled={alerts.disabled}
+            onChange={(v) => void toggleAlerts(v)}
+          />
+        </li>
+        {/*
+          * A menu, not a slider. The slider was a web control on an iPhone
+          * screen and offered nineteen positions where four answers cover it.
+          * A native <select> opens the phone's own picker. A threshold the
+          * slider stored that is not one of the four is still believed on load
+          * (`readSettings`), so it is listed in its place (`urgentDayChoices`)
+          * rather than shown as a value nobody chose.
+          */}
+        <li className="k-cell">
+          <label htmlFor="urgent" className="k-cell-label">Call it urgent under</label>
+          <span className="k-cell-select-wrap">
+            <select
+              id="urgent"
+              className="k-cell-select"
+              value={settings.urgentDays}
+              onChange={(e) => onChange({ urgentDays: Number(e.target.value) })}
             >
-              Save them as a file
-            </Pressable>
-          </div>
-        )}
-        {backupNote && (
-          <div
-            role="status"
-            style={{
-              marginTop: 10, padding: '10px 13px', borderRadius: 12, fontSize: 12.5, fontWeight: 600, lineHeight: 1.5,
-              background: backupNote.tone === 'ok' ? color.accentSoft : color.dangerChipBg,
-              color: backupNote.tone === 'ok' ? color.ink : color.danger,
-            }}
-          >
-            {backupNote.text}
-          </div>
-        )}
-      </section>
+              {urgentDayChoices(settings.urgentDays).map((n) => (
+                <option key={n} value={n}>
+                  {n} days
+                </option>
+              ))}
+            </select>
+            <ChevronUpDown />
+          </span>
+        </li>
+      </Group>
+
+      <Group
+        marker="policies"
+        head="Policies"
+        headId="set-policies"
+        foot={
+          <>
+            {!feedRefreshes(isNative(), FEED_ORIGIN) && (
+              <p>The list of policy changes comes with app updates. Quids In downloads nothing.</p>
+            )}
+            {/* It said "20 verified today", which nothing recorded — the table is
+                maintained by hand. Until someone has checked it, the screen says
+                that, the way the landing page says its social proof is
+                illustrative. And a check goes off: the date alone would have sat
+                here reading the same in 2029, which is the same claim decaying
+                rather than being false on the day it was written. See
+                `tableCheck` in stores.ts. */}
+            {/* Until every row is checked, say how many are and which are not —
+                not "none", which stopped being true once most of the table had
+                been read off the shops' own pages (`CHECKED_ON`). */}
+            {check.state === 'never' && (
+              <p>
+                {perShop.checked} checked against each shop’s own returns page
+                {lastRead ? `, most recently ${fmtDateLong(fromISODate(lastRead))}` : ''}.
+                {perShop.unchecked.length > 0 && ` Not yet checked: ${perShop.unchecked.join(', ')} — trust your receipt for those.`}
+              </p>
+            )}
+            {check.state === 'stale' && (
+              <p>That was over a year ago and shops do change their windows. Always trust your receipt over this.</p>
+            )}
+          </>
+        }
+      >
+        {/* "Daily · on" was a cadence nothing kept. The feed is fetched once
+            per launch — see the effect in App.tsx — which is what this says.
+
+            Except where nothing is fetched at all: the iPhone app until its
+            build names a feed host (lib/feed-origin.ts). There a switch would
+            be one that turns nothing on and nothing off, and "Every launch"
+            a cadence nothing keeps — the defect this row was fixed for twice
+            already. So it says where the list comes from instead. */}
+        <li>
+          {feedRefreshes(isNative(), FEED_ORIGIN) ? (
+            <Toggle
+              label="Policy watch"
+              value={settings.policyWatch}
+              detail={settings.policyWatch ? 'Every launch · on' : 'Off'}
+              onChange={(v) => onChange({ policyWatch: v })}
+            />
+          ) : (
+            <div className="k-cell">
+              <span className="k-cell-label">Policy watch</span>
+              <span className="k-cell-value">With app updates</span>
+            </div>
+          )}
+        </li>
+        <li className="k-cell">
+          <span className="k-cell-label">Retailer policies</span>
+          <span className="k-cell-value">
+            {STORE_COUNT} shops
+            {check.state === 'never' ? '' : ` · checked ${fmtDateLong(check.on)}`}
+          </span>
+        </li>
+      </Group>
+
+      {/* The name the letters are signed with. They ended "[Your name]", with
+          a note asking for it to be changed before sending, and a letter
+          copied in a hurry went out signed that way. Asked for here and under
+          any letter that still has the blank; kept with the settings, on this
+          phone (lib/sign-off.ts). The group's heading is the field's label,
+          as an iPhone form names a field above it — and only the field's:
+          naming the section by it as well gives the label two owners. */}
+      <Group
+        marker="letters"
+        head={<label htmlFor="letter-name">Your name (for letters)</label>}
+        footId="letter-name-hint"
+        foot={<p>Signs the letters Quids In drafts to shops. It stays on this phone.</p>}
+      >
+        <li>
+          <input
+            id="letter-name"
+            className="k-cell k-cell-input"
+            type="text"
+            autoComplete="name"
+            autoCapitalize="words"
+            placeholder="Name"
+            maxLength={MAX_LETTER_NAME}
+            value={settings.letterName}
+            onChange={(e) => onChange({ letterName: e.target.value })}
+            aria-describedby="letter-name-hint"
+          />
+        </li>
+      </Group>
 
       {/* Nothing to buy just now, but a purchase from another iPhone can still come back. */}
       {restoreOnlyOffered(isNative(), offer, store.shelf, free) && (
-        <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, padding: 18, marginTop: 12 }}>
-          <div style={{ fontWeight: 600, fontSize: 15 }}>Bought the unlock before?</div>
-          <div style={{ fontSize: 13, color: color.muted, lineHeight: 1.5, marginTop: 4 }}>
-            The App Store isn’t offering it just now, but anything this Apple ID already owns can still be restored.
-          </div>
-          <RestorePurchase store={store} onRestore={onRestorePurchase} />
-        </section>
+        <Group
+          marker="plan"
+          head="Bought the unlock before?"
+          headId="set-restore"
+          foot={<p>The App Store isn’t offering it just now, but anything this Apple ID already owns can still be restored.</p>}
+        >
+          <li style={{ padding: '3px 16px' }}>
+            <RestorePurchase store={store} onRestore={onRestorePurchase} />
+          </li>
+        </Group>
       )}
       {/* No plan, no price and no unlock where nothing can be bought — see offerFor. */}
       {offer.kind !== 'none' && free && (
-        <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, padding: 18, marginTop: 12 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
-            <span style={{ fontWeight: 600, fontSize: 15 }}>Free plan</span>
-            <span style={{ fontFamily: font.figures, fontSize: 12, color: color.muted }}>
-              {meterWords(used)}
-            </span>
-          </div>
-          <div
-            role="progressbar"
-            aria-valuenow={Math.min(used, FREE_TIER_LIMIT)}
-            aria-valuemin={0}
-            aria-valuemax={FREE_TIER_LIMIT}
-            aria-label="Open receipts on the free plan"
-            style={{ height: 6, borderRadius: 999, background: color.surfaceDeep, marginTop: 10, overflow: 'hidden' }}
-          >
-            <div style={{ height: '100%', background: color.accent, borderRadius: 999, width: `${usagePct}%` }} />
-          </div>
-          {/* "2 of 10 free receipts", read by someone who had saved three,
-              said ten in a lifetime. The count is of OPEN ones (quota.ts):
-              say so, or the free plan reads smaller than it is. */}
-          <div style={{ fontSize: 12.5, color: color.muted, marginTop: 8 }}>
-            Ones you have returned or kept do not count, so a return frees a slot.
-          </div>
-
+        <Group
+          marker="plan"
+          head="Plan"
+          headId="set-plan"
+          foot={
+            <>
+              {/* "2 of 10 free receipts", read by someone who had saved three,
+                  said ten in a lifetime. The count is of OPEN ones (quota.ts):
+                  say so, or the free plan reads smaller than it is. */}
+              <p>Ones you have returned or kept do not count, so a return frees a slot.</p>
+              <p>One payment. No subscription, nothing to cancel.</p>
+            </>
+          }
+        >
+          <li className="k-cell" style={{ display: 'block' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
+              <span className="k-cell-label">Free plan</span>
+              <span className="k-cell-value" style={{ fontFamily: font.figures, fontSize: 13.5 }}>
+                {meterWords(used)}
+              </span>
+            </div>
+            <div
+              role="progressbar"
+              aria-valuenow={Math.min(used, FREE_TIER_LIMIT)}
+              aria-valuemin={0}
+              aria-valuemax={FREE_TIER_LIMIT}
+              aria-label="Open receipts on the free plan"
+              style={{ height: 6, borderRadius: 999, background: color.surfaceDeep, marginTop: 10, overflow: 'hidden' }}
+            >
+              <div style={{ height: '100%', background: color.accent, borderRadius: 999, width: `${usagePct}%` }} />
+            </div>
+          </li>
           {/* One price: the landing page's on the web, the App Store's on iPhone — see lib/pricing.ts. */}
-          <UnlockOffer offer={offer} store={store} onUnlock={onUpgrade} onRestore={onRestorePurchase} />
-          <div style={{ fontSize: 12, color: color.muted, textAlign: 'center', marginTop: 10 }}>
-            One payment. No subscription, nothing to cancel.
-          </div>
-        </section>
+          <li style={{ padding: '0 16px 8px' }}>
+            <UnlockOffer offer={offer} store={store} onUnlock={onUpgrade} onRestore={onRestorePurchase} buttonStyle={{ marginTop: 12 }} />
+          </li>
+        </Group>
       )}
 
       {/* Unlocking used to remove this whole block and put nothing in its
@@ -356,146 +489,84 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
           only because StoreKit verified a purchase. And there money WAS taken,
           so the web's sentence would be false. */}
       {!free && (
-        <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, padding: 18, marginTop: 12 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
-            <span style={{ fontWeight: 600, fontSize: 15 }}>Unlocked</span>
-            <span style={{ fontFamily: font.figures, fontSize: 12, color: color.muted }}>
+        <Group
+          marker="plan"
+          head="Plan"
+          headId="set-plan"
+          between={isNative() && <div role="status">{store.note && <Note note={store.note} />}</div>}
+          foot={
+            <p>
+              {isNative()
+                ? 'Paid once, through the App Store. There is no subscription here to cancel.'
+                : 'Nothing was charged and no card was taken — Quids In cannot accept payments yet. There is no subscription here to cancel.'}
+            </p>
+          }
+        >
+          <li className="k-cell">
+            <span className="k-cell-label">Unlocked</span>
+            <span className="k-cell-value" style={{ fontFamily: font.figures, fontSize: 13.5 }}>
               {used} receipts · no limit
             </span>
-          </div>
-          <div style={{ fontSize: 13, color: color.body, lineHeight: 1.55, marginTop: 8 }}>
-            {isNative()
-              ? 'Paid once, through the App Store. There is no subscription here to cancel.'
-              : 'Nothing was charged and no card was taken — Quids In cannot accept payments yet. There is no subscription here to cancel.'}
-          </div>
-          {isNative() && <div role="status">{store.note && <Note note={store.note} />}</div>}
-        </section>
+          </li>
+        </Group>
       )}
-
-      <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, marginTop: 12, overflow: 'hidden' }}>
-        {/* The row and its caveat share one block, so the separator falls below
-            both rather than striking through the explanation. */}
-        <div style={{ borderBottom: `1px solid ${color.borderHair}` }}>
-          <Toggle
-            label="Deadline alerts"
-            value={alerts.on}
-            detail={alerts.detail}
-            disabled={alerts.disabled}
-            separator={false}
-            onChange={(v) => void toggleAlerts(v)}
-          />
-          <div style={{ padding: '0 18px 14px', fontSize: 12, color: color.muted, lineHeight: 1.5 }}>
-            {alerts.note}
-          </div>
-        </div>
-        {/* "Daily · on" was a cadence nothing kept. The feed is fetched once
-            per launch — see the effect in App.tsx — which is what this says.
-
-            Except where nothing is fetched at all: the iPhone app until its
-            build names a feed host (lib/feed-origin.ts). There a switch would
-            be one that turns nothing on and nothing off, and "Every launch"
-            a cadence nothing keeps — the defect this row was fixed for twice
-            already. So it says where the list comes from instead. */}
-        {feedRefreshes(isNative(), FEED_ORIGIN) ? (
-          <Toggle
-            label="Policy watch"
-            value={settings.policyWatch}
-            detail={settings.policyWatch ? 'Every launch · on' : 'Off'}
-            onChange={(v) => onChange({ policyWatch: v })}
-          />
-        ) : (
-          <div style={{ padding: '15px 18px', borderBottom: `1px solid ${color.borderHair}` }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-              <span style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap' }}>Policy watch</span>
-              <span style={{ fontSize: 14, color: color.muted, textAlign: 'right' }}>With app updates</span>
-            </div>
-            <div style={{ fontSize: 12, color: color.muted, lineHeight: 1.5, marginTop: 6 }}>
-              The list of policy changes comes with app updates. Quids In downloads nothing.
-            </div>
-          </div>
-        )}
-        <div style={{ padding: '15px 18px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-            <span style={{ fontSize: 14, fontWeight: 600 }}>Retailer policies</span>
-            <span style={{ fontSize: 14, color: color.muted }}>
-              {STORE_COUNT} shops
-              {check.state === 'never' ? '' : ` · checked ${fmtDateLong(check.on)}`}
-            </span>
-          </div>
-          {/* It said "20 verified today", which nothing recorded — the table is
-              maintained by hand. Until someone has checked it, the screen says
-              that, the way the landing page says its social proof is
-              illustrative. And a check goes off: the date alone would have sat
-              here reading the same in 2029, which is the same claim decaying
-              rather than being false on the day it was written. See
-              `tableCheck` in stores.ts. */}
-          {/* Until every row is checked, say how many are and which are not —
-              not "none", which stopped being true once most of the table had
-              been read off the shops' own pages (`CHECKED_ON`). */}
-          {check.state === 'never' && (
-            <div style={{ fontSize: 12, color: color.muted, lineHeight: 1.5, marginTop: 6 }}>
-              {perShop.checked} checked against each shop’s own returns page
-              {lastRead ? `, most recently ${fmtDateLong(fromISODate(lastRead))}` : ''}.
-              {perShop.unchecked.length > 0 && ` Not yet checked: ${perShop.unchecked.join(', ')} — trust your receipt for those.`}
-            </div>
-          )}
-          {check.state === 'stale' && (
-            <div style={{ fontSize: 12, color: color.muted, lineHeight: 1.5, marginTop: 6 }}>
-              That was over a year ago and shops do change their windows. Always trust your receipt over this.
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* The name the letters are signed with. They ended "[Your name]", with
-          a note asking for it to be changed before sending, and a letter
-          copied in a hurry went out signed that way. Asked for here and under
-          any letter that still has the blank; kept with the settings, on this
-          phone (lib/sign-off.ts). */}
-      <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, marginTop: 12, padding: '15px 18px' }}>
-        <label htmlFor="letter-name" style={{ fontSize: 14, fontWeight: 600, display: 'block' }}>
-          Your name (for letters)
-        </label>
-        <input
-          id="letter-name"
-          type="text"
-          autoComplete="name"
-          autoCapitalize="words"
-          maxLength={MAX_LETTER_NAME}
-          value={settings.letterName}
-          onChange={(e) => onChange({ letterName: e.target.value })}
-          aria-describedby="letter-name-hint"
-          style={{ ...inputStyle(false), marginTop: 10 }}
-        />
-        <div id="letter-name-hint" style={{ fontSize: 12, color: color.muted, lineHeight: 1.5, marginTop: 6 }}>
-          Signs the letters Quids In drafts to shops. It stays on this phone.
-        </div>
-      </section>
 
       {/* The samples, on their own: Erase everything was the only way to be
           rid of all of them, and it takes the real receipts too. */}
       {receipts.some((r) => r.demo) && (
-        <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, marginTop: 12, padding: 18 }}>
-          <div style={{ fontWeight: 600, fontSize: 15 }}>Sample receipts</div>
-          <p style={{ fontSize: 13, color: color.muted, lineHeight: 1.55, marginTop: 6, marginBottom: 0 }}>
-            The receipts marked sample show what Quids In does. Removing them leaves your own receipts exactly as they are.
-          </p>
-          <Pressable className="k-secondary"
-            onClick={onClearSamples}
-            style={{ marginTop: 12, padding: 12, textAlign: 'center', background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
-          >
-            Remove the samples
-          </Pressable>
-        </section>
+        <Group
+          marker="samples"
+          head="Sample receipts"
+          headId="set-samples"
+          foot={<p>The receipts marked sample show what Quids In does. Removing them leaves your own receipts exactly as they are.</p>}
+        >
+          <li>
+            <Pressable className="k-cell k-row-plain" onClick={onClearSamples}>
+              <span className="k-cell-action">Remove the samples</span>
+            </Pressable>
+          </li>
+        </Group>
       )}
 
-      <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, marginTop: 12, padding: 18 }}>
-        <div style={{ fontWeight: 600, fontSize: 15 }}>Erase everything</div>
-        <p style={{ fontSize: 13, color: color.muted, lineHeight: 1.55, marginTop: 6, marginBottom: 0 }}>
-          {eraseSays}
-        </p>
+      {/* The version, and what to send when something goes wrong. Shown, not
+          just copied: the person reads every line before it leaves. */}
+      <Group marker="support" head="Help and support" headId="support-title">
+        {/* The one channel back from people using it: kept measures nothing
+            about them, by design, so what testers write is the whole of the
+            feedback. Shown only once there is an address someone reads, and
+            the address is printed, because a mail link does not open
+            everywhere. */}
+        {CONTACT_EMAIL && (
+          <li>
+            <a href={`mailto:${CONTACT_EMAIL}?subject=Quids%20In%20feedback`} className="k-cell k-row-plain">
+              <span className="k-cell-label">Send feedback</span>
+              <span className="k-cell-value" style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {CONTACT_EMAIL}
+              </span>
+              <ChevronRight />
+            </a>
+          </li>
+        )}
+        <li style={{ padding: '14px 16px 8px' }}>
+          <SupportDetails receipts={receipts} />
+        </li>
+      </Group>
+
+      <p style={{ fontSize: 11, color: color.muted, textAlign: 'center', margin: '14px 16px 0', lineHeight: 1.6 }}>
+        Quids In · {TAGLINE} — get your money back
+        <br />
+        {/* The seller, by the name App Review sees on the listing. The full
+            disclosure is the website's; one line here is enough. */}
+        Made by {COMPANY.name}
+        <br />
+        {LEGAL_DISCLAIMER}
+      </p>
+
+      {/* Last, and alone, as an iPhone puts it: the one control here that
+          cannot be taken back. Two steps, not an undo — see confirmingWipe. */}
+      <Group marker="erase" foot={<p>{eraseSays}</p>}>
         {confirmingWipe ? (
-          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+          <li style={{ display: 'flex', gap: 8, padding: 12 }}>
             <Pressable
               className="k-row-white k-secondary"
               onClick={() => setConfirmingWipe(false)}
@@ -513,63 +584,62 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
             >
               Erase everything
             </Pressable>
-          </div>
+          </li>
         ) : (
-          <Pressable
-            className="k-soft"
-            onClick={() => setConfirmingWipe(true)}
-            disabled={nothingStored}
-            style={{
-              marginTop: 12, padding: 12, textAlign: 'center', background: color.surfaceAlt,
-              borderRadius: radius.control, fontWeight: 600, fontSize: 13,
-              color: nothingStored ? color.muted : color.danger,
-              opacity: nothingStored ? 0.55 : 1,
-              cursor: nothingStored ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {nothingStored ? 'Nothing stored' : 'Erase everything'}
-          </Pressable>
+          <li>
+            <Pressable
+              className="k-cell k-row-plain"
+              onClick={() => setConfirmingWipe(true)}
+              disabled={nothingStored}
+              style={{
+                justifyContent: 'center', fontWeight: 600,
+                color: nothingStored ? color.muted : color.danger,
+                opacity: nothingStored ? 0.55 : 1,
+                cursor: nothingStored ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {nothingStored ? 'Nothing stored' : 'Erase everything'}
+            </Pressable>
+          </li>
         )}
-      </section>
-
-      <section style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, marginTop: 12, padding: '15px 18px' }}>
-        <label htmlFor="urgent" style={{ fontSize: 14, fontWeight: 600, display: 'block' }}>
-          Call it urgent under
-        </label>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10 }}>
-          <input
-            id="urgent"
-            type="range"
-            min={URGENT_DAYS_MIN}
-            max={URGENT_DAYS_MAX}
-            step={1}
-            value={settings.urgentDays}
-            onChange={(e) => onChange({ urgentDays: Number(e.target.value) })}
-            style={{ flex: 1, accentColor: color.accent }}
-          />
-          <span style={{ fontFamily: font.figures, fontWeight: 600, fontSize: 14, minWidth: 56, textAlign: 'right' }}>
-            {settings.urgentDays} days
-          </span>
-        </div>
-      </section>
-
-      {/* The version, and what to send when something goes wrong. Shown, not
-          just copied: the person reads every line before it leaves. */}
-      <section aria-labelledby="support-title" style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, marginTop: 12, padding: 18 }}>
-        <h2 id="support-title" style={{ fontWeight: 600, fontSize: 15, margin: '0 0 8px' }}>Help and support</h2>
-        <SupportDetails receipts={receipts} />
-      </section>
-
-      <p style={{ fontSize: 11, color: color.muted, textAlign: 'center', marginTop: 16, lineHeight: 1.6 }}>
-        Quids In · {TAGLINE} — get your money back
-        <br />
-        {/* The seller, by the name App Review sees on the listing. The full
-            disclosure is the website's; one line here is enough. */}
-        Made by {COMPANY.name}
-        <br />
-        {LEGAL_DISCLAIMER}
-      </p>
+      </Group>
     </div>
+  );
+}
+
+/**
+ * One group of an iPhone-style settings list: a small heading, the rows in
+ * one soft card divided by hairlines (`.k-group`), and the explanation in
+ * small type under it. `between` is for what answers a row just pressed —
+ * a backup's note, the App Store's — which belongs next to the rows, above
+ * the standing explanation.
+ */
+function Group({ marker, head, headId, foot, footId, between, children }: {
+  marker: string;
+  head?: ReactNode;
+  headId?: string;
+  foot?: ReactNode;
+  footId?: string;
+  between?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section data-settings-group={marker} aria-labelledby={head ? headId : undefined}>
+      {head ? (
+        <h2 id={headId} className="k-set-head">
+          {head}
+        </h2>
+      ) : (
+        <div aria-hidden="true" style={{ height: 34 }} />
+      )}
+      <ul className="k-group">{children}</ul>
+      {between}
+      {foot && (
+        <div id={footId} className="k-set-foot">
+          {foot}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -578,28 +648,24 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
  * things the app actually does to you unprompted, so they are switches: a
  * notification setting you can read but not change is a setting in name only.
  */
-function Toggle({ label, detail, value, disabled, separator = true, onChange }: {
-  label: string; detail: string; value: boolean; disabled?: boolean; separator?: boolean; onChange: (v: boolean) => void;
+function Toggle({ label, detail, value, disabled, onChange }: {
+  label: string; detail: string; value: boolean; disabled?: boolean; onChange: (v: boolean) => void;
 }) {
   return (
     <Pressable
+      className="k-cell"
       onClick={() => onChange(!value)}
       role="switch"
       aria-checked={value}
       disabled={disabled}
-      style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
-        padding: '15px 18px',
-        borderBottom: separator ? `1px solid ${color.borderHair}` : undefined,
-        opacity: disabled ? 0.55 : 1, cursor: disabled ? 'not-allowed' : 'pointer',
-      }}
+      style={{ opacity: disabled ? 0.55 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}
     >
       {/* The name keeps its line; only the status may wrap, beside the switch.
           With the two sharing the row equally, "Blocked by your browser" split
           the label as well — "Deadline / alerts" — on a phone. */}
-      <span style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>{label}</span>
+      <span className="k-cell-label">{label}</span>
       <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-        <span style={{ fontSize: 14, color: color.muted, textAlign: 'right' }}>{detail}</span>
+        <span className="k-cell-value">{detail}</span>
         <span
           aria-hidden="true"
           style={{

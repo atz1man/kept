@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { afterEach } from 'vitest';
-import { discardSetAside, hydrate, load, save, onExternalChange, rescueBackup, setAsideData, DEFAULT_SETTINGS, URGENT_DAYS_MIN, URGENT_DAYS_MAX } from '../src/lib/storage';
+import { discardSetAside, hydrate, load, save, onExternalChange, rescueBackup, setAsideData, DEFAULT_SETTINGS, URGENT_DAYS_MIN, URGENT_DAYS_MAX, URGENT_DAYS_CHOICES, urgentDayChoices } from '../src/lib/storage';
 import { MAX_AMOUNT_PENCE, MAX_WINDOW_DAYS } from '../src/lib/draft';
 import { MAX_UPDATES } from '../src/lib/policy-feed';
 import { toPence } from '../src/lib/money';
@@ -347,9 +347,41 @@ describe('the slider bounds and the rung they have to reach', () => {
      * with nothing to say so.
      */
     expect(URGENT_DAYS_MIN).toBeLessThan(3);
-    // And the top of the slider is three weeks, which is what the Settings row
-    // says it offers — tied to the words rather than pinned as a bare 21.
+    // And the top of the stored range is three weeks, which is what the old
+    // slider offered and what a value stored by it can still be — tied to the
+    // words rather than pinned as a bare 21.
     expect(URGENT_DAYS_MAX).toBe(7 * 3);
+  });
+});
+
+describe('the urgency menu', () => {
+  /*
+   * Settings offers four thresholds where the slider offered every day from
+   * two to twenty-one. The values the slider could store are still believed
+   * on load, so the menu has to be able to show one: a <select> whose value
+   * is not among its options shows the first option instead, and the screen
+   * would say 3 days while every deadline was coloured against 10.
+   */
+  it('offers the four choices, in order, inside the range a stored value is held to', () => {
+    expect([...URGENT_DAYS_CHOICES]).toEqual([3, 5, 7, 14]);
+    for (const n of URGENT_DAYS_CHOICES) {
+      expect(n).toBeGreaterThanOrEqual(URGENT_DAYS_MIN);
+      expect(n).toBeLessThanOrEqual(URGENT_DAYS_MAX);
+    }
+    expect(URGENT_DAYS_CHOICES).toContain(DEFAULT_SETTINGS.urgentDays);
+    expect(urgentDayChoices(7)).toEqual([3, 5, 7, 14]);
+  });
+
+  it('lists a value the slider stored, in its place, at both ends of the range', () => {
+    expect(urgentDayChoices(10)).toEqual([3, 5, 7, 10, 14]);
+    expect(urgentDayChoices(URGENT_DAYS_MIN)).toEqual([URGENT_DAYS_MIN, 3, 5, 7, 14]);
+    expect(urgentDayChoices(URGENT_DAYS_MAX)).toEqual([3, 5, 7, 14, URGENT_DAYS_MAX]);
+  });
+
+  it('lists nothing load would not believe', () => {
+    for (const bad of [URGENT_DAYS_MIN - 1, URGENT_DAYS_MAX + 1, 6.5, Number.NaN]) {
+      expect(urgentDayChoices(bad)).toEqual([3, 5, 7, 14]);
+    }
   });
 });
 
