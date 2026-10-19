@@ -1405,6 +1405,8 @@ for (const cancel of [false, true]) {
   await cp.waitForTimeout(300);
   const guessed = await cp.locator('[data-check]').allInnerTexts().catch(() => []);
   const head = await cp.getByText(/to check$/).first().innerText().catch(() => '');
+  // The card stands in for the ways in once something is read; Start again brings them back.
+  await cp.getByRole('button', { name: 'Start again' }).click();
   await cp.locator('#paste').fill('Argos\nOrder date: 21 September 2026\nKettle £29.00\nOrder total: £29.00');
   await cp.getByRole('button', { name: 'Read it' }).click();
   await cp.waitForTimeout(300);
@@ -1583,6 +1585,113 @@ for (const cancel of [false, true]) {
   results['what was read can be corrected before saving, and a receipt can be typed in from nothing'] = !!ok;
   if (!ok) problems.push(`correct or type: ${JSON.stringify(seen)}`);
   await tCtx.close();
+}
+
+/*
+ * After a read, the card and nothing else. Every way in used to stay on the
+ * screen round the card — the camera above it, the paste box, the file and
+ * type-in rows and the share note below — so a read ended in a long scroll,
+ * Save under the fold, and no saying which of a dozen things was next. Asked
+ * at 390×844, as the iPhone app draws the screen and as the web does, of a
+ * paste and of a card typed in: the ways in are gone, the card sits straight
+ * under the heading, Save is on screen at the top and still there half way
+ * down (it rides above the tab bar), no field Tab reaches is left behind
+ * either bar, and "Start again" brings the ways back, the card gone, the box
+ * still holding the paste.
+ */
+for (const native of [true, false]) {
+  const nCtx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  if (native) {
+    await nCtx.addInitScript(() => {
+      const w = window;
+      w.webkit = w.webkit ?? {};
+      w.webkit.messageHandlers = w.webkit.messageHandlers ?? {};
+      w.webkit.messageHandlers.bridge = { postMessage: () => {} };
+      w.Capacitor = w.Capacitor ?? { isNativePlatform: () => true, getPlatform: () => 'ios' };
+    });
+  }
+  const np = await nCtx.newPage();
+  np.on('pageerror', (e) => problems.push(`after a read (${native ? 'iPhone' : 'web'}): ${e.message}`));
+  await np.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await np.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await np.waitForTimeout(300);
+  await np.getByRole('button', { name: 'Add a receipt' }).click();
+  await np.waitForTimeout(300);
+  const ways = async () => ({
+    scan: await np.getByRole('button', { name: 'Scan a paper receipt' }).isVisible().catch(() => false),
+    paste: await np.locator('#paste').isVisible().catch(() => false),
+    file: await np.getByRole('button', { name: 'Open a PDF or saved email' }).isVisible().catch(() => false),
+    typeIn: await np.getByRole('button', { name: 'Type it in yourself' }).isVisible().catch(() => false),
+    note: await np.getByText('Coming from your email app?', { exact: true }).isVisible().catch(() => false),
+  });
+  /** Where things sit, with the screen at its top: the card under the heading, Save on screen above the tab bar. */
+  const placed = () => np.evaluate(() => {
+    const scroller = document.querySelector('main > div[style*="overflow"]');
+    const nav = document.querySelector('nav[aria-label="Main"]')?.getBoundingClientRect();
+    const sub = document.querySelector('main h1 + p')?.getBoundingClientRect();
+    const found = document.getElementById('add-found');
+    const card = found?.parentElement?.parentElement?.getBoundingClientRect();
+    const save = [...document.querySelectorAll('main button')].find((b) => /^(Save receipt|Say where you bought it|Add the shop to save|Add the total to save)$/.test((b.textContent ?? '').trim()));
+    const s = save?.getBoundingClientRect();
+    const onTop = s ? save.contains(document.elementFromPoint(s.left + s.width / 2, s.top + s.height / 2)) : false;
+    return {
+      scrollTop: scroller?.scrollTop ?? null,
+      gapUnderHeading: card && sub ? Math.round(card.top - sub.bottom) : null,
+      cardTop: card ? Math.round(card.top) : null,
+      saveShown: !!s && s.top >= 0 && !!nav && s.bottom <= nav.top && onTop,
+      saveLabel: (save?.textContent ?? '').trim(),
+    };
+  });
+  const seen = { before: await ways() };
+  await np.locator('#paste').fill('Argos order · Kettle · Total £29.00 · 21 Sep 2026');
+  await np.getByRole('button', { name: 'Read it' }).click();
+  await np.waitForTimeout(400);
+  seen.afterRead = await ways();
+  seen.focus = await np.evaluate(() => document.activeElement?.id ?? '');
+  seen.read = await placed();
+  // Half way down a long card, Save is still there to press.
+  await np.evaluate(() => { const s = document.querySelector('main > div[style*="overflow"]'); s.scrollTop = Math.max(0, (s.scrollHeight - s.clientHeight) / 2); });
+  await np.waitForTimeout(200);
+  seen.midway = (await placed()).saveShown;
+  // Every field Tab reaches clears the save bar and the tab bar.
+  await np.locator('#add-item').focus();
+  seen.hidden = [];
+  for (let i = 0; i < 12; i += 1) {
+    const at = await np.evaluate(() => {
+      const el = document.activeElement;
+      const bar = document.querySelector('[data-save-bar]')?.getBoundingClientRect();
+      if (!el || !bar || bar.height === 0 || el.closest('[data-save-bar]') || el.closest('nav')) return null;
+      const r = el.getBoundingClientRect();
+      return r.bottom > bar.top + 1 ? (el.id || (el.textContent ?? '').trim().slice(0, 30)) : null;
+    });
+    if (at) seen.hidden.push(at);
+    await np.keyboard.press('Tab');
+    await np.waitForTimeout(60);
+  }
+  const again = np.getByRole('button', { name: 'Start again' });
+  seen.offered = (await again.count()) === 1;
+  if (seen.offered) {
+    await again.click();
+    await np.waitForTimeout(300);
+    seen.afterAgain = await ways();
+    seen.cardGone = (await np.locator('#add-found').count()) === 0 && (await np.locator('#add-item').count()) === 0;
+    seen.boxKept = (await np.locator('#paste').inputValue().catch(() => '')).includes('Argos order');
+    seen.againFocus = await np.evaluate(() => document.activeElement?.id || document.activeElement?.tagName || '');
+    await np.getByRole('button', { name: 'Type it in yourself' }).click();
+    await np.waitForTimeout(400);
+    seen.afterType = await ways();
+    seen.typed = await placed();
+  }
+  const hidden = (w) => w && !w.scan && !w.paste && !w.file && !w.typeIn && !w.note;
+  const shown = (w) => w && w.scan && w.paste && w.file && w.typeIn;
+  const sits = (p) => p && p.scrollTop === 0 && p.gapUnderHeading !== null && p.gapUnderHeading >= 0 && p.gapUnderHeading <= 24 && p.cardTop < 844 / 2 && p.saveShown;
+  const ok = shown(seen.before) && hidden(seen.afterRead) && seen.focus === 'add-found' && sits(seen.read) && seen.midway && seen.hidden.length === 0 &&
+    seen.offered && shown(seen.afterAgain) && seen.cardGone && seen.boxKept && seen.againFocus === (native ? 'H1' : 'paste') &&
+    hidden(seen.afterType) && sits(seen.typed) && seen.typed.saveLabel === 'Add the shop to save';
+  const name = `after a read, the ${native ? 'iPhone' : 'web'} Add screen is the card, Save on screen, and Start again brings the ways back`;
+  results[name] = !!ok;
+  if (!ok) problems.push(`after a read (${native ? 'iPhone' : 'web'}): ${JSON.stringify(seen)}`);
+  await nCtx.close();
 }
 
 /*
@@ -3093,6 +3202,12 @@ results['a policy change is checked against the receipts held'] =
  */
 await page.getByRole('button', { name: 'Add a receipt' }).click();
 await page.waitForTimeout(300);
+// The order shared in above is still on the card, unsaved, and the card
+// stands in for the ways in: Start again brings the paste box back.
+results['an order shared in and not yet saved is still on the card, with Start again beside it'] =
+  (await page.getByText('Found in your paste').isVisible().catch(() => false)) &&
+  (await page.getByRole('button', { name: 'Start again' }).count()) === 1;
+await page.getByRole('button', { name: 'Start again' }).click().catch(() => {});
 await page.fill('#paste', 'Your Vinted order · walking boots · Total £40.00 · 20 Aug 2026');
 await page.getByRole('button', { name: 'Read it' }).click();
 await page.waitForTimeout(400);
@@ -3753,6 +3868,8 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
   // The card says where its findings came from, and stops saying "photo" the
   // moment the text is no longer what the camera read.
   if (found) {
+    // Start again brings the box back holding what the camera read, to be put right and read again.
+    await scanPage.getByRole('button', { name: 'Start again' }).click();
     await scanPage.locator('#paste').fill(`${await scanPage.inputValue('#paste')}\nThanks`);
     await scanPage.getByRole('button', { name: 'Read it' }).click();
     results['an edited scan is a paste again'] =
@@ -3840,7 +3957,9 @@ results['the dispatch date can be supplied, on the shop it belongs to'] =
     results['a saved order email is read on the device'] = emlFound && /Currys/.test(emlCard) && /£29\.99/.test(emlCard) && /21 Sep/.test(emlCard);
     if (!results['a saved order email is read on the device']) problems.push(`eml read: ${emlFound ? emlCard.slice(0, 300).replace(/\n/g, ' | ') : 'no card'}`);
 
-    // And a file that is no receipt says so, rather than reading nothing.
+    // And a file that is no receipt says so, rather than reading nothing —
+    // chosen from the ways in, which Start again brings back after the read.
+    await scanPage.getByRole('button', { name: 'Start again' }).click().catch(() => {});
     await scanPage.setInputFiles('#add-file', { name: 'song.bin', mimeType: 'application/octet-stream', buffer: Buffer.from([0, 1, 2, 3, 4, 5, 6, 7, 0, 0]) });
     results['a file that is no receipt is named as such'] = await scanPage
       .getByText('That file is none of those', { exact: false })
@@ -4571,6 +4690,8 @@ results['nothing is fetched from a third party'] = requestsSeen > 0 && foreign.s
     return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   };
   const gone = async (paste) => {
+    // A second paste is read from the ways in, which Start again brings back.
+    if (await gp.getByRole('button', { name: 'Start again' }).count()) await gp.getByRole('button', { name: 'Start again' }).click();
     await gp.fill('#paste', paste);
     await gp.getByRole('button', { name: 'Read it' }).click();
     await gp.waitForTimeout(400);
