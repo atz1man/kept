@@ -604,11 +604,13 @@ for (const o of obscured) lostFocus.push([`focus on ${o}`, 'is behind the tab ba
  * only 1.28:1 against the bar on an ordinary screen, well under the 3:1 SC
  * 1.4.11 asks of a state indicator.
  *
- * The trap this check exists for: the first fix gave the inactive tabs a
- * TRANSPARENT border to keep the geometry, and a transparent border is forced
- * like any other — so all four came back outlined and the state was less
- * visible than before. The border is absent on the inactive ones now and the
- * 1.5px is paid back in padding.
+ * The trap this check was first written for: the first fix gave the inactive
+ * tabs a TRANSPARENT border to keep the geometry, and a transparent border is
+ * forced like any other — so all four came back outlined and the state was
+ * less visible than before. The state is now said without any colour at all:
+ * the current tab's glyph is drawn SOLID and its label heavier, as a phone's
+ * own tab bar does it, and both are checked here with the colours forced —
+ * exactly one tab solid and heavier, the other three outlined.
  */
 const forcedColourProblems = [];
 {
@@ -622,24 +624,35 @@ const forcedColourProblems = [];
     return [...(nav?.querySelectorAll('button') ?? [])].map((b) => ({
       name: (b.textContent ?? '').trim() || 'add',
       current: b.getAttribute('aria-current') === 'page',
-      // The tab's own border, or the bar drawn over it: a bordered element
-      // marked as the indicator. Either is a border, so either survives
-      // forced colours; a background would not.
-      bordered: parseFloat(getComputedStyle(b).borderTopWidth) > 0 ||
-        [...b.querySelectorAll('[data-tab-indicator]')].some((i) => parseFloat(getComputedStyle(i).borderTopWidth) > 0),
+      // The glyph drawn solid rather than outlined: a difference of shape,
+      // which forced colours cannot take away. Read off the glyph, and then
+      // off what the browser paints — a filled glyph whose fill had been
+      // forced to nothing would be an outline again.
+      filled: [...b.querySelectorAll('svg[data-glyph="filled"] [fill-rule="evenodd"], svg[data-glyph="filled"] path[fill]')]
+        .some((el) => getComputedStyle(el).fill !== 'none'),
+      outlined: b.querySelector('svg[data-glyph="outline"]') !== null,
+      // And the label set heavier, which is type, not colour.
+      weight: Number(getComputedStyle(b.querySelector('span:last-child') ?? b).fontWeight),
     }));
   });
   const states = tabs.filter((t) => t.name !== 'add');
   if (states.length < 4) {
     forcedColourProblems.push(['the forced-colours tab check', `found ${states.length} tabs, expected the bar's four`]);
   }
+  const others = Math.max(0, ...states.filter((t) => !t.current).map((t) => t.weight));
   for (const t of states) {
-    if (t.current !== t.bordered) {
+    if (t.current ? !t.filled || t.outlined : t.filled || !t.outlined) {
       forcedColourProblems.push([
         `the "${t.name}" tab under forced colours`,
-        t.current ? 'is the current tab and has no outline' : 'is not the current tab and is outlined anyway',
+        t.current ? 'is the current tab and its glyph is not drawn solid' : 'is not the current tab and its glyph is drawn solid anyway',
       ]);
     }
+    if (t.current && !(t.weight > others)) {
+      forcedColourProblems.push([`the "${t.name}" tab under forced colours`, `is the current tab and its label is no heavier than the others (${t.weight} against ${others})`]);
+    }
+  }
+  if (states.filter((t) => t.current).length !== 1) {
+    forcedColourProblems.push(['the forced-colours tab check', `${states.filter((t) => t.current).length} tabs were current, expected one`]);
   }
   await forcedCtx.close();
 }

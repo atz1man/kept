@@ -2,6 +2,7 @@ import { color, shadow } from '../../tokens';
 import type { Screen } from '../../lib/types';
 import { BellGlyph, GearGlyph, PlusGlyph, ReceiptGlyph } from './Icons';
 import { Pressable } from './Pressable';
+import { tabOf } from '../tabs';
 
 interface Props {
   screen: Screen;
@@ -11,16 +12,18 @@ interface Props {
 }
 
 /**
- * Which tab you are on, said twice: the colour, and a short bar above it.
+ * Which tab you are on, said three ways: the colour, the glyph FILLED rather
+ * than outlined, and the label in a heavier weight — the way a phone's own
+ * tab bars do it, and nothing drawn above the tab.
  *
  * It was once a pale fill alone, which measured 1.28:1 against the bar where
  * WCAG 2.1 SC 1.4.11 asks 3:1 of a state indicator, and which vanished under
- * forced colours (a background is replaced by the system's; a border is not).
- * Then an outlined pill, which carried the state but read as a toy. Now the
- * way a phone's own apps do it: the current tab's icon and label in the
- * accent, and a 2px accent bar over it — a BORDER, so it survives forced
- * colours, and only rendered on the current tab, because a transparent border
- * is forced to a system colour like any other.
+ * forced colours (a background is replaced by the system's). Then an outlined
+ * pill, which read as a toy; then a 2px accent bar over the current tab, a
+ * border so it survived forced colours, but a web tab strip's mark rather
+ * than a phone's. The filled glyph is a difference of SHAPE and the weight a
+ * difference of type, so both survive forced colours, where every colour
+ * becomes the system's own — the a11y sweep checks it there.
  */
 const tab = (active: boolean) => ({
   display: 'flex',
@@ -36,15 +39,6 @@ const tab = (active: boolean) => ({
   minWidth: 0,
   borderRadius: 10,
 });
-
-/** The current tab's bar: a border on an otherwise empty box. */
-const Indicator = () => (
-  <span
-    aria-hidden="true"
-    data-tab-indicator
-    style={{ position: 'absolute', top: -7, left: '50%', transform: 'translateX(-50%)', width: 24, height: 0, borderTop: `2px solid ${color.accentInk}`, borderRadius: 2 }}
-  />
-);
 
 /*
  * The label truncates rather than the bar leaving the screen.
@@ -71,10 +65,11 @@ const label = (active: boolean) => ({
 });
 
 export function TabBar({ screen, alert, onGo }: Props) {
-  // The detail screen is reached from the receipts list, so the list stays lit
-  // while it is open — the tab shows where you are in the app, not which
-  // component happens to be mounted.
-  const onReceipts = screen === 'home' || screen === 'detail';
+  // Where you are in the app, not which component is mounted: a receipt, its
+  // claim pack, its edit form and the money-back screen are all under
+  // Receipts (`tabOf`).
+  const lit = tabOf(screen);
+  const onReceipts = lit === 'home';
   return (
     <nav
       aria-label="Main"
@@ -105,15 +100,14 @@ export function TabBar({ screen, alert, onGo }: Props) {
       }}
     >
       <Pressable className={onReceipts ? 'k-tab k-tab-on' : 'k-tab'} style={tab(onReceipts)} aria-current={onReceipts ? 'page' : undefined} onClick={() => onGo('home')}>
-        {onReceipts && <Indicator />}
-        <ReceiptGlyph size={22} stroke={onReceipts ? color.accentInk : color.muted} />
+        <ReceiptGlyph size={22} stroke={onReceipts ? color.accentInk : color.muted} filled={onReceipts} />
         <span style={label(onReceipts)}>Receipts</span>
       </Pressable>
 
       <Pressable
-        className={screen === 'watch' ? 'k-tab k-tab-on' : 'k-tab'}
-        style={tab(screen === 'watch')}
-        aria-current={screen === 'watch' ? 'page' : undefined}
+        className={lit === 'watch' ? 'k-tab k-tab-on' : 'k-tab'}
+        style={tab(lit === 'watch')}
+        aria-current={lit === 'watch' ? 'page' : undefined}
         // The dot's meaning belongs to the TAB, as its name. Labelling the dot
         // itself glued "Policy updates affect your receipts" onto the front of
         // the button's accessible name, so the tab announced as a sentence and
@@ -130,30 +124,27 @@ export function TabBar({ screen, alert, onGo }: Props) {
             style={{ position: 'absolute', top: 2, left: 'calc(50% + 6px)', width: 7, height: 7, borderRadius: 999, background: color.danger, border: `1px solid ${color.danger}` }}
           />
         )}
-        {screen === 'watch' && <Indicator />}
-        <BellGlyph size={22} stroke={screen === 'watch' ? color.accentInk : color.muted} />
-        <span style={label(screen === 'watch')}>Watch</span>
+        <BellGlyph size={22} stroke={lit === 'watch' ? color.accentInk : color.muted} filled={lit === 'watch'} />
+        <span style={label(lit === 'watch')}>Watch</span>
       </Pressable>
 
       {/* Adding is a tab like the others, not a floating disc: the bright
           round button was the loudest thing on every screen, and the add
           screen is somewhere you go, like the rest. */}
       <Pressable
-        className={screen === 'add' ? 'k-tab k-tab-on' : 'k-tab'}
-        style={tab(screen === 'add')}
+        className={lit === 'add' ? 'k-tab k-tab-on' : 'k-tab'}
+        style={tab(lit === 'add')}
         aria-label="Add a receipt"
-        aria-current={screen === 'add' ? 'page' : undefined}
+        aria-current={lit === 'add' ? 'page' : undefined}
         onClick={() => onGo('add')}
       >
-        {screen === 'add' && <Indicator />}
-        <PlusGlyph stroke={screen === 'add' ? color.accentInk : color.muted} size={22} />
-        <span style={label(screen === 'add')}>Add</span>
+        <PlusGlyph stroke={lit === 'add' ? color.accentInk : color.muted} size={22} filled={lit === 'add'} />
+        <span style={label(lit === 'add')}>Add</span>
       </Pressable>
 
-      <Pressable className={screen === 'settings' ? 'k-tab k-tab-on' : 'k-tab'} style={tab(screen === 'settings')} aria-current={screen === 'settings' ? 'page' : undefined} onClick={() => onGo('settings')}>
-        {screen === 'settings' && <Indicator />}
-        <GearGlyph size={22} stroke={screen === 'settings' ? color.accentInk : color.muted} />
-        <span style={label(screen === 'settings')}>Settings</span>
+      <Pressable className={lit === 'settings' ? 'k-tab k-tab-on' : 'k-tab'} style={tab(lit === 'settings')} aria-current={lit === 'settings' ? 'page' : undefined} onClick={() => onGo('settings')}>
+        <GearGlyph size={22} stroke={lit === 'settings' ? color.accentInk : color.muted} filled={lit === 'settings'} />
+        <span style={label(lit === 'settings')}>Settings</span>
       </Pressable>
     </nav>
   );

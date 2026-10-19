@@ -1273,8 +1273,8 @@ if (!/Deadline alerts/.test(settingsText)) {
   // Samples only, so each refund IS celebrated, as the demonstration it is.
   {
     const { c, p, errs } = await boot([row('s_rate_1', 'Sample kettle', true), row('s_rate_2', 'Sample toaster', true), row('s_rate_3', 'Sample blender', true)]);
-    // A sample's row says so before its name.
-    const runs = [await refund(p, 'sample · Sample kettle'), await refund(p, 'sample · Sample toaster'), await refund(p, 'sample · Sample blender')];
+    // Each row is titled by its item; the sample says so in a tag beside it.
+    const runs = [await refund(p, 'Sample kettle'), await refund(p, 'Sample toaster'), await refund(p, 'Sample blender')];
     if (!runs.every((r) => r.celebrated)) {
       failures.push({ what: 'could not refund a sample to check it asks nothing', saw: runs.map((r) => r.celebrated).join(', ') });
     } else if (runs.at(-1).after !== 0) {
