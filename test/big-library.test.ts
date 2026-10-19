@@ -162,7 +162,7 @@ describe('Home’s rows while somebody types', () => {
     // An arrow made in the map is a new prop every render, and memo compares
     // props: it would draw every row again and look as if it did not.
     const uses = [...home.matchAll(/<(ActiveRow|SentRow|MoneyBackRow|KeepingRow)\b([\s\S]*?)\/>/g)];
-    expect(uses.map((u) => u[1]).sort()).toEqual(['ActiveRow', 'ActiveRow', 'ActiveRow', 'ActiveRow', 'KeepingRow', 'MoneyBackRow', 'SentRow']);
+    expect(uses.map((u) => u[1]).sort()).toEqual(['ActiveRow', 'ActiveRow', 'ActiveRow', 'ActiveRow', 'KeepingRow', 'MoneyBackRow', 'SentRow', 'SentRow']);
     for (const [, name, props] of uses) expect(props, name).not.toMatch(/=>/);
   });
 

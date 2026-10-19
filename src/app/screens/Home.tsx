@@ -8,11 +8,11 @@ import { midSentence } from '../../lib/words';
 import { TAGLINE_LEAD } from '../../lib/brand';
 import { heroCount, urgency, windowRemaining } from '../../lib/urgency';
 import type { Receipt } from '../../lib/types';
-import { ArrowRight, BellGlyph, CameraGlyph, Logo, LogoDashed, PlusGlyph, ReceiptGlyph, Tick, Wordmark } from '../components/Icons';
+import { ArrowRight, CameraGlyph, Logo, LogoDashed, ReceiptGlyph, Tick, Wordmark } from '../components/Icons';
 import { Avatar } from '../components/Avatar';
 import type { AddStart } from './Add';
 import { Pressable } from '../components/Pressable';
-import { ReceiptRow } from '../components/ReceiptRow';
+import { ReceiptRow, SampleTag } from '../components/ReceiptRow';
 import { refundChase } from '../../lib/refund-chase';
 
 interface Props {
@@ -97,6 +97,15 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
   const allDone = !searching && active.length === 0 && (returned.length > 0 || kept.length > 0 || sent.length > 0);
   const allInTime = everyReturnInTime(returned, today);
   const nothingMatched = searching && visible.length === 0;
+  /*
+   * A refund that is late is a thing to do, not a thing to wait for. It was
+   * the last row on the screen — under Later, under everything — so the one
+   * receipt where the shop owed money and had not paid was the one a person
+   * scrolled past. Late is `refundChase`'s word, the same one the receipt's
+   * own chase panel and the reminder use.
+   */
+  const lateRefunds = sent.filter((r) => refundChase(r, today)?.late);
+  const awaitedRefunds = sent.filter((r) => !refundChase(r, today)?.late);
 
   /*
    * Said out loud, after a pause.
@@ -180,7 +189,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
         />
       )}
 
-      {!searching && <QuickActions onAdd={onAdd} onWatch={onWatch} />}
+      {!searching && <QuickActions onAdd={onAdd} />}
 
       {next && (
         <HeroCard
@@ -298,6 +307,19 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
         </div>
       )}
 
+      {/* Above every deadline list: these are owed now, and the receipt's
+          own screen has the letter that chases them. */}
+      {lateRefunds.length > 0 && (
+        <>
+          <h2 style={sectionLabel(color.danger)}>Refund late · chase it</h2>
+          <ul className="k-group" data-late-refunds>
+            {lateRefunds.map((r) => (
+              <SentRow key={r.id} receipt={r} today={today} onOpen={onOpen} />
+            ))}
+          </ul>
+        </>
+      )}
+
       {/*
         * Ordered online from a shop that counts from delivery or dispatch,
         * past the earliest day its window could close, and nobody has said
@@ -408,15 +430,15 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
         </>
       )}
 
-      {sent.length > 0 && (
+      {awaitedRefunds.length > 0 && (
         <>
           {/* In between: gone back, the money not yet seen. Out of the
-              deadlines (the parcel is in the post), not yet in the total. */}
+              deadlines (the parcel is in the post), not yet in the total.
+              Not late yet, so below the deadlines; the late ones are at the
+              top of the screen. */}
           <h2 style={sectionLabel(color.muted)}>Sent back · waiting for the refund</h2>
           <ul className="k-group">
-            {/* A refund that is late comes first and says so: the list is where
-                a chase starts, and the oldest parcel was otherwise the last row. */}
-            {[...sent.filter((r) => refundChase(r, today)?.late), ...sent.filter((r) => !refundChase(r, today)?.late)].map((r) => (
+            {awaitedRefunds.map((r) => (
               <SentRow key={r.id} receipt={r} today={today} onOpen={onOpen} />
             ))}
           </ul>
@@ -493,28 +515,42 @@ export const ActiveRow = memo(function ActiveRow({ receipt: r, today, urgentDays
   );
 });
 
+/**
+ * The rows under the settled headings, drawn as the deadline rows are: a row
+ * in a grouped list, the shop's avatar, the ITEM as the title and the shop
+ * beneath it. Sent-back rows were white cards with a border and no avatar, a
+ * second design in the middle of the first one.
+ */
+const groupedRow = { display: 'flex', alignItems: 'center', gap: 13, padding: '14px 16px', background: color.surfaceAlt, border: 0, borderRadius: 0 } as const;
+const rowTitle = { display: 'block', fontWeight: 600, fontSize: 15.5, letterSpacing: '-0.015em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } as const;
+const rowSub = { fontSize: 13, color: color.muted, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } as const;
+
 export const SentRow = memo(function SentRow({ receipt: r, today, onOpen }: { receipt: Receipt; today: Date; onOpen: (id: string) => void }) {
   const went = r.sentOn ? `sent back ${fmtDateNear(fromISODate(r.sentOn), today)}` : 'sent back';
   const late = !!refundChase(r, today)?.late;
   return (
     <li style={{ listStyle: 'none' }}>
       <Pressable
+        className={late ? 'k-row-white' : 'k-row-plain'}
         onClick={() => onOpen(r.id)}
         aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${money(r.amount)}, ${went}, ${late ? 'refund late' : 'waiting for the refund'}`}
-        style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 15, background: color.surface, border: `1px solid ${color.borderSoft}`, borderRadius: radius.card }}
+        style={groupedRow}
       >
+        <Avatar store={r.store} cat={r.cat} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 15, color: color.body, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.store}</div>
-          <div style={{ fontSize: 12, color: color.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {r.demo && <span>sample · </span>}
-            {r.item}
-          </div>
-          <div style={{ fontSize: 12, color: color.muted, marginTop: 2 }}>
-            {went}
-            {late && <span style={{ color: color.danger, fontWeight: 600 }}> · refund late</span>}
+          <span data-name style={rowTitle}>{r.item}</span>
+          <div style={rowSub}>
+            {r.demo && <SampleTag />}
+            {r.store} · {went}
           </div>
         </div>
-        <div style={{ fontFamily: font.figures, fontSize: 15, fontWeight: 600, color: color.body, flexShrink: 0 }}>{money(r.amount)}</div>
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <div style={{ fontFamily: font.figures, fontSize: 15.5, fontWeight: 650, letterSpacing: '-0.01em' }}>{money(r.amount)}</div>
+          {/* Said as the deadline rows say theirs: in colour and in words. */}
+          <div style={{ marginTop: 2, fontSize: 12.5, fontWeight: late ? 600 : 500, color: late ? color.danger : color.muted }}>
+            {late ? 'refund late' : 'waiting'}
+          </div>
+        </div>
       </Pressable>
     </li>
   );
@@ -526,28 +562,27 @@ export const MoneyBackRow = memo(function MoneyBackRow({ receipt: r, onOpen }: {
       {/* Reachable. These were inert, so a receipt marked returned by
           a stray swipe could never be opened, corrected or deleted. */}
       <Pressable
+        className="k-row-plain"
         onClick={() => onOpen(r.id)}
         aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${r.exchanged ? 'swapped for another' : `${money(refundOf(r))} ${r.credit ? 'in credit' : 'back'}, returned`}`}
-        style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 15, background: color.surfaceAlt, border: `1px solid ${color.borderHair}`, borderRadius: radius.card }}
+        style={groupedRow}
       >
-        <div style={{ width: 40, height: 40, borderRadius: 10, background: color.accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ width: 44, height: 44, borderRadius: '50%', background: color.accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <Tick />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 15, textDecoration: 'line-through', color: color.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.store}</div>
-          {/* The marker survives the return. This list is where
-              "which of these were mine" is asked, and the row
-              stopped saying so the moment it was ticked off — these
-              rows are hand-built rather than a ReceiptRow, so the
-              marker added there never reached them. */}
-          <div style={{ fontSize: 12, color: color.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {r.demo && <span>sample · </span>}
-            {r.item}
+          <span data-name style={{ ...rowTitle, textDecoration: 'line-through', color: color.muted }}>{r.item}</span>
+          {/* The marker survives the return. This list is where "which of
+              these were mine" is asked, and the row stopped saying so the
+              moment it was ticked off. */}
+          <div style={rowSub}>
+            {r.demo && <SampleTag />}
+            {r.store}
           </div>
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           {/* A swap brought an item back, not money: said, not shown as £0.00. */}
-          <div style={{ fontFamily: font.figures, fontSize: 15, fontWeight: 600, color: color.accentInk }}>{r.exchanged ? 'swapped' : money(refundOf(r))}</div>
+          <div style={{ fontFamily: font.figures, fontSize: 15.5, fontWeight: 650, color: color.accentInk }}>{r.exchanged ? 'swapped' : money(refundOf(r))}</div>
           {/* Credit is not cash: it is still at the shop, to be spent. */}
           {r.credit && <div style={{ fontSize: 11, fontWeight: 600, color: color.muted, marginTop: 2 }}>credit</div>}
         </div>
@@ -561,19 +596,21 @@ export const KeepingRow = memo(function KeepingRow({ receipt: r, today, onOpen }
   return (
     <li style={{ listStyle: 'none' }}>
       <Pressable
+        className="k-row-plain"
         onClick={() => onOpen(r.id)}
         aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${money(r.amount)}, ${cover ? `${cover}, ` : ''}keeping it`}
-        style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 15, background: color.surfaceAlt, border: `1px solid ${color.borderHair}`, borderRadius: radius.card }}
+        style={groupedRow}
       >
+        <Avatar store={r.store} cat={r.cat} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 15, color: color.body, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.store}</div>
-          <div style={{ fontSize: 12, color: color.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {r.demo && <span>sample · </span>}
-            {r.item}
+          <span data-name style={{ ...rowTitle, color: color.body }}>{r.item}</span>
+          <div style={rowSub}>
+            {r.demo && <SampleTag />}
+            {r.store}
+            {cover && ` · ${cover}`}
           </div>
-          {cover && <div style={{ fontSize: 12, color: color.muted, marginTop: 2 }}>{cover}</div>}
         </div>
-        <div style={{ fontFamily: font.figures, fontSize: 15, fontWeight: 600, color: color.muted, flexShrink: 0 }}>{money(r.amount)}</div>
+        <div style={{ fontFamily: font.figures, fontSize: 15.5, fontWeight: 650, color: color.muted, flexShrink: 0 }}>{money(r.amount)}</div>
       </Pressable>
     </li>
   );
@@ -762,32 +799,36 @@ function Balance({ returnable, keptBack, live, dueThisWeek, samples }: {
 }
 
 /**
- * The ways in, one tap from home, as round buttons under the balance — where
- * a money app puts "Add money" and "Send". Each opens the Add screen already
- * doing the thing: the camera, the file picker, the paste box.
+ * The ways in that save a tap, under the balance — where a money app puts
+ * "Add money" and "Send". Each opens the Add screen already doing the thing:
+ * the camera, or the file picker.
+ *
+ * There were four, and two of them were the tab bar again. "Paste" opened Add
+ * with its paste box focused, which is where the Add tab lands anyway, and
+ * "Policies" opened the Watch tab, which is a tab. Two controls for one place,
+ * on the same screen, are a question ("are these different?") with no answer
+ * worth having. Scan and Upload stay because they are NOT one tap away: each
+ * goes straight past the Add screen to the camera or the picker.
  */
-function QuickActions({ onAdd, onWatch }: { onAdd: (start?: AddStart) => void; onWatch: () => void }) {
+function QuickActions({ onAdd }: { onAdd: (start?: AddStart) => void }) {
   const actions: { label: string; name: string; icon: React.ReactNode; go: () => void }[] = [
     { label: 'Scan', name: 'Scan a receipt', icon: <CameraGlyph size={21} stroke={color.accentInk} />, go: () => onAdd('scan') },
     { label: 'Upload', name: 'Upload a PDF or email', icon: <ReceiptGlyph size={20} stroke={color.accentInk} />, go: () => onAdd('file') },
-    { label: 'Paste', name: 'Paste an order email', icon: <PlusGlyph size={20} stroke={color.accentInk} />, go: () => onAdd('paste') },
-    // "Policies", not "Watch": the tab bar already has a button called Watch,
-    // and two controls with one name are two answers to "which one?".
-    { label: 'Policies', name: 'Policy changes', icon: <BellGlyph size={20} stroke={color.accentInk} />, go: onWatch },
   ];
   return (
-    <nav aria-label="Quick actions" data-quick-actions style={{ display: 'flex', justifyContent: 'space-between', gap: 6, margin: '18px 4px 2px' }}>
+    <nav aria-label="Quick actions" data-quick-actions style={{ display: 'flex', gap: 10, margin: '16px 0 2px' }}>
       {actions.map((a) => (
         <Pressable
           key={a.label}
+          className="k-row-plain"
           onClick={a.go}
           aria-label={a.name}
-          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7, flex: 1, minWidth: 0, color: color.bodyStrong }}
+          style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, padding: '9px 12px', background: color.surfaceAlt, borderRadius: radius.control, color: color.bodyStrong }}
         >
-          <span className="k-soft" style={{ width: 54, height: 54, borderRadius: '50%', background: color.accentSoft, display: 'grid', placeItems: 'center', color: color.accentInk }}>
+          <span style={{ width: 38, height: 38, flexShrink: 0, borderRadius: '50%', background: color.accentSoft, display: 'grid', placeItems: 'center', color: color.accentInk }}>
             {a.icon}
           </span>
-          <span style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{a.label}</span>
+          <span style={{ fontSize: 14.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{a.label}</span>
         </Pressable>
       ))}
     </nav>
