@@ -3,6 +3,7 @@ import { MAX_AMOUNT_PENCE, MAX_ORDER_REF, MAX_WINDOW_DAYS } from './draft';
 import { MAX_LINES } from './parse';
 import { canonicalStoreName } from './stores';
 import { readReturnRef } from './refund-chase';
+import { readLetterName } from './sign-off';
 import type { Category, Receipt, ReceiptStatus, Warranty } from './types';
 
 /**
@@ -28,6 +29,15 @@ export interface ImportSummary {
   receipts: Receipt[];
   /** Rows that did not, and were dropped. */
   skipped: number;
+  /**
+   * The name the file's letters were signed with; absent when it carried none
+   * or one that could not be read. The only setting a restore brings back:
+   * the export writes them all, but the others are this phone's preferences
+   * (how soon is urgent, whether to remind), and the name is the person's,
+   * which a new phone should not have to be told again. Taken only where this
+   * phone has none — the restore never overwrites what is here.
+   */
+  letterName?: string;
 }
 
 export type ImportOutcome =
@@ -313,7 +323,9 @@ export function parseBackup(text: string): ImportOutcome {
   // reporting a successful restore of nothing.
   if (receipts.length === 0 && skipped > 0) return { ok: false, reason: 'nothing-usable' };
 
-  return { ok: true, summary: { receipts, skipped } };
+  const settings = typeof d.settings === 'object' && d.settings !== null ? (d.settings as Record<string, unknown>) : {};
+  const letterName = readLetterName(settings.letterName);
+  return { ok: true, summary: { receipts, skipped, ...(letterName ? { letterName } : {}) } };
 }
 
 export interface MergeResult {

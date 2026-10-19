@@ -20,7 +20,7 @@ import { FEED_ORIGIN, feedRefreshes } from '../lib/feed-origin';
 
 
 /** Moves whenever what this page says moves. */
-export const UPDATED_ON = '17 October 2026';
+export const UPDATED_ON = '19 October 2026';
 
 export function Privacy() {
   return (
@@ -50,7 +50,8 @@ export function Privacy() {
 
         <Section title="What stays on your device">
           Your receipts — the shop, the item, the amount and the dates — any photographs of receipts you take, your
-          settings, and a note of which reminders have already been shown. On iPhone a second copy is kept in the app’s
+          settings, the name you sign letters to shops with, if you give one, and a note of which reminders have
+          already been shown. On iPhone a second copy is kept in the app’s
           own Documents folder, so a damaged store can be recovered. Deleting the app deletes everything inside it.
         </Section>
 
@@ -108,8 +109,9 @@ export function Privacy() {
         </Section>
 
         <Section title="Backups">
-          When you export a backup, Quids In writes a file and hands it to you. Where it goes next is your choice, and Quids In
-          keeps no record of where it went.
+          When you export a backup, Quids In writes a file and hands it to you: your receipts, your settings and the name
+          you sign letters with, if you gave one. Where it goes next is your choice, and Quids In keeps no record of where
+          it went.
         </Section>
 
         <Section title="Your rights">

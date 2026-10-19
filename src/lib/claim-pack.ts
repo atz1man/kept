@@ -121,7 +121,12 @@ const sameDay = (a: string | undefined, b: string) => a !== undefined && a === b
 export const LETTERS_NOTE =
   'As Quids In drafted them on the day they were marked sent. If you changed the wording before sending, your own sent copy is the one that counts.';
 
-export function claimPack(r: Receipt, today: Date): ClaimPack {
+/**
+ * `name` is the one letters are signed with (lib/sign-off.ts), where the
+ * person gave one: the pack carries their own letters, so it carries their
+ * signature, as the letters they sent did.
+ */
+export function claimPack(r: Receipt, today: Date, name?: string): ClaimPack {
   const d = derive(r, today);
   const handover = fromISODate(r.arrivedOn ?? r.purchasedOn);
   // Both statutory clocks run from the day it came into the buyer's hands.
@@ -209,7 +214,7 @@ export function claimPack(r: Receipt, today: Date): ClaimPack {
     standing: standing(r, today, d.deadline),
     timeline,
     rights: legalRights(r, today, r.status === 'active' && !d.expired),
-    letters: letters(r),
+    letters: letters(r, name),
     escalation: escalation(r).lines,
     disclaimer: LEGAL_DISCLAIMER,
     madeOn: today,
@@ -267,21 +272,21 @@ function standing(r: Receipt, today: Date, shopDeadline: Date): string[] {
   return out;
 }
 
-function letters(r: Receipt): PackLetter[] {
+function letters(r: Receipt, name?: string): PackLetter[] {
   const out: PackLetter[] = [];
-  if (r.cancelledOn) out.push({ title: 'Cancellation notice', sentOn: fromISODate(r.cancelledOn), text: cancelLetter(r) });
+  if (r.cancelledOn) out.push({ title: 'Cancellation notice', sentOn: fromISODate(r.cancelledOn), text: cancelLetter(r, name) });
   if (r.faultClaim) {
     // Drafted as of the day it went: the remedy a letter asks for depends on
     // the date, and today's would be a different letter from the one sent.
     const sentOn = fromISODate(r.faultClaim.sentOn);
-    const text = faultLetter(r, sentOn, r.faultClaim.what ?? '');
+    const text = faultLetter(r, sentOn, r.faultClaim.what ?? '', name);
     if (text) out.push({ title: 'Fault letter', sentOn, text });
     // The second letter, the same way: as drafted on its own day, since
     // whether it says "no deduction for use" depends on that date.
     const f = r.faultClaim.finalReject;
     if (f) {
       const finalOn = fromISODate(f.sentOn);
-      const finalText = finalRejectLetter(r, finalOn, f.what ?? '');
+      const finalText = finalRejectLetter(r, finalOn, f.what ?? '', name);
       if (finalText) out.push({ title: 'Final rejection letter', sentOn: finalOn, text: finalText });
     }
   }

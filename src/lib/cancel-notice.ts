@@ -52,10 +52,10 @@ export function cancelledInTime(r: Receipt): boolean {
 /**
  * The notice. The model form's parts — the goods, the order and delivery
  * dates — in a letter's words, then what follows from it, so the shop reads
- * the refund rule in the same place. No name or address: the person sends it
- * from their own account, as the fault letter is.
+ * the refund rule in the same place. Signed with the person's name where they
+ * gave one; the address stays a blank for them to fill in.
  */
-export function cancelLetter(r: Receipt): string {
+export function cancelLetter(r: Receipt, name?: string): string {
   const ordered = fmtDateLong(fromISODate(r.purchasedOn));
   const received = r.arrivedOn ? `, received on ${fmtDateLong(fromISODate(r.arrivedOn))}` : '';
   return [
@@ -68,6 +68,6 @@ export function cancelLetter(r: Receipt): string {
     '',
     `I am giving this notice within the ${COOLING_OFF_DAYS}-day cancellation period under the Consumer Contracts (Information, Cancellation and Additional Charges) Regulations 2013. Please tell me how you would like the goods returned. Under regulation 34, the refund is due within ${REFUND_CHASE_DAYS} days of your receiving them back, or of my supplying evidence of having sent them, if that is earlier, and includes the standard delivery charge if I paid one.`,
     '',
-    ...signOff({ address: true }),
+    ...signOff({ address: true, name }),
   ].join('\n');
 }

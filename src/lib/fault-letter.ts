@@ -115,7 +115,7 @@ export function faultAdvice(r: Receipt, today: Date): FaultAdvice {
 }
 
 /** The letter, or null where there is no claim left to write. */
-export function faultLetter(r: Receipt, today: Date, whatsWrong: string): string | null {
+export function faultLetter(r: Receipt, today: Date, whatsWrong: string, name?: string): string | null {
   const advice = faultAdvice(r, today);
   if (advice.remedy === 'too-late') return null;
   const bought = fmtDateLong(fromISODate(r.purchasedOn));
@@ -148,7 +148,7 @@ export function faultLetter(r: Receipt, today: Date, whatsWrong: string): string
     '',
     `Please reply within ${REPLY_DAYS} days to tell me what you will do.`,
     '',
-    ...signOff(),
+    ...signOff({ name }),
   ].join('\n');
 }
 
@@ -166,7 +166,7 @@ export function faultLetter(r: Receipt, today: Date, whatsWrong: string): string
  *
  * Offered once a fault letter has gone, and not once the claim is out of time.
  */
-export function finalRejectLetter(r: Receipt, today: Date, whatsWrong: string): string | null {
+export function finalRejectLetter(r: Receipt, today: Date, whatsWrong: string, name?: string): string | null {
   if (!r.faultClaim) return null;
   if (faultAdvice(r, today).remedy === 'too-late') return null;
   const { from } = handedOver(r);
@@ -200,6 +200,6 @@ export function finalRejectLetter(r: Receipt, today: Date, whatsWrong: string): 
     '',
     `Please reply within ${REPLY_DAYS} days to tell me what you will do.`,
     '',
-    ...signOff(),
+    ...signOff({ name }),
   ].join('\n');
 }
