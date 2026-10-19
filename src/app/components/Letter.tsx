@@ -93,7 +93,7 @@ export function Letter({ letter, title, receipt }: { letter: string; title: stri
           <Pressable
             className="k-row-white"
             onClick={() => void share()}
-            style={{ ...button, background: color.white, border: `1px solid ${color.borderSoft}` }}
+            style={{ ...button, background: color.surface, border: `1px solid ${color.borderSoft}` }}
           >
             {said === 'shared' ? 'Shared ✓' : 'Share'}
           </Pressable>

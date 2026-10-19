@@ -109,7 +109,7 @@ export function Onboarding({ step, onNext, onSkip }: Props) {
               key={i}
               style={{
                 width: i === step ? 22 : 8, height: 8, borderRadius: 999,
-                background: i === step ? color.accent : 'rgba(10,10,18,0.18)', transition: 'all .25s',
+                background: i === step ? color.accent : color.dotOff, transition: 'all .25s',
               }}
             />
           ))}
@@ -149,7 +149,7 @@ export function Onboarding({ step, onNext, onSkip }: Props) {
  */
 function FirstArt() {
   const row = (store: string, cat: 'audio' | 'kitchen', item: string, amount: string, days: string, urgent: boolean) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 9, background: color.white, borderRadius: 14, padding: '7px 10px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 9, background: color.surface, borderRadius: 14, padding: '7px 10px' }}>
       <Avatar store={store} cat={cat} size={26} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 11.5, fontWeight: 650, lineHeight: 1.2 }}>{store}</div>
@@ -186,7 +186,7 @@ function StepArt({ step }: { step: number }) {
     // and the law's, which is the promise the screen is making.
     const ring = (x: number, label: string, days: string, offset: number, stroke: string) => (
       <g transform={`translate(${x} 86)`}>
-        <circle r="38" fill={color.white} stroke={color.surfaceDeep} strokeWidth="7" />
+        <circle r="38" fill={color.surface} stroke={color.surfaceDeep} strokeWidth="7" />
         <circle r="38" fill="none" stroke={stroke} strokeWidth="7" strokeLinecap="round"
           strokeDasharray="239" strokeDashoffset={offset} transform="rotate(-90)" />
         <text y="7" textAnchor="middle" fontSize="22" fontWeight="700" fill={stroke} fontFamily={font.figures}>{days}</text>
@@ -196,7 +196,7 @@ function StepArt({ step }: { step: number }) {
     return (
       <svg {...common} role="img" aria-label="Two countdown clocks running side by side">
         {ring(124, 'The shop’s window', '2', 205, color.danger)}
-        {ring(232, 'Your legal right', '18', 96, color.accent)}
+        {ring(232, 'Your legal right', '18', 96, color.accentFigure)}
       </svg>
     );
   }
@@ -213,15 +213,15 @@ function StepArt({ step }: { step: number }) {
           <stop offset="1" stopColor={color.heroEnd} />
         </linearGradient>
       </defs>
-      <rect x="128" y="16" width="100" height="160" rx="20" fill={color.white} stroke={color.borderSoft} strokeWidth="1.2" />
+      <rect x="128" y="16" width="100" height="160" rx="20" fill={color.surface} stroke={color.borderSoft} strokeWidth="1.2" />
       <rect x="166" y="23" width="24" height="4" rx="2" fill={color.borderSoft} />
       <rect x="137" y="36" width="82" height="50" rx="11" fill="url(#ob-hero)" />
       <rect x="145" y="46" width="30" height="4" rx="2" fill={color.white} opacity="0.7" />
       <rect x="145" y="56" width="46" height="10" rx="3" fill={color.white} />
       <rect x="145" y="72" width="22" height="6" rx="3" fill={color.white} opacity="0.35" />
       <circle cx="178" cy="120" r="21" fill={color.accentSoft} />
-      <rect x="169" y="119" width="18" height="14" rx="3.5" fill="none" stroke={color.accent} strokeWidth="1.8" />
-      <path d="M172.5 119v-4a5.5 5.5 0 0111 0v4" fill="none" stroke={color.accent} strokeWidth="1.8" />
+      <rect x="169" y="119" width="18" height="14" rx="3.5" fill="none" stroke={color.accentFigure} strokeWidth="1.8" />
+      <path d="M172.5 119v-4a5.5 5.5 0 0111 0v4" fill="none" stroke={color.accentFigure} strokeWidth="1.8" />
       <rect x="152" y="152" width="52" height="5" rx="2.5" fill={color.muted} opacity="0.3" />
     </svg>
   );

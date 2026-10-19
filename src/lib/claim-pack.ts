@@ -1,4 +1,12 @@
-import { color } from '../tokens';
+import { palette } from '../tokens';
+
+/*
+ * The light palette, always: the claim pack is a standalone document a person
+ * sends to a shop or prints, with its own <style>, and custom properties from
+ * the app's stylesheet do not exist inside it. Paper is white whatever the
+ * sender's phone was set to.
+ */
+const color = palette.light;
 import { REFUND_CHASE_DAYS } from './alerts';
 import { cancelLetter, cancelledInTime, sendBackBy } from './cancel-notice';
 import { addDays, daysBetween, fmtDateLong, fromISODate, toISODate } from './dates';

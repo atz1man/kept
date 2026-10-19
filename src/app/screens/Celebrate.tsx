@@ -139,7 +139,7 @@ export function Celebrate({ amount, cost, store, inTime, recovered, shared, line
           <p
             role="status"
             style={{
-              margin: 0, padding: '12px 14px', background: color.white, border: `1px solid ${color.border}`,
+              margin: 0, padding: '12px 14px', background: color.surface, border: `1px solid ${color.border}`,
               borderRadius: 12, fontSize: 13.5, lineHeight: 1.5, color: color.bodyStrong, userSelect: 'all',
             }}
           >

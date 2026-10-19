@@ -30,7 +30,7 @@ export function SplitPanel({ receipt, onSplit }: { receipt: Receipt; onSplit: (i
     );
   }
   return (
-    <div data-split style={{ flexBasis: '100%', marginTop: 14, padding: 14, background: color.white, border: `1px solid ${color.border}`, borderRadius: 12 }}>
+    <div data-split style={{ flexBasis: '100%', marginTop: 14, padding: 14, background: color.surface, border: `1px solid ${color.border}`, borderRadius: 12 }}>
       <div style={{ fontSize: 13.5, lineHeight: 1.5, color: color.body, marginBottom: 10 }}>
         Take one thing out as its own receipt, with the same shop and dates, so it can go back or stay on its own. The
         rest of the {money(receipt.amount)} stays here.
@@ -48,7 +48,7 @@ export function SplitPanel({ receipt, onSplit }: { receipt: Receipt; onSplit: (i
                 onClick={() => onSplit(l.item, l.pence)}
                 style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, minHeight: 44, padding: '8px 12px',
-                  background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, textAlign: 'left', fontSize: 14,
+                  background: color.surface, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, textAlign: 'left', fontSize: 14,
                 }}
               >
                 <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>Split out {l.item}</span>
@@ -78,7 +78,7 @@ export function SplitPanel({ receipt, onSplit }: { receipt: Receipt; onSplit: (i
         </Pressable>
         <Pressable className="k-secondary"
           onClick={() => setOpen(false)}
-          style={{ flex: '1 1 120px', padding: 12, textAlign: 'center', background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
+          style={{ flex: '1 1 120px', padding: 12, textAlign: 'center', background: color.surface, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
         >
           Cancel
         </Pressable>

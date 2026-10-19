@@ -30,7 +30,7 @@ export function RefundForm({ id, cost, current, onSet, onClose }: {
     onClose();
   };
   return (
-    <div style={{ textAlign: 'left', marginTop: 10, padding: 12, background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: 10 }}>
+    <div style={{ textAlign: 'left', marginTop: 10, padding: 12, background: color.surface, border: `1px solid ${color.borderSoft}`, borderRadius: 10 }}>
       <label htmlFor={id} style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6, color: color.ink }}>
         How much came back?
       </label>
@@ -47,7 +47,7 @@ export function RefundForm({ id, cost, current, onSet, onClose }: {
         }}
         style={{
           width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: radius.control,
-          border: `1px solid ${error ? color.danger : color.border}`, background: color.white,
+          border: `1px solid ${error ? color.danger : color.border}`, background: color.surface,
           fontFamily: font.figures, fontSize: 14.5, color: color.ink,
         }}
       />
@@ -71,7 +71,7 @@ export function RefundForm({ id, cost, current, onSet, onClose }: {
             onSet(null);
             onClose();
           }}
-          style={{ flex: 1, padding: 12, textAlign: 'center', background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14, color: color.ink }}
+          style={{ flex: 1, padding: 12, textAlign: 'center', background: color.surface, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14, color: color.ink }}
         >
           It was the full amount
         </Pressable>

@@ -13,7 +13,16 @@
  * Never the item, which is the one detail on a receipt that is nobody else's
  * business.
  */
-import { color, font } from '../tokens';
+import { font, palette } from '../tokens';
+
+/*
+ * The light palette, always. A <canvas> cannot resolve `var(--k-ink)` — it
+ * would paint the string as an invalid colour and keep the last one — and the
+ * card is an IMAGE that leaves the phone: someone else opens it, on whatever
+ * their own phone is set to. A picture of a refund should not turn black
+ * because the person who won it had dark mode on.
+ */
+const color = palette.light;
 
 export const WIN_CARD = { width: 1080, height: 1350 } as const;
 

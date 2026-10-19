@@ -159,7 +159,7 @@ export class Recovery extends Component<{ children: ReactNode }, State> {
           onClick={() => window.location.reload()}
           style={{
             padding: '13px 18px', borderRadius: radius.control, border: `1px solid ${color.border}`,
-            background: color.white, color: color.ink, fontWeight: 600, fontSize: 14, cursor: 'pointer',
+            background: color.surface, color: color.ink, fontWeight: 600, fontSize: 14, cursor: 'pointer',
           }}
         >
           Try again

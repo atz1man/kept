@@ -40,7 +40,7 @@ export function HowBought({ id, value, onChange }: { id: string; value: boolean 
                 padding: '11px 10px',
                 borderRadius: radius.control,
                 border: `1.5px solid ${selected ? color.accent : color.border}`,
-                background: selected ? color.accentSoft : color.white,
+                background: selected ? color.accentSoft : color.surface,
                 fontSize: 14,
                 fontWeight: 600,
                 color: color.ink,

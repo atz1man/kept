@@ -30,7 +30,7 @@ export function Avatar({ store, cat, size = 44 }: { store: string; cat: Category
       <span
         style={{
           position: 'absolute', left: size - badge + 3, top: size - badge + 3, width: badge, height: badge, borderRadius: '50%',
-          background: color.white, boxShadow: `0 0 0 2px ${color.white}`, display: 'grid', placeItems: 'center',
+          background: color.surface, boxShadow: `0 0 0 2px ${color.surface}`, display: 'grid', placeItems: 'center',
         }}
       >
         <span style={{ transform: `scale(${(badge - 4) / 20})`, display: 'grid', placeItems: 'center' }}>

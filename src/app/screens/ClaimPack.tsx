@@ -71,7 +71,7 @@ export function ClaimPack({ receipt, today, onBack }: { receipt: Receipt; today:
         </Pressable>
       </div>
 
-      <div data-pack-hero style={{ background: color.white, borderRadius: radius.hero, padding: 18, border: `1px solid ${color.borderHair}`, boxShadow: shadow.lift }}>
+      <div data-pack-hero style={{ background: color.surface, borderRadius: radius.hero, padding: 18, border: `1px solid ${color.borderHair}`, boxShadow: shadow.lift }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div
             aria-hidden="true"
@@ -119,11 +119,11 @@ export function ClaimPack({ receipt, today, onBack }: { receipt: Receipt; today:
           <Pressable
             className={canShare ? 'k-row-white k-secondary' : 'k-primary'}
             onClick={() => void save()}
-            style={canShare ? { ...button, background: color.white, border: `1px solid ${color.borderSoft}` } : { ...button, background: color.accent, color: color.white, border: 0 }}
+            style={canShare ? { ...button, background: color.surface, border: `1px solid ${color.borderSoft}` } : { ...button, background: color.accent, color: color.white, border: 0 }}
           >
             Save a copy
           </Pressable>
-          <Pressable className="k-row-white k-secondary" onClick={() => void copy()} style={{ ...button, background: color.white, border: `1px solid ${color.borderSoft}` }}>
+          <Pressable className="k-row-white k-secondary" onClick={() => void copy()} style={{ ...button, background: color.surface, border: `1px solid ${color.borderSoft}` }}>
             Copy as text
           </Pressable>
         </div>
@@ -239,8 +239,8 @@ function Event({ e, last }: { e: PackEvent; last: boolean }) {
           aria-hidden="true"
           style={{
             position: 'relative', marginTop: 2, width: 18, height: 18, borderRadius: radius.pill, display: 'grid', placeItems: 'center',
-            background: state === 'done' ? color.accent : live ? color.white : color.surfaceDeep,
-            border: live ? `2px solid ${color.accent}` : `2px solid ${color.white}`,
+            background: state === 'done' ? color.accent : live ? color.surface : color.surfaceDeep,
+            border: live ? `2px solid ${color.accent}` : `2px solid ${color.surface}`,
             boxSizing: 'border-box',
           }}
         >
@@ -268,7 +268,7 @@ function Event({ e, last }: { e: PackEvent; last: boolean }) {
 function TodayMarker({ today }: { today: Date }) {
   return (
     <div data-today style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 14px' }}>
-      <span style={{ fontSize: 11, fontWeight: 700, color: color.white, background: color.ink, padding: '2px 8px', borderRadius: radius.chip }}>
+      <span style={{ fontSize: 11, fontWeight: 700, color: color.canvas, background: color.ink, padding: '2px 8px', borderRadius: radius.chip }}>
         Today · {fmtDateLong(today)}
       </span>
       <span aria-hidden="true" style={{ flex: 1, height: 2, background: color.ink, borderRadius: 1 }} />

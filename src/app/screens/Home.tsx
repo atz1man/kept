@@ -144,7 +144,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
       {reminders && (
         <section
           aria-labelledby="reminders-title"
-          style={{ background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.card, padding: '16px 16px 14px', marginBottom: 14 }}
+          style={{ background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius.card, padding: '16px 16px 14px', marginBottom: 14 }}
         >
           <h2 id="reminders-title" style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Reminders for your deadlines</h2>
           <p style={{ margin: '6px 0 0', fontSize: 13.5, lineHeight: 1.5, color: color.bodyStrong }}>
@@ -162,7 +162,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
             <Pressable
               className="k-row-white k-secondary"
               onClick={reminders.onNo}
-              style={{ flex: '1 1 100px', padding: 13, textAlign: 'center', background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
+              style={{ flex: '1 1 100px', padding: 13, textAlign: 'center', background: color.surface, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
             >
               Not now
             </Pressable>
@@ -219,7 +219,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
             placeholder="Search shop or item"
             style={{
               width: '100%', boxSizing: 'border-box', padding: '11px 14px', borderRadius: radius.control,
-              border: `1px solid ${color.border}`, background: color.white,
+              border: `1px solid ${color.border}`, background: color.surface,
               fontFamily: font.ui, fontSize: 14.5, color: color.ink,
             }}
           />
@@ -358,7 +358,7 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
             <Pressable
               className="k-row-white k-secondary"
               onClick={() => onKeepClosed(closed.map((r) => r.id))}
-              style={{ marginTop: 9, padding: 13, textAlign: 'center', background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
+              style={{ marginTop: 9, padding: 13, textAlign: 'center', background: color.surface, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
             >
               {closed.length === 1 ? 'I’m keeping it' : `I’m keeping all ${closed.length}`}
             </Pressable>
@@ -501,7 +501,7 @@ export const SentRow = memo(function SentRow({ receipt: r, today, onOpen }: { re
       <Pressable
         onClick={() => onOpen(r.id)}
         aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${money(r.amount)}, ${went}, ${late ? 'refund late' : 'waiting for the refund'}`}
-        style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 15, background: color.white, border: `1px solid ${color.borderSoft}`, borderRadius: radius.card }}
+        style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 15, background: color.surface, border: `1px solid ${color.borderSoft}`, borderRadius: radius.card }}
       >
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 600, fontSize: 15, color: color.body, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.store}</div>
@@ -528,7 +528,7 @@ export const MoneyBackRow = memo(function MoneyBackRow({ receipt: r, onOpen }: {
       <Pressable
         onClick={() => onOpen(r.id)}
         aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${r.exchanged ? 'swapped for another' : `${money(refundOf(r))} ${r.credit ? 'in credit' : 'back'}, returned`}`}
-        style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 15, background: color.surfaceAlt, border: '1px solid rgba(10,10,18,0.06)', borderRadius: radius.card }}
+        style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 15, background: color.surfaceAlt, border: `1px solid ${color.borderHair}`, borderRadius: radius.card }}
       >
         <div style={{ width: 40, height: 40, borderRadius: 10, background: color.accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <Tick />
@@ -563,7 +563,7 @@ export const KeepingRow = memo(function KeepingRow({ receipt: r, today, onOpen }
       <Pressable
         onClick={() => onOpen(r.id)}
         aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${money(r.amount)}, ${cover ? `${cover}, ` : ''}keeping it`}
-        style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 15, background: color.surfaceAlt, border: '1px solid rgba(10,10,18,0.06)', borderRadius: radius.card }}
+        style={{ display: 'flex', alignItems: 'center', gap: 13, padding: 15, background: color.surfaceAlt, border: `1px solid ${color.borderHair}`, borderRadius: radius.card }}
       >
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 600, fontSize: 15, color: color.body, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.store}</div>
@@ -642,7 +642,7 @@ function HeroCard({ receipt, today, onOpen }: { receipt: Receipt; today: Date; o
         // A white card floating on the page: the money is said once, big, in
         // the hero above; this is the one purchase to act on, and its number
         // and date carry the urgency, in red when it is close.
-        background: color.white, borderRadius: radius.cardLg, padding: '18px 18px 16px', marginTop: 16,
+        background: color.surface, borderRadius: radius.cardLg, padding: '18px 18px 16px', marginTop: 16,
         position: 'relative', overflow: 'hidden', color: color.ink,
         boxShadow: shadow.raisedLg, textAlign: 'left',
       }}

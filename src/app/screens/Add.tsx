@@ -582,7 +582,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
             className={scanFirst ? 'k-row-white' : 'k-primary'}
             onClick={read}
             style={scanFirst
-              ? { marginTop: 12, padding: 14, textAlign: 'center', background: color.white, color: color.accentInk, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 650, fontSize: 15.5 }
+              ? { marginTop: 12, padding: 14, textAlign: 'center', background: color.surface, color: color.accentInk, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 650, fontSize: 15.5 }
               : { marginTop: 12, padding: 15, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 650, fontSize: 16, boxShadow: shadow.raised }}
           >
             Read it
@@ -643,7 +643,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
 
       {scanFirst ? scanWay : pasteWay}
       {error && (
-        <div className="k-fade" role="alert" style={{ display: 'flex', gap: 10, background: color.white, border: '1px solid rgba(229,55,43,0.4)', borderRadius: 12, padding: '14px 16px', marginTop: 14 }}>
+        <div className="k-fade" role="alert" style={{ display: 'flex', gap: 10, background: color.surface, border: `1px solid ${color.dangerBorder}`, borderRadius: 12, padding: '14px 16px', marginTop: 14 }}>
           <Warning stroke={color.danger} />
           <div style={{ fontSize: 13, color: color.danger, lineHeight: 1.5, fontWeight: 600 }}>
             Couldn’t find a store or amount in that. Make sure the paste includes the shop’s name and a £ total — or scan the paper receipt, or type it in yourself below.
@@ -694,7 +694,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
               placeholder="Running shoes"
               style={{
                 width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: radius.control,
-                border: `1px solid ${color.border}`, background: color.white,
+                border: `1px solid ${color.border}`, background: color.surface,
                 fontFamily: font.ui, fontSize: 14.5, color: color.ink,
               }}
             />
@@ -711,7 +711,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
                 placeholder="Vinted"
                 style={{
                   width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: radius.control,
-                  border: `1px solid ${color.border}`, background: color.white,
+                  border: `1px solid ${color.border}`, background: color.surface,
                   fontFamily: font.ui, fontSize: 14.5, color: color.ink,
                 }}
               />
@@ -755,7 +755,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
                 onChange={(e) => setTotalText(e.target.value)}
                 style={{
                   width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: radius.control,
-                  border: `1px solid ${totalError ? color.danger : color.border}`, background: color.white,
+                  border: `1px solid ${totalError ? color.danger : color.border}`, background: color.surface,
                   fontFamily: font.figures, fontSize: 14.5, color: color.ink,
                 }}
               />
@@ -787,7 +787,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
                 onChange={(e) => setBoughtOn(e.target.value)}
                 style={{
                   width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: radius.control,
-                  border: `1px solid ${boughtError ? color.danger : color.border}`, background: color.white,
+                  border: `1px solid ${boughtError ? color.danger : color.border}`, background: color.surface,
                   fontFamily: font.figures, fontSize: 14.5, color: color.ink,
                 }}
               />
@@ -832,7 +832,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
                 onChange={(e) => setArrivedOn(e.target.value)}
                 style={{
                   width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: radius.control,
-                  border: `1px solid ${arrivalError ? color.danger : color.border}`, background: color.white,
+                  border: `1px solid ${arrivalError ? color.danger : color.border}`, background: color.surface,
                   fontFamily: font.figures, fontSize: 14.5, color: color.ink,
                 }}
               />
@@ -878,7 +878,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
                 }}
                 style={{
                   width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: radius.control,
-                  border: `1px solid ${windowError ? color.danger : color.border}`, background: color.white,
+                  border: `1px solid ${windowError ? color.danger : color.border}`, background: color.surface,
                   fontFamily: font.figures, fontSize: 14.5, color: color.ink,
                 }}
               />
@@ -1067,7 +1067,7 @@ function Step({ icon, label, dark }: { icon: React.ReactNode; label: string; dar
       <div
         style={{
           width: 40, height: 40, borderRadius: 10,
-          background: dark ? color.ink : color.white,
+          background: dark ? color.inkSurface : color.surface,
           border: dark ? undefined : `1px solid ${color.borderSoft}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}

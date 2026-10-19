@@ -111,7 +111,7 @@ export function FaultPanel({ receipt, today, onSent, onUnsent }: {
               <Pressable
                 className="k-row-white k-secondary"
                 onClick={() => (claim ? onUnsent() : onSent(whatsWrong))}
-                style={{ marginTop: 10, padding: 13, textAlign: 'center', borderRadius: radius.control, fontWeight: 600, fontSize: 14, background: color.white, border: `1px solid ${color.borderSoft}` }}
+                style={{ marginTop: 10, padding: 13, textAlign: 'center', borderRadius: radius.control, fontWeight: 600, fontSize: 14, background: color.surface, border: `1px solid ${color.borderSoft}` }}
               >
                 {claim ? 'Not sent after all' : 'I’ve sent the letter'}
               </Pressable>

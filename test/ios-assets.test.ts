@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { color } from '../src/tokens';
+import { palette } from '../src/tokens';
+
+const color = palette.light;
 import { describe, expect, it } from 'vitest';
 // @ts-expect-error - a small JS helper shared with scripts/make-icons.mjs
 import { decodePng, pixelAt } from '../scripts/png.mjs';

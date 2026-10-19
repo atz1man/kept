@@ -17,30 +17,180 @@
 * { -webkit-tap-highlight-color: transparent; }
 
 /*
- * The app paints one palette, and says so.
+ * The palette, as custom properties — light, and dark when the phone is.
  *
- * `color-scheme` was undeclared, which left the native controls — the date
- * pickers this app leans on, the scrollbars, the overscroll canvas — to
- * follow the operating system. Chromium happened to render them light here;
- * that was luck, not a decision, and it is exactly the sort of thing that
- * differs by engine.
+ * `color-scheme` was once undeclared, which left the native controls — the
+ * date pickers this app leans on, the scrollbars, the overscroll canvas — to
+ * follow the operating system while the app painted itself light regardless.
+ * It was then pinned to `light`, which made the two agree by refusing the
+ * phone's setting. Now the app has a dark palette of its own, so it declares
+ * BOTH and the controls follow the same switch the colours do: a white date
+ * picker on a black screen is exactly the seam this declaration exists to
+ * prevent.
  *
- * And nothing painted the CANVAS. The cream comes from an element inside the
- * root, so `body` computed to transparent and the area revealed by a
- * rubber-band scroll past the top of a phone was the UA's white, not the
- * app's paper. Both fixed here rather than in a component, because both are
- * about the surface underneath every component.
+ * Every `color.*` in src/tokens.ts is `var(--k-…)`; these are their values.
+ * The stylesheet cannot import the tokens, so test/scheme.test.ts reads each
+ * declaration below back and holds it to the palette of the same name — a
+ * value edited here and not there fails the build, in either scheme.
+ *
+ * The landing page opts out with `data-scheme="light"` on its root (see
+ * index.html): it is a designed marketing page of illustrations and framed
+ * screenshots, and it stays as designed. The app, and the privacy and rights
+ * pages it links to, follow the phone.
+ *
+ * And the canvas is painted here, not left to a component: the ground comes
+ * from an element inside the root, so without this `body` computes to
+ * transparent and a rubber-band scroll past the top of a phone shows the UA's
+ * white — on a dark phone, a white flash on every bounce.
  */
+:root {
+  color-scheme: light dark;
+  --k-ink: #0A0A12;
+  --k-ink-hover: #000000;
+  --k-ink-surface: #0A0A12;
+  --k-canvas: #FFFFFF;
+  --k-surface: #FFFFFF;
+  --k-surface-alt: #F4F5F8;
+  --k-surface-hover: #F7F8FA;
+  --k-surface-deep: #E8EAF0;
+  --k-white: #FFFFFF;
+  --k-bar: rgba(255,255,255,0.94);
+  --k-scrim: rgba(10,10,18,0.55);
+  --k-accent: #4636E8;
+  --k-accent-hover: #3626CF;
+  --k-accent-tile: #5B4CF5;
+  --k-accent-soft: #EEEDFF;
+  --k-accent-soft-hover: #E2E0FF;
+  --k-accent-ink: #3B2BD6;
+  --k-on-accent-soft: #EEEDFF;
+  --k-accent-figure: #4636E8;
+  --k-focus: #4636E8;
+  --k-focus-halo: #FFFFFF;
+  --k-gold: #F7C948;
+  --k-gold-ink: #4A2F00;
+  --k-hero-top: #0F0B3D;
+  --k-hero-mid: #3A27C9;
+  --k-hero-end: #2453E6;
+  --k-on-hero-soft: #E9E7FF;
+  --k-on-hero-glass: rgba(255,255,255,0.16);
+  --k-on-hero-chip: rgba(15,11,61,0.25);
+  --k-muted: #5F6270;
+  --k-faint: #9A9DA8;
+  --k-fainter: #B4B7C0;
+  --k-body: #3A3D48;
+  --k-body-strong: #22242D;
+  --k-on-ink-body: #D5D7DE;
+  --k-on-ink-faint: #8B8E99;
+  --k-danger: #C2261C;
+  --k-danger-fill: #C2261C;
+  --k-danger-dot: #E5372B;
+  --k-danger-chip-bg: rgba(229,55,43,0.10);
+  --k-danger-border: rgba(229,55,43,0.4);
+  --k-on-ink-danger: #FF9C8F;
+  --k-caution: #FFF1D6;
+  --k-caution-ink: #7A4B00;
+  --k-border: rgba(10,10,18,0.10);
+  --k-border-hair: rgba(10,10,18,0.06);
+  --k-border-soft: rgba(10,10,18,0.13);
+  --k-on-ink-border: rgba(255,255,255,0.12);
+  --k-on-ink-border-strong: rgba(255,255,255,0.18);
+  --k-on-ink-dash: rgba(255,255,255,0.16);
+  --k-rail: rgba(10,10,18,0.12);
+  --k-dot-off: rgba(10,10,18,0.18);
+  --k-cat-audio-tint: #E7EEFB;
+  --k-cat-audio-ink: #2A55A8;
+  --k-cat-kitchen-tint: #FCEEE2;
+  --k-cat-kitchen-ink: #9A4510;
+  --k-cat-clothing-tint: #E2F4F2;
+  --k-cat-clothing-ink: #16645D;
+  --k-cat-beauty-tint: #FBE8EF;
+  --k-cat-beauty-ink: #A12F5B;
+  --k-cat-furniture-tint: #E9F2E3;
+  --k-cat-furniture-ink: #43652A;
+  --k-cat-other-tint: #F4F5F8;
+  --k-cat-other-ink: #0A0A12;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-scheme="light"]) {
+    --k-ink: #F4F4F8;
+    --k-ink-hover: #FFFFFF;
+    --k-ink-surface: #2A2A35;
+    --k-canvas: #0B0B12;
+    --k-surface: #23232E;
+    --k-surface-alt: #17171F;
+    --k-surface-hover: #2A2A36;
+    --k-surface-deep: #30303C;
+    --k-white: #FFFFFF;
+    --k-bar: rgba(23,23,31,0.94);
+    --k-scrim: rgba(0,0,0,0.6);
+    --k-accent: #5A4BFA;
+    --k-accent-hover: #4A3BF0;
+    --k-accent-tile: #5B4CF5;
+    --k-accent-soft: #252148;
+    --k-accent-soft-hover: #2F2A5C;
+    --k-accent-ink: #ABA4FF;
+    --k-on-accent-soft: #EEEDFF;
+    --k-accent-figure: #ABA4FF;
+    --k-focus: #ABA4FF;
+    --k-focus-halo: #0B0B12;
+    --k-gold: #F7C948;
+    --k-gold-ink: #4A2F00;
+    --k-hero-top: #0F0B3D;
+    --k-hero-mid: #3A27C9;
+    --k-hero-end: #2453E6;
+    --k-on-hero-soft: #E9E7FF;
+    --k-on-hero-glass: rgba(255,255,255,0.16);
+    --k-on-hero-chip: rgba(15,11,61,0.25);
+    --k-muted: #A0A3B1;
+    --k-faint: #9EA1B0;
+    --k-fainter: #5F6272;
+    --k-body: #CDD0DA;
+    --k-body-strong: #E6E7EE;
+    --k-on-ink-body: #D5D7DE;
+    --k-on-ink-faint: #A3A6B3;
+    --k-danger: #FF7B70;
+    --k-danger-fill: #CC3226;
+    --k-danger-dot: #FF5F52;
+    --k-danger-chip-bg: rgba(255,95,82,0.16);
+    --k-danger-border: rgba(255,95,82,0.5);
+    --k-on-ink-danger: #FF9C8F;
+    --k-caution: #3A2A0E;
+    --k-caution-ink: #FFC970;
+    --k-border: rgba(255,255,255,0.12);
+    --k-border-hair: rgba(255,255,255,0.07);
+    --k-border-soft: rgba(255,255,255,0.16);
+    --k-on-ink-border: rgba(255,255,255,0.12);
+    --k-on-ink-border-strong: rgba(255,255,255,0.18);
+    --k-on-ink-dash: rgba(255,255,255,0.16);
+    --k-rail: rgba(255,255,255,0.16);
+    --k-dot-off: rgba(255,255,255,0.24);
+    --k-cat-audio-tint: #16233D;
+    --k-cat-audio-ink: #8DB4FF;
+    --k-cat-kitchen-tint: #33210F;
+    --k-cat-kitchen-ink: #F2A66B;
+    --k-cat-clothing-tint: #0F2C29;
+    --k-cat-clothing-ink: #6FD3C7;
+    --k-cat-beauty-tint: #361626;
+    --k-cat-beauty-ink: #F59BBE;
+    --k-cat-furniture-tint: #1C2A14;
+    --k-cat-furniture-ink: #A3CF7E;
+    --k-cat-other-tint: #17171F;
+    --k-cat-other-ink: #F4F4F8;
+  }
+}
+
+:root[data-scheme="light"] { color-scheme: light; }
+
 html {
-  color-scheme: light;
-  background: #FFFFFF;
+  background: var(--k-canvas);
 }
 
 body {
   margin: 0;
-  background: #FFFFFF;
+  background: var(--k-canvas);
   font-family: 'Geist', system-ui, -apple-system, sans-serif;
-  color: #0A0A12;
+  color: var(--k-ink);
   -webkit-font-smoothing: antialiased;
   /* Tabular figures everywhere: money and day counts line up in a column,
      the way a statement does. */
@@ -49,11 +199,11 @@ body {
 
 svg { display: block; flex-shrink: 0; }
 
-a { color: #0A0A12; text-decoration: none; }
+a { color: var(--k-ink); text-decoration: none; }
 /* The accent as text (`color.accentInk`), which clears AA on every light
    ground. A hover colour is a state the contrast sweep cannot see, so it is
    held to a token here rather than chosen by eye. */
-a:hover { color: #3B2BD6; }
+a:hover { color: var(--k-accent-ink); }
 /* A link inside a line of text is told apart by more than its colour: the
    muted line and the ink link are too close to rely on hue alone (WCAG
    1.4.1, axe's link-in-text-block). */
@@ -61,14 +211,14 @@ a:hover { color: #3B2BD6; }
    a flat 402px cap, which left grey strips down both sides of a Pro Max. */
 .k-frame { max-width: 100%; }
 @media (min-width: 600px) {
-  .k-frame { max-width: 430px; box-shadow: 0 0 0 1px rgba(10,10,18,0.08); }
+  .k-frame { max-width: 430px; box-shadow: 0 0 0 1px var(--k-border); }
 }
 
 .k-group {
   display: flex; flex-direction: column; margin: 0; padding: 0;
-  background: #F4F5F8; border-radius: 22px; overflow: hidden;
+  background: var(--k-surface-alt); border-radius: 22px; overflow: hidden;
 }
-.k-group > li + li { border-top: 1px solid rgba(10,10,18,0.06); }
+.k-group > li + li { border-top: 1px solid var(--k-border-hair); }
 /* A grouped list, the way a bank app draws a statement: one soft card, no
    border, rows divided by a hairline. Each receipt used to be a card of its
    own, and a screen of separate rounded boxes is most of what read as toy. */
@@ -109,9 +259,9 @@ a:hover { color: #3B2BD6; }
  * on exactly the buttons that matter most.
  */
 :focus-visible {
-  outline: 2.5px solid #4636E8;
+  outline: 2.5px solid var(--k-focus);
   outline-offset: 2px;
-  box-shadow: 0 0 0 5px #ffffff !important;
+  box-shadow: 0 0 0 5px var(--k-focus-halo) !important;
   border-radius: 4px;
 }
 
@@ -130,30 +280,30 @@ a:hover { color: #3B2BD6; }
  */
 .k-primary, .k-secondary { border-radius: 999px !important; }
 .k-primary:not(:disabled) {
-  background-image: linear-gradient(#5B4CF5, #3626CF) !important;
+  background-image: linear-gradient(var(--k-accent-tile), var(--k-accent-hover)) !important;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 1px 2px rgba(54,38,207,0.30), 0 6px 18px rgba(54,38,207,0.24);
 }
-.k-primary:not(:disabled):hover { background-image: linear-gradient(#4636E8, #3626CF) !important; }
-.k-primary:not(:disabled):active { background-image: linear-gradient(#3626CF, #3626CF) !important; box-shadow: inset 0 1px 2px rgba(10,10,18,0.2); }
+.k-primary:not(:disabled):hover { background-image: linear-gradient(var(--k-accent), var(--k-accent-hover)) !important; }
+.k-primary:not(:disabled):active { background-image: linear-gradient(var(--k-accent-hover), var(--k-accent-hover)) !important; box-shadow: inset 0 1px 2px rgba(10,10,18,0.2); }
 .k-secondary:not(:disabled) {
   box-shadow: 0 1px 2px rgba(10,10,18,0.05), 0 2px 8px rgba(10,10,18,0.05);
 }
-.k-secondary:not(:disabled):active { background: #E8EAF0 !important; box-shadow: none; }
+.k-secondary:not(:disabled):active { background: var(--k-surface-deep) !important; box-shadow: none; }
 /* Pressed, everything gives a little; reduced motion keeps it still. */
 .k-primary:not(:disabled):active, .k-secondary:not(:disabled):active { transform: scale(0.97); }
 @media (prefers-reduced-motion: reduce) {
   .k-primary:active, .k-secondary:active { transform: none; }
 }
 /* The focus ring after the depth, so its white halo is not overwritten. */
-.k-primary:focus-visible, .k-secondary:focus-visible { box-shadow: 0 0 0 5px #ffffff !important; }
+.k-primary:focus-visible, .k-secondary:focus-visible { box-shadow: 0 0 0 5px var(--k-focus-halo) !important; }
 
-.k-row-white:hover { background: #E8EAF0; }
-.k-row-plain:hover { background: #E8EAF0; }
-.k-banner:hover { background: #E2E0FF !important; }
-.k-soft:hover { background: #E8EAF0 !important; }
-.k-ink:hover { background: #000 !important; }
+.k-row-white:hover { background: var(--k-surface-deep); }
+.k-row-plain:hover { background: var(--k-surface-deep); }
+.k-banner:hover { background: var(--k-accent-soft-hover) !important; }
+.k-soft:hover { background: var(--k-surface-deep) !important; }
+.k-ink:hover { background: var(--k-ink-hover) !important; }
 
-textarea:focus { outline: 2px solid #4636E8; box-shadow: 0 0 0 4px #ffffff !important; }
+textarea:focus { outline: 2px solid var(--k-focus); box-shadow: 0 0 0 4px var(--k-focus-halo) !important; }
 
 @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes pulseDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
@@ -237,4 +387,4 @@ textarea:focus { outline: 2px solid #4636E8; box-shadow: 0 0 0 4px #ffffff !impo
   border: 0;
 }
 
-::selection { background: #EEEDFF; color: #0A0A12; }
+::selection { background: var(--k-accent-soft); color: var(--k-ink); }
