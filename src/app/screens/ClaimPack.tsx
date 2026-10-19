@@ -8,6 +8,7 @@ import type { Receipt } from '../../lib/types';
 import { Avatar } from '../components/Avatar';
 import { ChevronLeft, Tick } from '../components/Icons';
 import { Pressable } from '../components/Pressable';
+import { useLetterName } from '../letter-name';
 
 /**
  * The claim pack, on screen: the same document the file carries, drawn as a
@@ -15,7 +16,10 @@ import { Pressable } from '../components/Pressable';
  * can be read at a glance. See lib/claim-pack.ts for what goes in it and why.
  */
 export function ClaimPack({ receipt, today, onBack }: { receipt: Receipt; today: Date; onBack: () => void }) {
-  const pack = useMemo(() => claimPack(receipt, today), [receipt, today]);
+  // The letters it reproduces are signed as the ones on the receipt's screen
+  // are: with the name kept on this phone, or "[Your name]" until there is one.
+  const { name } = useLetterName();
+  const pack = useMemo(() => claimPack(receipt, today, name), [receipt, today, name]);
   const [photo, setPhoto] = useState<string | null>(null);
   const [said, setSaid] = useState<string | null>(null);
   useEffect(() => {

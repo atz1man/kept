@@ -749,7 +749,18 @@ for (const cancel of [false, true]) {
   await np.waitForTimeout(300);
   seen.reloaded = (await faultLetterText()).endsWith('Jane Smith');
 
-  results['letters are signed with the name given, in Settings or under the letter, and kept'] = Object.values(seen).length === 11 && Object.values(seen).every(Boolean);
+  // And the claim pack, which reproduces each letter as it went: signed the
+  // same way, not left at "[Your name]" while the screen it came from was not.
+  await np.getByRole('button', { name: 'I’ve sent the letter', exact: true }).click({ timeout: 3000 }).catch(() => {});
+  await np.waitForTimeout(300);
+  await np.getByRole('button', { name: /^Claim pack/ }).click({ timeout: 3000 }).catch(() => {});
+  await np.waitForTimeout(400);
+  await np.locator('details summary', { hasText: /sent/ }).first().click({ timeout: 3000 }).catch(() => {});
+  await np.waitForTimeout(200);
+  const packed = ((await np.locator('details').first().innerText().catch(() => '')) ?? '').trimEnd();
+  seen.packSigned = packed.endsWith('Jane Smith') && !packed.includes('[Your name]');
+
+  results['letters are signed with the name given, in Settings or under the letter, and kept'] = Object.values(seen).length === 12 && Object.values(seen).every(Boolean);
   if (!results['letters are signed with the name given, in Settings or under the letter, and kept']) problems.push(`letter name: ${JSON.stringify(seen)}`);
   await nCtx.close();
 }
