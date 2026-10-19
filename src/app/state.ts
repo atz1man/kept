@@ -7,7 +7,8 @@ import { cleanupPhotos } from '../lib/photos';
 import { onNotificationTap, syncScheduled } from './schedule-native';
 import { askForReview } from './purchases';
 import { celebrationLeft, shouldAskForReview, type ReviewAsked } from '../lib/review-prompt';
-import { currentDay, daysBetween, fromISODate, toISODate, ukDay } from '../lib/dates';
+import { addDays, currentDay, daysBetween, fromISODate, toISODate, ukDay } from '../lib/dates';
+import { REPLY_DAYS } from '../lib/fault-letter';
 import { collectedShare, sharedTextFrom, strippedShareUrl } from '../lib/share';
 import { canSplit, splitReceipt, validSplit } from '../lib/split';
 import { awaitingArrival, countsAsMoney, deadlineIsFloor, derive, makeReceiptId, refundOf, swapInFate } from '../lib/receipts';
@@ -164,6 +165,8 @@ export type Action =
   | { type: 'unsend'; id: string }
   | { type: 'fault-sent'; id: string; what: string }
   | { type: 'fault-unsent'; id: string }
+  | { type: 'final-reject-sent'; id: string; what: string }
+  | { type: 'final-reject-unsent'; id: string }
   | { type: 'set-return-ref'; id: string; ref: string | null }
   | { type: 'arrived'; id: string }
   | { type: 'unkeep'; id: string }
@@ -559,6 +562,43 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         receipts: state.receipts.map((r) => (r.id === action.id ? { ...r, faultClaim: undefined } : r)),
         alertsSent: state.alertsSent.filter((k) => k !== alertKey(action.id, 'fault')),
       };
+    case 'final-reject-sent': {
+      /*
+       * The second letter has gone: the final right to reject, after a repair
+       * or replacement that did not work. Only after a first letter — it says
+       * "I wrote to you about a fault on …" — and only on a receipt still with
+       * its owner, as the first. The words are kept, tidied, so the pack can
+       * show the letter again as it was sent.
+       */
+      const r = state.receipts.find((x) => x.id === action.id);
+      if (!r?.faultClaim || (r.status !== 'active' && r.status !== 'kept')) return state;
+      const what = action.what.trim().replace(/\s+/g, ' ');
+      const faultClaim = { ...r.faultClaim, finalReject: { sentOn: toISODate(today), ...(what ? { what } : {}) } };
+      return {
+        ...state,
+        receipts: state.receipts.map((x) => (x.id === r.id ? { ...x, faultClaim } : x)),
+        // "Has the shop replied?" is now about this letter, on its own day.
+        alertsSent: state.alertsSent.filter((k) => k !== alertKey(action.id, 'fault')),
+      };
+    }
+    case 'final-reject-unsent': {
+      const r = state.receipts.find((x) => x.id === action.id);
+      if (!r?.faultClaim?.finalReject) return state;
+      const { finalReject: _gone, ...faultClaim } = r.faultClaim;
+      /*
+       * The question goes back to the first letter. Where that letter's own
+       * reply day has already come, it is not asked again: it was asked, or
+       * the repair this letter followed answered it.
+       */
+      const key = alertKey(action.id, 'fault');
+      const firstDue = daysBetween(addDays(fromISODate(faultClaim.sentOn), REPLY_DAYS), today) >= 0;
+      const others = state.alertsSent.filter((k) => k !== key);
+      return {
+        ...state,
+        receipts: state.receipts.map((x) => (x.id === r.id ? { ...x, faultClaim } : x)),
+        alertsSent: firstDue ? [...others, key] : others,
+      };
+    }
     case 'cancel-sent':
       /*
        * Notice of cancellation has gone. Only on an online order still in

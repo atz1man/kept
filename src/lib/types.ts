@@ -114,8 +114,14 @@ export interface Receipt {
    * own words about what is wrong, so the letter can be shown again as sent.
    * The letter asks for a reply within a fortnight; without a record that it
    * went, nothing could ask whether one came.
+   *
+   * `finalReject` is the second letter, the final right to reject (section
+   * 24(5)), once that has gone too: its day and the words about what is wrong
+   * NOW. It lives inside the first because it cannot exist without it — the
+   * letter says "I wrote to you about a fault on …" — so whatever forgets the
+   * first letter (taking it back, a swap, a split) forgets this with it.
    */
-  faultClaim?: { sentOn: string; what?: string };
+  faultClaim?: { sentOn: string; what?: string; finalReject?: { sentOn: string; what?: string } };
   /**
    * The day notice of cancellation went to the shop, for an order bought at a
    * distance. Cancelling is telling the shop, not posting the parcel, and it

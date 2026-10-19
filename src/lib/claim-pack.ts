@@ -11,7 +11,7 @@ import { REFUND_CHASE_DAYS } from './alerts';
 import { cancelLetter, cancelledInTime, sendBackBy } from './cancel-notice';
 import { addDays, daysBetween, fmtDateLong, fromISODate, toISODate } from './dates';
 import { escalation } from './escalate';
-import { faultLetter, REPLY_DAYS } from './fault-letter';
+import { faultLetter, finalRejectLetter, REPLY_DAYS } from './fault-letter';
 import { COOLING_OFF_DAYS, LEGAL_DISCLAIMER, legalRights, PRESUMED_FAULT_MONTHS, presumedFaultEnds, REJECT_DAYS, type LegalRight } from './legal';
 import { money } from './money';
 import { deadlineIsFloor, derive, floorClock, floorWords, refundOf } from './receipts';
@@ -145,6 +145,8 @@ export function claimPack(r: Receipt, today: Date): ClaimPack {
   if (r.arrivedOn && !sameDay(r.arrivedOn, r.purchasedOn)) events.push(happened(r.arrivedOn, 'Arrived'));
   if (r.cancelledOn) events.push(happened(r.cancelledOn, 'Cancellation notice sent'));
   if (r.faultClaim) events.push(happened(r.faultClaim.sentOn, 'Fault reported to the shop', r.faultClaim.what?.trim() || undefined));
+  const finalReject = r.faultClaim?.finalReject;
+  if (finalReject) events.push(happened(finalReject.sentOn, 'Final rejection sent', finalReject.what?.trim() || undefined));
   if (r.sentOn) events.push(happened(r.sentOn, 'Sent back', r.returnRef ? `Tracking ${r.returnRef}` : undefined));
   if (r.status === 'returned' && r.returnedOn) {
     const label = r.exchanged ? 'Swapped for another' : r.credit ? 'Refunded as store credit' : 'Refund received';
@@ -182,6 +184,11 @@ export function claimPack(r: Receipt, today: Date): ClaimPack {
   if (r.faultClaim) {
     // Our number, not the law's, and labelled as what the letter asked for.
     events.push(deadline(addDays(fromISODate(r.faultClaim.sentOn), REPLY_DAYS), 'Reply asked for by', `The fault letter asked for one within ${REPLY_DAYS} days`));
+  }
+  if (finalReject) {
+    // The final rejection letter asks for a reply in the same words and the
+    // same fortnight as the first: our number, labelled as the letter's ask.
+    events.push(deadline(addDays(fromISODate(finalReject.sentOn), REPLY_DAYS), 'Reply asked for by', `The final rejection letter asked for one within ${REPLY_DAYS} days`));
   }
   const chase = refundChase(r, today);
   if (chase?.statutory) {
@@ -251,6 +258,11 @@ function standing(r: Receipt, today: Date, shopDeadline: Date): string[] {
   const chase = refundChase(r, today);
   if (chase?.late) out.push(`The refund is late: it was due by ${fmtDateLong(chase.due)} and has not been recorded.`);
   if (r.faultClaim) out.push(`A fault was reported to the shop on ${fmtDateLong(fromISODate(r.faultClaim.sentOn))}.`);
+  // What was SENT, not what the law made of it: whether the rejection was
+  // good is for the shop, or a court, to answer.
+  if (r.faultClaim?.finalReject) {
+    out.push(`A letter exercising the final right to reject (Consumer Rights Act 2015, s.24(5)) was sent to the shop on ${fmtDateLong(fromISODate(r.faultClaim.finalReject.sentOn))}.`);
+  }
   if (r.status === 'returned') out.push(r.exchanged ? 'Swapped for another; nothing further is owed.' : 'Refunded.');
   return out;
 }
@@ -264,6 +276,14 @@ function letters(r: Receipt): PackLetter[] {
     const sentOn = fromISODate(r.faultClaim.sentOn);
     const text = faultLetter(r, sentOn, r.faultClaim.what ?? '');
     if (text) out.push({ title: 'Fault letter', sentOn, text });
+    // The second letter, the same way: as drafted on its own day, since
+    // whether it says "no deduction for use" depends on that date.
+    const f = r.faultClaim.finalReject;
+    if (f) {
+      const finalOn = fromISODate(f.sentOn);
+      const finalText = finalRejectLetter(r, finalOn, f.what ?? '');
+      if (finalText) out.push({ title: 'Final rejection letter', sentOn: finalOn, text: finalText });
+    }
   }
   return out.sort((a, b) => a.sentOn.getTime() - b.sentOn.getTime());
 }

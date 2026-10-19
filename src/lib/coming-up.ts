@@ -1,4 +1,4 @@
-import { creditWatched, faultWatched, REFUND_CHASE_DAYS, rejectWatched, warrantyWatched } from './alerts';
+import { creditWatched, faultWatched, latestFaultLetter, REFUND_CHASE_DAYS, rejectWatched, warrantyWatched } from './alerts';
 import { addDays, daysBetween, fromISODate } from './dates';
 import { REPLY_DAYS } from './fault-letter';
 import { deadlineIsFloor, derive } from './receipts';
@@ -62,7 +62,12 @@ export function comingUp(receipts: readonly Receipt[], today: Date, days: number
     }
     const reject = rejectWatched(r, today);
     if (reject) push(r, reject.ends, 'reject', `Last day to reject it if it’s faulty${reject.hedged ? ' (or later)' : ''}`);
-    if (faultWatched(r)) push(r, addDays(fromISODate(r.faultClaim!.sentOn), REPLY_DAYS), 'fault', 'The reply your fault letter asked for is due');
+    // The latest letter's reply: once the final rejection has gone, the first
+    // letter's fortnight is history, and the one that matters is this one's.
+    if (faultWatched(r)) {
+      const letter = latestFaultLetter(r)!;
+      push(r, addDays(fromISODate(letter.sentOn), REPLY_DAYS), 'fault', `The reply your ${letter.final ? 'final rejection' : 'fault'} letter asked for is due`);
+    }
     if (creditWatched(r)) push(r, fromISODate(r.credit!.expires!), 'credit', 'Store credit runs out');
     if (warrantyWatched(r)) {
       const w = derive(r, today).warranty;

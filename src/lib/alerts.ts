@@ -80,6 +80,17 @@ export function faultWatched(r: Receipt): boolean {
 }
 
 /**
+ * The fault letter a reply is now awaited for: the final rejection once that
+ * has gone, the first letter until then. Its day is what the reminder, the
+ * coming-up list and the panel count the fortnight from.
+ */
+export function latestFaultLetter(r: Receipt): { sentOn: string; what?: string; final: boolean } | null {
+  if (!r.faultClaim) return null;
+  const f = r.faultClaim.finalReject;
+  return f ? { ...f, final: true } : { sentOn: r.faultClaim.sentOn, what: r.faultClaim.what, final: false };
+}
+
+/**
  * Whether a receipt's guarantee is worth a word from this app at all.
  *
  * Active or kept: a returned item has gone back, and its guarantee went with
@@ -368,9 +379,10 @@ export function singleShots(r: Receipt, today: Date): SingleShot[] {
     const ends = fromISODate(r.credit!.expires!);
     out.push({ rung: 'credit', key: alertKey(r.id, 'credit'), from: addDays(ends, -CREDIT_NOTICE_DAYS), until: ends, copy: (day) => copyFor('credit', r, daysBetween(day, ends), ends) });
   }
-  // The fault letter, on the day its fortnight for a reply is up.
+  // The fault letter, on the day its fortnight for a reply is up — the LATEST
+  // letter's: once the final rejection has gone, the question is about it.
   if (faultWatched(r)) {
-    const sentOn = fromISODate(r.faultClaim!.sentOn);
+    const sentOn = fromISODate(latestFaultLetter(r)!.sentOn);
     out.push({ rung: 'fault', key: alertKey(r.id, 'fault'), from: addDays(sentOn, REPLY_DAYS), until: null, copy: () => copyFor('fault', r, 0, sentOn) });
   }
   return out;
