@@ -14,7 +14,19 @@ import { Pressable } from './Pressable';
  * from it — including the receipt's photo, which shops ask for as proof of
  * purchase in both cases.
  */
-export function Letter({ letter, title, receipt }: { letter: string; title: string; receipt: Receipt }) {
+export function Letter({ letter, title, receipt, name = 'letter' }: {
+  letter: string;
+  title: string;
+  receipt: Receipt;
+  /**
+   * What the letter is called on screen: "The letter", "Copy the letter".
+   * Two letters on one screen need two names — the fault panel shows the
+   * first letter and the final rejection together, and a screen reader heard
+   * two boxes called "The letter" and two buttons called "Copy the letter".
+   * The default is the name every other letter has always had.
+   */
+  name?: string;
+}) {
   const [said, setSaid] = useState<'no' | 'copied' | 'shared' | 'failed'>('no');
   const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
   // A letter that changed is a letter not yet copied.
@@ -63,10 +75,10 @@ export function Letter({ letter, title, receipt }: { letter: string; title: stri
   return (
     <>
       <div style={{ fontSize: 13, fontWeight: 600, color: color.bodyStrong, marginTop: 14, marginBottom: 6 }}>
-        The letter
+        The {name}
       </div>
       <div
-        aria-label="The letter"
+        aria-label={`The ${name}`}
         style={{
           whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: 13.5, lineHeight: 1.5, padding: 14,
           background: color.surfaceAlt, border: `1px solid ${color.borderHair}`, borderRadius: 10, color: color.body,
@@ -87,12 +99,15 @@ export function Letter({ letter, title, receipt }: { letter: string; title: stri
           onClick={() => void copy()}
           style={{ ...button, background: color.accent, border: 0, color: color.white }}
         >
-          {said === 'copied' ? 'Copied ✓' : 'Copy the letter'}
+          {said === 'copied' ? 'Copied ✓' : `Copy the ${name}`}
         </Pressable>
         {canShare && (
           <Pressable
             className="k-row-white"
             onClick={() => void share()}
+            // "Share" on its own is a fine name until a second letter is on
+            // screen; then it says which, and still starts with what it shows.
+            aria-label={name === 'letter' ? undefined : `Share the ${name}`}
             style={{ ...button, background: color.surface, border: `1px solid ${color.borderSoft}` }}
           >
             {said === 'shared' ? 'Shared ✓' : 'Share'}
@@ -106,7 +121,7 @@ export function Letter({ letter, title, receipt }: { letter: string; title: stri
       )}
       {said === 'failed' && (
         <div role="status" style={{ fontSize: 12.5, marginTop: 8, color: color.danger, fontWeight: 600 }}>
-          That did not work here. Select the letter above and copy it instead.
+          That did not work here. Select the {name} above and copy it instead.
         </div>
       )}
     </>

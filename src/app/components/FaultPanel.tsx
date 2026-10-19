@@ -16,12 +16,15 @@ import { Pressable } from './Pressable';
  *
  * The letter is built as the person types; `Letter` is how it leaves.
  */
-export function FaultPanel({ receipt, today, onSent, onUnsent }: {
+export function FaultPanel({ receipt, today, onSent, onUnsent, onFinalSent, onFinalUnsent }: {
   receipt: Receipt;
   today: Date;
   /** The letter has gone, with the words it carried. */
   onSent: (what: string) => void;
   onUnsent: () => void;
+  /** The final rejection has gone, with the words it carried. */
+  onFinalSent: (what: string) => void;
+  onFinalUnsent: () => void;
 }) {
   const claim = receipt.faultClaim;
   const [open, setOpen] = useState(false);
@@ -29,8 +32,10 @@ export function FaultPanel({ receipt, today, onSent, onUnsent }: {
   const advice = faultAdvice(receipt, today);
   const letter = faultLetter(receipt, today, whatsWrong);
   // After the repair or replacement, if it did not work: the next letter.
-  const [stillWrong, setStillWrong] = useState(false);
-  const [nowWrong, setNowWrong] = useState('');
+  const finalSent = claim?.finalReject;
+  // Open already once it has gone: what was sent, and when, is the answer.
+  const [stillWrong, setStillWrong] = useState(!!finalSent);
+  const [nowWrong, setNowWrong] = useState(finalSent?.what ?? '');
   const followUp = finalRejectLetter(receipt, today, nowWrong);
 
   return (
@@ -88,7 +93,26 @@ export function FaultPanel({ receipt, today, onSent, onUnsent }: {
                       />
                     )}
                   </Field>
-                  <Letter letter={followUp} title={`Final right to reject: ${receipt.item}`} receipt={receipt} />
+                  {/* Named apart from the first letter, which is on screen below it. */}
+                  <Letter letter={followUp} title={`Final right to reject: ${receipt.item}`} receipt={receipt} name="final rejection letter" />
+                  {finalSent && (
+                    <div data-final-reject-sent style={{ marginTop: 12, padding: 12, background: color.surfaceAlt, border: `1px solid ${color.borderHair}`, borderRadius: 10, fontSize: 13.5, lineHeight: 1.5, color: color.body }}>
+                      Final rejection sent on {fmtDateLong(fromISODate(finalSent.sentOn))}, asking {receipt.store} to reply by{' '}
+                      {fmtDateLong(addDays(fromISODate(finalSent.sentOn), REPLY_DAYS))}.
+                      {daysBetween(fromISODate(finalSent.sentOn), today) >= REPLY_DAYS &&
+                        ' No reply yet? Citizens Advice’s consumer service can tell you what to do next.'}
+                    </div>
+                  )}
+                  {/* Neither name contains the first letter's ("I’ve sent the
+                      letter", "Not sent after all"): both pairs can be on
+                      screen at once, and each must be found on its own. */}
+                  <Pressable
+                    className="k-row-white k-secondary"
+                    onClick={() => (finalSent ? onFinalUnsent() : onFinalSent(nowWrong))}
+                    style={{ marginTop: 10, padding: 13, textAlign: 'center', borderRadius: radius.control, fontWeight: 600, fontSize: 14, background: color.surface, border: `1px solid ${color.borderSoft}` }}
+                  >
+                    {finalSent ? 'Final rejection wasn’t sent' : 'I’ve sent the final rejection'}
+                  </Pressable>
                 </div>
               )}
             </div>

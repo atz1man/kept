@@ -233,10 +233,19 @@ export function readReceipt(raw: unknown, fromOutside = false): Receipt | null {
       : {}),
     // A sent fault letter: its day must be a real one, or the record is
     // dropped — a reply asked about on a day that does not exist is never asked.
+    // The final rejection inside it by the same rule, on its own: a bad day
+    // drops the second letter, not the first.
     ...(() => {
-      const c = r.faultClaim as { sentOn?: unknown; what?: unknown } | undefined;
-      if (typeof c !== 'object' || c === null || !isISODate(c.sentOn)) return {};
-      return { faultClaim: { sentOn: c.sentOn, ...(isStr(c.what) ? { what: fromOutside ? trim(c.what, MAX_NOTE) : c.what } : {}) } };
+      type Sent = { sentOn?: unknown; what?: unknown };
+      const read = (c: Sent | undefined) =>
+        typeof c !== 'object' || c === null || !isISODate(c.sentOn)
+          ? null
+          : { sentOn: c.sentOn, ...(isStr(c.what) ? { what: fromOutside ? trim(c.what, MAX_NOTE) : c.what } : {}) };
+      const c = r.faultClaim as (Sent & { finalReject?: Sent }) | undefined;
+      const first = read(c);
+      if (!first) return {};
+      const finalReject = read(c!.finalReject);
+      return { faultClaim: { ...first, ...(finalReject ? { finalReject } : {}) } };
     })(),
     ...(r.keptOn !== undefined ? { keptOn: r.keptOn as string } : {}),
     // Notice of cancellation: an online order's, on a real day, or dropped.
