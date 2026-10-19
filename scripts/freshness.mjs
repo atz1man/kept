@@ -365,7 +365,10 @@ async function chooseFile(page, { refusalEnds = false } = {}) {
     .waitForFunction(
       (refusalEnds) => {
         if (!window.__keptSameDocument) return 'reloaded';
+        // Read means the order reached the screen: in the paste box, or — now
+        // that a read collapses the ways in — on the card it produced.
         if (document.getElementById('paste')?.value?.includes('Kettle')) return 'read';
+        if (document.getElementById('add-found') && /Argos/.test(document.body.innerText) && /£24\.99/.test(document.body.innerText)) return 'read';
         return refusalEnds && /couldn.t read that file/.test(document.body.innerText) ? 'refused' : false;
       },
       refusalEnds,
@@ -629,7 +632,13 @@ async function shareInto(page, target, data) {
 /** The Add screen holding the email: on screen, in the paste box, and read. */
 const addHolds = (page) =>
   page
-    .waitForFunction(() => document.getElementById('paste')?.value?.includes('14 Elm Road'), null, { timeout: 10000 })
+    .waitForFunction(
+      // In the paste box, or on the card the read produced (the ways in collapse once there is one).
+      () => document.getElementById('paste')?.value?.includes('14 Elm Road') ||
+        (!!document.getElementById('add-found') && /John Lewis/.test(document.body.innerText) && /£349\.00/.test(document.body.innerText)),
+      null,
+      { timeout: 10000 },
+    )
     .then(async () => (await page.getByRole('heading', { name: 'Add a receipt' }).isVisible()) && (await page.getByText('Found in your paste').isVisible()))
     .catch(() => false);
 
@@ -725,7 +734,10 @@ async function sharing() {
     await shared.reload({ waitUntil: 'load' });
     await sleep(600);
     const refilled = await shared.evaluate(() => document.getElementById('paste')?.value ?? '').catch(() => '');
-    results[SHARE_ONCE] = again === null && !refilled.includes('14 Elm Road');
+    // The paste box is not there while a card is, so an empty box alone would
+    // pass over a card the email came back as: no card from it either.
+    const recarded = await shared.evaluate(() => !!document.getElementById('add-found') && /£349\.00/.test(document.body.innerText)).catch(() => false);
+    results[SHARE_ONCE] = again === null && !refilled.includes('14 Elm Road') && !recarded;
     if (!results[SHARE_ONCE]) problems.push(`${SHARE_ONCE}: a second ask answered ${JSON.stringify(again)}; after a reload the paste box held ${refilled.length} characters`);
     await shared.close();
 
