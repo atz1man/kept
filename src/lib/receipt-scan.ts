@@ -468,13 +468,17 @@ export function boxSource(text: string, scannedText: string | null, readFrom: 'p
  * text and a card saying "Read from your photo". Read on the phone, as the
  * scan row beneath says.
  */
-export function addSubtitle(source: BoxSource): string {
+export function addSubtitle(source: BoxSource, scanFirst = false): string {
   switch (source) {
     case 'photo':
       return 'Read from your photo on this phone — check the store, total and date below.';
     case 'file':
       return 'Read from your file on this phone — check the store, total and date below.';
     default:
-      return 'Paste an order email — Quids In reads the store, total and date.';
+      // In the iPhone app the camera is offered first, so the line that
+      // introduces the screen names it first too.
+      return scanFirst
+        ? 'Scan the receipt, or paste its order email — Quids In reads the store, total and date.'
+        : 'Paste an order email — Quids In reads the store, total and date.';
   }
 }

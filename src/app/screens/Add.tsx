@@ -54,6 +54,9 @@ const wayIn = {
 };
 const wayInIcon = { width: 42, height: 42, borderRadius: '50%', background: color.accentSoft, display: 'grid', placeItems: 'center', flexShrink: 0 } as const;
 const wayInChevron = { fontSize: 22, lineHeight: 1, color: color.muted, flexShrink: 0 } as const;
+/** The way in this phone uses most, drawn as the thing to press: the accent, white on it. */
+const wayInFirst = { background: color.accent, color: color.white, padding: '17px 16px', fontSize: 16.5, boxShadow: shadow.raised } as const;
+const wayInFirstIcon = { ...wayInIcon, background: color.onHeroGlass } as const;
 
 /** A pencil, for typing a receipt in by hand. */
 function PencilGlyph() {
@@ -541,40 +544,104 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
 
   const deadline = parsed ? fmtDateNear(addDays(fromISODate(windowStart ?? purchasedOn), effectiveWindow), today) : '';
 
+  /*
+   * The ways in, in the order this phone is likeliest to use them. In the
+   * iPhone app the receipt is usually paper in a hand, and the document
+   * camera reads it — but the paste box sat on top, taking the screen, and
+   * the camera was the second thing offered, below an "or". Walked as a
+   * shopper at a till, the first thing to do was scroll. On the web the
+   * receipt is usually an order email in another tab, so paste stays first
+   * there. The card a read produces sits straight under whichever way came
+   * first, so the result lands where the person is looking.
+   */
+  const scanFirst = isNative();
+  const pasteWay = (
+    <>
+          <label htmlFor="paste" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
+            Paste your order email
+          </label>
+          <textarea
+            id="paste"
+            value={text}
+            onChange={(e) => {
+              setText(e.target.value);
+              setParsed(null);
+              setError(false);
+            }}
+            placeholder="Paste your order email here… e.g. 'Your Apple order · Total £129.00 · 25 Aug'"
+            style={{
+              width: '100%', boxSizing: 'border-box', height: 120, border: '1px solid transparent',
+              borderRadius: radius.card, background: color.surfaceAlt, padding: '14px 16px',
+              fontFamily: font.figures, fontSize: 14, color: color.ink, resize: 'none',
+            }}
+          />
+
+          {/* One thing to press first: where the camera leads, reading a
+              paste is the quieter second button rather than a rival. */}
+          <Pressable
+            className={scanFirst ? 'k-row-white' : 'k-primary'}
+            onClick={read}
+            style={scanFirst
+              ? { marginTop: 12, padding: 14, textAlign: 'center', background: color.white, color: color.accentInk, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 650, fontSize: 15.5 }
+              : { marginTop: 12, padding: 15, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 650, fontSize: 16, boxShadow: shadow.raised }}
+          >
+            Read it
+          </Pressable>
+    </>
+  );
+  const scanWay = (
+    <>
+          {/* Opens the camera on a phone, the file picker elsewhere. */}
+          <input
+            ref={photoInput}
+            id="add-photo"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            hidden
+            aria-hidden="true"
+            tabIndex={-1}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              // Cleared so choosing the same photo again still fires.
+              e.target.value = '';
+              if (f) void scanPhoto(f);
+            }}
+          />
+          <Pressable
+            className={scanFirst ? 'k-primary' : 'k-row-white'}
+            onClick={startScan}
+            disabled={scanning !== null}
+            style={{ ...wayIn, ...(scanFirst ? wayInFirst : {}), cursor: scanning !== null ? 'progress' : 'pointer' }}
+          >
+            <span style={scanFirst ? wayInFirstIcon : wayInIcon}><CameraGlyph size={20} stroke={scanFirst ? color.white : color.accentInk} /></span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              {scanning === null
+                ? 'Scan a paper receipt'
+                : `${lookingAgain ? 'Having another look' : 'Reading your receipt'}… ${Math.round(scanning * 100)}%`}
+            </span>
+            <span aria-hidden="true" style={scanFirst ? { ...wayInChevron, color: color.onHeroSoft } : wayInChevron}>›</span>
+          </Pressable>
+          <div role="status" aria-live="polite" style={{ fontSize: 12.5, color: scanFailed ? color.danger : color.muted, textAlign: 'center', marginTop: 8, lineHeight: 1.5 }}>
+            {scanFailed === 'offline'
+              ? 'Scanning in a browser needs a connection, to fetch the reader. Paste or type the details, or scan again when you are back online.'
+              : scanFailed
+              ? 'Quids In couldn’t read that photo. Try again flat, straight and in good light — or paste or type the details.'
+              : scanning !== null
+                ? 'Reading it on this phone. Nothing is uploaded.'
+                : 'Read on this phone — the photo is never uploaded. Check what it read before you save.'}
+          </div>
+    </>
+  );
+
   return (
     <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px', scrollPaddingBottom: 120 }}>
       <h1 tabIndex={-1} style={{ fontSize: 24, fontWeight: 600, padding: '10px 2px 4px', margin: 0 }}>Add a receipt</h1>
       <p style={{ fontSize: 13, color: color.muted, padding: '0 2px 14px', margin: 0 }}>
-        {addSubtitle(source)}
+        {addSubtitle(source, scanFirst)}
       </p>
 
-      <label htmlFor="paste" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
-        Paste your order email
-      </label>
-      <textarea
-        id="paste"
-        value={text}
-        onChange={(e) => {
-          setText(e.target.value);
-          setParsed(null);
-          setError(false);
-        }}
-        placeholder="Paste your order email here… e.g. 'Your Apple order · Total £129.00 · 25 Aug'"
-        style={{
-          width: '100%', boxSizing: 'border-box', height: 120, border: '1px solid transparent',
-          borderRadius: radius.card, background: color.surfaceAlt, padding: '14px 16px',
-          fontFamily: font.figures, fontSize: 14, color: color.ink, resize: 'none',
-        }}
-      />
-
-      <Pressable
-        className="k-primary"
-        onClick={read}
-        style={{ marginTop: 12, padding: 15, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 650, fontSize: 16, boxShadow: shadow.raised }}
-      >
-        Read it
-      </Pressable>
-
+      {scanFirst ? scanWay : pasteWay}
       {error && (
         <div className="k-fade" role="alert" style={{ display: 'flex', gap: 10, background: color.white, border: '1px solid rgba(229,55,43,0.4)', borderRadius: 12, padding: '14px 16px', marginTop: 14 }}>
           <Warning stroke={color.danger} />
@@ -887,46 +954,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
         <div style={{ flex: 1, height: 1.5, background: color.border }} />
       </div>
 
-      {/* Opens the camera on a phone, the file picker elsewhere. */}
-      <input
-        ref={photoInput}
-        id="add-photo"
-        type="file"
-        accept="image/*"
-        capture="environment"
-        hidden
-        aria-hidden="true"
-        tabIndex={-1}
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          // Cleared so choosing the same photo again still fires.
-          e.target.value = '';
-          if (f) void scanPhoto(f);
-        }}
-      />
-      <Pressable
-        className="k-row-white"
-        onClick={startScan}
-        disabled={scanning !== null}
-        style={{ ...wayIn, cursor: scanning !== null ? 'progress' : 'pointer' }}
-      >
-        <span style={wayInIcon}><CameraGlyph size={20} stroke={color.accentInk} /></span>
-        <span style={{ flex: 1, minWidth: 0 }}>
-          {scanning === null
-            ? 'Scan a paper receipt'
-            : `${lookingAgain ? 'Having another look' : 'Reading your receipt'}… ${Math.round(scanning * 100)}%`}
-        </span>
-        <span aria-hidden="true" style={wayInChevron}>›</span>
-      </Pressable>
-      <div role="status" aria-live="polite" style={{ fontSize: 12.5, color: scanFailed ? color.danger : color.muted, textAlign: 'center', marginTop: 8, lineHeight: 1.5 }}>
-        {scanFailed === 'offline'
-          ? 'Scanning in a browser needs a connection, to fetch the reader. Paste or type the details, or scan again when you are back online.'
-          : scanFailed
-          ? 'Quids In couldn’t read that photo. Try again flat, straight and in good light — or paste or type the details.'
-          : scanning !== null
-            ? 'Reading it on this phone. Nothing is uploaded.'
-            : 'Read on this phone — the photo is never uploaded. Check what it read before you save.'}
-      </div>
+      {scanFirst ? pasteWay : scanWay}
 
       {/* The receipt that came as a file: a PDF e-receipt or invoice, an
           order email saved from the mail app, an order page saved from the
@@ -949,7 +977,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
         className="k-row-white"
         onClick={() => fileInput.current?.click()}
         disabled={readingFile || scanning !== null}
-        style={{ ...wayIn, marginTop: 12, cursor: readingFile ? 'progress' : 'pointer' }}
+        style={{ ...wayIn, marginTop: scanFirst ? 22 : 12, cursor: readingFile ? 'progress' : 'pointer' }}
       >
         <span style={wayInIcon}><ReceiptGlyph size={20} stroke={color.accentInk} /></span>
         <span style={{ flex: 1, minWidth: 0 }}>{readingFile ? 'Reading your file…' : 'Open a PDF or saved email'}</span>

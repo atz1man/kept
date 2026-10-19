@@ -462,8 +462,18 @@ describe('the add screen says where the text in its box came from', () => {
     expect(addSubtitle('paste')).toBe('Paste an order email — Quids In reads the store, total and date.');
   });
 
+  it('in the iPhone app, where the camera comes first, the header names the scan first', () => {
+    // The header introduces the screen; when the first thing on it is a big
+    // "Scan a paper receipt", a header saying only "paste an email" points
+    // past it. Once something has been read, the header says where from, as before.
+    expect(addSubtitle('paste', true)).toBe('Scan the receipt, or paste its order email — Quids In reads the store, total and date.');
+    expect(addSubtitle('photo', true)).toBe(addSubtitle('photo'));
+    expect(addSubtitle('file', true)).toBe(addSubtitle('file'));
+  });
+
   it('in the app’s voice: no exclamation marks, and reading stays on the phone', () => {
     for (const s of ['paste', 'photo', 'file'] as const) expect(addSubtitle(s)).not.toContain('!');
+    expect(addSubtitle('paste', true)).not.toContain('!');
     expect(addSubtitle('photo')).toContain('on this phone');
   });
 
@@ -474,7 +484,7 @@ describe('the add screen says where the text in its box came from', () => {
      * from your photo". The card's label and the header now take one answer.
      */
     const add = readFileSync(join(__dirname, '..', 'src', 'app', 'screens', 'Add.tsx'), 'utf8');
-    expect(add).toContain('{addSubtitle(source)}');
+    expect(add).toContain('{addSubtitle(source, scanFirst)}');
     expect(add).toContain('const source = boxSource(text, scannedText, readFrom);');
     expect(add).not.toContain(addSubtitle('paste'));
   });
