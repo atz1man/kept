@@ -1038,6 +1038,104 @@ for (const cancel of [false, true]) {
 }
 
 /*
+ * The receipt's screen leads with what the receipt is waiting on.
+ *
+ * Measured on the iPhone layout, which is the one with the paper-receipt
+ * explainer: with two days left, "Start your return" sat under that
+ * explainer and the store policy, below the fold, and "Got my money back"
+ * was a second filled button competing with it. Sent back and three weeks
+ * on, the top card still led with the shop's return window — "The window
+ * runs to 21 Oct" around a ring reading "sent" — and "The refund is late"
+ * came two screenfuls later. Returned, the card led with the window again
+ * and the money came back below the claim pack. An online order said
+ * "Return by 5 Nov" over "no earlier than 3 Nov", with "Has it arrived?",
+ * the answer that settles it, half a page down.
+ *
+ * Read as document order in the rendered text, which is the order both a
+ * thumb scrolling and VoiceOver swiping meet them in.
+ */
+{
+  const hCtx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  // The iPhone app, as scripts/contrast.mjs draws it: Capacitor's own
+  // detection reads the WKWebView bridge.
+  await hCtx.addInitScript(() => {
+    const w = window;
+    w.webkit = w.webkit ?? {};
+    w.webkit.messageHandlers = w.webkit.messageHandlers ?? {};
+    w.webkit.messageHandlers.bridge = { postMessage: () => {} };
+    w.Capacitor = w.Capacitor ?? { isNativePlatform: () => true, getPlatform: () => 'ios' };
+  });
+  const hp = await hCtx.newPage();
+  await hp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await hp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await hp.waitForTimeout(300);
+  const read = async (row) => {
+    await hp.getByRole('button', { name: row }).first().click();
+    await hp.waitForTimeout(400);
+    const out = await hp.evaluate(() => {
+      const main = document.querySelector('main');
+      const text = main?.innerText ?? '';
+      const filled = [...(main?.querySelectorAll('.k-primary') ?? [])].filter((e) => e.getClientRects().length > 0);
+      // What the ring says, when it says it in words: any short line drawn
+      // inside the ring's box.
+      const ring = [...(main?.querySelectorAll('svg') ?? [])].find((s) => s.getAttribute('width') === '92')?.parentElement?.innerText?.trim() ?? null;
+      return { text, filled: filled.map((e) => e.textContent.trim()), ring };
+    });
+    await hp.getByRole('button', { name: 'Back', exact: true }).click();
+    await hp.waitForTimeout(300);
+    return out;
+  };
+  const at = (text, what) => {
+    const i = typeof what === 'string' ? text.indexOf(what) : text.search(what);
+    return i === -1 ? Infinity : i;
+  };
+  const before = (text, a, b) => at(text, a) !== Infinity && at(text, a) < at(text, b);
+  const seen = {};
+
+  const jbl = await read(/Currys, JBL/);
+  seen.native = /The paper receipt/.test(jbl.text);
+  seen.returnFirst = before(jbl.text, 'Start your return', 'The paper receipt') && before(jbl.text, 'Start your return', 'Store policy');
+  seen.oneFilled = jbl.filled.length === 1 && /^Start your return/.test(jbl.filled[0]);
+
+  const zara = await read(/Zara, Wool/);
+  seen.arrivalUnderCard = before(zara.text, 'Has it arrived?', 'Store policy') && before(zara.text, 'Has it arrived?', 'The paper receipt') &&
+    before(zara.text, /no earlier than/, 'Has it arrived?');
+  seen.zaraOneFilled = zara.filled.length === 1;
+
+  // Three weeks on: the headphones went back twenty days ago and no refund
+  // has come; the chest of drawers came back as money last week.
+  await hp.evaluate(() => {
+    const iso = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    const s = JSON.parse(localStorage.getItem('kept.v1'));
+    for (const r of s.receipts) {
+      if (r.id === 'seed_currys') Object.assign(r, { status: 'sent', sentOn: iso(20) });
+      if (r.id === 'seed_ikea') Object.assign(r, { status: 'returned', returnedOn: iso(6) });
+    }
+    localStorage.setItem('kept.v1', JSON.stringify(s));
+  });
+  await hp.reload({ waitUntil: 'networkidle' });
+  await hp.waitForTimeout(300);
+
+  const late = await read(/Currys, JBL/);
+  seen.lateLeads = before(late.text, /Refund of £89\.00 was due/, /The window r[ua]n/) &&
+    before(late.text, 'The refund is late', /The window r[ua]n/) && before(late.text, 'The refund is late', 'Store policy') &&
+    before(late.text, 'The refund is late', 'The paper receipt');
+  seen.lateRing = late.ring === 'Late';
+  seen.lateOneFilled = late.filled.length === 1 && late.filled[0] === 'Copy the letter';
+
+  const returned = await read(/IKEA, MALM/);
+  seen.moneyLeads = before(returned.text, /Money back · £199\.00 recovered on /, /The window r[ua]n/) &&
+    before(returned.text, /Money back · £199\.00 recovered on /, 'Store policy');
+  // No word in the ring: a tick, which is drawn, not spelled.
+  seen.returnedRing = returned.ring === '';
+
+  const ok = Object.values(seen).every(Boolean);
+  results['a receipt’s screen leads with what it is waiting on: the returns link, the arrival, the late refund, the money back'] = ok;
+  if (!ok) problems.push(`detail hierarchy: ${JSON.stringify({ seen, jbl: jbl.filled, zara: zara.filled, late: late.filled, lateRing: late.ring, returnedRing: returned.ring })}`);
+  await hCtx.close();
+}
+
+/*
  * The order number. The parser read past it on purpose (it looks like a
  * price) and then threw it away, while returns forms, chat windows and the
  * letter to the shop all ask for it first. Read from a labelled line, it is
@@ -1439,8 +1537,10 @@ for (const cancel of [false, true]) {
     await ap.getByRole('button', { name: row }).first().click();
     await ap.waitForTimeout(300);
     const out = await ap.evaluate(() => {
-      const buttons = [...document.querySelectorAll('main button')].map((b) => ({ text: b.textContent.trim(), primary: b.classList.contains('k-primary') }));
-      return { primary: buttons.filter((b) => b.primary).map((b) => b.text), last: buttons.at(-1)?.text };
+      const buttons = [...document.querySelectorAll('main button')].map((b) => b.textContent.trim());
+      // Every filled control, links included: the shop's returns link is one.
+      const primary = [...document.querySelectorAll('main .k-primary')].map((b) => b.textContent.trim());
+      return { buttons, primary, last: buttons.at(-1) };
     });
     await ap.getByRole('button', { name: 'Back', exact: true }).click();
     await ap.waitForTimeout(300);
@@ -1448,9 +1548,15 @@ for (const cancel of [false, true]) {
   };
   const counter = await actions(/Currys, JBL/);
   const online = await actions(/Zara, Wool/);
+  // The likelier ending leads, by place: first, on a row of its own. Filled
+  // only when nothing else on the screen is — both seeded shops have a
+  // returns page, and the link to it is then the one filled control, so
+  // the status buttons are drawn outlined beside it.
+  const leads = (o, first, second) => o.buttons.indexOf(first) !== -1 && o.buttons.indexOf(first) < o.buttons.indexOf(second);
   const ok =
-    counter.primary.includes('Got my money back') && !counter.primary.includes('I’ve sent it back') &&
-    online.primary.includes('I’ve sent it back') && !online.primary.includes('Got my money back') &&
+    leads(counter, 'Got my money back', 'I’ve sent it back') && leads(online, 'I’ve sent it back', 'Got my money back') &&
+    counter.primary.length === 1 && /^Start your return/.test(counter.primary[0]) &&
+    online.primary.length === 1 && /^Start your return/.test(online.primary[0]) &&
     counter.last === 'Delete' && online.last === 'Delete';
   results['a receipt leads with the likelier next step for how it was bought, and puts Delete last'] = !!ok;
   if (!ok) problems.push(`receipt actions: ${JSON.stringify({ counter, online })}`);
