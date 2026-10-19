@@ -2036,9 +2036,38 @@ for (const cancel of [false, true]) {
   await fp.waitForTimeout(200);
   const text = (await fp.locator('[data-final-reject]').innerText().catch(() => '')) ?? '';
   seen.letter = /Final right to reject: Kettle/.test(text) && /section 24\(5\)/.test(text) && /has not been put right\. Still trips it\./.test(text) && /section 24\(10\)/.test(text);
+  /*
+   * Both letters are on screen now, and each is found by its own name: two
+   * boxes called "The letter" and two buttons called "Copy the letter" left a
+   * screen reader no way to tell which was which.
+   */
+  const named = async (role, name) => fp.getByRole(role, { name, exact: true }).count().catch(() => -1);
+  seen.copyNames = (await named('button', 'Copy the letter')) === 1 && (await named('button', 'Copy the final rejection letter')) === 1;
+  seen.letterNames = (await fp.getByLabel('The letter', { exact: true }).count()) === 1 && (await fp.getByLabel('The final rejection letter', { exact: true }).count()) === 1;
+  const copyNames = await fp.locator('[data-fault-panel] button').evaluateAll((bs) => bs.map((b) => (b.getAttribute('aria-label') || b.textContent || '').trim()).filter((n) => /^Copy/.test(n)));
+  seen.distinct = copyNames.length === 2 && new Set(copyNames).size === 2;
+  // And it can be marked sent, as the first letter can: the day it went, the
+  // reply it asked for, and the words, kept through a reload.
+  const finalStored = () => fp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => r.id === 'r_fault')?.faultClaim?.finalReject);
+  await fp.getByRole('button', { name: 'I’ve sent the final rejection', exact: true }).click({ timeout: 3000 }).catch(() => {});
+  await fp.waitForTimeout(300);
+  const sentNote = /Final rejection sent on .+, asking Currys to reply by .+\./;
+  seen.sentNote = sentNote.test((await fp.locator('[data-final-reject-sent]').innerText().catch(() => '')) ?? '');
+  seen.recorded = (await finalStored())?.what === 'Still trips it';
+  await fp.reload({ waitUntil: 'networkidle' });
+  await fp.waitForTimeout(300);
+  await fp.getByRole('button', { name: /^Currys, Kettle/ }).first().click({ timeout: 3000 }).catch(() => {});
+  await fp.waitForTimeout(300);
+  await fp.getByRole('button', { name: 'Fault letter sent' }).click({ timeout: 3000 }).catch(() => {});
+  await fp.waitForTimeout(300);
+  seen.survives = sentNote.test((await fp.locator('[data-final-reject-sent]').innerText().catch(() => '')) ?? '') &&
+    (await fp.getByLabel(/what’s wrong with it now/i).inputValue().catch(() => '')) === 'Still trips it';
+  await fp.getByRole('button', { name: 'Final rejection wasn’t sent', exact: true }).click({ timeout: 3000 }).catch(() => {});
+  await fp.waitForTimeout(300);
+  seen.takenBack = (await finalStored()) === undefined && (await fp.locator('[data-final-reject-sent]').count()) === 0;
   const ok = Object.values(seen).every(Boolean);
-  results['after a fault letter, the final right to reject is one tap away'] = ok;
-  if (!ok) problems.push(`final reject: ${JSON.stringify({ ...seen, text: text.slice(0, 160) })}`);
+  results['after a fault letter, the final right to reject is one tap away, and can be marked sent'] = ok;
+  if (!ok) problems.push(`final reject: ${JSON.stringify({ ...seen, copyNames, text: text.slice(0, 160) })}`);
   await fCtx.close();
 }
 

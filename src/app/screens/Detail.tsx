@@ -56,6 +56,8 @@ interface Props {
   onCreditSpent: (spent: boolean) => void;
   onFaultSent: (what: string) => void;
   onFaultUnsent: () => void;
+  onFinalRejectSent: (what: string) => void;
+  onFinalRejectUnsent: () => void;
   onCancelSent: () => void;
   onCancelUnsent: () => void;
   onArrived: () => void;
@@ -70,7 +72,7 @@ interface Props {
 
 const cardLabel = { fontSize: 13, fontWeight: 600, color: color.muted } as const;
 
-export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onSetCredit, onCreditSpent, onArrived, onFaultSent, onFaultUnsent, onCancelSent, onCancelUnsent, onExchange, onUnexchange, swapBlocked, onDelete, onSplit, onUnsplit, splitFromReceipt }: Props) {
+export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onSetCredit, onCreditSpent, onArrived, onFaultSent, onFaultUnsent, onFinalRejectSent, onFinalRejectUnsent, onCancelSent, onCancelUnsent, onExchange, onUnexchange, swapBlocked, onDelete, onSplit, onUnsplit, splitFromReceipt }: Props) {
   const [legalOpen, setLegalOpen] = useState(true);
   const d = derive(receipt, today);
   /*
@@ -416,7 +418,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
       {/* The rights above, turned into the letter that asks for them. Not on a
           refund: that purchase has already gone back. */}
       {receipt.status === 'active' && <CancelPanel receipt={receipt} today={today} onSent={onCancelSent} onUnsent={onCancelUnsent} />}
-      {(receipt.status === 'active' || receipt.status === 'kept') && <FaultPanel receipt={receipt} today={today} onSent={onFaultSent} onUnsent={onFaultUnsent} />}
+      {(receipt.status === 'active' || receipt.status === 'kept') && <FaultPanel receipt={receipt} today={today} onSent={onFaultSent} onUnsent={onFaultUnsent} onFinalSent={onFinalRejectSent} onFinalUnsent={onFinalRejectUnsent} />}
 
       {/* The case, assembled: what the shop, the bank or a card claim asks
           for, in date order, as one page to share or keep. */}

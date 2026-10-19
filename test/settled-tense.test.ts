@@ -18,7 +18,7 @@ const screen = (r: Receipt) =>
   renderToStaticMarkup(createElement(Detail, {
     receipt: r, today: TODAY, urgentDays: 7, onBack: noop, onEdit: noop, onPack: noop, onReturn: noop, onUnreturn: noop,
     onExchange: noop, onUnexchange: noop, swapBlocked: null, onKeep: noop, onUnkeep: noop, onSend: noop, onUnsend: noop, onSetRefund: noop,
-    onSetReturnRef: noop, onSetCredit: noop, onCreditSpent: noop, onFaultSent: noop, onFaultUnsent: noop, onCancelSent: noop,
+    onSetReturnRef: noop, onSetCredit: noop, onCreditSpent: noop, onFaultSent: noop, onFaultUnsent: noop, onFinalRejectSent: noop, onFinalRejectUnsent: noop, onCancelSent: noop,
     onCancelUnsent: noop, onArrived: noop, onDelete: noop, onSplit: noop, onUnsplit: null, splitFromReceipt: null,
   })).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
 const sent = (boughtAgo: number): Receipt => ({
