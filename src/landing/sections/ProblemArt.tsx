@@ -28,7 +28,7 @@ export function HaulArt() {
       <rect width="400" height="220" fill={color.surfaceAlt} />
       {rows.map((r) => (
         <g key={r.y} transform={`translate(70 ${r.y})`}>
-          <rect width="260" height="44" rx="10" fill={color.white} stroke={color.borderHair} />
+          <rect width="260" height="44" rx="10" fill={color.surface} stroke={color.borderHair} />
           <rect x="10" y="10" width="24" height="24" rx="6" fill={color.surfaceAlt} />
           {bar(44, 13, 70, true)}
           {bar(44, 25, 96)}
@@ -45,7 +45,7 @@ export function LostReceiptsArt() {
     <svg {...frame} role="img" aria-label="An inbox where the order confirmation is buried">
       <rect width="400" height="220" fill={color.surfaceAlt} />
       <g transform="translate(70 26)">
-        <rect width="260" height="168" rx="12" fill={color.white} stroke={color.borderHair} />
+        <rect width="260" height="168" rx="12" fill={color.surface} stroke={color.borderHair} />
         {[0, 1, 2, 3, 4].map((i) => (
           <g key={i} transform={`translate(0 ${12 + i * 31})`}>
             {i > 0 && <rect x="14" y="-6" width="232" height="1" fill={color.borderHair} />}
@@ -66,7 +66,7 @@ export function FinePrintArt() {
     <svg {...frame} role="img" aria-label="A page of terms with the returns clause picked out">
       <rect width="400" height="220" fill={color.surfaceAlt} />
       <g transform="translate(100 18)">
-        <rect width="200" height="184" rx="10" fill={color.white} stroke={color.borderHair} />
+        <rect width="200" height="184" rx="10" fill={color.surface} stroke={color.borderHair} />
         {bar(18, 18, 90, true)}
         {[38, 52, 66].map((y) => bar(18, y, 164 - (y % 3) * 10))}
         <rect x="12" y="80" width="176" height="34" rx="6" fill={color.accentSoft} />

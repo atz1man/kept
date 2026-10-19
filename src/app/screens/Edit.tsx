@@ -128,7 +128,7 @@ export function Edit({ receipt, today, onSave, onCancel }: Props) {
                   style={{
                     width: 'auto', display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px',
                     borderRadius: radius.control, border: `1.5px solid ${on ? color.accent : color.border}`,
-                    background: on ? color.accentSoft : color.white, fontSize: 12.5, fontWeight: 600,
+                    background: on ? color.accentSoft : color.surface, fontSize: 12.5, fontWeight: 600,
                   }}
                 >
                   <CatIcon cat={cat} />

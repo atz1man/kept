@@ -42,7 +42,7 @@ const Indicator = () => (
   <span
     aria-hidden="true"
     data-tab-indicator
-    style={{ position: 'absolute', top: -7, left: '50%', transform: 'translateX(-50%)', width: 24, height: 0, borderTop: `2px solid ${color.accent}`, borderRadius: 2 }}
+    style={{ position: 'absolute', top: -7, left: '50%', transform: 'translateX(-50%)', width: 24, height: 0, borderTop: `2px solid ${color.accentInk}`, borderRadius: 2 }}
   />
 );
 
@@ -96,7 +96,7 @@ export function TabBar({ screen, alert, onGo }: Props) {
         gap: 0,
         padding: '6px 8px calc(4px + env(safe-area-inset-bottom, 0px))',
         boxSizing: 'border-box',
-        background: 'rgba(255,255,255,0.94)',
+        background: color.bar,
         backdropFilter: 'blur(16px) saturate(160%)',
         WebkitBackdropFilter: 'blur(16px) saturate(160%)',
         borderTop: `1px solid ${color.border}`,

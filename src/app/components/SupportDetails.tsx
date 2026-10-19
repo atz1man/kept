@@ -43,7 +43,7 @@ export function SupportDetails({ receipts, error }: { receipts: SupportFacts['re
       <Pressable
         className="k-row-white k-secondary"
         onClick={() => void copy()}
-        style={{ marginTop: 10, padding: 12, textAlign: 'center', background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
+        style={{ marginTop: 10, padding: 12, textAlign: 'center', background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
       >
         Copy details for support
       </Pressable>
@@ -58,7 +58,7 @@ export function SupportDetails({ receipts, error }: { receipts: SupportFacts['re
         <summary style={{ fontSize: 13, fontWeight: 600, color: color.accentInk, cursor: 'pointer', minHeight: 32, display: 'flex', alignItems: 'center' }}>
           What gets copied
         </summary>
-        <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', userSelect: 'text', fontFamily: font.figures, fontSize: 12, lineHeight: 1.5, color: color.body, background: color.white, borderRadius: radius.control, padding: '10px 12px', margin: '6px 0 0' }}>
+        <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', userSelect: 'text', fontFamily: font.figures, fontSize: 12, lineHeight: 1.5, color: color.body, background: color.surface, borderRadius: radius.control, padding: '10px 12px', margin: '6px 0 0' }}>
           {text ?? '…'}
         </pre>
       </details>

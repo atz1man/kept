@@ -43,7 +43,7 @@ export function inputStyle(invalid: boolean) {
     padding: '13px 14px',
     borderRadius: radius.control,
     border: `1px solid ${invalid ? color.danger : color.border}`,
-    background: color.white,
+    background: color.surface,
     fontFamily: font.ui,
     fontSize: 15,
     color: color.ink,

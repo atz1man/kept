@@ -225,7 +225,7 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
           <Pressable
             className="k-row-white k-secondary"
             onClick={() => void exportNow()}
-            style={{ flex: 1, padding: 12, textAlign: 'center', background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
+            style={{ flex: 1, padding: 12, textAlign: 'center', background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
           >
             Export a backup
           </Pressable>
@@ -234,7 +234,7 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
           <Pressable
             className="k-row-white k-secondary"
             onClick={() => fileInput.current?.click()}
-            style={{ flex: 1, padding: 12, textAlign: 'center', background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
+            style={{ flex: 1, padding: 12, textAlign: 'center', background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
           >
             Restore
           </Pressable>
@@ -267,7 +267,7 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
           <div
             style={{
               marginTop: 10, padding: '10px 13px', borderRadius: 12, fontSize: 12.5, lineHeight: 1.5,
-              background: 'rgba(229,55,43,0.10)', color: color.ink,
+              background: color.dangerChipBg, color: color.ink,
             }}
           >
             <div style={{ fontWeight: 600 }}>
@@ -276,7 +276,7 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
             <Pressable
               className="k-row-white k-secondary"
               onClick={() => void saveSetAside()}
-              style={{ marginTop: 8, padding: '10px 14px', minHeight: 44, background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
+              style={{ marginTop: 8, padding: '10px 14px', minHeight: 44, background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
             >
               Save them as a file
             </Pressable>
@@ -287,7 +287,7 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
             role="status"
             style={{
               marginTop: 10, padding: '10px 13px', borderRadius: 12, fontSize: 12.5, fontWeight: 600, lineHeight: 1.5,
-              background: backupNote.tone === 'ok' ? color.accentSoft : 'rgba(229,55,43,0.10)',
+              background: backupNote.tone === 'ok' ? color.accentSoft : color.dangerChipBg,
               color: backupNote.tone === 'ok' ? color.ink : color.danger,
             }}
           >
@@ -450,7 +450,7 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
           </p>
           <Pressable className="k-secondary"
             onClick={onClearSamples}
-            style={{ marginTop: 12, padding: 12, textAlign: 'center', background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
+            style={{ marginTop: 12, padding: 12, textAlign: 'center', background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
           >
             Remove the samples
           </Pressable>
@@ -467,7 +467,7 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
             <Pressable
               className="k-row-white k-secondary"
               onClick={() => setConfirmingWipe(false)}
-              style={{ flex: 1, padding: 12, textAlign: 'center', background: color.white, border: `1px solid ${color.border}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
+              style={{ flex: 1, padding: 12, textAlign: 'center', background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
             >
               Keep them
             </Pressable>
@@ -477,7 +477,7 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
                 setBackupNote(null);
                 onWipe();
               }}
-              style={{ flex: 1, padding: 12, textAlign: 'center', background: color.danger, color: color.white, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
+              style={{ flex: 1, padding: 12, textAlign: 'center', background: color.dangerFill, color: color.white, borderRadius: radius.control, fontWeight: 600, fontSize: 13 }}
             >
               Erase everything
             </Pressable>

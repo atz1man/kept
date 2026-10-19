@@ -46,6 +46,17 @@ function Shell() {
   );
 }
 
+/*
+ * The landing page's live demo is drawn in the landing page's palette.
+ *
+ * The landing page stays light by design (`data-scheme="light"` on its root),
+ * and the demo is a frame inside it — so on a dark phone the app followed the
+ * phone and the shop window showed a black screen set into a white page. The
+ * demo is a picture of the app on that page, not the visitor's own app, so it
+ * takes the page's scheme, by the same attribute the landing page uses.
+ */
+if (embedded()) document.documentElement.dataset.scheme = 'light';
+
 function mount() {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>

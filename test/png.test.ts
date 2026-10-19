@@ -2,7 +2,9 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { color } from '../src/tokens';
+import { palette } from '../src/tokens';
+
+const color = palette.light;
 // @ts-expect-error - a small JS helper shared with scripts/make-icons.mjs
 import { decodePng, pixelAt, writeOpaquePng } from '../scripts/png.mjs';
 

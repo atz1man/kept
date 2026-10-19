@@ -1,8 +1,8 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { color, font } from '../src/tokens';
-import { AA_LARGE, contrast } from '../src/lib/contrast';
+import { categoryPalette, color, font, palette } from '../src/tokens';
+import { AA_LARGE, AA_TEXT, contrast } from '../src/lib/contrast';
 
 /**
  * One place decides what the app is set in.
@@ -102,7 +102,28 @@ describe('colour is set from the tokens', () => {
     return null;
   };
 
-  const PALETTE = new Set(Object.values(color).map(rgbOf).filter(Boolean) as string[]);
+  /*
+   * Both palettes, and the category tints. `color` itself is no use here any
+   * more: its values are `var(--k-…)`, which name a colour rather than being
+   * one. A literal is allowed if it is SOME scheme's token — the stylesheet
+   * declares both palettes' values, and test/scheme.test.ts holds each of
+   * those declarations to the right name.
+   */
+  const RAW = [
+    ...Object.values(palette.light),
+    ...Object.values(palette.dark),
+    ...Object.values(categoryPalette.light).flatMap((c) => [c.tint, c.ink]),
+    ...Object.values(categoryPalette.dark).flatMap((c) => [c.tint, c.ink]),
+  ];
+  const PALETTE = new Set(RAW.map(rgbOf).filter(Boolean) as string[]);
+
+  it('is not reading the custom properties as if they were colours', () => {
+    // Every component-facing value is a reference, so none of them may be
+    // mistaken for a palette entry — the check above would then pass on
+    // nothing. And every palette entry IS a colour.
+    for (const v of Object.values(color)) expect(v).toMatch(/^var\(--k-[a-z-]+\)$/);
+    for (const v of RAW) expect(rgbOf(v), v).not.toBeNull();
+  });
 
   // Comments first: the rule below is explained by naming the colours it
   // rejected, and a guard that cannot survive its own explanation is a guard
@@ -153,40 +174,48 @@ describe('the focus ring is visible on every ground', () => {
    * grounds and yellow carries the ink surfaces. The rule is that at least
    * one part clears 3:1 on every surface the app paints on.
    */
-  // Green carries the light grounds and white carries the ink surfaces — the
-  // toasts and the photo viewer — and the accent fills, where green alone
-  // measures 1:1 and 2.8:1.
-  const RING = [color.accent, color.white];
-  const GROUNDS: Record<string, string> = {
-    canvas: color.canvas,
-    white: color.white,
-    surfaceAlt: color.surfaceAlt,
-    surfaceDeep: color.surfaceDeep,
-    ink: color.ink,
-    accent: color.accent,
-    accentSoft: color.accentSoft,
-  };
+  /*
+   * Per scheme, because the ring is. In daylight it is the accent with a white
+   * halo, as it always was: the accent carries the light grounds and the halo
+   * the ink surfaces and the accent fills. On a dark device a 5px white halo
+   * round every focused control is a glare, so the halo is the page and the
+   * outline the lifted accent ink — the halo now carries the accent fill, and
+   * the outline everything else.
+   */
+  describe.each(Object.keys(palette) as (keyof typeof palette)[])('%s', (scheme) => {
+    const c = palette[scheme];
+    const RING = [c.focus, c.focusHalo];
+    const GROUNDS: Record<string, string> = {
+      canvas: c.canvas,
+      surface: c.surface,
+      surfaceAlt: c.surfaceAlt,
+      surfaceDeep: c.surfaceDeep,
+      inkSurface: c.inkSurface,
+      accent: c.accent,
+      accentSoft: c.accentSoft,
+    };
 
-  it('checks every ground the app paints on', () => {
-    expect(Object.keys(GROUNDS).length).toBeGreaterThan(4);
-    // Every ground named here is a real token, so this cannot drift into
-    // checking colours the app does not use.
-    for (const [name, value] of Object.entries(GROUNDS)) {
-      expect(Object.values(color), name).toContain(value);
-    }
-  });
+    it('checks every ground the app paints on', () => {
+      expect(Object.keys(GROUNDS).length).toBeGreaterThan(4);
+      // Every ground named here is a real token, so this cannot drift into
+      // checking colours the app does not use.
+      for (const [name, value] of Object.entries(GROUNDS)) {
+        expect(Object.values(c), name).toContain(value);
+      }
+    });
 
-  it.each(Object.entries(GROUNDS))('is seen against %s', (_name, ground) => {
-    expect(Math.max(...RING.map((part) => contrast(part, ground)))).toBeGreaterThanOrEqual(AA_LARGE);
-  });
+    it.each(Object.entries(GROUNDS))('is seen against %s', (_name, ground) => {
+      expect(Math.max(...RING.map((part) => contrast(part, ground)))).toBeGreaterThanOrEqual(AA_LARGE);
+    });
 
-  it('needs both parts — neither alone would do', () => {
-    // Stated as a property rather than a comment: if one colour were enough,
-    // the ring should be that colour and this file should say so.
-    for (const part of RING) {
-      const worst = Math.min(...Object.values(GROUNDS).map((g) => contrast(part, g)));
-      expect(worst).toBeLessThan(AA_LARGE);
-    }
+    it('needs both parts — neither alone would do', () => {
+      // Stated as a property rather than a comment: if one colour were enough,
+      // the ring should be that colour and this file should say so.
+      for (const part of RING) {
+        const worst = Math.min(...Object.values(GROUNDS).map((g) => contrast(part, g)));
+        expect(worst).toBeLessThan(AA_LARGE);
+      }
+    });
   });
 });
 
@@ -198,18 +227,34 @@ describe('the current tab is visible as a state, not just a tint', () => {
    * label, and a 2px bar over the tab, drawn as a border so it survives
    * forced colours.
    */
-  const BAR = color.white; // the tab bar is white at 0.94 over the page
+  /*
+   * The bar is translucent — the page's own ground at 0.94, frosted — so it is
+   * measured as the browser composites it, over the page, in each scheme. The
+   * indicator is the accent INK now rather than the accent fill: on a dark bar
+   * the fill measures under 3:1, and the ink is what the label beside it is
+   * already set in.
+   */
+  const over = (glass: string, ground: string) => {
+    const [r, g, b, a] = glass.match(/[\d.]+/g)!.map(Number);
+    const base = [1, 3, 5].map((i) => parseInt(ground.slice(i, i + 2), 16));
+    return `#${[r, g, b].map((v, i) => Math.round(v * a + base[i] * (1 - a)).toString(16).padStart(2, '0')).join('')}`;
+  };
 
-  it('is not carried by a pale tint, which never clears the bar', () => {
-    // Why the indicator is the accent itself and not the soft accent behind it.
-    expect(contrast(color.accentSoft, BAR)).toBeLessThan(AA_LARGE);
-  });
+  describe.each(Object.keys(palette) as (keyof typeof palette)[])('%s', (scheme) => {
+    const c = palette[scheme];
+    const BAR = over(c.bar, c.canvas);
 
-  it('is carried by the accent bar and the accent label', () => {
-    expect(contrast(color.accent, BAR)).toBeGreaterThanOrEqual(AA_LARGE);
-  });
+    it('is not carried by a pale tint, which never clears the bar', () => {
+      // Why the indicator is the accent itself and not the soft accent behind it.
+      expect(contrast(c.accentSoft, BAR)).toBeLessThan(AA_LARGE);
+    });
 
-  it('shows the watch alert in something that clears the bar too', () => {
-    expect(contrast(color.danger, BAR)).toBeGreaterThanOrEqual(AA_LARGE);
+    it('is carried by the accent bar and the accent label', () => {
+      expect(contrast(c.accentInk, BAR)).toBeGreaterThanOrEqual(AA_TEXT);
+    });
+
+    it('shows the watch alert in something that clears the bar too', () => {
+      expect(contrast(c.danger, BAR)).toBeGreaterThanOrEqual(AA_LARGE);
+    });
   });
 });

@@ -36,7 +36,7 @@ The browser checks need a built preview server:
 ```bash
 npm run build && npx vite preview --port 5183 &
 npm run smoke      # the end-to-end checks (150+), including a midnight rollover
-npm run contrast   # WCAG AA sweep over every rendered text node, and the same page on a dark device
+npm run contrast   # WCAG AA sweep over every rendered text node, every screen on a light device and on a dark one
 npm run a11y       # axe-core audit of every screen, plus focus management and the focus ring
 npm run layout     # 320px and 402px, adversarial content, empty states, covered buttons, crushed names,
                    #   every screen again with the webfont blocked, and again with a browser
@@ -858,6 +858,19 @@ deliberate departure, not an oversight:
   stylesheet rather than a component, because both are about the surface under
   every component. `npm run contrast` now loads the app on a dark-mode device
   and requires the same page — measured, not declared.
+
+  Since superseded by a dark palette of its own. Every token exists twice
+  under one name (`palette.light`, `palette.dark` in `src/tokens.ts`);
+  components paint with `var(--k-…)` and `styles.css` resolves those from
+  `prefers-color-scheme`, declaring `color-scheme: light dark` so the native
+  controls follow the same switch. `test/scheme.test.ts` holds the stylesheet's
+  declarations to the palettes in both schemes, `test/contrast.test.ts`
+  measures every pairing in both, and `npm run contrast` walks every screen
+  and state twice — once per scheme — and checks that each page's root, canvas
+  and text are the scheme it claims. The landing page, and its live demo,
+  stay light by design (`data-scheme="light"`); the win card, the claim pack
+  and the store frames are files that leave the phone, and are drawn from the
+  light palette whatever the sender's phone is set to.
 - **The focus ring was invisible on the paper the app is made of.** Yellow
   alone, measuring 1.72:1 against cream — WCAG 2.1 SC 1.4.11 asks 3:1 of a
   focus indicator, axe does not check it, and on a keyboard that ring is the

@@ -26,7 +26,13 @@
  */
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { color, gradient } from '../src/tokens.ts';
+import { heroGradient, palette } from '../src/tokens.ts';
+
+// The raw light palette: these frames are images rendered with setContent, a
+// page with none of the app's stylesheet in it, so a `var(--k-…)` here would
+// resolve to nothing. The store listing shows the app as it looks in daylight.
+const color = palette.light;
+const gradient = { hero: heroGradient(color) };
 import { reportOnCrash, sayCrash } from './crash-report.mjs';
 
 /** The raw shot, then the headline's two lines (the second in gold), then the subline (\n breaks it where a sentence ends). */

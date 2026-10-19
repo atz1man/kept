@@ -64,7 +64,7 @@ export function UpgradeNotice({ onUnlock, onCancel }: { onUnlock: () => void; on
     <div
       style={{
         position: 'fixed', inset: 0, zIndex: 60, display: 'flex', alignItems: 'flex-end',
-        justifyContent: 'center', background: 'rgba(10,10,18,0.55)', padding: 16,
+        justifyContent: 'center', background: color.scrim, padding: 16,
       }}
       onClick={onCancel}
     >
@@ -76,7 +76,7 @@ export function UpgradeNotice({ onUnlock, onCancel }: { onUnlock: () => void; on
         className="k-fade"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: color.white, borderRadius: radius.heroLg, border: `1px solid ${color.border}`,
+          background: color.surface, borderRadius: radius.heroLg, border: `1px solid ${color.border}`,
           boxShadow: shadow.raisedLg, padding: '22px 20px 20px', width: '100%', maxWidth: 420,
           marginBottom: 'calc(84px + env(safe-area-inset-bottom, 0px))',
         }}

@@ -66,7 +66,7 @@ export function Card({ children, emphasised = true, style }: { children: ReactNo
       style={{
         // As the app draws its cards: an emphasised one floats on a soft
         // shadow, the rest sit in the grey card colour — neither outlined.
-        background: emphasised ? color.white : color.surfaceAlt,
+        background: emphasised ? color.surface : color.surfaceAlt,
         borderRadius: radius.cardLg,
         boxShadow: emphasised ? shadow.raisedLg : undefined,
         ...style,

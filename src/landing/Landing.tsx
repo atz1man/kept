@@ -166,7 +166,7 @@ export function Landing() {
       </section>
 
       {/* Ticker */}
-      <div style={{ background: color.white, borderTop: `1px solid ${color.borderHair}`, borderBottom: `1px solid ${color.borderHair}`, padding: '14px 0', overflow: 'hidden', whiteSpace: 'nowrap' }} aria-hidden="true">
+      <div style={{ background: color.surface, borderTop: `1px solid ${color.borderHair}`, borderBottom: `1px solid ${color.borderHair}`, padding: '14px 0', overflow: 'hidden', whiteSpace: 'nowrap' }} aria-hidden="true">
         <div className="k-ticker" style={{ display: 'inline-flex', gap: 48, fontSize: 13.5, fontWeight: 500, color: color.body }}>
           {[...TICKER, ...TICKER].map((line, i) => (
             <span key={i} style={{ display: 'inline-flex', gap: 48 }}>
@@ -217,7 +217,7 @@ export function Landing() {
       </section>
 
       {/* Why kept */}
-      <section id="how" style={{ background: color.white, borderTop: `1px solid ${color.borderHair}`, borderBottom: `1px solid ${color.borderHair}`, padding: '80px 28px' }}>
+      <section id="how" style={{ background: color.surface, borderTop: `1px solid ${color.borderHair}`, borderBottom: `1px solid ${color.borderHair}`, padding: '80px 28px' }}>
         <div style={{ maxWidth: 1160, margin: '0 auto' }}>
           <Eyebrow>Why Quids In</Eyebrow>
           <SectionTitle maxWidth={640}>The shop’s clock, the law’s clock, and yours — on one screen.</SectionTitle>
@@ -250,7 +250,7 @@ export function Landing() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: 20, maxWidth: 600, margin: '44px auto 0' }}>
           {PLANS.map((t) =>
             t.featured ? (
-              <div key={t.name} style={{ background: color.white, borderRadius: 14, padding: '30px 26px', position: 'relative', border: `1px solid ${color.accent}`, boxShadow: shadow.raisedLg }}>
+              <div key={t.name} style={{ background: color.surface, borderRadius: 14, padding: '30px 26px', position: 'relative', border: `1px solid ${color.accent}`, boxShadow: shadow.raisedLg }}>
                 <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: color.accent, color: color.white, fontSize: 11, fontWeight: 600, padding: '5px 14px', borderRadius: radius.chip, letterSpacing: 0, whiteSpace: 'nowrap' }}>
                   Pay once
                 </div>
@@ -288,7 +288,7 @@ export function Landing() {
 
       </main>
 
-      <footer style={{ borderTop: '1px solid rgba(10,10,18,0.1)', padding: 28 }}>
+      <footer style={{ borderTop: `1px solid ${color.border}`, padding: 28 }}>
         <div style={{ maxWidth: 1160, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, color: color.muted, gap: 14, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Logo size={20} />

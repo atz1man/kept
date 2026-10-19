@@ -108,13 +108,13 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
               <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
                 <Pressable
                   onClick={() => void remove()}
-                  style={{ padding: '10px 14px', borderRadius: radius.control, background: color.danger, color: color.white, fontSize: 13, fontWeight: 600 }}
+                  style={{ padding: '10px 14px', borderRadius: radius.control, background: color.dangerFill, color: color.white, fontSize: 13, fontWeight: 600 }}
                 >
                   Remove it for good
                 </Pressable>
                 <Pressable className="k-secondary"
                   onClick={() => setConfirming(false)}
-                  style={{ padding: '10px 14px', borderRadius: radius.control, border: `1px solid ${color.border}`, background: color.white, fontSize: 13, fontWeight: 600 }}
+                  style={{ padding: '10px 14px', borderRadius: radius.control, border: `1px solid ${color.border}`, background: color.surface, fontSize: 13, fontWeight: 600 }}
                 >
                   Keep it
                 </Pressable>
@@ -124,13 +124,13 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
             <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
               <Pressable className="k-secondary"
                 onClick={() => setViewing(true)}
-                style={{ padding: '10px 14px', borderRadius: radius.control, background: color.white, border: `1px solid ${color.border}`, color: color.ink, fontSize: 13, fontWeight: 600 }}
+                style={{ padding: '10px 14px', borderRadius: radius.control, background: color.surface, border: `1px solid ${color.border}`, color: color.ink, fontSize: 13, fontWeight: 600 }}
               >
                 Show it full screen
               </Pressable>
               <Pressable className="k-secondary"
                 onClick={() => setConfirming(true)}
-                style={{ padding: '10px 14px', borderRadius: radius.control, border: `1px solid ${color.border}`, background: color.white, fontSize: 13, fontWeight: 600 }}
+                style={{ padding: '10px 14px', borderRadius: radius.control, border: `1px solid ${color.border}`, background: color.surface, fontSize: 13, fontWeight: 600 }}
               >
                 Remove the photo
               </Pressable>
@@ -148,7 +148,7 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
             className="k-row-white k-secondary"
             disabled={busy}
             onClick={() => void take()}
-            style={{ padding: '12px 16px', borderRadius: radius.control, background: color.white, border: `1px solid ${color.border}`, color: color.ink, fontSize: 13.5, fontWeight: 600 }}
+            style={{ padding: '12px 16px', borderRadius: radius.control, background: color.surface, border: `1px solid ${color.border}`, color: color.ink, fontSize: 13.5, fontWeight: 600 }}
           >
             {busy ? 'Opening the camera…' : 'Photograph the receipt'}
           </Pressable>
@@ -195,7 +195,7 @@ function FullScreen({ data, onClose }: { data: string; onClose: () => void }) {
       aria-modal="true"
       aria-label="The paper receipt"
       style={{
-        position: 'fixed', inset: 0, zIndex: 70, background: color.ink, display: 'flex', flexDirection: 'column',
+        position: 'fixed', inset: 0, zIndex: 70, background: color.inkSurface, display: 'flex', flexDirection: 'column',
         padding: 'calc(12px + env(safe-area-inset-top, 0px)) 12px calc(12px + env(safe-area-inset-bottom, 0px))',
       }}
     >

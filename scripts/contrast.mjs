@@ -20,6 +20,7 @@
 import './uk-clock.mjs';
 import { chromium } from 'playwright';
 import { reportOnCrash, sayCrash } from './crash-report.mjs';
+import { palette } from '../src/tokens.ts';
 
 const ORIGIN = process.env.KEPT_ORIGIN ?? 'http://localhost:5183';
 const EXEC = process.env.CHROMIUM_PATH;
@@ -111,8 +112,6 @@ const SEED_MORE = () => {
 };
 
 const browser = await chromium.launch(EXEC ? { executablePath: EXEC } : {});
-const ctx = await browser.newContext({ viewport: { width: 402, height: 874 } });
-const page = await ctx.newPage();
 
 const failures = [];
 // Declared here rather than beside the dark-device sweep below, so the
@@ -142,329 +141,357 @@ const sweepInto = async (target, label) => {
   if (examined === 0) emptyScreens.push(label);
   for (const f of out) failures.push({ screen: label, ...f });
 };
-// The app's own pages all go through this; the landing page and the crash
-// screen call `sweepInto` directly, so every caller is accounted for and a new
-// one cannot skip the counting by writing the old shape.
-const sweep = (label) => sweepInto(page, label);
-
-await page.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
-await page.waitForTimeout(500);
-await sweep('onboarding 1');
-await page.getByRole('button', { name: 'Next' }).click();
-await page.waitForTimeout(300);
-await sweep('onboarding 2');
-await page.getByRole('button', { name: 'Next' }).click();
-await page.waitForTimeout(300);
-await sweep('onboarding 3');
-// Seed THEN reload: the app reads storage once at init, so writing storage
-// into a running page changes nothing — which is what the first version of
-// this did, leaving the search box unaudited while reporting a pass. The seed
-// also marks onboarding seen, so the reload lands straight on home.
-await page.evaluate(SEED_MORE);
-await page.reload({ waitUntil: 'networkidle' });
-await page.waitForTimeout(600);
-await sweep('home');
-
-// A long settled list: its latest three, "Show all", and the whole list. Every
-// receipt returned for the length of this step, then put back as it was.
-const heldForSettled = await page.evaluate(() => {
-  const raw = localStorage.getItem('kept.v1');
-  const s = JSON.parse(raw);
-  // Real days, one apart: a stamped "2026-02-${10 + i}" runs past the 28th
-  // on a seeded library and those rows are dropped on load as not dates.
-  const day = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
-  s.receipts = s.receipts.map((r, i) => ({ ...r, status: 'returned', returnedOn: day(i + 1) }));
-  localStorage.setItem('kept.v1', JSON.stringify(s));
-  return raw;
-});
-await page.reload({ waitUntil: 'networkidle' });
-await page.waitForTimeout(400);
-await sweep('home · long settled list');
-await page.getByRole('button', { name: /^Show all \d+$/ }).click();
-await page.waitForTimeout(200);
-await sweep('home · settled list opened');
-await page.evaluate((raw) => localStorage.setItem('kept.v1', raw), heldForSettled);
-await page.reload({ waitUntil: 'networkidle' });
-await page.waitForTimeout(400);
-
-// An online order not yet known to have arrived: "Has it arrived?" and its
-// two buttons exist only on such a receipt.
-await page.getByRole('button', { name: /on its way/ }).first().click();
-await page.waitForTimeout(400);
-await sweep('receipt detail · on its way');
-await page.getByRole('button', { name: 'Back', exact: true }).click();
-await page.waitForTimeout(300);
-
-await page.getByRole('button', { name: /Currys, JBL/ }).click();
-await page.waitForTimeout(400);
-await sweep('receipt detail');
-
-await page.getByRole('button', { name: 'Back', exact: true }).click();
-await page.waitForTimeout(300);
-await page.getByRole('button', { name: /Currys, Le Creuset/ }).click();
-await page.waitForTimeout(400);
-await sweep('receipt detail · no guarantee');
-
-// Sent back, waiting for the refund: its own panel on the receipt, and its own
-// section on the list — states nothing reaches without sending something.
-await page.getByRole('button', { name: 'I’ve sent it back' }).click();
-await page.waitForTimeout(300);
-await sweep('receipt detail · sent back');
-
-// The tracking number's field and its refusal exist only once asked for.
-await page.getByRole('button', { name: 'Add the tracking number' }).click();
-await page.waitForTimeout(200);
-await page.getByLabel('Tracking or proof-of-postage number').fill('X'.repeat(41));
-await page.waitForTimeout(200);
-await sweep('receipt detail · tracking number');
-await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-await page.waitForTimeout(200);
-
-// Three weeks on, the refund is late: the chase panel and its letter exist
-// only then.
-await page.evaluate(() => {
-  const d = new Date();
-  d.setDate(d.getDate() - 20);
-  const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  const s = JSON.parse(localStorage.getItem('kept.v1'));
-  for (const r of s.receipts) if (r.status === 'sent') r.sentOn = iso;
-  localStorage.setItem('kept.v1', JSON.stringify(s));
-});
-await page.reload({ waitUntil: 'networkidle' });
-await page.waitForTimeout(400);
-await page.getByRole('button', { name: /Currys, Le Creuset/ }).click();
-await page.waitForTimeout(400);
-await sweep('receipt detail · refund late');
-await page.getByRole('button', { name: 'Back', exact: true }).click();
-await page.waitForTimeout(300);
-await sweep('home · sent back');
-await page.getByRole('button', { name: /Currys, JBL/ }).click();
-await page.waitForTimeout(400);
-
-// The fault panel opens closed; its headline, the letter box and its two
-// buttons exist only once it is asked for.
-await page.getByRole('button', { name: 'Something wrong with it?' }).click();
-await page.waitForTimeout(300);
-await page.getByLabel('What’s wrong with it?').fill('The left ear cup crackles');
-await sweep('receipt detail · something wrong');
-// Sent: the panel's record of when, and the reply it asked for.
-await page.getByRole('button', { name: 'I’ve sent the letter' }).click();
-await page.waitForTimeout(200);
-await sweep('receipt detail · fault letter sent');
-await page.getByRole('button', { name: 'Not sent after all' }).click();
-await page.waitForTimeout(200);
-await page.getByRole('button', { name: 'Something wrong with it?' }).click();
-await page.waitForTimeout(200);
-
-// A DISTANCE purchase carries two statutory rights rather than one, so its
-// legal card renders a second chip and a second body — the seeded Currys
-// receipt above was bought in a shop and shows neither. Zara's is the only
-// seeded online one, which is why it is opened by name.
-await page.getByRole('button', { name: 'Back', exact: true }).click().catch(() => {});
-await page.waitForTimeout(300);
-await page.getByRole('button', { name: /Zara, Wool-blend/ }).click();
-await page.waitForTimeout(400);
-await sweep('receipt detail · distance purchase');
-
-// The claim pack for it: a timeline with two kinds of dot, the hedged
-// dates of an order not yet marked arrived, and the rights at full length.
-await page.getByRole('button', { name: /^Claim pack/ }).click();
-await page.waitForTimeout(400);
-await sweep('claim pack · distance purchase');
-await page.getByRole('button', { name: 'Back', exact: true }).click();
-await page.waitForTimeout(300);
-
-// Its edit form, which is where the "Arrived on" field lives — only a
-// delivered order has one, and the seeded receipt these sweeps open by default
-// was bought over a counter, so nothing would ever have rendered it.
-await page.getByRole('button', { name: 'Edit', exact: true }).click();
-await page.waitForTimeout(400);
-await sweep('edit · delivered order');
-await page.getByRole('button', { name: 'Cancel' }).click().catch(() => {});
-await page.waitForTimeout(300);
-await page.getByRole('button', { name: 'Back', exact: true }).click().catch(() => {});
-await page.waitForTimeout(300);
-await page.getByRole('button', { name: /Currys, JBL/ }).click();
-await page.waitForTimeout(400);
-
-await page.getByRole('button', { name: 'Edit', exact: true }).click();
-await page.waitForTimeout(400);
-await sweep('edit');
-await page.getByRole('button', { name: 'Save changes' }).click();
-await page.waitForTimeout(400);
-await page.getByRole('button', { name: 'Got my money back' }).click();
-await page.waitForTimeout(500);
-await sweep('celebrate');
-// Less than the price, said where it is celebrated: the form and its refusal,
-// then the card with "of the £… it cost" on the dark ground.
-await page.getByRole('button', { name: /^Not the full/ }).click();
-await page.waitForTimeout(200);
-await page.getByLabel('How much came back?').fill('99999');
-await page.waitForTimeout(200);
-await sweep('celebrate · refund amount');
-await page.getByLabel('How much came back?').fill('1');
-await page.getByRole('button', { name: 'Save', exact: true }).click();
-await page.waitForTimeout(300);
-await sweep('celebrate · less than the price');
-await page.getByRole('button', { name: 'Back to receipts' }).click();
-await page.waitForTimeout(300);
-
-await page.getByRole('button', { name: /^Watch/ }).click();
-await page.waitForTimeout(400);
-await sweep('policy watch');
-await page.getByRole('button', { name: 'Add a receipt' }).click();
-await page.waitForTimeout(400);
-await page.fill('#paste', 'Your Apple order · Total £129.00 · 25 Aug');
-await page.getByRole('button', { name: 'Read it' }).click();
-await page.waitForTimeout(400);
-await sweep('add receipt');
-
-// The parser names no shop rather than guessing one, so the add screen asks.
-// That field, its hint, and the hint's second wording once a known shop is
-// typed are three things nothing else on any screen renders.
-await page.fill('#paste', 'Your Vinted order · walking boots · Total £40.00 · 20 Aug 2026');
-await page.getByRole('button', { name: 'Read it' }).click();
-await page.waitForTimeout(400);
-await sweep('add receipt · shop not recognised');
-await page.fill('#add-store', 'Boots');
-await page.waitForTimeout(300);
-await sweep('add receipt · shop named by hand');
-// Correcting what was read: the found rows become fields holding it, and
-// the window gets a field and a note of its own.
-await page.getByRole('button', { name: 'Something wrong? Correct it' }).click();
-await page.waitForTimeout(300);
-await sweep('add receipt · correcting');
-// Typed in from nothing, with a window refused: the blank card, the
-// disabled save, and the window's refusal exist only here.
-await page.getByRole('button', { name: 'Type it in yourself' }).click();
-await page.waitForTimeout(300);
-await page.fill('#add-window', '0');
-await page.waitForTimeout(200);
-await sweep('add receipt · typed in');
-await page.fill('#paste', 'Your Apple order · Total £129.00 · 25 Aug');
-await page.getByRole('button', { name: 'Read it' }).click();
-await page.waitForTimeout(400);
-await page.getByRole('button', { name: 'Settings', exact: true }).click();
-await page.waitForTimeout(400);
-await sweep('settings');
-
-// The destructive confirm is a state, not a screen, and its red fill is a
-// colour pairing that appears nowhere else — so it has to be opened to be
-// swept at all.
-await page.getByRole('button', { name: 'Erase everything' }).click().catch(() => {});
-await page.waitForTimeout(300);
-await sweep('settings · erase confirm');
-await page.getByRole('button', { name: 'Keep them' }).click().catch(() => {});
-
-// The upgrade sheet, which paints its own surface over a scrim and is
-// reachable only by tapping a price.
-await page.getByRole('button', { name: /£39\.99/ }).click().catch(() => {});
-await page.waitForTimeout(300);
-await sweep('settings · upgrade notice');
-await page.getByRole('button', { name: 'Not now' }).click({ timeout: 2000 }).catch(() => {});
-await page.waitForTimeout(300);
-
+// Every caller goes through this — the app's walk by the `sweep` it is handed,
+// the landing page and the crash screen directly — so every caller is
+// accounted for and a new one cannot skip the counting by writing the old shape.
 
 /*
- * States, not screens. Nothing above navigates to these, so until now none of
- * them were audited at all — the same gap the erase confirm had.
+ * The app, walked twice: on a light device, and on a dark one.
+ *
+ * The app follows the phone now — `color` is custom properties, and the
+ * stylesheet resolves them from `prefers-color-scheme` — so every screen and
+ * every state below exists in two palettes, and a pairing that clears AA in
+ * one says nothing about the other. The dark walk is not a sample of a few
+ * screens: it is this same function, so a state added to the walk is measured
+ * in both schemes the day it is added, and a screen that reads well in
+ * daylight and is unreadable at night fails here, named, with "dark ·" in
+ * front of it.
  */
-await page.getByRole('button', { name: 'Receipts', exact: true }).click().catch(() => {});
-await page.waitForTimeout(300);
+async function walkApp(page, sweep) {
+  await page.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(500);
+  await sweep('onboarding 1');
+  await page.getByRole('button', { name: 'Next' }).click();
+  await page.waitForTimeout(300);
+  await sweep('onboarding 2');
+  await page.getByRole('button', { name: 'Next' }).click();
+  await page.waitForTimeout(300);
+  await sweep('onboarding 3');
+  // Seed THEN reload: the app reads storage once at init, so writing storage
+  // into a running page changes nothing — which is what the first version of
+  // this did, leaving the search box unaudited while reporting a pass. The seed
+  // also marks onboarding seen, so the reload lands straight on home.
+  await page.evaluate(SEED_MORE);
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(600);
+  await sweep('home');
 
-// The paste error card.
-await page.getByRole('button', { name: 'Add a receipt' }).click().catch(() => {});
-await page.waitForTimeout(300);
-await page.fill('#paste', 'nothing a parser could use');
-await page.getByRole('button', { name: 'Read it' }).click().catch(() => {});
-await page.waitForTimeout(300);
-await sweep('add receipt · unreadable paste');
+  // A long settled list: its latest three, "Show all", and the whole list. Every
+  // receipt returned for the length of this step, then put back as it was.
+  const heldForSettled = await page.evaluate(() => {
+    const raw = localStorage.getItem('kept.v1');
+    const s = JSON.parse(raw);
+    // Real days, one apart: a stamped "2026-02-${10 + i}" runs past the 28th
+    // on a seeded library and those rows are dropped on load as not dates.
+    const day = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    s.receipts = s.receipts.map((r, i) => ({ ...r, status: 'returned', returnedOn: day(i + 1) }));
+    localStorage.setItem('kept.v1', JSON.stringify(s));
+    return raw;
+  });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(400);
+  await sweep('home · long settled list');
+  await page.getByRole('button', { name: /^Show all \d+$/ }).click();
+  await page.waitForTimeout(200);
+  await sweep('home · settled list opened');
+  await page.evaluate((raw) => localStorage.setItem('kept.v1', raw), heldForSettled);
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(400);
 
-// A returned receipt's detail, reachable only from the money-back list.
-await page.getByRole('button', { name: 'Receipts', exact: true }).click().catch(() => {});
-await page.waitForTimeout(300);
-await page.getByRole('button', { name: /IKEA, MALM/ }).click().catch(() => {});
-await page.waitForTimeout(300);
-await page.getByRole('button', { name: 'Got my money back' }).click().catch(() => {});
-await page.waitForTimeout(400);
-await page.getByRole('button', { name: 'Back to receipts' }).click().catch(() => {});
-await page.waitForTimeout(400);
-await page.getByRole('button', { name: /IKEA, MALM.*returned/ }).click().catch(() => {});
-await page.waitForTimeout(400);
-await sweep('receipt detail · returned');
+  // An online order not yet known to have arrived: "Has it arrived?" and its
+  // two buttons exist only on such a receipt.
+  await page.getByRole('button', { name: /on its way/ }).first().click();
+  await page.waitForTimeout(400);
+  await sweep('receipt detail · on its way');
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await page.waitForTimeout(300);
 
-// Correcting the refund: the label, the field and its refusal exist only
-// once "Not the full amount?" is pressed, and an amount over the price shows
-// the refusal.
-await page.getByRole('button', { name: 'Not the full amount?' }).click();
-await page.waitForTimeout(200);
-await page.getByLabel('How much came back?').fill('99999');
-await page.waitForTimeout(200);
-await sweep('receipt detail · refund amount');
-await page.getByRole('button', { name: 'It was the full amount' }).click();
-await page.waitForTimeout(200);
+  await page.getByRole('button', { name: /Currys, JBL/ }).click();
+  await page.waitForTimeout(400);
+  await sweep('receipt detail');
 
-// Store credit: the panel, its date field, and the date's refusal exist only
-// once a refund is said to have come as credit.
-await page.getByRole('button', { name: 'It came back as store credit' }).click();
-await page.waitForTimeout(200);
-await page.locator('#credit-expires').fill('2000-01-01');
-await page.waitForTimeout(200);
-await sweep('receipt detail · store credit');
-await page.getByRole('button', { name: 'It was money after all' }).click();
-await page.waitForTimeout(200);
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await page.waitForTimeout(300);
+  await page.getByRole('button', { name: /Currys, Le Creuset/ }).click();
+  await page.waitForTimeout(400);
+  await sweep('receipt detail · no guarantee');
 
-// The undo offer after a delete.
-await page.getByRole('button', { name: 'Delete' }).click().catch(() => {});
-await page.waitForTimeout(400);
-await sweep('home · delete undo');
+  // Sent back, waiting for the refund: its own panel on the receipt, and its own
+  // section on the list — states nothing reaches without sending something.
+  await page.getByRole('button', { name: 'I’ve sent it back' }).click();
+  await page.waitForTimeout(300);
+  await sweep('receipt detail · sent back');
 
-// The offer after a save: its wording, the deadline in it, and its Undo.
-await page.getByRole('button', { name: 'Add a receipt' }).click();
-await page.waitForTimeout(300);
-await page.fill('#paste', 'Argos order · Kettle · Total £29.00 · 21 Sep 2026');
-await page.getByRole('button', { name: 'Read it' }).click();
-await page.waitForTimeout(300);
-await page.fill('#add-item', 'Kettle');
-await page.getByRole('button', { name: 'Save receipt' }).click();
-await page.waitForTimeout(400);
-await sweep('home · saved');
+  // The tracking number's field and its refusal exist only once asked for.
+  await page.getByRole('button', { name: 'Add the tracking number' }).click();
+  await page.waitForTimeout(200);
+  await page.getByLabel('Tracking or proof-of-postage number').fill('X'.repeat(41));
+  await page.waitForTimeout(200);
+  await sweep('receipt detail · tracking number');
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.waitForTimeout(200);
 
-// The standing warning when the device will not save.
-await page.evaluate(() => {
-  const real = localStorage.setItem.bind(localStorage);
-  localStorage.setItem = (k, v) => {
-    if (k === 'kept.v1') throw new DOMException('Quota', 'QuotaExceededError');
-    return real(k, v);
-  };
-});
-await page.getByRole('button', { name: /Zara, Wool-blend/ }).click().catch(() => {});
-await page.waitForTimeout(300);
-await page.getByRole('button', { name: 'Got my money back' }).click().catch(() => {});
-await page.waitForTimeout(400);
-await page.getByRole('button', { name: 'Back to receipts' }).click().catch(() => {});
-await page.waitForTimeout(500);
-await sweep('home · this device is not saving');
+  // Three weeks on, the refund is late: the chase panel and its letter exist
+  // only then.
+  await page.evaluate(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 20);
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const s = JSON.parse(localStorage.getItem('kept.v1'));
+    for (const r of s.receipts) if (r.status === 'sent') r.sentOn = iso;
+    localStorage.setItem('kept.v1', JSON.stringify(s));
+  });
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(400);
+  await page.getByRole('button', { name: /Currys, Le Creuset/ }).click();
+  await page.waitForTimeout(400);
+  await sweep('receipt detail · refund late');
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await page.waitForTimeout(300);
+  await sweep('home · sent back');
+  await page.getByRole('button', { name: /Currys, JBL/ }).click();
+  await page.waitForTimeout(400);
 
-// The landing page too — it is the first thing anyone reads.
-const wide = await browser.newContext({ viewport: { width: 1280, height: 1000 } });
-const lp = await wide.newPage();
-await lp.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
-await lp.waitForTimeout(800);
-for (const y of [0, 900, 1800, 2700, 3600, 4500]) {
-  await lp.evaluate((v) => window.scrollTo(0, v), y);
-  await lp.waitForTimeout(200);
+  // The fault panel opens closed; its headline, the letter box and its two
+  // buttons exist only once it is asked for.
+  await page.getByRole('button', { name: 'Something wrong with it?' }).click();
+  await page.waitForTimeout(300);
+  await page.getByLabel('What’s wrong with it?').fill('The left ear cup crackles');
+  await sweep('receipt detail · something wrong');
+  // Sent: the panel's record of when, and the reply it asked for.
+  await page.getByRole('button', { name: 'I’ve sent the letter' }).click();
+  await page.waitForTimeout(200);
+  await sweep('receipt detail · fault letter sent');
+  await page.getByRole('button', { name: 'Not sent after all' }).click();
+  await page.waitForTimeout(200);
+  await page.getByRole('button', { name: 'Something wrong with it?' }).click();
+  await page.waitForTimeout(200);
+
+  // A DISTANCE purchase carries two statutory rights rather than one, so its
+  // legal card renders a second chip and a second body — the seeded Currys
+  // receipt above was bought in a shop and shows neither. Zara's is the only
+  // seeded online one, which is why it is opened by name.
+  await page.getByRole('button', { name: 'Back', exact: true }).click().catch(() => {});
+  await page.waitForTimeout(300);
+  await page.getByRole('button', { name: /Zara, Wool-blend/ }).click();
+  await page.waitForTimeout(400);
+  await sweep('receipt detail · distance purchase');
+
+  // The claim pack for it: a timeline with two kinds of dot, the hedged
+  // dates of an order not yet marked arrived, and the rights at full length.
+  await page.getByRole('button', { name: /^Claim pack/ }).click();
+  await page.waitForTimeout(400);
+  await sweep('claim pack · distance purchase');
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await page.waitForTimeout(300);
+
+  // Its edit form, which is where the "Arrived on" field lives — only a
+  // delivered order has one, and the seeded receipt these sweeps open by default
+  // was bought over a counter, so nothing would ever have rendered it.
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.waitForTimeout(400);
+  await sweep('edit · delivered order');
+  await page.getByRole('button', { name: 'Cancel' }).click().catch(() => {});
+  await page.waitForTimeout(300);
+  await page.getByRole('button', { name: 'Back', exact: true }).click().catch(() => {});
+  await page.waitForTimeout(300);
+  await page.getByRole('button', { name: /Currys, JBL/ }).click();
+  await page.waitForTimeout(400);
+
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.waitForTimeout(400);
+  await sweep('edit');
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  await page.waitForTimeout(400);
+  await page.getByRole('button', { name: 'Got my money back' }).click();
+  await page.waitForTimeout(500);
+  await sweep('celebrate');
+  // Less than the price, said where it is celebrated: the form and its refusal,
+  // then the card with "of the £… it cost" on the dark ground.
+  await page.getByRole('button', { name: /^Not the full/ }).click();
+  await page.waitForTimeout(200);
+  await page.getByLabel('How much came back?').fill('99999');
+  await page.waitForTimeout(200);
+  await sweep('celebrate · refund amount');
+  await page.getByLabel('How much came back?').fill('1');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await page.waitForTimeout(300);
+  await sweep('celebrate · less than the price');
+  await page.getByRole('button', { name: 'Back to receipts' }).click();
+  await page.waitForTimeout(300);
+
+  await page.getByRole('button', { name: /^Watch/ }).click();
+  await page.waitForTimeout(400);
+  await sweep('policy watch');
+  await page.getByRole('button', { name: 'Add a receipt' }).click();
+  await page.waitForTimeout(400);
+  await page.fill('#paste', 'Your Apple order · Total £129.00 · 25 Aug');
+  await page.getByRole('button', { name: 'Read it' }).click();
+  await page.waitForTimeout(400);
+  await sweep('add receipt');
+
+  // The parser names no shop rather than guessing one, so the add screen asks.
+  // That field, its hint, and the hint's second wording once a known shop is
+  // typed are three things nothing else on any screen renders.
+  await page.fill('#paste', 'Your Vinted order · walking boots · Total £40.00 · 20 Aug 2026');
+  await page.getByRole('button', { name: 'Read it' }).click();
+  await page.waitForTimeout(400);
+  await sweep('add receipt · shop not recognised');
+  await page.fill('#add-store', 'Boots');
+  await page.waitForTimeout(300);
+  await sweep('add receipt · shop named by hand');
+  // Correcting what was read: the found rows become fields holding it, and
+  // the window gets a field and a note of its own.
+  await page.getByRole('button', { name: 'Something wrong? Correct it' }).click();
+  await page.waitForTimeout(300);
+  await sweep('add receipt · correcting');
+  // Typed in from nothing, with a window refused: the blank card, the
+  // disabled save, and the window's refusal exist only here.
+  await page.getByRole('button', { name: 'Type it in yourself' }).click();
+  await page.waitForTimeout(300);
+  await page.fill('#add-window', '0');
+  await page.waitForTimeout(200);
+  await sweep('add receipt · typed in');
+  await page.fill('#paste', 'Your Apple order · Total £129.00 · 25 Aug');
+  await page.getByRole('button', { name: 'Read it' }).click();
+  await page.waitForTimeout(400);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.waitForTimeout(400);
+  await sweep('settings');
+
+  // The destructive confirm is a state, not a screen, and its red fill is a
+  // colour pairing that appears nowhere else — so it has to be opened to be
+  // swept at all.
+  await page.getByRole('button', { name: 'Erase everything' }).click().catch(() => {});
+  await page.waitForTimeout(300);
+  await sweep('settings · erase confirm');
+  await page.getByRole('button', { name: 'Keep them' }).click().catch(() => {});
+
+  // The upgrade sheet, which paints its own surface over a scrim and is
+  // reachable only by tapping a price.
+  await page.getByRole('button', { name: /£39\.99/ }).click().catch(() => {});
+  await page.waitForTimeout(300);
+  await sweep('settings · upgrade notice');
+  await page.getByRole('button', { name: 'Not now' }).click({ timeout: 2000 }).catch(() => {});
+  await page.waitForTimeout(300);
+
+
+  /*
+   * States, not screens. Nothing above navigates to these, so until now none of
+   * them were audited at all — the same gap the erase confirm had.
+   */
+  await page.getByRole('button', { name: 'Receipts', exact: true }).click().catch(() => {});
+  await page.waitForTimeout(300);
+
+  // The paste error card.
+  await page.getByRole('button', { name: 'Add a receipt' }).click().catch(() => {});
+  await page.waitForTimeout(300);
+  await page.fill('#paste', 'nothing a parser could use');
+  await page.getByRole('button', { name: 'Read it' }).click().catch(() => {});
+  await page.waitForTimeout(300);
+  await sweep('add receipt · unreadable paste');
+
+  // A returned receipt's detail, reachable only from the money-back list.
+  await page.getByRole('button', { name: 'Receipts', exact: true }).click().catch(() => {});
+  await page.waitForTimeout(300);
+  await page.getByRole('button', { name: /IKEA, MALM/ }).click().catch(() => {});
+  await page.waitForTimeout(300);
+  await page.getByRole('button', { name: 'Got my money back' }).click().catch(() => {});
+  await page.waitForTimeout(400);
+  await page.getByRole('button', { name: 'Back to receipts' }).click().catch(() => {});
+  await page.waitForTimeout(400);
+  await page.getByRole('button', { name: /IKEA, MALM.*returned/ }).click().catch(() => {});
+  await page.waitForTimeout(400);
+  await sweep('receipt detail · returned');
+
+  // Correcting the refund: the label, the field and its refusal exist only
+  // once "Not the full amount?" is pressed, and an amount over the price shows
+  // the refusal.
+  await page.getByRole('button', { name: 'Not the full amount?' }).click();
+  await page.waitForTimeout(200);
+  await page.getByLabel('How much came back?').fill('99999');
+  await page.waitForTimeout(200);
+  await sweep('receipt detail · refund amount');
+  await page.getByRole('button', { name: 'It was the full amount' }).click();
+  await page.waitForTimeout(200);
+
+  // Store credit: the panel, its date field, and the date's refusal exist only
+  // once a refund is said to have come as credit.
+  await page.getByRole('button', { name: 'It came back as store credit' }).click();
+  await page.waitForTimeout(200);
+  await page.locator('#credit-expires').fill('2000-01-01');
+  await page.waitForTimeout(200);
+  await sweep('receipt detail · store credit');
+  await page.getByRole('button', { name: 'It was money after all' }).click();
+  await page.waitForTimeout(200);
+
+  // The undo offer after a delete.
+  await page.getByRole('button', { name: 'Delete' }).click().catch(() => {});
+  await page.waitForTimeout(400);
+  await sweep('home · delete undo');
+
+  // The offer after a save: its wording, the deadline in it, and its Undo.
+  await page.getByRole('button', { name: 'Add a receipt' }).click();
+  await page.waitForTimeout(300);
+  await page.fill('#paste', 'Argos order · Kettle · Total £29.00 · 21 Sep 2026');
+  await page.getByRole('button', { name: 'Read it' }).click();
+  await page.waitForTimeout(300);
+  await page.fill('#add-item', 'Kettle');
+  await page.getByRole('button', { name: 'Save receipt' }).click();
+  await page.waitForTimeout(400);
+  await sweep('home · saved');
+
+  // The standing warning when the device will not save.
+  await page.evaluate(() => {
+    const real = localStorage.setItem.bind(localStorage);
+    localStorage.setItem = (k, v) => {
+      if (k === 'kept.v1') throw new DOMException('Quota', 'QuotaExceededError');
+      return real(k, v);
+    };
+  });
+  await page.getByRole('button', { name: /Zara, Wool-blend/ }).click().catch(() => {});
+  await page.waitForTimeout(300);
+  await page.getByRole('button', { name: 'Got my money back' }).click().catch(() => {});
+  await page.waitForTimeout(400);
+  await page.getByRole('button', { name: 'Back to receipts' }).click().catch(() => {});
+  await page.waitForTimeout(500);
+  await sweep('home · this device is not saving');
 }
-await sweepInto(lp, 'landing');
 
-// The privacy policy, including the red notice it shows until a contact
-// address is set — the one line on it that has to be read.
-await lp.goto(`${ORIGIN}/privacy/`, { waitUntil: 'networkidle' });
-await lp.waitForTimeout(400);
-await sweepInto(lp, 'privacy');
-await lp.goto(`${ORIGIN}/rights/`, { waitUntil: 'networkidle' });
-await lp.waitForTimeout(400);
-await sweepInto(lp, 'rights');
+for (const colorScheme of ['light', 'dark']) {
+  const ctx = await browser.newContext({ viewport: { width: 402, height: 874 }, colorScheme });
+  const page = await ctx.newPage();
+  const prefix = colorScheme === 'dark' ? 'dark · ' : '';
+  await walkApp(page, (label) => sweepInto(page, prefix + label));
+  await ctx.close();
+}
+
+// The landing page too — it is the first thing anyone reads. And the legal
+// pages, which follow the phone the way the app does; the landing page keeps
+// its one palette on a dark device (`data-scheme="light"`), which is measured
+// below rather than assumed — so it is swept on a dark device as well.
+for (const colorScheme of ['light', 'dark']) {
+  const prefix = colorScheme === 'dark' ? 'dark · ' : '';
+  const wide = await browser.newContext({ viewport: { width: 1280, height: 1000 }, colorScheme });
+  const lp = await wide.newPage();
+  await lp.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
+  await lp.waitForTimeout(800);
+  for (const y of [0, 900, 1800, 2700, 3600, 4500]) {
+    await lp.evaluate((v) => window.scrollTo(0, v), y);
+    await lp.waitForTimeout(200);
+  }
+  await sweepInto(lp, `${prefix}landing`);
+
+  // The privacy policy, including the red notice it shows until a contact
+  // address is set — the one line on it that has to be read.
+  await lp.goto(`${ORIGIN}/privacy/`, { waitUntil: 'networkidle' });
+  await lp.waitForTimeout(400);
+  await sweepInto(lp, `${prefix}privacy`);
+  await lp.goto(`${ORIGIN}/rights/`, { waitUntil: 'networkidle' });
+  await lp.waitForTimeout(400);
+  await sweepInto(lp, `${prefix}rights`);
+  await wide.close();
+}
 
 
 /*
@@ -472,10 +499,11 @@ await sweepInto(lp, 'rights');
  * nothing here would ever have opened it — and it introduces a full-page
  * palette of its own. Reached the way the smoke suite reaches it: by making a
  * platform call the render depends on throw, which needs no test-only hook in
- * the app.
+ * the app. In both schemes, because it is drawn in the app's tokens too.
  */
-{
-  const brokenCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+for (const colorScheme of ['light', 'dark']) {
+  const prefix = colorScheme === 'dark' ? 'dark · ' : '';
+  const brokenCtx = await browser.newContext({ viewport: { width: 402, height: 874 }, colorScheme });
   const brokenPage = await brokenCtx.newPage();
   await brokenPage.addInitScript(() => {
     // money() formats every amount on every screen through this.
@@ -493,48 +521,70 @@ await sweepInto(lp, 'rights');
   });
   await brokenPage.reload({ waitUntil: 'domcontentloaded' });
   await brokenPage.waitForTimeout(700);
-  await sweepInto(brokenPage, 'render failure');
+  await sweepInto(brokenPage, `${prefix}render failure`);
   await brokenPage.getByRole('button', { name: 'Save my receipts to a file' }).click().catch(() => {});
   await brokenPage.waitForTimeout(300);
-  await sweepInto(brokenPage, 'render failure · saved');
+  await sweepInto(brokenPage, `${prefix}render failure · saved`);
   await brokenCtx.close();
 }
 
 /*
- * And the app looks like itself whatever the operating system says.
+ * And each page is in the scheme it says it is — measured, not declared.
  *
- * `color-scheme` was undeclared and nothing painted the canvas, so the native
- * date pickers, the scrollbars and the area a rubber-band scroll reveals were
- * all following the OS. Chromium happened to render them light; that was luck
- * rather than a decision, and it is the sort of thing that differs by engine.
+ * Text contrast above cannot see the parts of a page that carry no words: the
+ * native date pickers and scrollbars, which follow `color-scheme`, and the
+ * canvas a rubber-band scroll reveals past the top of a phone, which is the
+ * ROOT's background and not the app's. Each was once left to the OS by
+ * accident. So, on a dark device:
  *
- * This app has one palette by design — a light page, near-black text — so
- * the check is simply that a dark-mode device gets the same page, measured
- * rather than declared.
+ *   - the app declares both schemes and paints its dark canvas under the root
+ *     and the body, with the dark ink on it — a white root here is a white
+ *     flash on every bounce;
+ *   - the landing page stays exactly as it is on a light one, and its live
+ *     demo with it, because the demo is a picture set into that page;
+ *   - and on a light device the app is unchanged, which is the half that
+ *     says the dark palette did not leak into daylight.
+ *
+ * The expected colours are the palette's own, read from the tokens, so a
+ * retuned dark canvas moves this check with it rather than failing it.
  */
 {
-  const darkCtx = await browser.newContext({ viewport: { width: 402, height: 874 }, colorScheme: 'dark' });
-  const darkPage = await darkCtx.newPage();
-  await darkPage.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
-  await darkPage.waitForTimeout(600);
-  const seen = await darkPage.evaluate(() => ({
+  const rgb = (hex) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
+  const LIGHT = { canvas: rgb(palette.light.canvas), ink: rgb(palette.light.ink) };
+  const DARK = { canvas: rgb(palette.dark.canvas), ink: rgb(palette.dark.ink) };
+  const look = (pg) => pg.evaluate(() => ({
     scheme: getComputedStyle(document.documentElement).colorScheme,
     canvas: getComputedStyle(document.documentElement).backgroundColor,
     body: getComputedStyle(document.body).backgroundColor,
     text: getComputedStyle(document.body).color,
   }));
-  const CANVAS = 'rgb(255, 255, 255)';
-  // `color.ink`, #0A0A12, as styles.css sets it on body.
-  const INK = 'rgb(10, 10, 18)';
-  if (seen.scheme !== 'light') {
-    deviceProblems.push(`the root declares colour-scheme "${seen.scheme}", so the native date pickers, scrollbars and overscroll follow the OS instead of the app`);
+  const expect = (where, seen, want) => {
+    if (seen.scheme !== want.scheme) {
+      deviceProblems.push(`${where}: the root declares colour-scheme "${seen.scheme}", not "${want.scheme}", so the native date pickers, scrollbars and overscroll do not follow the page's palette`);
+    }
+    if (seen.canvas !== want.canvas) {
+      deviceProblems.push(`${where}: the canvas behind the page computes to ${seen.canvas}, not ${want.canvas} — a rubber-band scroll past the top shows through to it`);
+    }
+    if (seen.body !== want.canvas) deviceProblems.push(`${where}: body is ${seen.body}, not ${want.canvas}`);
+    if (seen.text !== want.ink) deviceProblems.push(`${where}: body text is ${seen.text}, not ${want.ink}`);
+  };
+
+  for (const colorScheme of ['light', 'dark']) {
+    const deviceCtx = await browser.newContext({ viewport: { width: 402, height: 874 }, colorScheme });
+    const dp = await deviceCtx.newPage();
+    const app = colorScheme === 'dark' ? { scheme: 'light dark', ...DARK } : { scheme: 'light dark', ...LIGHT };
+    await dp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+    await dp.waitForTimeout(600);
+    expect(`the app, ${colorScheme} device`, await look(dp), app);
+    await dp.goto(`${ORIGIN}/privacy/`, { waitUntil: 'networkidle' });
+    expect(`the privacy page, ${colorScheme} device`, await look(dp), app);
+    await dp.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
+    expect(`the landing page, ${colorScheme} device`, await look(dp), { scheme: 'light', ...LIGHT });
+    await dp.goto(`${ORIGIN}/app/?embed=1`, { waitUntil: 'networkidle' });
+    await dp.waitForTimeout(400);
+    expect(`the landing page's demo, ${colorScheme} device`, await look(dp), { scheme: 'light', ...LIGHT });
+    await deviceCtx.close();
   }
-  if (seen.canvas !== CANVAS) {
-    deviceProblems.push(`the canvas behind the app computes to ${seen.canvas}, not the app's own ground — a rubber-band scroll past the top shows through to it`);
-  }
-  if (seen.body !== CANVAS) deviceProblems.push(`body is ${seen.body}, not the app's own ground`);
-  if (seen.text !== INK) deviceProblems.push(`body text is ${seen.text}, not the ink it is on a light device`);
-  await darkCtx.close();
 }
 
 await browser.close();
@@ -563,7 +613,7 @@ function report(crash) {
     console.log('✓ every text node meets WCAG AA on every screen, on a light device and a dark one');
     process.exit(0);
   }
-  for (const p of deviceProblems) console.log(`✗ on a dark-mode device: ${p}`);
+  for (const p of deviceProblems) console.log(`✗ the page's scheme: ${p}`);
   if (deviceProblems.length > 0) console.log('');
   if (seen.size > 0) {
     console.log(`✗ ${seen.size} colour pairing(s) below WCAG AA, across ${failures.length} element(s):\n`);
