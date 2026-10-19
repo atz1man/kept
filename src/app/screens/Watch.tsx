@@ -59,8 +59,11 @@ export function Watch({ updates, receipts, today, watching, refreshes, onOpen }:
       aria-label="Coming up and policy changes"
       style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px', scrollPaddingBottom: 120 }}
     >
+      {/* No pulsing "live" dot beside the title: in the iPhone app the list
+          arrives with app updates and nothing is fetched, so a light that
+          says "watching now" claimed something the build does not do, and
+          no other screen's title carries one. */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 2px 4px' }}>
-        <span className="k-pulse" style={{ width: 8, height: 8, borderRadius: 999, background: color.accent }} />
         <h1 tabIndex={-1} style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.03em', margin: 0 }}>Watch</h1>
       </div>
 
@@ -94,11 +97,14 @@ export function Watch({ updates, receipts, today, watching, refreshes, onOpen }:
                   }}
                 >
                   <Avatar store={r.store} cat={r.cat} size={40} />
+                  {/* The thing first, as Home's list names it: four rows of
+                      "Last day to return it" over truncated item names left
+                      the one word that tells them apart cut off. */}
                   <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'block', fontWeight: 600, fontSize: 15, color: color.ink }}>{c.what}</span>
+                    <span data-coming-title style={{ display: 'block', fontWeight: 600, fontSize: 15, color: color.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.item}</span>
                     <span style={{ display: 'block', fontSize: 13, color: color.muted, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {c.demo && 'sample · '}
-                      {r.store} · {r.item}
+                      {c.what} · {c.demo && 'sample · '}
+                      {r.store}
                     </span>
                   </span>
                   <span style={{ flexShrink: 0, textAlign: 'right', whiteSpace: 'nowrap' }}>

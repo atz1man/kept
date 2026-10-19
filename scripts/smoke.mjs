@@ -679,7 +679,7 @@ for (const cancel of [false, true]) {
   const old = await letterFor(/IKEA, MALM/, '');
   results['something wrong: a new purchase is rejected for a refund, in a letter carrying their words'] =
     !!fresh && /reject it for a full refund/.test(fresh.panel) && /section 22/.test(fresh.letter) &&
-    /The problem: The left ear cup crackles\./.test(fresh.letter) && !/section 23/.test(fresh.letter) &&
+    /It has developed a fault\. The left ear cup crackles\./.test(fresh.letter) && !/section 23/.test(fresh.letter) &&
     fresh.copied === fresh.letter && /Copied ✓/.test(fresh.said);
   if (!results['something wrong: a new purchase is rejected for a refund, in a letter carrying their words']) problems.push(`fault fresh: ${JSON.stringify(fresh)?.slice(0, 300)}`);
   results['something wrong: an older one asks for a repair, and claims no presumption it has lost'] =
@@ -1681,17 +1681,21 @@ for (const cancel of [false, true]) {
   await wp.waitForTimeout(300);
   const rows = wp.getByRole('button', { name: /: Last day to return it\./ });
   const labels = await rows.evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')));
+  // Each row is titled by the thing, as Home's list is: rows titled by the
+  // event read "Last day to return it" four times over with the item cut off.
+  const titles = await wp.locator('[data-coming-title]').allTextContents();
   const seen = {
     listed: labels.length >= 3,
     soonestFirst: /in 2 days: .*Currys, JBL/.test(labels[0] ?? ''),
+    titledByItem: titles.length >= 3 && titles[0].startsWith('JBL') && new Set(titles).size === titles.length,
   };
   if (seen.listed) {
     await rows.first().click();
     await wp.waitForTimeout(300);
     seen.opens = (await wp.getByRole('heading', { level: 1, name: 'Currys' }).count()) === 1;
   }
-  const ok = seen.listed && seen.soonestFirst && seen.opens;
-  results['the Watch tab opens on what is coming up, soonest first, and each row opens its receipt'] = !!ok;
+  const ok = seen.listed && seen.soonestFirst && seen.titledByItem && seen.opens;
+  results['the Watch tab opens on what is coming up, soonest first, each row titled by its item, and each row opens its receipt'] = !!ok;
   if (!ok) problems.push(`coming up: ${JSON.stringify({ ...seen, first: labels[0] })}`);
   await wCtx.close();
 }
@@ -2108,10 +2112,39 @@ for (const cancel of [false, true]) {
   await fp.getByLabel(/what’s wrong with it now/i).fill('Still trips it', { timeout: 3000 }).catch(() => {});
   await fp.waitForTimeout(200);
   const text = (await fp.locator('[data-final-reject]').innerText().catch(() => '')) ?? '';
-  seen.letter = /Final right to reject: Kettle/.test(text) && /section 24\(5\)/.test(text) && /The problem now: Still trips it\./.test(text) && /section 24\(10\)/.test(text);
+  seen.letter = /Final right to reject: Kettle/.test(text) && /section 24\(5\)/.test(text) && /has not been put right\. Still trips it\./.test(text) && /section 24\(10\)/.test(text);
+  /*
+   * Both letters are on screen now, and each is found by its own name: two
+   * boxes called "The letter" and two buttons called "Copy the letter" left a
+   * screen reader no way to tell which was which.
+   */
+  const named = async (role, name) => fp.getByRole(role, { name, exact: true }).count().catch(() => -1);
+  seen.copyNames = (await named('button', 'Copy the letter')) === 1 && (await named('button', 'Copy the final rejection letter')) === 1;
+  seen.letterNames = (await fp.getByLabel('The letter', { exact: true }).count()) === 1 && (await fp.getByLabel('The final rejection letter', { exact: true }).count()) === 1;
+  const copyNames = await fp.locator('[data-fault-panel] button').evaluateAll((bs) => bs.map((b) => (b.getAttribute('aria-label') || b.textContent || '').trim()).filter((n) => /^Copy/.test(n)));
+  seen.distinct = copyNames.length === 2 && new Set(copyNames).size === 2;
+  // And it can be marked sent, as the first letter can: the day it went, the
+  // reply it asked for, and the words, kept through a reload.
+  const finalStored = () => fp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => r.id === 'r_fault')?.faultClaim?.finalReject);
+  await fp.getByRole('button', { name: 'I’ve sent the final rejection', exact: true }).click({ timeout: 3000 }).catch(() => {});
+  await fp.waitForTimeout(300);
+  const sentNote = /Final rejection sent on .+, asking Currys to reply by .+\./;
+  seen.sentNote = sentNote.test((await fp.locator('[data-final-reject-sent]').innerText().catch(() => '')) ?? '');
+  seen.recorded = (await finalStored())?.what === 'Still trips it';
+  await fp.reload({ waitUntil: 'networkidle' });
+  await fp.waitForTimeout(300);
+  await fp.getByRole('button', { name: /^Currys, Kettle/ }).first().click({ timeout: 3000 }).catch(() => {});
+  await fp.waitForTimeout(300);
+  await fp.getByRole('button', { name: 'Fault letter sent' }).click({ timeout: 3000 }).catch(() => {});
+  await fp.waitForTimeout(300);
+  seen.survives = sentNote.test((await fp.locator('[data-final-reject-sent]').innerText().catch(() => '')) ?? '') &&
+    (await fp.getByLabel(/what’s wrong with it now/i).inputValue().catch(() => '')) === 'Still trips it';
+  await fp.getByRole('button', { name: 'Final rejection wasn’t sent', exact: true }).click({ timeout: 3000 }).catch(() => {});
+  await fp.waitForTimeout(300);
+  seen.takenBack = (await finalStored()) === undefined && (await fp.locator('[data-final-reject-sent]').count()) === 0;
   const ok = Object.values(seen).every(Boolean);
-  results['after a fault letter, the final right to reject is one tap away'] = ok;
-  if (!ok) problems.push(`final reject: ${JSON.stringify({ ...seen, text: text.slice(0, 160) })}`);
+  results['after a fault letter, the final right to reject is one tap away, and can be marked sent'] = ok;
+  if (!ok) problems.push(`final reject: ${JSON.stringify({ ...seen, copyNames, text: text.slice(0, 160) })}`);
   await fCtx.close();
 }
 
@@ -2325,7 +2358,7 @@ for (const cancel of [false, true]) {
   const rest = rows.find((r) => r.id === 'r_basket');
   const part = rows.find((r) => r.splitFrom === 'r_basket');
   seen.split = rest?.amount === 3500 && part?.amount === 2500 && part?.item === 'Hairdryer' && part?.purchasedOn === rest?.purchasedOn && part?.warranty?.months === 24;
-  seen.partOpen = /Split out of the Boots receipt for Shopping\./.test((await sp.locator('[data-split-part]').innerText().catch(() => '')) ?? '');
+  seen.partOpen = /Split from your Boots receipt for Shopping\./.test((await sp.locator('[data-split-part]').innerText().catch(() => '')) ?? '');
   // The part goes back on its own; the rest stays in hand with its guarantee.
   await sp.getByRole('button', { name: 'Got my money back' }).click({ timeout: 3000 }).catch(() => {});
   await sp.waitForTimeout(400);
@@ -4250,6 +4283,37 @@ results['erasing clears the disk and does not reseed'] =
  * not answered the question, so it does not get to say yes.
  */
 results['nothing is fetched from a third party'] = requestsSeen > 0 && foreign.size === 0;
+/*
+ * A deadline already gone says so on the add card. An order from months ago
+ * read "Deadline 8 Sept" in the accent colour, exactly like one due next week,
+ * and saving it was the first anyone heard that the window had closed.
+ */
+{
+  const gCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const gp = await gCtx.newPage();
+  await gp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await gp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await gp.getByRole('button', { name: 'Add a receipt' }).click();
+  await gp.waitForTimeout(300);
+  const day = (back) => {
+    const d = new Date(); d.setDate(d.getDate() - back);
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+  const gone = async (paste) => {
+    await gp.fill('#paste', paste);
+    await gp.getByRole('button', { name: 'Read it' }).click();
+    await gp.waitForTimeout(400);
+    return (await gp.locator('[data-deadline-gone]').count()) === 1;
+  };
+  const seen = {
+    old: await gone(`Your Currys order · Total £129.00 · ${day(120)}`),
+    recent: !(await gone(`Your Currys order · Total £129.00 · ${day(2)}`)),
+  };
+  results['a deadline already gone is said to be gone on the add card, and a live one is not'] = seen.old && seen.recent;
+  if (!(seen.old && seen.recent)) problems.push(`deadline gone on add: ${JSON.stringify(seen)}`);
+  await gCtx.close();
+}
+
 results['no console or page errors'] = problems.length === 0;
 
 /*

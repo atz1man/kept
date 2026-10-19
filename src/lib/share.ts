@@ -159,9 +159,10 @@ export function shareRoute(native: boolean): ShareRoute {
     return {
       steps: false,
       heading: 'Coming from your email app?',
-      // Named as missing rather than described as impossible: it is a target
-      // this app does not ship yet, not a thing iOS refuses.
-      body: 'Copy the order email and paste it above. Sharing straight from Mail into Quids In needs a share extension this build does not have yet.',
+      // Says why the paste box and not the share button, without telling
+      // someone holding the released app that "this build" is unfinished —
+      // which is how the old line read in the store build.
+      body: 'Mail can’t hand an email straight to Quids In, so copy the order email and paste it above.',
     };
   }
   return {
