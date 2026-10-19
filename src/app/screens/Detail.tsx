@@ -1,15 +1,14 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { color, font, radius, shadow } from '../../tokens';
-import { addDays, daysBetween, fmtDateLong, fmtDatesTogether, fromISODate } from '../../lib/dates';
+import { daysBetween, fmtDateLong, fmtDatesTogether, fromISODate } from '../../lib/dates';
 import { firstToClose, firstToCloseLine, LEGAL_DISCLAIMER, legalRights } from '../../lib/legal';
-import { REFUND_CHASE_DAYS } from '../../lib/alerts';
 import { money } from '../../lib/money';
 import { asksForGuarantee, awaitingArrival, derive, floorClock, floorWords, refundOf } from '../../lib/receipts';
 import type { Receipt } from '../../lib/types';
 import { clockFor, findStore, shopCheckedOn, windowChecked } from '../../lib/stores';
 import { returnsPageFor } from '../../lib/returns-pages';
 import { urgency, windowRemaining } from '../../lib/urgency';
-import { ChevronLeft, ReceiptGlyph, Warning } from '../components/Icons';
+import { ChevronLeft, ReceiptGlyph, Tick, Warning } from '../components/Icons';
 import { Avatar } from '../components/Avatar';
 import { Pressable } from '../components/Pressable';
 import { ReceiptPhoto } from '../components/ReceiptPhoto';
@@ -20,7 +19,7 @@ import { SplitPanel } from '../components/SplitPanel';
 import { canSplit } from '../../lib/split';
 import { RefundForm } from '../components/RefundForm';
 import { Letter } from '../components/Letter';
-import { readReturnRef, REG34_CLOCK, refundChase, refundChaseLine, refundIsStatutory, refundLetter } from '../../lib/refund-chase';
+import { readReturnRef, REG34_CLOCK, refundChase, refundChaseLine, refundLetter } from '../../lib/refund-chase';
 import { possessive } from '../../lib/words';
 
 /** 2π × 40, the circumference of the ring the countdown draws on. */
@@ -72,6 +71,10 @@ interface Props {
 
 const cardLabel = { fontSize: 13, fontWeight: 600, color: color.muted } as const;
 
+/** The one filled button a screen should show at a time, and the outlined kind beside it. */
+const primaryButton = { flex: 1, padding: 13, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 15, boxShadow: shadow.raised } as const;
+const secondaryButton = { flex: 1, padding: 13, textAlign: 'center', background: color.surface, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 } as const;
+
 export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onSetCredit, onCreditSpent, onArrived, onFaultSent, onFaultUnsent, onFinalRejectSent, onFinalRejectUnsent, onCancelSent, onCancelUnsent, onExchange, onUnexchange, swapBlocked, onDelete, onSplit, onUnsplit, splitFromReceipt }: Props) {
   const [legalOpen, setLegalOpen] = useState(true);
   const d = derive(receipt, today);
@@ -110,10 +113,16 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
    */
   const settled = receipt.status !== 'active';
   const ringOffset = settled ? '0' : (RING_CIRCUMFERENCE * (1 - remaining)).toFixed(1);
+  /** Gone back and the money not yet come: when it is due, and whether it is late. */
+  const chase = refundChase(receipt, today);
   // On the white card now: red when it is close or gone, the accent when it
-  // is coming up, ink otherwise; grey once settled.
-  const ringColor = settled
-    ? color.muted
+  // is coming up, ink otherwise. Kept, grey: nothing more is coming. Sent
+  // back, the accent while the refund is awaited and red once it is late;
+  // returned, the accent around a tick.
+  const ringColor =
+    receipt.status === 'returned' ? color.accentFigure
+    : receipt.status === 'sent' ? (chase?.late ? color.danger : color.accentFigure)
+    : settled ? color.muted
     : unsure ? color.accentFigure : d.expired ? color.danger : u.level === 'critical' ? color.danger : color.accentFigure;
 
   const dispatchDiffers = receipt.windowStartsOn && receipt.windowStartsOn !== receipt.purchasedOn;
@@ -139,6 +148,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
     [d.deadline, fromISODate(receipt.purchasedOn), ...(receipt.returnedOn ? [fromISODate(receipt.returnedOn)] : [])],
     today,
   );
+  const [dueText, sentText] = chase && receipt.sentOn ? fmtDatesTogether([chase.due, fromISODate(receipt.sentOn)], today) : [];
 
   return (
     <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px', scrollPaddingBottom: 120 }}>
@@ -192,52 +202,180 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
         )}
       </div>
 
-      <div style={{ background: color.surface, color: color.ink, borderRadius: radius.cardLg, padding: '18px 18px', boxShadow: shadow.raisedLg }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <div style={{ position: 'relative', width: 92, height: 92, flexShrink: 0 }}>
-            <svg width="92" height="92" viewBox="0 0 92 92" style={{ transform: 'rotate(-90deg)' }} aria-hidden="true">
-              <circle cx="46" cy="46" r="40" fill="none" stroke={color.surfaceDeep} strokeWidth="7" />
-              <circle
-                cx="46" cy="46" r="40" fill="none" stroke={ringColor} strokeWidth="7" strokeLinecap="round"
-                strokeDasharray={RING_CIRCUMFERENCE} strokeDashoffset={ringOffset}
-              />
-            </svg>
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      {/*
+        * The card under the price says what this receipt is waiting on, and
+        * that changes with what has happened to it. It used to be the shop's
+        * return window whatever the status: a parcel posted a fortnight ago
+        * still led with "The window runs to 21 Oct" above a ring reading
+        * "sent", and "The refund is late" — the one thing that receipt was
+        * for by then — sat two screenfuls down. Now a receipt in hand leads
+        * with its deadline, one sent back with the refund it is owed, and one
+        * returned with the money that came back. The window it was bought
+        * under is still on the page, with the store policy it belongs to.
+        */}
+      {receipt.status === 'returned' ? (
+        receipt.exchanged ? (
+          <TopCard ring={<Ring offset="0" stroke={ringColor}><Tick size={34} stroke={ringColor} width={2.4} /></Ring>}>
+            <div data-swapped style={{ fontSize: 16.5, fontWeight: 700, lineHeight: 1.35, letterSpacing: '-0.01em' }}>
+              Swapped for another{returnedText ? ` on ${returnedText}` : ''}
+            </div>
+          </TopCard>
+        ) : (
+          <RefundCard
+            receipt={receipt}
+            returnedText={returnedText}
+            ring={<Ring offset="0" stroke={ringColor}><Tick size={34} stroke={ringColor} width={2.4} /></Ring>}
+            onSetRefund={onSetRefund}
+          />
+        )
+      ) : receipt.status === 'sent' ? (
+        <TopCard
+          ring={
+            <Ring offset="0" stroke={ringColor}>
+              <div style={{ fontFamily: font.figures, fontSize: 17, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1, color: ringColor }}>
+                {chase?.late ? 'Late' : 'Sent'}
+              </div>
+            </Ring>
+          }
+          below={
+            /* Gone back, money still to come. The day it went is the one
+               that decides whether it was in time, so it is said; and the day
+               worth chasing from, so that is said too — `refundChase`'s, the
+               same date the late panel, the claim pack and the reminder use.
+               The shop's fourteen days only where reg. 34 gives them
+               (`refundIsStatutory`): this line said it for every online
+               order, above a late panel saying otherwise. */
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${color.borderHair}` }}>
+              <div style={{ fontSize: 13.5, color: color.body, lineHeight: 1.45 }}>
+                Waiting for the refund.
+                {chase && ` If it has not arrived by ${fmtDateLong(chase.due)}, chase it`}
+                {chase && (chase.statutory ? ` — for an online order, the shop has ${REG34_CLOCK}.` : '.')}
+              </div>
+              <ReturnRefField receipt={receipt} onSetReturnRef={onSetReturnRef} />
+            </div>
+          }
+        >
+          <div style={{ fontSize: 13, fontWeight: 600, color: chase?.late ? color.danger : color.muted }}>
+            {/* "Due" only where the law sets the day (reg. 34, an online order),
+                as the claim pack words it. Otherwise the date is when to
+                chase, and saying the refund "was due" would claim a
+                deadline the shop never had. */}
+            {chase
+              ? chase.statutory
+                ? `Refund of ${money(receipt.amount)} ${chase.late ? 'was due' : 'due'}`
+                : `Refund of ${money(receipt.amount)} ${chase.late ? 'not back by' : '— chase if not back by'}`
+              : `Refund of ${money(receipt.amount)}`}
+          </div>
+          <div style={{ fontFamily: font.figures, fontSize: 26, fontWeight: 700, letterSpacing: '-0.03em', marginTop: 4 }}>
+            {dueText ?? 'Awaited'}
+          </div>
+          <div style={{ fontSize: 13, color: color.muted, marginTop: 6 }}>
+            {sentText ? `Sent back · ${sentText}` : 'Sent back'}
+          </div>
+        </TopCard>
+      ) : (
+        <TopCard
+          ring={
+            <Ring offset={ringOffset} stroke={ringColor}>
               {/* Coloured like the count on the home hero, which has always
                   done this. Here the ring's stroke was the only urgency
                   signal on the screen, and on the last day it was a hairline. */}
               <div style={{ fontFamily: font.figures, fontSize: settled || d.expired ? 15 : 26, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1, color: ringColor }}>
-                {receipt.status === 'returned' ? 'back' : receipt.status === 'kept' ? 'kept' : receipt.status === 'sent' ? 'sent' : unsure ? 'open?' : d.expired ? 'closed' : d.daysLeft}
+                {receipt.status === 'kept' ? 'Keeping' : unsure ? 'open?' : d.expired ? 'closed' : d.daysLeft}
               </div>
               {!settled && !d.expired && <div style={{ fontSize: 11, color: color.muted, marginTop: 2 }}>days left</div>}
-            </div>
+            </Ring>
+          }
+          below={
+            /* The comparison the ring and the legal panel left to the reader:
+               with IKEA's year, the first thing to go is the 30-day right to
+               reject, and nothing said so. */
+            firstClock && (
+              <div style={{ fontSize: 13.5, lineHeight: 1.45, color: color.body, marginTop: 14, paddingTop: 12, borderTop: `1px solid ${color.borderHair}` }}>
+                {firstToCloseLine(firstClock)}
+              </div>
+            )
+          }
+        >
+          <div style={{ fontSize: 13, color: color.muted, fontWeight: 600 }}>
+            {settled ? (d.expired ? 'The window ran to' : 'The window runs to') : unsure ? 'Earliest it could close' : d.expired ? 'Window closed' : 'Return by'}
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, color: color.muted, fontWeight: 600 }}>
-              {settled ? (d.expired ? 'The window ran to' : 'The window runs to') : unsure ? 'Earliest it could close' : d.expired ? 'Window closed' : 'Return by'}
-            </div>
-            <div style={{ fontFamily: font.figures, fontSize: 26, fontWeight: 700, letterSpacing: '-0.03em', marginTop: 4 }}>
-              {deadlineText}
-            </div>
-            <div style={{ fontSize: 13, color: color.muted, marginTop: 6 }}>
-              {settled ? `${receipt.windowDays}-day window · bought ${boughtText}` : `${d.daysUsed} of ${receipt.windowDays} days used · bought ${boughtText}`}
-            </div>
+          <div style={{ fontFamily: font.figures, fontSize: 26, fontWeight: 700, letterSpacing: '-0.03em', marginTop: 4 }}>
+            {deadlineText}
+          </div>
+          <div style={{ fontSize: 13, color: color.muted, marginTop: 6 }}>
+            {settled ? `${receipt.windowDays}-day window · bought ${boughtText}` : `${d.daysUsed} of ${receipt.windowDays} days used · bought ${boughtText}`}
+          </div>
+        </TopCard>
+      )}
+
+      {/* Once the refund is late, the chase comes straight after the card
+          that says so, rather than after the store policy and the claim
+          pack. */}
+      {receipt.status === 'sent' && <RefundChasePanel receipt={receipt} today={today} />}
+      {/* Credit is how the money came back, so it is said beside the money. */}
+      {receipt.status === 'returned' && !receipt.exchanged && (
+        <CreditPanel receipt={receipt} onSetCredit={onSetCredit} onCreditSpent={onCreditSpent} />
+      )}
+
+      {/* The fix for the floor, in one tap, while the parcel could plausibly
+          still be coming. The order email is when most people add a receipt,
+          and it arrives before the parcel does. Directly under the card whose
+          dates it settles: "Return by 5 Nov" over "no earlier than 3 Nov"
+          read as a contradiction while the question that resolves it sat
+          half a page further down. Both answers are drawn alike — it is a
+          question, not the step the screen is for. */}
+      {awaitingArrival(receipt, today) && (
+        <div data-arrival style={{ marginTop: 12, padding: 14, background: color.surfaceAlt, border: `1px solid ${color.borderHair}`, borderRadius: 12 }}>
+          <div style={{ fontWeight: 600, fontSize: 14.5 }}>Has it arrived?</div>
+          <div style={{ fontSize: 13, lineHeight: 1.5, marginTop: 3, color: color.body }}>
+            {clockStart === 'delivery'
+              ? `${receipt.store}’s window and your legal rights both start the day it arrives, not the day you ordered.`
+              : 'Your legal rights start the day it arrives, not the day you ordered.'}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+            <Pressable
+              className="k-row-white k-secondary"
+              onClick={onArrived}
+              style={{ flex: '1 1 auto', width: 'auto', padding: 12, textAlign: 'center', background: color.surface, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
+            >
+              It arrived today
+            </Pressable>
+            <Pressable
+              className="k-row-white k-secondary"
+              onClick={onEdit}
+              style={{ flex: '1 1 auto', width: 'auto', padding: 12, textAlign: 'center', background: color.surface, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
+            >
+              It came earlier
+            </Pressable>
           </div>
         </div>
-        {/* The comparison the ring and the legal panel left to the reader:
-            with IKEA's year, the first thing to go is the 30-day right to
-            reject, and nothing said so. */}
-        {firstClock && (
-          <div style={{ fontSize: 13.5, lineHeight: 1.45, color: color.body, marginTop: 14, paddingTop: 12, borderTop: `1px solid ${color.borderHair}` }}>
-            {firstToCloseLine(firstClock)}
-          </div>
-        )}
-      </div>
+      )}
+
+      {returnsPage && (
+        /* A link, not a button: it leaves the app, and says where to. The
+           shop's own page, the one `check:retailers` reads; nothing about
+           the purchase goes with it. The step the deadline is for, so it
+           sits under the deadline — it was below the photo explainer and the
+           store policy, off the first screen with two days left. */
+        <a
+          href={returnsPage.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="k-primary"
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 12,
+            minHeight: 50, boxSizing: 'border-box', padding: '12px 18px', borderRadius: radius.control, background: color.accent, color: color.white,
+            textDecoration: 'none', fontSize: 15, fontWeight: 600, boxShadow: shadow.raised,
+          }}
+        >
+          <span>Start your return</span>
+          <span style={{ fontSize: 13, fontWeight: 500, color: color.onAccentSoft }}>{returnsPage.host}<span aria-hidden="true"> ↗</span></span>
+        </a>
+      )}
 
       <div style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, marginTop: 14 }}>
         <div style={{ padding: '16px 18px 14px' }}>
-          <ReceiptPhoto receiptId={receipt.id} />
-
           <div style={cardLabel}>Store policy</div>
           <div style={{ fontSize: 14, marginTop: 5, lineHeight: 1.5, color: color.bodyStrong }}>{receipt.policy}</div>
           {/* Where that sentence came from, said under it: read off the shop's
@@ -252,24 +390,13 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
                   : `Not yet checked against ${possessive(shop.name)} own returns page — trust your receipt over this.`}
             </div>
           )}
-          {returnsPage && (
-            /* A link, not a button: it leaves the app, and says where to. The
-               shop's own page, the one `check:retailers` reads; nothing about
-               the purchase goes with it. */
-            <a
-              href={returnsPage.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="k-primary"
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 12,
-                minHeight: 46, boxSizing: 'border-box', padding: '10px 16px', borderRadius: radius.control, background: color.accent, color: color.white,
-                textDecoration: 'none', fontSize: 14, fontWeight: 600,
-              }}
-            >
-              <span>Start your return</span>
-              <span style={{ fontSize: 13, fontWeight: 500, color: color.onAccentSoft }}>{returnsPage.host}<span aria-hidden="true"> ↗</span></span>
-            </a>
+          {/* The window it was bought under, once the card above has moved on
+              to the refund: whether it went back in time is still worth
+              being able to see, beside the policy that set it. */}
+          {(receipt.status === 'sent' || receipt.status === 'returned') && (
+            <div data-shop-window style={{ fontSize: 12.5, marginTop: 6, lineHeight: 1.5, color: color.muted }}>
+              {d.expired ? 'The window ran to' : 'The window runs to'} {deadlineText} · {receipt.windowDays}-day window · bought {boughtText}
+            </div>
           )}
           {dispatchDiffers && (
             <div style={{ fontSize: 12.5, marginTop: 8, color: color.muted }}>
@@ -294,35 +421,6 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
               {receipt.store} counts from {floor === 'dispatch' ? 'dispatch' : 'the day it arrives'}, not from your
               order — and this receipt does not say when that was, so the date above is the earliest it can be, never
               the latest.{unsure && ` Its window may still be open: ${floorWords(floor).addIt} to know.`}
-            </div>
-          )}
-          {/* The fix for the floor above, in one tap, while the parcel could
-              plausibly still be coming. The order email is when most people
-              add a receipt, and it arrives before the parcel does. */}
-          {awaitingArrival(receipt, today) && (
-            <div data-arrival style={{ marginTop: 12, padding: 14, background: color.surfaceAlt, border: `1px solid ${color.borderHair}`, borderRadius: 12 }}>
-              <div style={{ fontWeight: 600, fontSize: 14.5 }}>Has it arrived?</div>
-              <div style={{ fontSize: 13, lineHeight: 1.5, marginTop: 3, color: color.body }}>
-                {clockStart === 'delivery'
-                  ? `${receipt.store}’s window and your legal rights both start the day it arrives, not the day you ordered.`
-                  : 'Your legal rights start the day it arrives, not the day you ordered.'}
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
-                <Pressable
-                  className="k-primary"
-                  onClick={onArrived}
-                  style={{ flex: '1 1 auto', width: 'auto', padding: 12, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
-                >
-                  It arrived today
-                </Pressable>
-                <Pressable
-                  className="k-row-white k-secondary"
-                  onClick={onEdit}
-                  style={{ flex: '1 1 auto', width: 'auto', padding: 12, textAlign: 'center', background: color.surface, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
-                >
-                  It came earlier
-                </Pressable>
-              </div>
             </div>
           )}
         </div>
@@ -413,6 +511,11 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
             )}
           </div>
         )}
+
+        {/* Last in the card, not first: it is proof of purchase to keep, not
+            the step a deadline is for, and its explainer led the card while
+            the returns link sat below the fold. */}
+        <ReceiptPhoto receiptId={receipt.id} />
       </div>
 
       {/* The rights above, turned into the letter that asks for them. Not on a
@@ -456,21 +559,6 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
 
       {receipt.status === 'returned' ? (
         <>
-          {/* The date, which the receipt has been storing since the day this
-              screen was written and never showing. "£89.00 recovered ✓" is
-              the same sentence whether the refund landed last week or last
-              year, and it is the only fact a returned receipt carries that is
-              not already on the row. */}
-          {receipt.exchanged ? (
-            <div data-swapped style={{ marginTop: 16, padding: 13, textAlign: 'center', background: color.accentSoft, border: `1px solid ${color.border}`, borderRadius: 12, fontWeight: 600 }}>
-              Swapped for another{returnedText ? ` on ${returnedText}` : ''} ✓
-            </div>
-          ) : (
-            <>
-              <RefundPanel receipt={receipt} returnedText={returnedText} onSetRefund={onSetRefund} />
-              <CreditPanel receipt={receipt} onSetCredit={onSetCredit} onCreditSpent={onCreditSpent} />
-            </>
-          )}
           {/* A swap whose swap-in has a refund, a posting or a swap of its own
               is not offered back: that tap removed the swap-in and all of it,
               with no undo. Said instead, with the way to it. */}
@@ -500,28 +588,13 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
         </>
       ) : receipt.status === 'sent' ? (
         <>
-          {/* Gone back, money still to come. The day it went is the one that
-              decides whether it was in time, so it is said; and the day worth
-              chasing from, so that is said too. The shop's fourteen days only
-              where reg. 34 gives them (`refundIsStatutory`): this line said it
-              for every online order, above a late panel saying otherwise. */}
-          <div style={{ marginTop: 16, padding: 15, background: color.surface, border: `1px solid ${color.border}`, borderRadius: 12 }}>
-            <div style={{ fontWeight: 600 }}>
-              Sent back{receipt.sentOn ? ` · ${fmtDateLong(fromISODate(receipt.sentOn))}` : ''}
-            </div>
-            <div style={{ fontSize: 13, color: color.muted, lineHeight: 1.5, marginTop: 4 }}>
-              Waiting for the refund.
-              {receipt.sentOn && ` If it has not arrived by ${fmtDateLong(addDays(fromISODate(receipt.sentOn), REFUND_CHASE_DAYS))}, chase it`}
-              {receipt.sentOn && (refundIsStatutory(receipt) ? ` — for an online order, the shop has ${REG34_CLOCK}.` : '.')}
-            </div>
-            <ReturnRefField receipt={receipt} onSetReturnRef={onSetReturnRef} />
-          </div>
-          <RefundChasePanel receipt={receipt} today={today} />
           <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+            {/* Secondary once the refund is late: the chase letter above is
+                then the step, and one filled button is what says so. */}
             <Pressable
-              className="k-primary"
+              className={chase?.late ? 'k-row-white k-secondary' : 'k-primary'}
               onClick={onReturn}
-              style={{ flex: 1, padding: 13, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 15, boxShadow: shadow.raised }}
+              style={chase?.late ? secondaryButton : primaryButton}
             >
               Got my money back
             </Pressable>
@@ -567,7 +640,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
               dates. If the shop gave you a new receipt, change them with Edit.
             </div>
           )}
-          <ActiveActions distance={receipt.distance} onReturn={onReturn} onSend={onSend} onKeep={onKeep} />
+          <ActiveActions distance={receipt.distance} quiet={!!returnsPage} onReturn={onReturn} onSend={onSend} onKeep={onKeep} />
           {/* The two less common endings, side by side and quiet: they were a
               stack of three underlined lines with Delete, each on its own. */}
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', columnGap: 12, marginTop: 6 }}>
@@ -618,18 +691,26 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
  * partial case — one of two sizes sent back, a deduction for a missing box —
  * and the "kept back" total then counted money that never came.
  */
-function RefundPanel({ receipt, returnedText, onSetRefund }: {
+function RefundCard({ receipt, returnedText, ring, onSetRefund }: {
   receipt: Receipt;
   returnedText: string | undefined;
+  ring: ReactNode;
   onSetRefund: (pence: number | null) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const got = refundOf(receipt);
   return (
-    <div style={{ marginTop: 16, padding: 13, textAlign: 'center', background: color.accentSoft, border: `1px solid ${color.border}`, borderRadius: 12 }}>
-      <div style={{ fontWeight: 600 }}>
+    <TopCard
+      ring={ring}
+      below={editing && <RefundForm id="refund-amount" cost={receipt.amount} current={got} onSet={onSetRefund} onClose={() => setEditing(false)} />}
+    >
+      {/* With the date, which the receipt stored for months before this
+          screen showed it: "£89.00 recovered ✓" is the same sentence whether
+          the refund landed last week or last year. The tick is the ring's
+          now; at the end of the sentence it wrapped to a line of its own. */}
+      <div style={{ fontSize: 16.5, fontWeight: 700, lineHeight: 1.35, letterSpacing: '-0.01em' }}>
         {receipt.credit ? `Store credit · ${money(got)} at ${receipt.store}` : `Money back · ${money(got)} recovered`}
-        {returnedText ? ` on ${returnedText}` : ''} ✓
+        {returnedText ? ` on ${returnedText}` : ''}
       </div>
       {got !== receipt.amount && (
         <div style={{ fontSize: 13, color: color.body, marginTop: 4 }}>of the {money(receipt.amount)} it cost</div>
@@ -637,16 +718,45 @@ function RefundPanel({ receipt, returnedText, onSetRefund }: {
       {receipt.returnRef && (
         <div style={{ fontSize: 13, color: color.body, marginTop: 4, overflowWrap: 'anywhere' }}>Tracking · {receipt.returnRef}</div>
       )}
-      {!editing ? (
+      {!editing && (
         <Pressable
           onClick={() => setEditing(true)}
-          style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', marginTop: 4, fontSize: 13, fontWeight: 600, textDecoration: 'underline' }}
+          style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', fontSize: 13, fontWeight: 600, textDecoration: 'underline' }}
         >
           {got !== receipt.amount ? 'Change the amount' : 'Not the full amount?'}
         </Pressable>
-      ) : (
-        <RefundForm id="refund-amount" cost={receipt.amount} current={got} onSet={onSetRefund} onClose={() => setEditing(false)} />
       )}
+    </TopCard>
+  );
+}
+
+/** The raised card under the price: the ring on the left, what it means on the right. */
+function TopCard({ ring, below, children }: { ring: ReactNode; below?: ReactNode; children: ReactNode }) {
+  return (
+    <div style={{ background: color.surface, color: color.ink, borderRadius: radius.cardLg, padding: '18px 18px', boxShadow: shadow.raisedLg }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+        {ring}
+        <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
+      </div>
+      {below}
+    </div>
+  );
+}
+
+/** The ring, drawn to `offset` along its circumference, with what it counts in the middle. */
+function Ring({ offset, stroke, children }: { offset: string; stroke: string; children: ReactNode }) {
+  return (
+    <div style={{ position: 'relative', width: 92, height: 92, flexShrink: 0 }}>
+      <svg width="92" height="92" viewBox="0 0 92 92" style={{ transform: 'rotate(-90deg)' }} aria-hidden="true">
+        <circle cx="46" cy="46" r="40" fill="none" stroke={color.surfaceDeep} strokeWidth="7" />
+        <circle
+          cx="46" cy="46" r="40" fill="none" stroke={stroke} strokeWidth="7" strokeLinecap="round"
+          strokeDasharray={RING_CIRCUMFERENCE} strokeDashoffset={offset}
+        />
+      </svg>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -854,21 +964,26 @@ function CreditPanel({ receipt, onSetCredit, onCreditSpent }: {
  * money as arrived before it had. Bought over a counter, the refund is handed
  * over at the till the moment it goes back, so that is the step.
  */
-function ActiveActions({ distance, onReturn, onSend, onKeep }: {
+function ActiveActions({ distance, quiet, onReturn, onSend, onKeep }: {
   distance: boolean;
+  /**
+   * The shop's returns link is on the screen, and it is the step the deadline
+   * is for: the likelier ending still leads, but outlined, so the screen has
+   * one filled button rather than two competing for the same thumb.
+   */
+  quiet: boolean;
   onReturn: () => void;
   onSend: () => void;
   onKeep: () => void;
 }) {
-  const primary = { flex: 1, padding: 13, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 15, boxShadow: shadow.raised } as const;
-  const secondary = { flex: '1 1 140px', padding: 13, textAlign: 'center', background: color.surface, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 } as const;
+  const secondary = { ...secondaryButton, flex: '1 1 140px' } as const;
   const sent = { label: 'I’ve sent it back', onClick: onSend };
   const back = { label: 'Got my money back', onClick: onReturn };
   const [first, second] = distance ? [sent, back] : [back, sent];
   return (
     <>
       <div style={{ display: 'flex', marginTop: 16 }}>
-        <Pressable className="k-primary" onClick={first.onClick} style={primary}>
+        <Pressable className={quiet ? 'k-row-white k-secondary' : 'k-primary'} onClick={first.onClick} style={quiet ? { ...secondaryButton, fontSize: 15 } : primaryButton}>
           {first.label}
         </Pressable>
       </div>

@@ -89,7 +89,9 @@ export function ReceiptPhoto({ receiptId }: { receiptId: string }) {
   };
 
   return (
-    <div style={{ paddingBottom: 14, marginBottom: 14, borderBottom: `1px solid ${color.borderHair}` }}>
+    // A section of the receipt's card like the rights and the warranty above
+    // it: it closes the card now rather than opening it.
+    <div style={{ borderTop: `1px solid ${color.borderHair}`, padding: '15px 18px' }}>
       <div style={{ fontSize: 13, fontWeight: 600, color: color.bodyStrong, marginBottom: 8 }}>
         The paper receipt
       </div>
