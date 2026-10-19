@@ -184,6 +184,24 @@ export function ChevronLeft({ stroke: s = color.ink }: { stroke?: string } = {})
   );
 }
 
+/** A row that opens somewhere else, as an iPhone settings list ends one. */
+export function ChevronRight({ stroke: s = color.muted }: { stroke?: string } = {}) {
+  return (
+    <svg width="8" height="13" viewBox="0 0 7 12" aria-hidden="true">
+      <path d="M1 1l5 5-5 5" stroke={s} strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** A row whose value is a menu: the system's up-and-down mark beside it. */
+export function ChevronUpDown({ stroke: s = color.muted }: { stroke?: string } = {}) {
+  return (
+    <svg width="9" height="14" viewBox="0 0 9 14" aria-hidden="true">
+      <path d="M1.5 5L4.5 2l3 3M1.5 9l3 3 3-3" stroke={s} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function Warning({ stroke: s = color.ink }: { stroke?: string }) {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" style={{ flexShrink: 0, marginTop: 2 }} aria-hidden="true">
