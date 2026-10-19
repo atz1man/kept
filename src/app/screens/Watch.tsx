@@ -148,9 +148,9 @@ export function Watch({ updates, receipts, today, watching, refreshes, onOpen }:
                   href={u.source.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, fontSize: 12, fontWeight: 600, color: color.ink }}
+                  style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, fontSize: 12.5, fontWeight: 600, color: color.accentInk }}
                 >
-                  Read on {hostOf(u.source.url)}, {fmtDateLong(fromISODate(u.source.checkedOn))}
+                  Read on {hostOf(u.source.url)}, {fmtDateLong(fromISODate(u.source.checkedOn))}<span aria-hidden="true">&nbsp;↗</span>
                 </a>
               )}
               {affectsYou && (
