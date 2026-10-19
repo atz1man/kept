@@ -1604,17 +1604,21 @@ for (const cancel of [false, true]) {
   await wp.waitForTimeout(300);
   const rows = wp.getByRole('button', { name: /: Last day to return it\./ });
   const labels = await rows.evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')));
+  // Each row is titled by the thing, as Home's list is: rows titled by the
+  // event read "Last day to return it" four times over with the item cut off.
+  const titles = await wp.locator('[data-coming-title]').allTextContents();
   const seen = {
     listed: labels.length >= 3,
     soonestFirst: /in 2 days: .*Currys, JBL/.test(labels[0] ?? ''),
+    titledByItem: titles.length >= 3 && titles[0].startsWith('JBL') && new Set(titles).size === titles.length,
   };
   if (seen.listed) {
     await rows.first().click();
     await wp.waitForTimeout(300);
     seen.opens = (await wp.getByRole('heading', { level: 1, name: 'Currys' }).count()) === 1;
   }
-  const ok = seen.listed && seen.soonestFirst && seen.opens;
-  results['the Watch tab opens on what is coming up, soonest first, and each row opens its receipt'] = !!ok;
+  const ok = seen.listed && seen.soonestFirst && seen.titledByItem && seen.opens;
+  results['the Watch tab opens on what is coming up, soonest first, each row titled by its item, and each row opens its receipt'] = !!ok;
   if (!ok) problems.push(`coming up: ${JSON.stringify({ ...seen, first: labels[0] })}`);
   await wCtx.close();
 }
