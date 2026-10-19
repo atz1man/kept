@@ -711,7 +711,7 @@ if (!/Deadline alerts/.test(settingsText)) {
      */
     await ap.getByRole('button', { name: 'Edit', exact: true }).click();
     await ap.locator('#e-warranty').fill('12');
-    await ap.getByRole('button', { name: 'Save changes' }).click();
+    await ap.getByRole('button', { name: 'Save', exact: true }).click();
     await ap.waitForTimeout(500);
     await ap.getByRole('button', { name: 'I’m keeping it' }).click();
     await ap.waitForTimeout(1200);

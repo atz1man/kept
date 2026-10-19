@@ -867,7 +867,7 @@ for (const cancel of [false, true]) {
     await button.click();
     await gp.waitForTimeout(300);
     await gp.locator('#e-warranty').fill('24');
-    await gp.getByRole('button', { name: 'Save changes' }).click();
+    await gp.getByRole('button', { name: 'Save', exact: true }).click();
     await gp.waitForTimeout(400);
     after = await gp.locator('main').innerText();
   }
@@ -1242,6 +1242,125 @@ for (const cancel of [false, true]) {
   results['a receipt’s screen leads with what it is waiting on: the returns link, the arrival, the late refund, the money back'] = ok;
   if (!ok) problems.push(`detail hierarchy: ${JSON.stringify({ seen, jbl: jbl.filled, zara: zara.filled, late: late.filled, lateRing: late.ring, returnedRing: returned.ring })}`);
   await hCtx.close();
+}
+
+/*
+ * The edit screen as an iPhone form sheet, and the receipt's legal rights row,
+ * measured where the design audit found them: a 390×844 iPhone, the shell
+ * emulated as above.
+ *
+ * Edit was a pushed web page: "‹ Cancel", whose chevron says "go back" on iOS
+ * rather than "discard", and Save only at the foot of a form longer than the
+ * screen. Each claim below is measured on the rendered page rather than on a
+ * selector the fix happened to add — Save on screen without a scroll, and
+ * still on screen at the foot of the form; Cancel with no glyph in it; a "£"
+ * drawn inside the Amount box; and every example in an empty field saying it
+ * is one, on both screens a receipt can be typed into.
+ *
+ * And the rights row: a distance purchase's two statute chips wrapped, and the
+ * expand chevron, one more item in the same wrapping row, landed on a line of
+ * its own under the second chip.
+ */
+{
+  const fCtx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await fCtx.addInitScript(() => {
+    const w = window;
+    w.webkit = w.webkit ?? {};
+    w.webkit.messageHandlers = w.webkit.messageHandlers ?? {};
+    w.webkit.messageHandlers.bridge = { postMessage: () => {} };
+    w.Capacitor = w.Capacitor ?? { isNativePlatform: () => true, getPlatform: () => 'ios' };
+  });
+  const fp = await fCtx.newPage();
+  await fp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await fp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await fp.waitForTimeout(300);
+  const seen = {};
+
+  await fp.getByRole('button', { name: /Zara, Wool/ }).first().click();
+  await fp.waitForTimeout(400);
+  const row = await fp.evaluate(() => {
+    const toggle = [...document.querySelectorAll('[aria-expanded]')].find((e) => /Your legal rights?/.test(e.textContent ?? ''));
+    if (!toggle) return null;
+    const box = (e) => { const r = e.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right }; };
+    // The chips are the short labelled pills; the chevron is the one svg.
+    const chips = [...toggle.querySelectorAll('span')].filter((s) => s.children.length === 0 && /Consumer/.test(s.textContent ?? ''));
+    const chevron = toggle.querySelector('svg');
+    return { chips: chips.map(box), chevron: chevron ? box(chevron) : null };
+  });
+  if (row && row.chips.length >= 2 && row.chevron) {
+    const first = row.chips[0];
+    const mid = (b) => (b.top + b.bottom) / 2;
+    seen.twoChips = true;
+    // Level with the first chip: its middle sits within the first chip's line.
+    seen.chevronLevel = Math.abs(mid(row.chevron) - mid(first)) <= (first.bottom - first.top) / 2;
+    seen.chevronRight = row.chips.every((c) => row.chevron.left >= c.right - 1);
+  } else {
+    seen.twoChips = false;
+  }
+  if (!(seen.chevronLevel && seen.chevronRight)) problems.push(`legal rights row: ${JSON.stringify(row)}`);
+
+  await fp.getByRole('button', { name: 'Edit', exact: true }).click();
+  await fp.waitForTimeout(500);
+  const save = fp.getByRole('button', { name: 'Save', exact: true });
+  const onScreen = async () => {
+    if ((await save.count()) !== 1) return false;
+    return save.evaluate((b) => {
+      const r = b.getBoundingClientRect();
+      if (r.height === 0 || r.top < 0 || r.bottom > window.innerHeight) return false;
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return !!hit && b.contains(hit);
+    });
+  };
+  seen.saveUnscrolled = await onScreen();
+  const cancel = fp.getByRole('button', { name: 'Cancel', exact: true });
+  seen.cancelPlain = (await cancel.count()) === 1 &&
+    (await cancel.evaluate((b) => b.querySelector('svg') === null && !/[‹<←❮]/.test(b.textContent ?? '')));
+  seen.pound = await fp.evaluate(() => {
+    const input = document.getElementById('e-amount');
+    if (!input) return false;
+    const r = input.getBoundingClientRect();
+    return [...document.querySelectorAll('body *')].some((e) => {
+      if (e.children.length || (e.textContent ?? '').trim() !== '£') return false;
+      const g = e.getBoundingClientRect();
+      return g.width > 0 && g.left >= r.left && g.right <= r.left + r.width / 3 && g.top >= r.top && g.bottom <= r.bottom;
+    });
+  });
+  const examples = {};
+  for (const id of ['e-item', 'e-amount', 'e-warranty']) examples[id] = await fp.locator(`#${id}`).getAttribute('placeholder');
+  // At the foot of the form, Save is still where it was.
+  await fp.locator('#e-order').scrollIntoViewIfNeeded();
+  await fp.evaluate(() => { const s = document.getElementById('e-order')?.closest('[data-scroller]'); if (s) s.scrollTop = s.scrollHeight; });
+  await fp.waitForTimeout(200);
+  seen.saveAtFoot = await onScreen();
+  await cancel.click().catch(() => {});
+  await fp.waitForTimeout(300);
+  await fp.getByRole('button', { name: 'Back', exact: true }).click().catch(() => {});
+  await fp.waitForTimeout(300);
+
+  // The Add screen, on the Apple order the audit saw it on, then typed in.
+  await fp.getByRole('button', { name: 'Add a receipt' }).click();
+  await fp.waitForTimeout(400);
+  await fp.fill('#paste', 'Your Apple order · Total £129.00 · 25 Aug');
+  await fp.getByRole('button', { name: 'Read it' }).click();
+  await fp.waitForTimeout(400);
+  examples['add-item (Apple order)'] = await fp.locator('#add-item').getAttribute('placeholder').catch(() => null);
+  await fp.getByRole('button', { name: 'Start again' }).click();
+  await fp.waitForTimeout(200);
+  await fp.getByRole('button', { name: 'Type it in yourself' }).click();
+  await fp.waitForTimeout(300);
+  for (const id of ['add-item', 'add-store', 'add-total']) examples[`${id} (typed in)`] = await fp.locator(`#${id}`).getAttribute('placeholder').catch(() => null);
+  seen.examples = Object.values(examples).every((p) => typeof p === 'string' && /^e\.g\. \S/.test(p));
+
+  results['the edit screen is an iPhone form sheet: Save on screen without a scroll, and still there at the foot of the form'] =
+    seen.saveUnscrolled && seen.saveAtFoot;
+  results['the edit screen’s Cancel carries no back chevron'] = seen.cancelPlain;
+  results['the Amount field draws a £ inside its box'] = seen.pound;
+  results['every example in an empty field says it is one (“e.g.”), on Edit and on Add'] = seen.examples;
+  results['the legal rights chevron stays at the top right, level with the first chip, when the chips wrap'] =
+    !!(seen.twoChips && seen.chevronLevel && seen.chevronRight);
+  if (!seen.examples) problems.push(`example placeholders: ${JSON.stringify(examples)}`);
+  if (!(seen.saveUnscrolled && seen.saveAtFoot && seen.cancelPlain && seen.pound)) problems.push(`edit form sheet: ${JSON.stringify(seen)}`);
+  await fCtx.close();
 }
 
 /*
@@ -2910,11 +3029,11 @@ const editDeadline = (await page.locator('#e-window-hint').textContent()) ?? '';
 results['both screens name the same deadline for a dispatch-clocked receipt'] =
   !!detailDeadline && editDeadline.includes(detailDeadline);
 await page.fill('#e-item', '');
-await page.getByRole('button', { name: 'Save changes' }).click();
+await page.getByRole('button', { name: 'Save', exact: true }).click();
 await page.waitForTimeout(300);
 results['an invalid edit is refused, not saved'] =
   (await page.getByRole('alert').count()) > 0 &&
-  (await page.getByRole('button', { name: 'Save changes' }).isVisible());
+  (await page.getByRole('button', { name: 'Save', exact: true }).isVisible());
 
 /*
  * Refused to a screen reader too, and only the field that was refused.
@@ -2929,7 +3048,7 @@ results['a refused field says so to a screen reader, and the others do not'] =
 
 await page.fill('#e-item', 'Charcoal wool coat');
 await page.fill('#e-amount', '39.50');
-await page.getByRole('button', { name: 'Save changes' }).click();
+await page.getByRole('button', { name: 'Save', exact: true }).click();
 await page.waitForTimeout(400);
 results['an edit reaches the receipt'] =
   (await page.getByText('Charcoal wool coat').first().isVisible()) &&
@@ -3653,7 +3772,7 @@ const dispatchFieldOnZara = await page.locator('#e-dispatched').count();
 // Guarded: the failure this exists to catch removes the field, and an
 // unguarded fill would kill the harness before it printed a verdict.
 await page.fill('#e-dispatched', '2026-08-16').catch(() => {});
-await page.getByRole('button', { name: 'Save changes' }).click().catch(() => {});
+await page.getByRole('button', { name: 'Save', exact: true }).click().catch(() => {});
 await page.waitForTimeout(600);
 const zaraFixed = await page.evaluate(() =>
   JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => r.item === 'Linen shirt'));

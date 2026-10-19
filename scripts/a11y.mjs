@@ -231,7 +231,7 @@ await page.waitForTimeout(400);
 await page.getByRole('button', { name: 'Edit', exact: true }).click();
 await page.waitForTimeout(400);
 await audit(page, 'edit', findings);
-await page.getByRole('button', { name: 'Save changes' }).click();
+await page.getByRole('button', { name: 'Save', exact: true }).click();
 await page.waitForTimeout(400);
 
 await page.getByRole('button', { name: 'Got my money back' }).click();

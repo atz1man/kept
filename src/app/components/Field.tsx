@@ -49,3 +49,31 @@ export function inputStyle(invalid: boolean) {
     color: color.ink,
   };
 }
+
+/** The left padding an input needs to clear a `Prefixed` adornment. */
+export const PREFIXED_PAD = 30;
+
+/**
+ * A unit drawn inside the left edge of an input — the "£" before an amount —
+ * so the field says what it holds before anything is typed into it. Drawn,
+ * not typed: the input's value is exactly what it was without it, and the
+ * glyph is hidden from screen readers because the label already says what the
+ * number is. The input clears it with `paddingLeft: PREFIXED_PAD`.
+ */
+export function Prefixed({ prefix, children }: { prefix: string; children: ReactNode }) {
+  return (
+    <div style={{ position: 'relative' }}>
+      <span
+        aria-hidden="true"
+        data-prefix
+        style={{
+          position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none',
+          fontFamily: font.figures, fontSize: 15, color: color.muted,
+        }}
+      >
+        {prefix}
+      </span>
+      {children}
+    </div>
+  );
+}

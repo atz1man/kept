@@ -77,7 +77,12 @@ async function checkCovered(page, label, width) {
       // feed is a fixed-height region that always has more content than it
       // shows, so a looser selector reported scrolling on every run and made
       // the vacuity guard below unfalsifiable.
-      const scroller = document.querySelector('main > div[style*="overflow"]');
+      // A screen with a bar that stays put (Edit's form-sheet bar) clips its
+      // root and scrolls an inner pane marked `data-scroller`; that pane is
+      // the screen's scroller, and scrolling the clipped root would move
+      // nothing and examine nothing.
+      const outer = document.querySelector('main > div[style*="overflow"]');
+      const scroller = outer?.querySelector(':scope > [data-scroller]') ?? outer;
       if (!scroller) return 0;
       scroller.scrollTop = scroller.scrollHeight;
       return scroller.scrollHeight - scroller.clientHeight;
@@ -99,6 +104,17 @@ async function checkCovered(page, label, width) {
         const x = r.left + r.width / 2;
         const y = r.top + r.height / 2;
         if (y < 0 || y > innerHeight || x < 0 || x > innerWidth) return null;
+        // Scrolled out of its own pane is not covered, it is not there: a
+        // screen that keeps a bar above its scroller (Edit) clips a button
+        // scrolled past the pane's top edge while its box still reads as on
+        // the screen, and the point it reports is the bar's. Measured against
+        // the pane that clips it, so a bar floating INSIDE a pane over a
+        // button still in view is still caught.
+        for (let n = b.parentElement; n; n = n.parentElement) {
+          if (!['auto', 'scroll', 'hidden'].includes(getComputedStyle(n).overflowY)) continue;
+          const c = n.getBoundingClientRect();
+          if (y < c.top || y > c.bottom || x < c.left || x > c.right) return null;
+        }
         const hit = document.elementFromPoint(x, y);
         if (!hit || b.contains(hit) || hit.contains(b)) return null;
         return {
@@ -172,7 +188,9 @@ async function checkOverflow(page, label, width) {
      */
     // Only one a thumb can scroll: the landing page's ticker also matches the
     // selector, and it clips its tape on purpose (`overflow: hidden`).
-    const screen = document.querySelector('main > div[style*="overflow"]');
+    // The inner pane, on a screen that keeps a bar above it — as above.
+    const outer = document.querySelector('main > div[style*="overflow"]');
+    const screen = outer?.querySelector(':scope > [data-scroller]') ?? outer;
     const scrollsX = screen && ['auto', 'scroll'].includes(getComputedStyle(screen).overflowX);
     const screenOverflow = scrollsX ? screen.scrollWidth - screen.clientWidth : 0;
     for (const el of document.querySelectorAll('body *')) {
