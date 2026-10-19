@@ -85,7 +85,7 @@ export function Celebrate({ amount, cost, store, inTime, recovered, shared, line
           <h1 tabIndex={-1} style={{ fontSize: 14.5, color: color.onHeroSoft, fontWeight: 600, margin: '14px 0 0' }}>
             Money back
           </h1>
-          <div style={{ fontFamily: font.figures, fontSize: 56, fontWeight: 700, letterSpacing: '-0.05em', color: color.white, marginTop: 4, lineHeight: 1.05 }}>
+          <div style={{ fontFamily: font.figures, fontVariantNumeric: 'proportional-nums', fontSize: 56, fontWeight: 700, letterSpacing: '-0.05em', color: color.white, marginTop: 4, lineHeight: 1.05 }}>
             {money(amount)}
           </div>
           {amount !== cost && (
