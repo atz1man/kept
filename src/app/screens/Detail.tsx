@@ -256,7 +256,15 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
           }
         >
           <div style={{ fontSize: 13, fontWeight: 600, color: chase?.late ? color.danger : color.muted }}>
-            {chase ? `Refund of ${money(receipt.amount)} ${chase.late ? 'was due' : 'due'}` : `Refund of ${money(receipt.amount)}`}
+            {/* "Due" only where the law sets the day (reg. 34, an online order),
+                as the claim pack words it. Otherwise the date is when to
+                chase, and saying the refund "was due" would claim a
+                deadline the shop never had. */}
+            {chase
+              ? chase.statutory
+                ? `Refund of ${money(receipt.amount)} ${chase.late ? 'was due' : 'due'}`
+                : `Refund of ${money(receipt.amount)} ${chase.late ? 'not back by' : '— chase if not back by'}`
+              : `Refund of ${money(receipt.amount)}`}
           </div>
           <div style={{ fontFamily: font.figures, fontSize: 26, fontWeight: 700, letterSpacing: '-0.03em', marginTop: 4 }}>
             {dueText ?? 'Awaited'}

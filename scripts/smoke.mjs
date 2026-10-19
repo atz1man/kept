@@ -1117,7 +1117,7 @@ for (const cancel of [false, true]) {
   await hp.waitForTimeout(300);
 
   const late = await read(/Currys, JBL/);
-  seen.lateLeads = before(late.text, /Refund of £89\.00 was due/, /The window r[ua]n/) &&
+  seen.lateLeads = before(late.text, /Refund of £89\.00 not back by/, /The window r[ua]n/) && !/was due/.test(late.text) &&
     before(late.text, 'The refund is late', /The window r[ua]n/) && before(late.text, 'The refund is late', 'Store policy') &&
     before(late.text, 'The refund is late', 'The paper receipt');
   seen.lateRing = late.ring === 'Late';
