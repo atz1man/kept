@@ -204,9 +204,9 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
             iOS bundle beside the app, so it opens with no network. */}
         <a
           href="/privacy/"
-          style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, fontSize: 13, fontWeight: 600, color: color.ink }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, minHeight: 44, fontSize: 13.5, fontWeight: 600, color: color.accentInk }}
         >
-          Privacy policy
+          Privacy policy<span aria-hidden="true" style={{ fontSize: 17, lineHeight: 1 }}>›</span>
         </a>
         {/* The one channel back from people using it: kept measures nothing
             about them, by design, so what testers write is the whole of the
@@ -215,7 +215,7 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
             everywhere. */}
         {CONTACT_EMAIL && (
           <div style={{ fontSize: 13, color: color.muted, lineHeight: 1.5 }}>
-            <a href={`mailto:${CONTACT_EMAIL}?subject=Quids%20In%20feedback`} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, fontWeight: 600, color: color.ink }}>
+            <a href={`mailto:${CONTACT_EMAIL}?subject=Quids%20In%20feedback`} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, fontWeight: 600, color: color.accentInk, textDecoration: 'underline', textUnderlineOffset: 3 }}>
               Send feedback
             </a>{' '}
             — {CONTACT_EMAIL}
