@@ -117,6 +117,9 @@ const failures = [];
 // Declared here rather than beside the dark-device sweep below, so the
 // reporter can reach it whenever the run stops.
 const deviceProblems = [];
+// A native walk that did not come up native: kept apart from the scheme
+// checks so the line printed names what actually went wrong.
+const shellProblems = [];
 reportOnCrash(report);
 /**
  * Every screen has to have been looked at, and this is the whole of why.
@@ -466,6 +469,69 @@ for (const colorScheme of ['light', 'dark']) {
   await ctx.close();
 }
 
+/*
+ * And as the iPhone app draws it. Several screens branch on `isNative()` —
+ * onboarding asks for notifications, Add leads with the camera and makes
+ * "Read it" an outlined second button, Settings carries the App Store
+ * purchase and restore, a receipt shows its photo — and the walk above is
+ * the web build in a browser, so none of those branches was ever measured.
+ * That is not hypothetical: the outlined "Read it" shipped with a white fill
+ * that would have been a white block on a dark phone, and both walks above
+ * passed it. The shell is emulated the way scripts/ios-bundle.mjs does it —
+ * the WKWebView message bridge, so Capacitor's own detection is what says
+ * "native" — on the same build, in both schemes.
+ */
+async function walkNative(page, sweep) {
+  await page.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(500);
+  await sweep('onboarding 1');
+  await page.getByRole('button', { name: 'Next' }).click();
+  await page.waitForTimeout(300);
+  await sweep('onboarding 2');
+  await page.getByRole('button', { name: 'Next' }).click();
+  await page.waitForTimeout(300);
+  await sweep('onboarding 3');
+  await page.evaluate(SEED_MORE);
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(600);
+  await sweep('home');
+  await page.getByRole('button', { name: /Currys, JBL/ }).click();
+  await page.waitForTimeout(400);
+  await sweep('receipt detail');
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await page.waitForTimeout(300);
+  await page.getByRole('button', { name: 'Add a receipt' }).click();
+  await page.waitForTimeout(400);
+  await sweep('add receipt');
+  await page.fill('#paste', 'Your Apple order · Total £129.00 · 25 Aug');
+  await page.getByRole('button', { name: 'Read it' }).click();
+  await page.waitForTimeout(400);
+  await sweep('add receipt · read');
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.waitForTimeout(400);
+  await sweep('settings');
+}
+
+for (const colorScheme of ['light', 'dark']) {
+  const ctx = await browser.newContext({ viewport: { width: 402, height: 874 }, colorScheme });
+  await ctx.addInitScript(() => {
+    const w = window;
+    w.webkit = w.webkit ?? {};
+    w.webkit.messageHandlers = w.webkit.messageHandlers ?? {};
+    w.webkit.messageHandlers.bridge = { postMessage: () => {} };
+    w.Capacitor = w.Capacitor ?? { isNativePlatform: () => true, getPlatform: () => 'ios' };
+  });
+  const page = await ctx.newPage();
+  const prefix = `iPhone · ${colorScheme === 'dark' ? 'dark · ' : ''}`;
+  // Measured, not assumed: a walk that silently fell back to the web layout
+  // would pass everything above a second time and prove nothing new.
+  await page.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  const native = await page.evaluate(() => window.Capacitor?.isNativePlatform?.() === true);
+  if (!native) shellProblems.push(`${prefix}the emulated shell did not read as native, so this walk is the web layout again`);
+  await walkNative(page, (label) => sweepInto(page, prefix + label));
+  await ctx.close();
+}
+
 // The landing page too — it is the first thing anyone reads. And the legal
 // pages, which follow the phone the way the app does; the landing page keeps
 // its one palette on a dark device (`data-scheme="light"`), which is measured
@@ -609,10 +675,11 @@ function report(crash) {
     for (const label of emptyScreens) console.log(`    ${label}`);
     console.log('');
   }
-  if (!crash && deviceProblems.length === 0 && seen.size === 0 && emptyScreens.length === 0) {
-    console.log('✓ every text node meets WCAG AA on every screen, on a light device and a dark one');
+  if (!crash && deviceProblems.length === 0 && shellProblems.length === 0 && seen.size === 0 && emptyScreens.length === 0) {
+    console.log('✓ every text node meets WCAG AA on every screen, on a light device and a dark one, in the browser and as the iPhone app draws it');
     process.exit(0);
   }
+  for (const p of shellProblems) console.log(`✗ ${p}`);
   for (const p of deviceProblems) console.log(`✗ the page's scheme: ${p}`);
   if (deviceProblems.length > 0) console.log('');
   if (seen.size > 0) {
