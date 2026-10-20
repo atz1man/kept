@@ -434,25 +434,36 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
           <Pressable
             onClick={() => setLegalOpen((v) => !v)}
             aria-expanded={legalOpen}
-            style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', minWidth: 0 }}
+            style={{ display: 'flex', alignItems: 'flex-start', gap: 10, minWidth: 0 }}
           >
-            <span style={{ fontSize: 13, fontWeight: 600, color: color.accentInk }}>
-              {rights.length > 1 ? 'Your legal rights' : 'Your legal right'}
-            </span>
-            {/* One chip per right. A distance purchase carries two, and which
-                statute each comes from is the part someone repeats at a
-                counter — see legal.ts for why they are not alternatives. */}
-            {rights.map((right) => (
-              <span
-                key={right.chip}
-                style={{ fontSize: 10, fontWeight: 600, background: color.accentSoft, padding: '2px 8px', borderRadius: radius.chip }}
-              >
-                {right.chip}
+            {/* The chips wrap among themselves; the chevron does not wrap with
+                them. When it was one more item in a single wrapping row, a
+                distance purchase's two statutes pushed it on to a line of its
+                own under the second chip, where it read as belonging to that
+                chip rather than to the section. Pinned beside the wrapping
+                group it stays at the top right, level with the first line. */}
+            <span style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
+              <span style={{ fontSize: 13, lineHeight: '18px', fontWeight: 600, color: color.accentInk }}>
+                {rights.length > 1 ? 'Your legal rights' : 'Your legal right'}
               </span>
-            ))}
-            <svg width="10" height="7" viewBox="0 0 10 7" style={{ marginLeft: 'auto', flexShrink: 0, transform: `rotate(${legalOpen ? 180 : 0}deg)`, transition: 'transform .2s' }} aria-hidden="true">
-              <path d="M1 1.5l4 4 4-4" fill="none" stroke={color.muted} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+              {/* One chip per right. A distance purchase carries two, and which
+                  statute each comes from is the part someone repeats at a
+                  counter — see legal.ts for why they are not alternatives. */}
+              {rights.map((right) => (
+                <span
+                  key={right.chip}
+                  data-legal-chip
+                  style={{ fontSize: 10, fontWeight: 600, background: color.accentSoft, padding: '2px 8px', borderRadius: radius.chip }}
+                >
+                  {right.chip}
+                </span>
+              ))}
+            </span>
+            <span data-legal-chevron aria-hidden="true" style={{ display: 'flex', alignItems: 'center', height: 18, flexShrink: 0 }}>
+              <svg width="10" height="7" viewBox="0 0 10 7" style={{ transform: `rotate(${legalOpen ? 180 : 0}deg)`, transition: 'transform .2s' }}>
+                <path d="M1 1.5l4 4 4-4" fill="none" stroke={color.muted} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
           </Pressable>
           {legalOpen &&
             rights.map((right) => (

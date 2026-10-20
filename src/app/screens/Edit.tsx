@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { color, font, radius, shadow } from '../../tokens';
+import { color, font, radius } from '../../tokens';
 import { applyDraft, countsFromDispatch, draftFrom, effectiveWindowStart, validateDraft, type DraftErrors, type ReceiptDraft } from '../../lib/draft';
 import { addDays, addMonths, fmtDateLong, fmtDateNear, fromISODate, toISODate } from '../../lib/dates';
 import { STORE_POLICIES } from '../../lib/stores';
 import type { Category, Receipt } from '../../lib/types';
-import { CatIcon, ChevronLeft } from '../components/Icons';
-import { Field, inputStyle } from '../components/Field';
+import { CatIcon } from '../components/Icons';
+import { Field, PREFIXED_PAD, Prefixed, inputStyle } from '../components/Field';
 import { HowBought } from '../components/HowBought';
 import { Pressable } from '../components/Pressable';
 
@@ -63,21 +63,60 @@ export function Edit({ receipt, today, onSave, onCancel }: Props) {
       : null;
 
   return (
-    <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px', scrollPaddingBottom: 120 }}>
-      <Pressable
-        onClick={onCancel}
+    <div className="k-fade" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/*
+       * Drawn as an iPhone form sheet's bar, because that is what this screen
+       * is: a set of changes that are either kept or thrown away. It was a
+       * pushed page, with "‹ Cancel" at the top and Save at the very bottom —
+       * and on iOS a back chevron says "go back", not "discard", while the
+       * one control that keeps the work sat below the fold of a long form.
+       *
+       * So: Cancel as plain text on the left, the title in the middle, Save in
+       * bold accent on the right, the way Contacts and Calendar draw it. The
+       * bar sits above the scroller rather than floating in it, so Save is
+       * reachable from every field without scrolling to find it, and nothing
+       * in the form ever slides under the bar, where a tap meant for a field
+       * would land on the bar (scripts/layout.mjs measures exactly that).
+       * That is also why there is no second Save at the foot of the form: two buttons doing one thing,
+       * under two names, is a question the person should not have to ask.
+       * The grid's equal outer columns keep the title centred whatever the
+       * two buttons measure.
+       */}
+      <div
+        data-form-bar
         style={{
-          display: 'inline-flex', width: 'auto', alignItems: 'center', gap: 6, minHeight: 44, padding: '0 8px 0 0',
-          background: 'transparent', borderRadius: radius.control, color: color.accentInk,
-          fontSize: 15, fontWeight: 500, margin: '4px 0 6px',
+          flexShrink: 0,
+          display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)', alignItems: 'center', gap: 8,
+          minHeight: 52, padding: '4px 8px',
+          background: color.canvas,
+          borderBottom: `1px solid ${color.borderHair}`,
         }}
       >
-        <ChevronLeft stroke={color.accentInk} />
-        Cancel
-      </Pressable>
+        <Pressable
+          onClick={onCancel}
+          style={{
+            justifySelf: 'start', width: 'auto', minHeight: 44, padding: '0 8px',
+            background: 'transparent', borderRadius: radius.control, color: color.accentInk,
+            fontSize: 17, fontWeight: 400,
+          }}
+        >
+          Cancel
+        </Pressable>
+        <h1 tabIndex={-1} style={{ fontSize: 17, fontWeight: 600, margin: 0, textAlign: 'center', whiteSpace: 'nowrap' }}>Edit receipt</h1>
+        <Pressable
+          onClick={save}
+          style={{
+            justifySelf: 'end', width: 'auto', minHeight: 44, padding: '0 8px',
+            background: 'transparent', borderRadius: radius.control, color: color.accentInk,
+            fontSize: 17, fontWeight: 700,
+          }}
+        >
+          Save
+        </Pressable>
+      </div>
 
-      <h1 tabIndex={-1} style={{ fontSize: 24, fontWeight: 600, padding: '0 2px 4px', margin: 0 }}>Edit receipt</h1>
-      <p style={{ fontSize: 13, color: color.muted, padding: '0 2px 6px', margin: 0 }}>
+      <div data-scroller style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '0 16px 120px', scrollPaddingBottom: 120 }}>
+      <p style={{ fontSize: 13, color: color.muted, padding: '0 2px 6px', margin: '14px 0 0' }}>
         Fix anything the paste got wrong — or give it a name you will recognise later.
       </p>
 
@@ -106,7 +145,7 @@ export function Edit({ receipt, today, onSave, onCancel }: Props) {
             <input
               {...p}
               value={draft.item}
-              placeholder="Running shoes"
+              placeholder="e.g. Running shoes"
               onChange={(e) => set('item', e.target.value)}
               style={inputStyle(p['aria-invalid'])}
             />
@@ -141,14 +180,16 @@ export function Edit({ receipt, today, onSave, onCancel }: Props) {
 
         <Field id="e-amount" label="Amount" error={errors.amountText}>
           {(p) => (
-            <input
-              {...p}
-              inputMode="decimal"
-              value={draft.amountText}
-              placeholder="24.99"
-              onChange={(e) => set('amountText', e.target.value)}
-              style={{ ...inputStyle(p['aria-invalid']), fontFamily: font.figures }}
-            />
+            <Prefixed prefix="£">
+              <input
+                {...p}
+                inputMode="decimal"
+                value={draft.amountText}
+                placeholder="e.g. 24.99"
+                onChange={(e) => set('amountText', e.target.value)}
+                style={{ ...inputStyle(p['aria-invalid']), fontFamily: font.figures, paddingLeft: PREFIXED_PAD }}
+              />
+            </Prefixed>
           )}
         </Field>
 
@@ -249,7 +290,7 @@ export function Edit({ receipt, today, onSave, onCancel }: Props) {
               {...p}
               inputMode="numeric"
               value={draft.warrantyMonthsText}
-              placeholder="24"
+              placeholder="e.g. 24"
               onChange={(e) => set('warrantyMonthsText', e.target.value)}
               style={{ ...inputStyle(p['aria-invalid']), fontFamily: font.figures }}
             />
@@ -280,14 +321,7 @@ export function Edit({ receipt, today, onSave, onCancel }: Props) {
           that counts from the till drops it.
         </p>
       )}
-
-      <Pressable
-        className="k-primary"
-        onClick={save}
-        style={{ marginTop: 16, padding: 13, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 15, boxShadow: shadow.raised }}
-      >
-        Save changes
-      </Pressable>
+      </div>
     </div>
   );
 }

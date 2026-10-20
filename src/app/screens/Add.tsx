@@ -20,6 +20,7 @@ import { shareRoute } from '../../lib/share';
 import type { PolicyUpdate, Receipt } from '../../lib/types';
 import { ArrowRight, CameraGlyph, LogoMark, MailGlyph, ShareGlyph, Warning, ReceiptGlyph } from '../components/Icons';
 import { HowBought } from '../components/HowBought';
+import { PREFIXED_PAD, Prefixed } from '../components/Field';
 import { Pressable } from '../components/Pressable';
 import { Note, UnlockOffer } from '../components/UnlockOffer';
 
@@ -787,7 +788,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
               id="add-item"
               value={item}
               onChange={(e) => setItem(e.target.value)}
-              placeholder="Running shoes"
+              placeholder="e.g. Running shoes"
               style={{
                 width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: radius.control,
                 border: `1px solid ${color.border}`, background: color.surface,
@@ -804,7 +805,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
                 id="add-store"
                 value={storeName}
                 onChange={(e) => setStoreName(e.target.value)}
-                placeholder="Vinted"
+                placeholder="e.g. Vinted"
                 style={{
                   width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: radius.control,
                   border: `1px solid ${color.border}`, background: color.surface,
@@ -841,20 +842,24 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
               <label htmlFor="add-total" style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>
                 {typedIn || correcting ? 'Total' : 'Total — the email didn’t say'}
               </label>
-              <input
-                id="add-total"
-                inputMode="decimal"
-                value={totalText}
-                placeholder="e.g. 24.99"
-                aria-invalid={!!totalError}
-                aria-describedby={totalError ? 'add-total-note' : undefined}
-                onChange={(e) => setTotalText(e.target.value)}
-                style={{
-                  width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: radius.control,
-                  border: `1px solid ${totalError ? color.danger : color.border}`, background: color.surface,
-                  fontFamily: font.figures, fontSize: 14.5, color: color.ink,
-                }}
-              />
+              {/* The same "£" the edit screen's Amount carries, so the one
+                  figure reads the same way in both places it can be typed. */}
+              <Prefixed prefix="£">
+                <input
+                  id="add-total"
+                  inputMode="decimal"
+                  value={totalText}
+                  placeholder="e.g. 24.99"
+                  aria-invalid={!!totalError}
+                  aria-describedby={totalError ? 'add-total-note' : undefined}
+                  onChange={(e) => setTotalText(e.target.value)}
+                  style={{
+                    width: '100%', boxSizing: 'border-box', padding: '11px 13px', paddingLeft: PREFIXED_PAD, borderRadius: radius.control,
+                    border: `1px solid ${totalError ? color.danger : color.border}`, background: color.surface,
+                    fontFamily: font.figures, fontSize: 14.5, color: color.ink,
+                  }}
+                />
+              </Prefixed>
               {totalError && (
                 <div id="add-total-note" role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: color.danger, marginTop: 5 }}>
                   {totalError}

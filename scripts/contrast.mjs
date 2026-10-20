@@ -304,7 +304,7 @@ async function walkApp(page, sweep) {
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await page.waitForTimeout(400);
   await sweep('edit');
-  await page.getByRole('button', { name: 'Save changes' }).click();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
   await page.waitForTimeout(400);
   await page.getByRole('button', { name: 'Got my money back' }).click();
   await page.waitForTimeout(500);
