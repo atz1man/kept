@@ -21,10 +21,17 @@ const config: CapacitorConfig = {
   appName: 'Quids In',
   webDir: 'dist-ios',
   ios: {
-    // The app draws its own cream ground; a white flash between the launch
-    // screen and the first paint is the kind of seam the design has no
-    // patience for elsewhere.
-    backgroundColor: '#FFFFFF',
+    /*
+     * NO backgroundColor, on purpose. It used to be '#FFFFFF' to close the
+     * seam between the launch screen and the first paint — right for a white
+     * app, and wrong once the app followed the phone into dark mode: this
+     * setting takes one hex, so a dark phone got a white launch screen, a
+     * white webview, and then a dark app. Left unset, Capacitor paints the
+     * webview `UIColor.systemBackground` (CAPBridgeViewController), which is
+     * exactly #FFFFFF in light mode and follows the phone in dark. The launch
+     * image carries a dark appearance in the asset catalogue for the same
+     * reason. test/ios-assets.test.ts holds all of it together.
+     */
     /*
      * Left ON, which is Capacitor's default — but as a decision now, because
      * the comment that used to sit here argued for the opposite of what the
