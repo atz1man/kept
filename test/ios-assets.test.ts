@@ -23,10 +23,17 @@ import { decodePng, pixelAt } from '../scripts/png.mjs';
  */
 const ASSETS = join(__dirname, '..', 'ios', 'App', 'App', 'Assets.xcassets');
 const ICON = join(ASSETS, 'AppIcon.appiconset', 'AppIcon-512@2x.png');
-const SPLASHES = ['splash-2732x2732.png', 'splash-2732x2732-1.png', 'splash-2732x2732-2.png']
-  .map((n) => join(ASSETS, 'Splash.imageset', n));
+const SPLASH_SET = join(ASSETS, 'Splash.imageset');
+const splashFiles = (stem: string) => [`${stem}.png`, `${stem}-1.png`, `${stem}-2.png`]
+  .map((n) => join(SPLASH_SET, n));
+const SPLASHES = splashFiles('splash-2732x2732');
+const DARK_SPLASHES = splashFiles('splash-dark-2732x2732');
 
-const CANVAS = [255, 255, 255]; // #FFFFFF, what the shell is told to paint
+const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+// Read from the tokens rather than repeated: the launch screen is the app's
+// own ground in each scheme, and the scheme the app paints is these two.
+const CANVAS = rgb(palette.light.canvas);
+const DARK_CANVAS = rgb(palette.dark.canvas);
 // The gold coin, read from the token the logo draws with, so icon.svg and the
 // in-app mark cannot quietly pick two different golds.
 const MARK = [1, 3, 5].map((i) => parseInt(color.gold.slice(i, i + 2), 16));
@@ -90,43 +97,92 @@ describe('the app icon', () => {
 });
 
 describe('the launch screen', () => {
-  it('is the size the imageset declares, with no alpha', () => {
-    for (const path of SPLASHES) {
+  it('is the size the imageset declares, with no alpha, in both schemes', () => {
+    for (const path of [...SPLASHES, ...DARK_SPLASHES]) {
       const s = decodePng(path);
       expect([s.width, s.height, s.channels]).toEqual([2732, 2732, 3]);
     }
   });
 
-  it('is painted the same colour the shell is told to paint', () => {
+  it("is painted the app's own canvas, in each scheme", () => {
     /*
-     * `capacitor.config.ts` sets ios.backgroundColor so there is no white flash
-     * before the first paint. A launch image in any other ground puts the flash
-     * back, one layer up — the same fact in two files, quietly disagreeing,
-     * which is the defect this codebase keeps finding. So the config is read
-     * rather than the colour repeated.
+     * A launch image in any other ground puts a flash between it and the
+     * first paint. The app follows the phone into dark mode, so there are two
+     * grounds to match, and the white-only launch screen this replaced was a
+     * full-white flash in front of an app that then opened dark.
      */
-    const config = readFileSync(join(__dirname, '..', 'capacitor.config.ts'), 'utf8');
-    const hex = config.match(/backgroundColor:\s*'#([0-9A-Fa-f]{6})'/)?.[1];
-    expect(hex, 'ios.backgroundColor is no longer set in capacitor.config.ts').toBeTruthy();
-    const want = [0, 2, 4].map((i) => parseInt(hex!.slice(i, i + 2), 16));
-    expect(want).toEqual(CANVAS);
-    for (const path of SPLASHES) {
-      const s = decodePng(path);
-      expect(near(pixelAt(s, 0, 0), want), `${path} corner was ${pixelAt(s, 0, 0)}`).toBe(true);
+    for (const [paths, want] of [[SPLASHES, CANVAS], [DARK_SPLASHES, DARK_CANVAS]] as const) {
+      for (const path of paths) {
+        const s = decodePng(path);
+        for (const [x, y] of [[0, 0], [2731, 2731]]) {
+          expect(near(pixelAt(s, x, y), [...want]), `${path} at ${x},${y} was ${pixelAt(s, x, y)}`).toBe(true);
+        }
+      }
     }
   });
 
-  it('has the mark on it, centred, rather than a plain empty field', () => {
-    // Looked for by the tile's indigo AND the coin's gold: the launch screen
-    // is white, so neither could come from the ground.
-    expect(CANVAS).not.toEqual(MARK);
-    const s = decodePng(SPLASHES[0]);
-    expect(hasMark(s, [1110, 1110, 1622, 1622], 'tile')).toBe(true);
-    expect(hasMark(s, [1110, 1110, 1622, 1622])).toBe(true);
-    // And nothing outside where the mark belongs — the first attempt at this
-    // artwork rendered it several times too large and running off the canvas,
-    // which the generator reported as a success because it had drawn something.
-    expect(hasMark(s, [0, 0, 1000, 2732], 'tile')).toBe(false);
-    expect(hasMark(s, [1732, 0, 2732, 2732], 'tile')).toBe(false);
+  it('declares the dark artwork as the dark appearance of every scale, and the light as the default', () => {
+    /*
+     * The files above are inert unless the catalogue names them, and the shape
+     * is easy to get subtly wrong: a dark entry with no `appearances` is a
+     * second image for the same slot, which Xcode warns about and then picks
+     * one of — not necessarily the one matching the phone.
+     */
+    const { images } = JSON.parse(readFileSync(join(SPLASH_SET, 'Contents.json'), 'utf8')) as {
+      images: { filename: string; scale: string; appearances?: { appearance: string; value: string }[] }[];
+    };
+    const isDark = (i: (typeof images)[number]) =>
+      i.appearances?.some((a) => a.appearance === 'luminosity' && a.value === 'dark') ?? false;
+    for (const scale of ['1x', '2x', '3x']) {
+      const at = images.filter((i) => i.scale === scale);
+      expect(at.length, `scale ${scale}`).toBe(2);
+      const dark = at.filter(isDark);
+      const light = at.filter((i) => !isDark(i) && !i.appearances);
+      expect(dark.map((i) => join(SPLASH_SET, i.filename)).every((f) => DARK_SPLASHES.includes(f)), `dark ${scale}`).toBe(true);
+      expect(light.map((i) => join(SPLASH_SET, i.filename)).every((f) => SPLASHES.includes(f)), `light ${scale}`).toBe(true);
+      expect([dark.length, light.length], `scale ${scale}`).toEqual([1, 1]);
+    }
+  });
+
+  it('hands over to a shell background that follows the phone, not a fixed white', () => {
+    /*
+     * After the launch image comes the webview, painted before the page has
+     * drawn anything. `ios.backgroundColor` takes ONE hex, so setting it — as
+     * this config did, to #FFFFFF — put a white frame between a dark launch
+     * screen and a dark app. Unset, Capacitor paints UIColor.systemBackground,
+     * which is the light canvas exactly in light mode and dark in dark. It
+     * reads `ios.backgroundColor ?? backgroundColor`, so neither may be set.
+     */
+    const code = readFileSync(join(__dirname, '..', 'capacitor.config.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '');
+    expect(code).not.toMatch(/backgroundColor\s*:/);
+    // systemBackground is the light canvas exactly — the other half of why
+    // leaving it unset is safe for the scheme the app always had.
+    expect(CANVAS).toEqual([255, 255, 255]);
+    // And the launch screen's own view, behind the aspect-filled image, is the
+    // adaptive system colour rather than a fixed one.
+    const board = readFileSync(join(__dirname, '..', 'ios', 'App', 'App', 'Base.lproj', 'LaunchScreen.storyboard'), 'utf8');
+    expect(board).toMatch(/<color key="backgroundColor" systemColor="systemBackgroundColor"\/>/);
+    expect(board).not.toMatch(/<color key="backgroundColor"[^>]*\b(red|white)=/);
+  });
+
+  it('has the mark on it, centred, rather than a plain empty field, in both schemes', () => {
+    // Looked for by the tile's indigo AND the coin's gold: neither ground is
+    // either colour, so neither could come from the ground.
+    for (const ground of [CANVAS, DARK_CANVAS]) {
+      expect(ground).not.toEqual(MARK);
+      expect(tileIndigo(ground)).toBe(false);
+    }
+    for (const path of [SPLASHES[0], DARK_SPLASHES[0]]) {
+      const s = decodePng(path);
+      expect(hasMark(s, [1110, 1110, 1622, 1622], 'tile'), path).toBe(true);
+      expect(hasMark(s, [1110, 1110, 1622, 1622]), path).toBe(true);
+      // And nothing outside where the mark belongs — the first attempt at this
+      // artwork rendered it several times too large and running off the canvas,
+      // which the generator reported as a success because it had drawn something.
+      expect(hasMark(s, [0, 0, 1000, 2732], 'tile'), path).toBe(false);
+      expect(hasMark(s, [1732, 0, 2732, 2732], 'tile'), path).toBe(false);
+    }
   });
 });

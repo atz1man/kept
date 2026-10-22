@@ -41,12 +41,20 @@ if (!maskable.includes('scale(0.8)') || maskable.includes('rx="112"')) throw new
 const iosIcon = svg.replaceAll('<rect width="512" height="512" rx="112"', '<rect width="512" height="512" rx="0"');
 
 /*
- * The launch screen is the CANVAS, not the icon's green, because
- * capacitor.config.ts already commits the shell to #FFFFFF — the ground the
- * app itself draws. A launch screen in the icon's green would put a flash between the system's
- * background and the first paint, which is the exact seam that setting exists
- * to remove.
+ * The launch screen is the CANVAS, not the icon's green: a launch screen in
+ * any other colour puts a flash between it and the app's first paint. And it
+ * is the canvas of BOTH schemes. The app follows the phone into dark mode, so a
+ * white-only launch screen was a full-white flash at eleven at night, in front
+ * of an app that then opens dark — the asset catalogue carries a dark
+ * appearance of the same artwork, and iOS picks between them itself.
+ *
+ * The hexes are palette.light.canvas and palette.dark.canvas; this script
+ * cannot import tokens.ts, so test/ios-assets.test.ts holds them to it.
  */
+const SCHEMES = [
+  { file: 'splash-2732x2732', ground: '#FFFFFF', rgb: [255, 255, 255] },
+  { file: 'splash-dark-2732x2732', ground: '#0B0B12', rgb: [11, 11, 18] },
+];
 const inner = svg.slice(svg.indexOf('>', svg.indexOf('<svg')) + 1, svg.lastIndexOf('</svg>'));
 /*
  * Placed with a transform on a group, NOT as a nested <svg x y width height>.
@@ -56,8 +64,8 @@ const inner = svg.slice(svg.indexOf('>', svg.indexOf('<svg')) + 1, svg.lastIndex
  * something. Only looking at the file caught it.
  */
 const MARK = 512;
-const splash = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2732 2732">`
-  + `<rect width="2732" height="2732" fill="#FFFFFF"/>`
+const splash = (ground) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2732 2732">`
+  + `<rect width="2732" height="2732" fill="${ground}"/>`
   + `<g transform="translate(${(2732 - MARK) / 2} ${(2732 - MARK) / 2})">${inner}</g>`
   + `</svg>`;
 
@@ -98,15 +106,17 @@ writeOpaquePng(ICON, decodePng(TMP), [70, 54, 232]);
 rmSync(TMP);
 console.log(`AppIcon-512@2x.png 1024x1024 ${readFileSync(ICON).length}b, no alpha`);
 
-writeFileSync(TMP, await shoot(splash, 2732, '#FFFFFF'));
-const splashImage = decodePng(TMP);
-rmSync(TMP);
-for (const name of ['splash-2732x2732.png', 'splash-2732x2732-1.png', 'splash-2732x2732-2.png']) {
-  // All three entries in the imageset point at the same artwork, which is what
-  // the template does: one square, scaled to fill whatever the device is.
-  const out = new URL(`../ios/App/App/Assets.xcassets/Splash.imageset/${name}`, import.meta.url);
-  writeOpaquePng(out, splashImage, [255, 255, 255]);
-  console.log(`${name} 2732x2732 ${readFileSync(out).length}b`);
+for (const { file, ground, rgb } of SCHEMES) {
+  writeFileSync(TMP, await shoot(splash(ground), 2732, ground));
+  const splashImage = decodePng(TMP);
+  rmSync(TMP);
+  for (const name of [`${file}.png`, `${file}-1.png`, `${file}-2.png`]) {
+    // All three entries in the imageset point at the same artwork, which is what
+    // the template does: one square, scaled to fill whatever the device is.
+    const out = new URL(`../ios/App/App/Assets.xcassets/Splash.imageset/${name}`, import.meta.url);
+    writeOpaquePng(out, splashImage, rgb);
+    console.log(`${name} 2732x2732 ${readFileSync(out).length}b`);
+  }
 }
 
 await browser.close();
