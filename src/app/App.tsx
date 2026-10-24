@@ -10,6 +10,7 @@ import { money, sumPence } from '../lib/money';
 import { canSplit } from '../lib/split';
 import { countsAsMoney, derive, makeReceiptId, recoveredPence, swapInFate, swapInFateText } from '../lib/receipts';
 import { fmtDateNear } from '../lib/dates';
+import { arrivedSomewhereNew, placeOf } from '../lib/focus-place';
 import { winSentence } from '../lib/words';
 import { exportBackup, wipe } from '../lib/storage';
 import { keepStorage } from '../lib/persist';
@@ -277,15 +278,15 @@ export function App() {
    * Not on first paint — landing on a fresh page with focus already moved is
    * its own kind of disorienting, and there has been no transition to report.
    */
-  const firstPaint = useRef(true);
+  // Where the app was when focus last had a reason to move: keyed on the
+  // place, not on a count, so StrictMode's second run of the first paint is
+  // still the first paint (lib/focus-place.ts).
+  const lastPlace = useRef(placeOf(screen, state.selId));
   const [announced, setAnnounced] = useState('');
   /** A way into the Add screen chosen on home (Scan, Upload, Paste), held until Add has acted on it. */
   const [addStart, setAddStart] = useState<AddStart | undefined>(undefined);
   useEffect(() => {
-    if (firstPaint.current) {
-      firstPaint.current = false;
-      return;
-    }
+    if (!arrivedSomewhereNew(lastPlace, placeOf(screen, state.selId))) return;
     const h1 = document.querySelector<HTMLElement>('main h1');
     const heading = h1?.textContent?.trim() ?? '';
 

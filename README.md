@@ -393,6 +393,7 @@ src/lib/          the decision logic — pure, tested, no React
   words.ts        fitting a name someone typed into the middle of a sentence
   sign-off.ts     how every letter to a shop ends, signed with the name kept on the phone
   contrast.ts     WCAG luminance and ratio, used to hold the palette to AA
+  focus-place.ts  whether the app has moved to a new screen, keyed on where it is, so focus moves once
   share.ts        reading an order email shared in from another app
   parse.ts        the paste parser (on-device, rule-based)
   documents.ts    PDF e-receipts, saved emails and pages, read into the parser's text
