@@ -3,6 +3,7 @@ import { daysBetween, fmtDate, fmtDateLong, fromISODate, relativeAgo } from '../
 import { COMING_UP_DAYS, comingUp } from '../../lib/coming-up';
 import { Pressable } from '../components/Pressable';
 import { Avatar } from '../components/Avatar';
+import { SampleTag } from '../components/ReceiptRow';
 import { assess } from '../../lib/policy-feed';
 import type { PolicyUpdate, Receipt } from '../../lib/types';
 
@@ -102,9 +103,13 @@ export function Watch({ updates, receipts, today, watching, refreshes, onOpen }:
                       the one word that tells them apart cut off. */}
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span data-coming-title style={{ display: 'block', fontWeight: 600, fontSize: 15, color: color.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.item}</span>
-                    <span style={{ display: 'block', fontSize: 13, color: color.muted, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {c.what} · {c.demo && 'sample · '}
-                      {r.store}
+                    {/* Then the shop, as Home's line does, and the event last:
+                        the line truncates from the tail, and "Last day to
+                        return it · sample · Cur…" cut off the one word on it
+                        that differs from the row above. */}
+                    <span data-coming-meta style={{ display: 'block', fontSize: 13, color: color.muted, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {c.demo && <SampleTag />}
+                      {r.store} · {c.what}
                     </span>
                   </span>
                   <span style={{ flexShrink: 0, textAlign: 'right', whiteSpace: 'nowrap' }}>

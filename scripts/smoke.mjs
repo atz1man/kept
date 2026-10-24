@@ -2094,18 +2094,31 @@ for (const native of [true, false]) {
   // Each row is titled by the thing, as Home's list is: rows titled by the
   // event read "Last day to return it" four times over with the item cut off.
   const titles = await wp.locator('[data-coming-title]').allTextContents();
+  // And the shop is on the line under it, whole. The line truncates from the
+  // tail, and with the event first and the shop last it read "Last day to
+  // return it · sample · Cur…" on every row — the same words four times, and
+  // the one that differed cut off. Measured, not read from the source: the
+  // shop's own text must end inside the line's box.
+  const shopsWhole = await wp.locator('[data-coming-meta]').evaluateAll((els) => els.map((el) => {
+    const shop = [...el.childNodes].find((n) => n.nodeType === Node.TEXT_NODE && n.textContent.trim());
+    if (!shop) return false;
+    const range = document.createRange();
+    range.selectNodeContents(shop);
+    return range.getBoundingClientRect().right <= el.getBoundingClientRect().right + 0.5 && /^(Currys|Argos|Zara|Boots|IKEA)$/.test(shop.textContent.trim());
+  }));
   const seen = {
     listed: labels.length >= 3,
     soonestFirst: /in 2 days: .*Currys, JBL/.test(labels[0] ?? ''),
     titledByItem: titles.length >= 3 && titles[0].startsWith('JBL') && new Set(titles).size === titles.length,
+    shopsWhole: shopsWhole.length >= 3 && shopsWhole.every(Boolean),
   };
   if (seen.listed) {
     await rows.first().click();
     await wp.waitForTimeout(300);
     seen.opens = (await wp.getByRole('heading', { level: 1, name: 'Currys' }).count()) === 1;
   }
-  const ok = seen.listed && seen.soonestFirst && seen.titledByItem && seen.opens;
-  results['the Watch tab opens on what is coming up, soonest first, each row titled by its item, and each row opens its receipt'] = !!ok;
+  const ok = seen.listed && seen.soonestFirst && seen.titledByItem && seen.shopsWhole && seen.opens;
+  results['the Watch tab opens on what is coming up, soonest first, each row titled by its item with its shop whole beneath, and each row opens its receipt'] = !!ok;
   if (!ok) problems.push(`coming up: ${JSON.stringify({ ...seen, first: labels[0] })}`);
   await wCtx.close();
 }
