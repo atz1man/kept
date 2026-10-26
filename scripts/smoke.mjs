@@ -2124,6 +2124,37 @@ for (const native of [true, false]) {
 }
 
 /*
+ * What happened to a receipt is recorded from the first screen of it.
+ *
+ * "I've sent it back", "Got my money back" and "I'm keeping it" sat after
+ * the store policy, the rights, the warranty, the paper receipt, the fault
+ * letter and the claim pack — measured at 390px, 1.2 to 1.8 screens down on
+ * every sample receipt. The one thing the app exists to track meant
+ * scrolling past six panels of reading. Measured, not read from the source:
+ * the buttons above the store policy, and inside an iPhone's first screen.
+ */
+{
+  const dCtx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const dp = await dCtx.newPage();
+  await dp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await dp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  const seen = [];
+  for (const [row, label] of [[/^Currys, JBL/, 'I’ve sent it back'], [/^Zara, Wool-blend/, 'I’ve sent it back'], [/^Argos, Kenwood/, 'I’m keeping it']]) {
+    await dp.getByRole('button', { name: row }).first().click();
+    await dp.waitForTimeout(300);
+    const action = await dp.getByRole('button', { name: label, exact: true }).first().boundingBox().catch(() => null);
+    const policy = await dp.getByText('Store policy', { exact: true }).first().boundingBox().catch(() => null);
+    seen.push({ row: String(row), top: action ? Math.round(action.y + action.height) : null, policy: policy ? Math.round(policy.y) : null });
+    await dp.getByRole('button', { name: 'Back', exact: true }).click();
+    await dp.waitForTimeout(300);
+  }
+  const ok = seen.every((s) => s.top !== null && s.policy !== null && s.top < s.policy && s.top <= 844);
+  results['a receipt’s status buttons are on its first screen, above the store policy'] = ok;
+  if (!ok) problems.push(`status buttons: ${JSON.stringify(seen)}`);
+  await dCtx.close();
+}
+
+/*
  * A switch's name on one line. With the name and its status sharing the row
  * equally, "Blocked by your browser" split the name as well — "Deadline /
  * alerts" — on a phone. Nothing overflowed and no word was crushed, so no
