@@ -47,6 +47,13 @@ export interface ParsedReceipt {
    */
   lines: { item: string; pence: Pence }[];
   /**
+   * The paste is a refund — money coming back, not money spent: an email
+   * that opens "Your refund is on its way", or a till's REFUND slip. Saved as
+   * it stands it becomes a purchase of the refunded sum with a fresh return
+   * window, so the card says what it is (lib/confidence.ts).
+   */
+  refund: boolean;
+  /**
    * How each figure was found — read off a label, or the best of several
    * candidates. What the Add card marks for checking (see lib/confidence.ts):
    * a total that is merely the largest figure on the page, or one date picked
@@ -1336,6 +1343,24 @@ function tidy(raw: string): string {
     .replace(/\n(?: ?\n)+/g, '\n\n');
 }
 
+/*
+ * Read from the top of the paste only, where a refund email says what it is
+ * ("Your refund is on its way") — never from the body, where every order
+ * confirmation explains how refunds work. A till slip prints REFUND on a line
+ * of its own, wherever the shop's header puts it. A shop's own banner
+ * selling its returns ("Free returns and refunds") is a purchase's, and is
+ * left alone. Measured against every order email, audit case and till slip
+ * in the suites: the two refunds among them, and nothing else.
+ */
+const REFUND_WORD = /\brefund(?:ed|s)?\b/i;
+const REFUND_SELLING = /\b(?:free|easy|hassle|polic(?:y|ies)|within\s+\d+\s+days)\b/i;
+
+function readsAsRefund(text: string): boolean {
+  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+  if (lines.slice(0, 4).some((l) => REFUND_WORD.test(l) && !REFUND_SELLING.test(l))) return true;
+  return lines.some((l) => /^refund$/i.test(l));
+}
+
 export function parseReceiptText(raw: string, today: Date = new Date()): ParseOutcome {
   if (!raw.trim()) return { ok: false, reason: 'empty' };
   const text = deliveredRelative(gbpAsPounds(tidy(raw)), today);
@@ -1367,6 +1392,7 @@ export function parseReceiptText(raw: string, today: Date = new Date()): ParseOu
       item: pickItem(text, policy),
       orderRef: pickOrderRef(text),
       lines: pickLines(text, policy, amount),
+      refund: readsAsRefund(text),
       how: { amount: total?.how ?? null, purchasedOn: picked?.how ?? null, store: shop?.how ?? null },
     },
   };
