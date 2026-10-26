@@ -374,6 +374,130 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
         </a>
       )}
 
+      {/*
+       * What happened to it — sent back, money back, keeping it — straight
+       * under the deadline and the step it is for, before the reference
+       * below. It sat after the store policy, the rights, the warranty, the
+       * paper receipt, the fault letter and the claim pack: measured at 390px,
+       * 1.2 to 1.8 screens down on every sample receipt, so recording the one
+       * thing the screen exists to track meant scrolling past six panels of
+       * reading. Where a returns page leads, these stay quiet beside it.
+       */}
+      {receipt.status === 'returned' ? (
+        <>
+          {/* A swap whose swap-in has a refund, a posting or a swap of its own
+              is not offered back: that tap removed the swap-in and all of it,
+              with no undo. Said instead, with the way to it. */}
+          {receipt.exchanged && swapBlocked ? (
+            <div data-swap-blocked style={{ marginTop: 10, fontSize: 13.5, lineHeight: 1.5, color: color.body, textAlign: 'center' }}>
+              {swapBlocked.text}{' '}
+              <Pressable
+                onClick={swapBlocked.onOpen}
+                style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', fontSize: 13.5, fontWeight: 600, textDecoration: 'underline' }}
+              >
+                Open that receipt
+              </Pressable>
+            </div>
+          ) : (
+          <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+            <Pressable
+              className="k-row-white k-secondary"
+              onClick={receipt.exchanged ? onUnexchange : onUnreturn}
+              style={{ flex: 1, padding: 13, textAlign: 'center', background: color.surface, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
+            >
+              {/* Posted first, so what is being taken back is the money:
+                  the parcel went, and it goes back to waiting for a refund. */}
+              {receipt.exchanged ? 'Not swapped after all' : receipt.sentOn ? 'The refund hasn’t come' : 'Not actually returned'}
+            </Pressable>
+          </div>
+          )}
+        </>
+      ) : receipt.status === 'sent' ? (
+        <>
+          <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+            {/* Secondary once the refund is late: the chase letter above is
+                then the step, and one filled button is what says so. */}
+            <Pressable
+              className={chase?.late ? 'k-row-white k-secondary' : 'k-primary'}
+              onClick={onReturn}
+              style={chase?.late ? secondaryButton : primaryButton}
+            >
+              Got my money back
+            </Pressable>
+          </div>
+          <Pressable
+            className="k-row-white k-secondary"
+            onClick={onUnsend}
+            style={{ marginTop: 10, padding: 13, textAlign: 'center', background: color.surface, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
+          >
+            Not sent after all
+          </Pressable>
+        </>
+      ) : receipt.status === 'kept' ? (
+        <>
+          {/* Settled without a refund. The reminders stop; the rights set out
+              above do not, which is the reason to keep the receipt at all. */}
+          <div style={{ marginTop: 16, padding: 15, background: color.surfaceAlt, border: `1px solid ${color.border}`, borderRadius: 12 }}>
+            <div style={{ fontWeight: 600 }}>
+              Keeping it{receipt.keptOn ? ` · since ${fmtDateLong(fromISODate(receipt.keptOn))}` : ''}
+            </div>
+            <div style={{ fontSize: 13, color: color.muted, lineHeight: 1.5, marginTop: 4 }}>
+              No more return reminders. If it turns out to be faulty, your rights above still apply.
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+            <Pressable
+              className="k-row-white k-secondary"
+              onClick={onUnkeep}
+              style={{ flex: 1, padding: 13, textAlign: 'center', background: color.surface, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
+            >
+              Not keeping it after all
+            </Pressable>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* The receipt a swap produced says where its dates came from:
+              the original's, which is the earlier clock, and not a guess at
+              what the shop's swap did to its window. */}
+          {receipt.swappedFrom && (
+            <div data-swap-in style={{ marginTop: 14, fontSize: 13.5, lineHeight: 1.5, color: color.body }}>
+              Swapped for the one you bought on {fmtDateLong(fromISODate(receipt.purchasedOn))}, so it keeps that receipt’s
+              dates. If the shop gave you a new receipt, change them with Edit.
+            </div>
+          )}
+          <ActiveActions distance={receipt.distance} quiet={!!returnsPage} onReturn={onReturn} onSend={onSend} onKeep={onKeep} />
+          {/* The two less common endings, side by side and quiet: they were a
+              stack of three underlined lines with Delete, each on its own. */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', columnGap: 12, marginTop: 6 }}>
+            <Pressable
+              onClick={onExchange}
+              style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', justifyContent: 'center', padding: '0 8px', fontWeight: 600, fontSize: 14, textDecoration: 'underline' }}
+            >
+              Swapped it for another
+            </Pressable>
+            {canSplit(receipt) && <SplitPanel key={receipt.id} receipt={receipt} onSplit={onSplit} />}
+          </div>
+        </>
+      )}
+      {/* A part split out of a basket says where it came from, and can go back in. */}
+      {splitFromReceipt && onUnsplit && (
+        <div data-split-part style={{ marginTop: 14, fontSize: 13.5, lineHeight: 1.5, color: color.body, textAlign: 'center' }}>
+          Split from your {splitFromReceipt.store} receipt for {splitFromReceipt.item}.{' '}
+          <Pressable
+            onClick={onUnsplit}
+            style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', fontSize: 13.5, fontWeight: 600, textDecoration: 'underline' }}
+          >
+            Not split after all
+          </Pressable>
+        </div>
+      )}
+      {receipt.status === 'kept' && canSplit(receipt) && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', marginTop: 10 }}>
+          <SplitPanel key={receipt.id} receipt={receipt} onSplit={onSplit} />
+        </div>
+      )}
+
       <div style={{ background: color.surfaceAlt, borderRadius: radius.cardLg, marginTop: 14 }}>
         <div style={{ padding: '16px 18px 14px' }}>
           <div style={cardLabel}>Store policy</div>
@@ -568,120 +692,6 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
         </div>
       )}
 
-      {receipt.status === 'returned' ? (
-        <>
-          {/* A swap whose swap-in has a refund, a posting or a swap of its own
-              is not offered back: that tap removed the swap-in and all of it,
-              with no undo. Said instead, with the way to it. */}
-          {receipt.exchanged && swapBlocked ? (
-            <div data-swap-blocked style={{ marginTop: 10, fontSize: 13.5, lineHeight: 1.5, color: color.body, textAlign: 'center' }}>
-              {swapBlocked.text}{' '}
-              <Pressable
-                onClick={swapBlocked.onOpen}
-                style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', fontSize: 13.5, fontWeight: 600, textDecoration: 'underline' }}
-              >
-                Open that receipt
-              </Pressable>
-            </div>
-          ) : (
-          <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
-            <Pressable
-              className="k-row-white k-secondary"
-              onClick={receipt.exchanged ? onUnexchange : onUnreturn}
-              style={{ flex: 1, padding: 13, textAlign: 'center', background: color.surface, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
-            >
-              {/* Posted first, so what is being taken back is the money:
-                  the parcel went, and it goes back to waiting for a refund. */}
-              {receipt.exchanged ? 'Not swapped after all' : receipt.sentOn ? 'The refund hasn’t come' : 'Not actually returned'}
-            </Pressable>
-          </div>
-          )}
-        </>
-      ) : receipt.status === 'sent' ? (
-        <>
-          <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
-            {/* Secondary once the refund is late: the chase letter above is
-                then the step, and one filled button is what says so. */}
-            <Pressable
-              className={chase?.late ? 'k-row-white k-secondary' : 'k-primary'}
-              onClick={onReturn}
-              style={chase?.late ? secondaryButton : primaryButton}
-            >
-              Got my money back
-            </Pressable>
-          </div>
-          <Pressable
-            className="k-row-white k-secondary"
-            onClick={onUnsend}
-            style={{ marginTop: 10, padding: 13, textAlign: 'center', background: color.surface, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
-          >
-            Not sent after all
-          </Pressable>
-        </>
-      ) : receipt.status === 'kept' ? (
-        <>
-          {/* Settled without a refund. The reminders stop; the rights set out
-              above do not, which is the reason to keep the receipt at all. */}
-          <div style={{ marginTop: 16, padding: 15, background: color.surfaceAlt, border: `1px solid ${color.border}`, borderRadius: 12 }}>
-            <div style={{ fontWeight: 600 }}>
-              Keeping it{receipt.keptOn ? ` · since ${fmtDateLong(fromISODate(receipt.keptOn))}` : ''}
-            </div>
-            <div style={{ fontSize: 13, color: color.muted, lineHeight: 1.5, marginTop: 4 }}>
-              No more return reminders. If it turns out to be faulty, your rights above still apply.
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
-            <Pressable
-              className="k-row-white k-secondary"
-              onClick={onUnkeep}
-              style={{ flex: 1, padding: 13, textAlign: 'center', background: color.surface, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 }}
-            >
-              Not keeping it after all
-            </Pressable>
-          </div>
-        </>
-      ) : (
-        <>
-          {/* The receipt a swap produced says where its dates came from:
-              the original's, which is the earlier clock, and not a guess at
-              what the shop's swap did to its window. */}
-          {receipt.swappedFrom && (
-            <div data-swap-in style={{ marginTop: 14, fontSize: 13.5, lineHeight: 1.5, color: color.body }}>
-              Swapped for the one you bought on {fmtDateLong(fromISODate(receipt.purchasedOn))}, so it keeps that receipt’s
-              dates. If the shop gave you a new receipt, change them with Edit.
-            </div>
-          )}
-          <ActiveActions distance={receipt.distance} quiet={!!returnsPage} onReturn={onReturn} onSend={onSend} onKeep={onKeep} />
-          {/* The two less common endings, side by side and quiet: they were a
-              stack of three underlined lines with Delete, each on its own. */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', columnGap: 12, marginTop: 6 }}>
-            <Pressable
-              onClick={onExchange}
-              style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', justifyContent: 'center', padding: '0 8px', fontWeight: 600, fontSize: 14, textDecoration: 'underline' }}
-            >
-              Swapped it for another
-            </Pressable>
-            {canSplit(receipt) && <SplitPanel key={receipt.id} receipt={receipt} onSplit={onSplit} />}
-          </div>
-        </>
-      )}
-      {/* A part split out of a basket says where it came from, and can go back in. */}
-      {splitFromReceipt && onUnsplit && (
-        <div data-split-part style={{ marginTop: 14, fontSize: 13.5, lineHeight: 1.5, color: color.body, textAlign: 'center' }}>
-          Split from your {splitFromReceipt.store} receipt for {splitFromReceipt.item}.{' '}
-          <Pressable
-            onClick={onUnsplit}
-            style={{ display: 'inline-flex', width: 'auto', minHeight: 44, alignItems: 'center', fontSize: 13.5, fontWeight: 600, textDecoration: 'underline' }}
-          >
-            Not split after all
-          </Pressable>
-        </div>
-      )}
-      {receipt.status === 'kept' && canSplit(receipt) && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', marginTop: 10 }}>
-          <SplitPanel key={receipt.id} receipt={receipt} onSplit={onSplit} />
-        </div>
-      )}
       {/* Last, and quiet. It sat beside the primary action as a pill of its
           own, on every receipt: the one irreversible-looking choice here drawn
           with the weight of the one the screen is for. It has an undo, and it
