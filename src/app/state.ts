@@ -16,7 +16,7 @@ import { mergeBackup, type ImportSummary, type RestoreReport } from '../lib/back
 import { windowStartFor } from '../lib/draft';
 import { readReturnRef } from '../lib/refund-chase';
 import { readLetterName } from '../lib/sign-off';
-import { freshState, load, onExternalChange, save, type KeptState, type Settings } from '../lib/storage';
+import { freshState, load, onExternalChange, save, setAsideIds, type KeptState, type Settings } from '../lib/storage';
 import { seedUpdates } from '../lib/seed';
 import { quotaFull as quotaFullFor } from '../lib/quota';
 import { ONBOARDING_STEPS } from './screens/Onboarding';
@@ -1144,7 +1144,9 @@ export function useApp() {
    */
   useEffect(() => {
     if (state.embedded || !isNative()) return;
-    void cleanupPhotos(state.receipts.map((r) => r.id));
+    // And every receipt the launch set aside: still recoverable from
+    // Settings, so its photo is not an orphan.
+    void cleanupPhotos([...state.receipts.map((r) => r.id), ...setAsideIds()]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.embedded]);
 

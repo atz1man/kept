@@ -460,6 +460,32 @@ export function setAsideData(): string | null {
   }
 }
 
+/**
+ * Every receipt id the set-aside copy names, for the photo clean-up to keep.
+ *
+ * The clean-up deletes each photo whose receipt is not in the library the app
+ * booted with. A row `load` could not read is not in that library — it is in
+ * the set-aside copy, offered back from Settings — so its photo read as an
+ * orphan and was deleted at the same launch that set the row aside: the
+ * receipt recoverable, its proof of purchase not. And when the whole store
+ * was corrupt JSON, every photo went.
+ *
+ * Read from the raw text, not parsed, because the copy is set aside exactly
+ * when it does not parse. Keeping a photo a stray "id" happens to name costs
+ * one file; deleting one it should have kept cannot be undone.
+ */
+export function setAsideIds(): string[] {
+  const raw = setAsideData();
+  if (!raw) return [];
+  return [...raw.matchAll(/"id"\s*:\s*"((?:[^"\\]|\\.)*)"/g)].map((m) => {
+    try {
+      return JSON.parse(`"${m[1]}"`) as string;
+    } catch {
+      return m[1];
+    }
+  });
+}
+
 /** Forget the set-aside copy, once it has been saved somewhere or refused. */
 export function discardSetAside(): void {
   try {
