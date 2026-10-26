@@ -291,3 +291,29 @@ describe('a refund pasted as if it were a purchase', () => {
     expect(ORDER_EMAILS.filter((e) => parse(e.text).refund).map((e) => e.name)).toEqual([]);
   });
 });
+
+describe('a total in another currency', () => {
+  /*
+   * A Zara order placed in euros, with "Free delivery on orders over £50 in
+   * the UK" in its footer: the £50 was taken as the total and marked "No
+   * total line was found" — untrue, the total line was right there, in
+   * euros. The card now says what happened.
+   */
+  it('marks a £ figure taken from a page whose total is in euros or dollars, and says why', () => {
+    const euro = parse('Zara\nOrder date 29/09/2026\nTotal 45,95 €\nFree delivery on orders over £50 in the UK');
+    expect(euro.foreignTotal).toBe(true);
+    expect(toCheck(euro).amount).toBe('other-currency');
+    const dollar = parse('Argos\nOrder date 29/09/2026\nTotal: $59.99 USD\nUK customers: free returns on orders over £20');
+    expect(toCheck(dollar).amount).toBe('other-currency');
+    expect(checkWords('amount', 'other-currency')).toMatch(/not in pounds/);
+  });
+
+  it('is not a UK till that prints its pound total as "TOTAL EUR/GBP", nor a total in pounds with a euro price beside it', () => {
+    expect(parse(fromScan('DECATHLON\nKIPRUN RUNNING SHOE 30.00\nTOTAL EUR/GBP 20.00\n19/09/2026')).foreignTotal).toBe(false);
+    expect(parse('John Lewis\nOrder date 2 October 2026\nTotal £49.00 (approx. €56)').foreignTotal).toBe(false);
+  });
+
+  it('is not anything in the order-email corpus', () => {
+    expect(ORDER_EMAILS.filter((e) => parse(e.text).foreignTotal).map((e) => e.name)).toEqual([]);
+  });
+});

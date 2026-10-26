@@ -37,7 +37,8 @@ export type CheckWhy =
   | 'several-shops'
   | 'shop-in-passing'
   | 'misread-print'
-  | 'refund';
+  | 'refund'
+  | 'other-currency';
 
 /*
  * The shop is marked too. It never was, and of the audit's 65 order emails
@@ -101,6 +102,9 @@ export function toCheck(p: ParsedReceipt, unsure: readonly UnsureWord[] = [], mi
     // A refund first: the figure on it may be read perfectly and still be
     // the wrong kind of figure — money back, not the price paid.
     if (p.refund) out.amount = 'refund';
+    // A total in another currency: any £ figure here was read off something
+    // else on the page, whatever line it came from.
+    else if (p.foreignTotal) out.amount = 'other-currency';
     // The lines adding up to the figure exactly is a second reading of it
     // that a blur does not reproduce: each line is a different number.
     const addsUp = p.lines.length > 0 && p.lines.reduce((sum, l) => sum + l.pence, 0) === p.amount;
@@ -152,6 +156,8 @@ export function checkWords(field: keyof Checks, why: CheckWhy): string {
       return 'Nothing on it says “order date”, and it reads as a dispatch or delivery notice — this may be when it was sent or arrived.';
     case 'refund':
       return 'This reads as a refund — money coming back, not what was paid. To record it, open the receipt it came from and mark the money back there.';
+    case 'other-currency':
+      return 'The total on it is not in pounds, so this £ figure was read from elsewhere on it — put in what it cost in pounds.';
     case 'month-first':
       return 'Written in figures that also read month first — check the day and the month.';
     case 'several-shops':

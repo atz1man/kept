@@ -54,6 +54,12 @@ export interface ParsedReceipt {
    */
   refund: boolean;
   /**
+   * The order's total is written in another currency — "Total 45,95 €",
+   * "Total: $59.99 USD". Any £ figure read from it came from somewhere else
+   * on the page (a delivery threshold in the footer), so the card says so.
+   */
+  foreignTotal: boolean;
+  /**
    * How each figure was found — read off a label, or the best of several
    * candidates. What the Add card marks for checking (see lib/confidence.ts):
    * a total that is merely the largest figure on the page, or one date picked
@@ -1361,6 +1367,19 @@ function readsAsRefund(text: string): boolean {
   return lines.some((l) => /^refund$/i.test(l));
 }
 
+/*
+ * A total line priced in euros or dollars. Line by line, and never a line
+ * that also says £ or GBP: Decathlon's UK tills print "TOTAL EUR/GBP" over a
+ * pound total. Measured over every order email, audit case and till slip in
+ * the suites (99 texts): the three in other currencies, and nothing else.
+ */
+const FOREIGN_TOTAL_LINE = /\btotal\b.{0,30}?(?:€\s?\d|\d[\d.,]*\s?€|\$\s?\d|\b(?:EUR|USD)\b)/i;
+const STERLING = /£|\bGBP\b/i;
+
+function totalInAnotherCurrency(text: string): boolean {
+  return text.split('\n').some((l) => FOREIGN_TOTAL_LINE.test(l) && !STERLING.test(l));
+}
+
 export function parseReceiptText(raw: string, today: Date = new Date()): ParseOutcome {
   if (!raw.trim()) return { ok: false, reason: 'empty' };
   const text = deliveredRelative(gbpAsPounds(tidy(raw)), today);
@@ -1393,6 +1412,7 @@ export function parseReceiptText(raw: string, today: Date = new Date()): ParseOu
       orderRef: pickOrderRef(text),
       lines: pickLines(text, policy, amount),
       refund: readsAsRefund(text),
+      foreignTotal: totalInAnotherCurrency(text),
       how: { amount: total?.how ?? null, purchasedOn: picked?.how ?? null, store: shop?.how ?? null },
     },
   };
