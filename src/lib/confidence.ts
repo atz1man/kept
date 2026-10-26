@@ -36,7 +36,8 @@ export type CheckWhy =
   | 'month-first'
   | 'several-shops'
   | 'shop-in-passing'
-  | 'misread-print';
+  | 'misread-print'
+  | 'refund';
 
 /*
  * The shop is marked too. It never was, and of the audit's 65 order emails
@@ -97,10 +98,13 @@ function dayMonth(date: string): string {
 export function toCheck(p: ParsedReceipt, unsure: readonly UnsureWord[] = [], misread: readonly Misread[] = []): Checks {
   const out: Checks = {};
   if (p.amount !== null) {
+    // A refund first: the figure on it may be read perfectly and still be
+    // the wrong kind of figure — money back, not the price paid.
+    if (p.refund) out.amount = 'refund';
     // The lines adding up to the figure exactly is a second reading of it
     // that a blur does not reproduce: each line is a different number.
     const addsUp = p.lines.length > 0 && p.lines.reduce((sum, l) => sum + l.pence, 0) === p.amount;
-    if (!addsUp) {
+    if (out.amount === undefined && !addsUp) {
       if (p.how.amount === 'largest') out.amount = 'largest-figure';
       else if (p.how.amount === 'named') out.amount = 'named-total';
       else if (p.how.amount === 'several') out.amount = 'several-totals';
@@ -146,6 +150,8 @@ export function checkWords(field: keyof Checks, why: CheckWhy): string {
       return 'This total is of the items alone — it may leave out delivery.';
     case 'notice-date':
       return 'Nothing on it says “order date”, and it reads as a dispatch or delivery notice — this may be when it was sent or arrived.';
+    case 'refund':
+      return 'This reads as a refund — money coming back, not what was paid. To record it, open the receipt it came from and mark the money back there.';
     case 'month-first':
       return 'Written in figures that also read month first — check the day and the month.';
     case 'several-shops':

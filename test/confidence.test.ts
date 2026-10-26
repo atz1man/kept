@@ -250,3 +250,44 @@ describe('a figure the camera misread', () => {
     expect(toCheck(p, [], [{ field: 'amount', read: 'E2.65', as: '2.65', proved: false }]).amount).toBe('misread-print');
   });
 });
+
+describe('a refund pasted as if it were a purchase', () => {
+  /*
+   * Saved as it stands, a refund email becomes a purchase of the refunded
+   * sum with a fresh return window — money that has already come back,
+   * counted down as if it could still be lost. The card marked the figure
+   * before this, but for a reason that was not true: "follows a product
+   * name" for "Refund total £25.00", "no total line" for a till's REFUND
+   * slip. Both now say what the paste is.
+   */
+  const email = 'ASOS\nYour refund is on its way\nOrder No. 123456789\nOrder date: 20 September 2026\nRefund date: 3 October 2026\nRefund total £25.00';
+  const slip = fromScan('NEXT\nREFUND\nCHINOS -30.00\nTOTAL -30.00\nREFUND TO VISA 30.00\n03/10/2026');
+
+  it('reads a refund email and a till refund slip as refunds, and marks the figure as one', () => {
+    for (const text of [email, slip]) {
+      const p = parse(text);
+      expect(p.refund).toBe(true);
+      expect(toCheck(p).amount).toBe('refund');
+    }
+    expect(checkWords('amount', 'refund')).toMatch(/refund/);
+  });
+
+  it('is said even where the figure is labelled cleanly', () => {
+    // "Refunded: £25.00" is a label the parser trusts; what it labels is still money back.
+    const p = parse('Zara\nWe have refunded your order\nOrder date: 12 September 2026\nTotal paid £25.00');
+    expect(toCheck(p).amount).toBe('refund');
+  });
+
+  it('is not a purchase whose email explains refunds further down, or sells its returns at the top', () => {
+    const footer = parse('Argos\nThank you for your order\nOrder date: 2 October 2026\nKettle £29.99\nTotal £29.99\nRefunds go back to the card you paid with, within 14 days of us receiving your return.');
+    const banner = parse('Free returns and refunds on every order\nJohn Lewis\nThank you for your order\nOrder date: 2 October 2026\nTotal £49.00');
+    for (const p of [footer, banner]) {
+      expect(p.refund).toBe(false);
+      expect(toCheck(p).amount).toBeUndefined();
+    }
+  });
+
+  it('is not anything in the order-email corpus', () => {
+    expect(ORDER_EMAILS.filter((e) => parse(e.text).refund).map((e) => e.name)).toEqual([]);
+  });
+});

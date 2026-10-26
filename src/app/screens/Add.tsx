@@ -233,7 +233,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
     focusFirstField.current = true;
     setParsed({
       store: null, policy: null, amount: null, purchasedOn: toISODate(today), dateFound: false,
-      arrivedOn: null, dispatchedOn: null, windowDays: UNKNOWN_STORE_WINDOW_DAYS, item: null, orderRef: null, lines: [],
+      arrivedOn: null, dispatchedOn: null, windowDays: UNKNOWN_STORE_WINDOW_DAYS, item: null, orderRef: null, lines: [], refund: false,
       how: { amount: null, purchasedOn: null, store: null },
     });
     setError(false);
