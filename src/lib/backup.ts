@@ -334,12 +334,16 @@ export interface MergeResult {
   added: number;
   /** Rows the device already had, left exactly as the device has them. */
   alreadyHere: number;
+  /** Rows undone on this phone since the file was written — a swap taken back, a part folded back in — left out. */
+  undoneHere: number;
 }
 
 /** What a restore did, as the Settings screen reports it. */
 export interface RestoreReport {
   added: number;
   alreadyHere: number;
+  /** Absent in a report written before the field existed. */
+  undoneHere?: number;
   /** Rows the file carried that could not be read, from `parseBackup`. */
   skipped: number;
 }
@@ -386,17 +390,57 @@ export interface RestoreReport {
  */
 export function mergeBackup(current: readonly Receipt[], incoming: readonly Receipt[]): MergeResult {
   const byId = new Map(current.map((r) => [r.id, r]));
+  const here = new Map(byId);
+  const then = new Map(incoming.map((r) => [r.id, r]));
   let added = 0;
   let alreadyHere = 0;
+  let undoneHere = 0;
   for (const r of incoming) {
     if (byId.has(r.id)) {
       alreadyHere += 1;
       continue;
     }
+    if (undoneSince(r, here, then)) {
+      undoneHere += 1;
+      continue;
+    }
     added += 1;
     byId.set(r.id, r);
   }
-  return { receipts: [...byId.values()], added, alreadyHere };
+  return { receipts: [...byId.values()], added, alreadyHere, undoneHere };
+}
+
+/*
+ * The exception to "a row the device does not have comes in whole": a row
+ * this phone removed ON PURPOSE, by taking back what made it.
+ *
+ * "Not swapped after all" deletes the swap-in and puts the original back in
+ * hand; "not split after all" deletes the part and folds its money back into
+ * the receipt it came from. Both leave a row missing that an older file still
+ * holds, and bringing it back put the same purchase on the phone twice.
+ * Measured, from an independent audit's repro (Monday export with a £20 lamp
+ * split off a £60 basket and some £80 shoes swapped; Tuesday both undone;
+ * Wednesday restore Monday): still returnable £140 → £240, both pairs of
+ * shoes active with reminders of their own — under "Nothing already here was
+ * changed".
+ *
+ * Read off the rows themselves, because the undo leaves its own evidence: the
+ * original of a swap-in is here and no longer swapped; the receipt a part
+ * came from is here holding exactly its amount in the file plus the part's.
+ * A swap-in whose original has gone, or a part whose receipt has gone, still
+ * comes back — that is a deletion, which is what restoring is for.
+ */
+function undoneSince(r: Receipt, here: ReadonlyMap<string, Receipt>, then: ReadonlyMap<string, Receipt>): boolean {
+  if (r.swappedFrom) {
+    const original = here.get(r.swappedFrom);
+    if (original && !original.exchanged) return true;
+  }
+  if (r.splitFrom) {
+    const fromHere = here.get(r.splitFrom);
+    const fromThen = then.get(r.splitFrom);
+    if (fromHere && fromThen && fromHere.amount === fromThen.amount + r.amount) return true;
+  }
+  return false;
 }
 
 /**
@@ -405,10 +449,11 @@ export function mergeBackup(current: readonly Receipt[], incoming: readonly Rece
  * that makes it true: `mergeBackup` above, run by the reducer against the
  * state it lands on.
  */
-export function restoredNote({ added, alreadyHere, skipped }: RestoreReport): string {
+export function restoredNote({ added, alreadyHere, undoneHere, skipped }: RestoreReport): string {
   const parts = [
     `${added} restored`,
     ...(alreadyHere ? [`${alreadyHere} already here`] : []),
+    ...(undoneHere ? [`${undoneHere} undone here since, left out`] : []),
     ...(skipped ? [`${skipped} unreadable and skipped`] : []),
   ];
   return `${parts.join(' · ')}. Nothing already here was changed.`;

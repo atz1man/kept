@@ -73,7 +73,7 @@ describe('restoring an older backup', () => {
     const after = run(tuesday, { type: 'restore', backup: parsed });
     expect(after.receipts).toEqual(tuesday.receipts);
     expect(totals(after.receipts)).toEqual({ returnable: toPence(140), back: toPence(30) });
-    expect(after.restored).toEqual({ added: 0, alreadyHere: 3, skipped: 0 });
+    expect(after.restored).toEqual({ added: 0, alreadyHere: 3, undoneHere: 0, skipped: 0 });
     expect(restoredNote(after.restored!)).toBe('0 restored · 3 already here. Nothing already here was changed.');
   });
 
@@ -84,7 +84,7 @@ describe('restoring an older backup', () => {
     // Monday's basket, as Monday had it: the device no longer holds one to contradict it.
     expect(find(after.receipts, 'basket')?.amount).toBe(toPence(60));
     expect(find(after.receipts, 'coat')).toMatchObject({ refunded: toPence(30), credit: { expires: '2027-01-31' } });
-    expect(after.restored).toEqual({ added: 1, alreadyHere: 2, skipped: 0 });
+    expect(after.restored).toEqual({ added: 1, alreadyHere: 2, undoneHere: 0, skipped: 0 });
   });
 
   it('keeps a change that landed while the file was being read', () => {
@@ -99,5 +99,51 @@ describe('restoring an older backup', () => {
   it('is said once, where it happened', () => {
     const after = run(tuesday, { type: 'restore', backup: parsed }, { type: 'go', screen: 'home' });
     expect(after.restored).toBeNull();
+  });
+});
+
+describe('restoring a file written before a swap or a split was undone here', () => {
+  /*
+   * "Not swapped after all" removes the swap-in; "not split after all"
+   * removes the part and folds its money back. An older file still holds
+   * both, and the restore used to bring them back beside the receipts that
+   * had taken their money back: £140 still returnable became £240, both
+   * pairs of shoes active with reminders of their own.
+   */
+  const before = start([r('basket', 'Basket', toPence(60)), r('shoes', 'Shoes', toPence(80))]);
+  const done = run(
+    before,
+    { type: 'split', id: 'basket', item: 'Lamp', pence: toPence(20), newId: 'lamp' },
+    { type: 'exchange', id: 'shoes', newId: 'shoes2' },
+    { type: 'go', screen: 'settings' },
+  );
+  const file = (() => {
+    const out = parseBackup(exportBackup(done));
+    if (!out.ok) throw new Error(out.reason);
+    return out.summary;
+  })();
+  const undone = run(done, { type: 'unsplit', id: 'lamp' }, { type: 'unexchange', id: 'shoes' }, { type: 'go', screen: 'settings' });
+
+  it('leaves out what was undone here, and changes no money', () => {
+    expect(totals(undone.receipts)).toEqual({ returnable: toPence(140), back: 0 });
+    const after = run(undone, { type: 'restore', backup: file });
+    expect(after.receipts).toEqual(undone.receipts);
+    expect(totals(after.receipts)).toEqual({ returnable: toPence(140), back: 0 });
+    expect(after.restored).toEqual({ added: 0, alreadyHere: 2, undoneHere: 2, skipped: 0 });
+    expect(restoredNote(after.restored!)).toBe('0 restored · 2 already here · 2 undone here since, left out. Nothing already here was changed.');
+  });
+
+  it('still brings back a swap-in or a part whose receipt was deleted here — that is what restoring is for', () => {
+    const deleted = run(undone, { type: 'delete', id: 'shoes' }, { type: 'delete', id: 'basket' }, { type: 'go', screen: 'settings' });
+    const { receipts, added, undoneHere } = mergeBackup(deleted.receipts, file.receipts);
+    expect(undoneHere).toBe(0);
+    expect(added).toBe(4);
+    expect(receipts.map((x) => x.id).sort()).toEqual(['basket', 'lamp', 'shoes', 'shoes2']);
+  });
+
+  it('still brings back a swap-in and a part onto a phone that holds them as the file does', () => {
+    // Swapped and split here too, with nothing undone: restoring the same file is a no-op.
+    const { added, alreadyHere, undoneHere } = mergeBackup(done.receipts, file.receipts);
+    expect({ added, alreadyHere, undoneHere }).toEqual({ added: 0, alreadyHere: 4, undoneHere: 0 });
   });
 });

@@ -896,7 +896,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         receipts: m.receipts,
         alertsSent: pruneSent(base.alertsSent, m.receipts),
         selId: null,
-        restored: { added: m.added, alreadyHere: m.alreadyHere, skipped: action.backup.skipped },
+        restored: { added: m.added, alreadyHere: m.alreadyHere, undoneHere: m.undoneHere, skipped: action.backup.skipped },
       };
     }
     case 'settings':
