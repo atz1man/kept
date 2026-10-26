@@ -144,11 +144,15 @@ export function Watch({ updates, receipts, today, watching, refreshes, onOpen }:
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontWeight: 600, fontSize: 15.5 }}>{u.store}</span>
                 {/* A sample carries no date. "2d ago" on an invented change is
-                    the freshness claim that made it read as news; the sample
-                    receipts say "sample" where it can be seen, and so do these. */}
-                <span style={{ fontSize: 10.5, fontWeight: 600, background: color.accentSoft, padding: '3px 9px', borderRadius: radius.chip, whiteSpace: 'nowrap' }}>
-                  {u.demo ? 'sample' : relativeAgo(fromISODate(u.changedOn), today)}
-                </span>
+                    the freshness claim that made it read as news; it carries
+                    the same Sample tag as the sample receipts above it. */}
+                {u.demo ? (
+                  <SampleTag spoken />
+                ) : (
+                  <span style={{ fontSize: 10.5, fontWeight: 600, background: color.accentSoft, padding: '3px 9px', borderRadius: radius.chip, whiteSpace: 'nowrap' }}>
+                    {relativeAgo(fromISODate(u.changedOn), today)}
+                  </span>
+                )}
               </div>
               <div style={{ fontSize: 13.5, color: color.body, lineHeight: 1.55, marginTop: 8 }}>{u.text}</div>
               {/* Where it was read, so it can be checked: every downloaded
