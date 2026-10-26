@@ -26,6 +26,33 @@ const UK_CALENDAR = (() => {
   }
 })();
 
+const UK_HOUR = (() => {
+  try {
+    return new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: 'numeric', hourCycle: 'h23' });
+  } catch {
+    return null;
+  }
+})();
+
+/**
+ * The instant a UK calendar day begins — 00:00 in London on `day` (this
+ * module's local-midnight Date for that date), wherever the phone is.
+ *
+ * What a reminder about a UK deadline must not fire before. A phone east of
+ * the UK reaches 9am on a date while the UK is still on the day before: in
+ * Sydney, "the window has passed" lodged for 9am on the morning after the
+ * last day fired at 22:00 on the last day in the UK — about a window with
+ * two hours left. London is GMT or one hour ahead of it, so midnight there is
+ * UTC midnight less that hour, read off the zone tables at UTC midnight
+ * (both clock changes happen at 01:00 UTC, after it).
+ */
+export function ukMidnight(day: Date): Date {
+  const utc = Date.UTC(day.getFullYear(), day.getMonth(), day.getDate());
+  if (!UK_HOUR) return startOfDay(day);
+  const ahead = Number(UK_HOUR.formatToParts(new Date(utc)).find((p) => p.type === 'hour')?.value ?? 0);
+  return new Date(utc - (Number.isFinite(ahead) ? ahead : 0) * 3_600_000);
+}
+
 /**
  * The calendar day it is in the UK at `now`, as this module's local-midnight Date.
  *

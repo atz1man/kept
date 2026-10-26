@@ -1,4 +1,4 @@
-import { addDays, startOfDay, toISODate } from './dates';
+import { addDays, startOfDay, toISODate, ukMidnight } from './dates';
 import { derive } from './receipts';
 import { alertKey, copyFor, singleShotDue, singleShots, type AlertRung, type ReturnRung } from './alerts';
 import type { Receipt } from './types';
@@ -126,6 +126,21 @@ function at9am(day: Date): Date {
   return d;
 }
 
+/**
+ * 9am on the phone, but never before the UK day it is about has begun.
+ *
+ * Every deadline here is a UK day. At home the two are the same morning,
+ * and west of the UK 9am local comes after midnight in London anyway. East
+ * of it, 9am local can still be the UK's day BEFORE: "the window has
+ * passed" fired at 22:00 UK on the last day for a phone in Sydney, the very
+ * thing `fireDayFor` exists to prevent. Those wait for UK midnight instead
+ * (11am in Sydney) rather than everything moving to 9am UK, which would wake
+ * someone in California at 1am.
+ */
+function fireOn(day: Date): Date {
+  return new Date(Math.max(at9am(day).getTime(), ukMidnight(day).getTime()));
+}
+
 /** The first 9am after `now`: today's while it is still ahead, else tomorrow's. */
 function nextNine(now: Date): Date {
   const today = at9am(now);
@@ -173,7 +188,7 @@ export function planAlerts(
      */
     for (const s of singleShots(r, today)) {
       if (sent.has(s.key)) continue;
-      const notice = at9am(s.from);
+      const notice = fireOn(s.from);
       const clock = { from: toISODate(s.from), until: s.until ? toISODate(s.until) : null };
       // Already lodged late, about this same clock: its morning is fixed.
       const before = owns(late, s.key) ? late[s.key] : undefined;
@@ -198,7 +213,7 @@ export function planAlerts(
       if (sent.has(key)) continue;
       const day = fireDayFor(rung, deadline, urgentDays);
       if (!day) continue;
-      const when = at9am(day);
+      const when = fireOn(day);
       // Nothing in the past: the system would either fire it immediately or
       // refuse it, and both are wrong for a window that closed last month.
       // `<` would do: `when` is always 9am exactly and `now` is an arbitrary
