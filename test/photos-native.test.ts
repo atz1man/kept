@@ -212,3 +212,51 @@ describe('reading one picture back', () => {
     readFileReturns = undefined;
   });
 });
+
+describe('clearing up when a launch has set receipts aside', () => {
+  /*
+   * A row `load` cannot read — a newer build's, a damaged one — is dropped
+   * from the library and kept in a set-aside copy that Settings offers back.
+   * The clean-up then saw that receipt's photo as an orphan and deleted it at
+   * the same launch: the receipt recoverable, its proof of purchase gone for
+   * good. With the whole store corrupt, every photo went.
+   */
+  const ok = { store: 'Argos', cat: 'other', amount: 5000, purchasedOn: '2026-10-01', windowDays: 30, policy: 'p', distance: false };
+  const boot = async (raw: string) => {
+    const kept = new Map<string, string>([['kept.v1', raw]]);
+    (globalThis as Record<string, unknown>).window = {
+      localStorage: { getItem: (k: string) => kept.get(k) ?? null, setItem: (k: string, v: string) => void kept.set(k, v), removeItem: (k: string) => void kept.delete(k) },
+      Capacitor: { isNativePlatform: () => true },
+    };
+    const { load, setAsideIds } = await import('../src/lib/storage');
+    const { cleanupPhotos } = await import('../src/lib/photos');
+    const state = load(new Date(2026, 9, 26));
+    // As the launch does it (app/state.ts).
+    await cleanupPhotos([...state.receipts.map((r) => r.id), ...setAsideIds()]);
+    return state;
+  };
+
+  it('keeps the photo of a row this build could not read, and still clears a real orphan', async () => {
+    listing = [{ name: 'r_coat.jpg' }, { name: 'r_tv.jpg' }, { name: 'r_deleted.jpg' }];
+    const state = await boot(JSON.stringify({ version: 1, receipts: [
+      { ...ok, id: 'r_coat', item: 'Coat', status: 'active' },
+      { ...ok, id: 'r_tv', item: 'TV', amount: 89900, status: 'disputed' },
+    ] }));
+    expect(state.receipts.map((r) => r.id)).toEqual(['r_coat']);
+    expect(removed).toEqual(['receipts/r_deleted.jpg']);
+  });
+
+  it('keeps every photo a corrupt library names', async () => {
+    listing = [{ name: 'r_coat.jpg' }, { name: 'r_tv.jpg' }];
+    const whole = JSON.stringify({ version: 1, receipts: [{ ...ok, id: 'r_coat', item: 'Coat', status: 'active' }, { ...ok, id: 'r_tv', item: 'TV', status: 'active' }] });
+    const state = await boot(whole.slice(0, -7)); // a write cut off mid-way
+    expect(state.receipts.some((r) => r.id === 'r_coat' || r.id === 'r_tv')).toBe(false);
+    expect(removed).toEqual([]);
+  });
+
+  it('is what the launch passes', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync(new URL('../src/app/state.ts', import.meta.url), 'utf8');
+    expect(src).toMatch(/cleanupPhotos\(\[\.\.\.state\.receipts\.map\(\(r\) => r\.id\), \.\.\.setAsideIds\(\)\]\)/);
+  });
+});
