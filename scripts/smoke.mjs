@@ -3262,7 +3262,10 @@ results['the sample policy changes are labelled, and held once each'] =
   updateIds.length > 0 &&
   updateIds.length === new Set(updateIds).size &&
   stored.every((u) => u.demo === true) &&
-  (await page.getByText('sample', { exact: true }).count()) === stored.length &&
+  // One Sample tag per card, read out (the rows' tags above are hidden, their
+  // buttons say "(sample)"), drawn as the rows draw theirs.
+  (await page.locator('main li:not(:has(button)) [data-sample]:not([aria-hidden])').count()) === stored.length &&
+  (await page.getByText('sample', { exact: true }).count()) === 0 &&
   (await page.getByText(/These are samples/).isVisible().catch(() => false));
 // Both halves, because the reassurance alone is what this check used to
 // accept: Zara's fee change left the window at 30 days, so the card said

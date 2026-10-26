@@ -182,15 +182,21 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
  * are ours, not yours), and the tag does that without spending the words the
  * row needs for the item. Its own words are in the row's accessible name
  * ("(sample)"), so it is hidden from assistive tech here.
+ *
+ * `spoken` is for a place with no such name — a policy change on Watch is a
+ * card of text, not a button — where the tag is the only thing that says the
+ * change is invented, and so must be read out. Same look either way: the
+ * samples were labelled two ways on one screen, a boxed "Sample" on the rows
+ * and a filled lowercase "sample" pill on the cards below them.
  */
-export function SampleTag() {
+export function SampleTag({ spoken = false }: { spoken?: boolean }) {
   return (
     <span
       data-sample
-      aria-hidden="true"
+      aria-hidden={spoken ? undefined : 'true'}
       style={{
         display: 'inline-block', fontSize: 10.5, fontWeight: 600, lineHeight: '15px', letterSpacing: '0.02em',
-        padding: '0 5px', marginRight: 6, verticalAlign: 1, color: color.muted,
+        padding: '0 5px', marginRight: spoken ? 0 : 6, verticalAlign: 1, color: color.muted, whiteSpace: 'nowrap',
         border: `1px solid ${color.border}`, borderRadius: 4,
       }}
     >
