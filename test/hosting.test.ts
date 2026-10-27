@@ -191,3 +191,85 @@ describe('the headers file', () => {
     expect(config.build.outDir).toBe('dist');
   });
 });
+
+describe('the feed, for the iPhone app', () => {
+  it('may be read from capacitor://localhost, and from nowhere else in particular', () => {
+    // A feed host set for the iOS build (VITE_FEED_ORIGIN) is fetched from
+    // the app's own origin; without this WKWebView refuses the answer and the
+    // app silently keeps the list it shipped with.
+    for (const path of ['/policy-feed.json', '/policy-feed.sig']) {
+      expect(received(rules, path, 'access-control-allow-origin'), path).toEqual(['capacitor://localhost']);
+    }
+    expect(received(rules, '/app/', 'access-control-allow-origin')).toEqual([]);
+  });
+});
+
+/*
+ * Vercel does not read `_headers`; it reads `vercel.json`. The rules are
+ * written once, with their reasons, in `_headers`, and this holds the Vercel
+ * copy to it path by path — the same headers, the same values, for every
+ * sample path and every built page — so the two hosts cannot drift apart.
+ * Vercel sends every matching rule and lets a later one replace an earlier
+ * one's same header rather than joining them; `_headers` never names one
+ * header twice on a path (checked above), so the two read the same.
+ */
+const VERCEL_FILE = join(ROOT, 'vercel.json');
+const vercel = existsSync(VERCEL_FILE)
+  ? (JSON.parse(readFileSync(VERCEL_FILE, 'utf8')) as {
+      buildCommand?: string;
+      outputDirectory?: string;
+      framework?: string | null;
+      trailingSlash?: boolean;
+      headers?: { source: string; headers: { key: string; value: string }[] }[];
+    })
+  : {};
+
+/** A Vercel `source` as the host matches it: `(.*)` is any run of characters, all else literal. */
+function vercelMatches(source: string, path: string): boolean {
+  const re = new RegExp(`^${source.split('(.*)').map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*')}$`);
+  return re.test(path);
+}
+
+function vercelReceived(path: string): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const rule of vercel.headers ?? []) {
+    if (!vercelMatches(rule.source, path)) continue;
+    for (const h of rule.headers) out.set(h.key.toLowerCase(), h.value);
+  }
+  return out;
+}
+
+function headersReceived(path: string): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const rule of rules) if (matches(rule.pattern, path)) for (const [n, v] of rule.headers) out.set(n, v);
+  return out;
+}
+
+describe('vercel.json', () => {
+  it('exists, builds the site, and serves dist with each page at its own directory', () => {
+    expect(existsSync(VERCEL_FILE), 'vercel.json is missing').toBe(true);
+    expect(vercel.buildCommand).toBe('npm run build');
+    expect(vercel.outputDirectory).toBe('dist');
+    // No framework preset: a preset rewrites routes for a single-page app,
+    // and every page here is a real directory with its own index.html.
+    expect(vercel.framework).toBeNull();
+    expect(vercel.trailingSlash).toBe(true);
+  });
+
+  it('sends every path exactly the headers _headers sends it', async () => {
+    const { pages } = await pageUrls();
+    const paths = [...new Set([...SAMPLE, ...pages, ...pages.map((p) => `${p}index.html`), '/icons/icon-192.png'])];
+    expect((vercel.headers ?? []).length).toBeGreaterThan(5);
+    for (const path of paths) {
+      expect(Object.fromEntries(vercelReceived(path)), path).toEqual(Object.fromEntries(headersReceived(path)));
+    }
+  });
+
+  it('notices a header that is missing from it', () => {
+    // The comparison above, against a copy with one header taken out.
+    const without = (vercel.headers ?? []).map((r) => ({ ...r, headers: r.headers.filter((h) => h.key !== 'Referrer-Policy') }));
+    const got = new Map<string, string>();
+    for (const rule of without) if (vercelMatches(rule.source, '/app/')) for (const h of rule.headers) got.set(h.key.toLowerCase(), h.value);
+    expect(Object.fromEntries(got)).not.toEqual(Object.fromEntries(headersReceived('/app/')));
+  });
+});

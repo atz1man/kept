@@ -2,6 +2,9 @@
   "name": "kept",
   "private": true,
   "version": "1.0.0",
+  "engines": {
+    "node": "22.x"
+  },
   "type": "module",
   "description": "Quids In — local-first UK return-deadline tracker (PWA + landing page)",
   "scripts": {

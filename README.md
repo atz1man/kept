@@ -81,34 +81,37 @@ real, and it does not care what the identifier is, only that the three agree.
 ## Hosting
 
 The website is the static build and nothing else — there is no server of
-Quids In's own. On Cloudflare Pages:
+Quids In's own. It is hosted on **Vercel**:
 
-1. **Workers & Pages → Create → Pages → Connect to Git**, and pick this
+1. **vercel.com → Add New → Project → Import Git Repository**, and pick this
    repository (it is still called `kept`).
-2. Build settings: framework preset **None**, build command `npm run build`,
-   build output directory `dist`. Under environment variables, set
-   `NODE_VERSION` to `22`, the version CI builds with.
-3. Deploy, check the `*.pages.dev` address, then **Custom domains → Set up a
-   custom domain** and point DNS where it says.
+2. Change nothing on the configure screen. `vercel.json` sets it: no framework
+   preset, build command `npm run build`, output directory `dist`, and every
+   page served at its own directory with a trailing slash. Node is 22, from
+   `engines` in `package.json` — the version CI builds with. Deploy.
+3. Check the `*.vercel.app` address, then **Settings → Domains → Add** your
+   domain. Vercel shows the DNS records to add at the registrar: an `A` record
+   for the bare domain and a `CNAME` for `www`. Keep the registrar's own DNS,
+   so its free email forwarding still works for the work address `store/SUBMISSION.md` asks for.
 
-The headers come from `public/_headers`, which the build copies into `dist/`
-and Cloudflare reads from there — frame-ancestors (the one part of the content
-security policy a `<meta>` cannot carry), nosniff, no referrer, HTTPS, a
-permissions policy that allows the camera and nothing else it does not use,
-and the caching a deploy depends on: hashed files kept for a year, while the
+The headers are in `vercel.json` — frame-ancestors (the one part of the
+content security policy a `<meta>` cannot carry), nosniff, no referrer, HTTPS,
+a permissions policy that allows the camera and nothing else it does not use,
+the caching a deploy depends on (hashed files kept for a year, while the
 pages, `sw.js`, the manifest and the feed are revalidated every time, or a
-phone would open last deploy's shell after this one. Each line says why in the
-file, and `test/hosting.test.ts` holds it. There is no `_redirects`: every page
-is a real directory with its own `index.html`, and there is nothing for a
-fallback to catch.
+phone would open last deploy's shell after this one), and the feed readable
+from the iPhone app's `capacitor://localhost`. Their reasons are written once,
+in `public/_headers`, the same rules in the format Cloudflare Pages and Netlify
+read; `test/hosting.test.ts` holds the two files to each other path by path,
+so change a rule in both. There are no rewrites: every page is a real
+directory with its own `index.html`, and there is nothing for a fallback to
+catch.
 
-Turn nothing on that writes into the page. **Web Analytics** stays off: the
-privacy policy says there are no analytics, and its beacon is a script from
-another host, which the content security policy refuses anyway. So do
-**Rocket Loader**, **Email Address Obfuscation**, Zaraz and anything else that
-injects a script or rewrites the HTML on the way out — the policy allows only
-this build's own scripts, so an injected one is blocked, and one that rewrites
-the app's own script tags can leave a blank page.
+Turn nothing on that writes into the page. **Web Analytics** and **Speed
+Insights** stay off: the privacy policy says there are no analytics, and each
+is a script the content security policy refuses anyway. So does the Vercel
+**Toolbar** on preview deployments, and anything else that injects a script —
+the policy allows only this build's own scripts.
 
 Once it is up, `curl -sI https://your.domain/app/` should show the headers
 above, with `cache-control: no-cache`. One request a static host cannot answer
@@ -2330,14 +2333,14 @@ reads nothing out of a POST, so the share is lost there rather than read.
 
 On a static host that case is worse than a lost share: there is no page to
 open at all. A static host serves files to GET and HEAD and has no code to
-answer a POST with — `vite preview` answers it `404`, and Cloudflare Pages,
-with no Functions, will refuse it too (what status it sends is not something
+answer a POST with — `vite preview` answers it `404`, and Vercel serving only
+static files will refuse it too (what status it sends is not something
 its documentation states; `curl -si -X POST https://your.domain/app/` says).
 So someone who shares into an install whose worker has gone sees the host's
-error page instead of the app, and the share is lost. A `_redirects` rule
+error page instead of the app, and the share is lost. A redirect rule
 cannot fix it, because redirects match a path and not a method, and `/app/`
 redirected to itself is a loop for every ordinary launch. The fix, if that case
-ever matters, is a Pages Function on `/app/` that answers a POST with a `303`
+ever matters, is a Vercel Function on `/app/` that answers a POST with a `303`
 to `/app/` and reads nothing — which means running code on the server, and is
 not done here. With the worker in control, which is every share on a healthy
 install, the POST never leaves the phone.
