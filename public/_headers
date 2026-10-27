@@ -1,6 +1,9 @@
-# Response headers for the static host — Cloudflare Pages reads this file, and
-# Netlify reads the same format. Vite copies public/ into dist/, so it ships
-# with every build. test/hosting.test.ts holds it to what is written here.
+# Response headers for the static host. Vite copies public/ into dist/, so it
+# ships with every build. Cloudflare Pages and Netlify read this file; Vercel
+# does not, and reads vercel.json instead, which carries the same rules and is
+# held to this file by test/hosting.test.ts — every path must be sent the same
+# headers by both. This file is where the reasons are written; change a rule
+# here and in vercel.json together.
 #
 # One rule about the format decides how this file is laid out: when several
 # rules match a path, the host sends the headers of ALL of them, and the same
@@ -88,10 +91,19 @@
 # The verified policy changes, and the signature that must cover exactly the
 # bytes the feed answered with. The worker fetches both network first (sw.js,
 # FRESH); an hour-old copy from the HTTP cache would undo that.
+#
+# And the iPhone app may read them. Its pages are served from
+# capacitor://localhost, so a feed fetched from this site is a cross-origin
+# request, and WKWebView refuses the answer without this header — the app then
+# keeps the list it shipped with, silently (src/lib/feed-origin.ts). Exactly
+# that origin, not *: the feed is public, but nothing else needs to read it
+# from a page.
 /policy-feed.json
   Cache-Control: no-cache
+  Access-Control-Allow-Origin: capacitor://localhost
 /policy-feed.sig
   Cache-Control: no-cache
+  Access-Control-Allow-Origin: capacitor://localhost
 
 # Not content-hashed, and the icon has just changed in the rebrand, so
 # "immutable" would pin the old one on every device that had seen it. A day
