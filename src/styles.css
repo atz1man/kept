@@ -426,6 +426,35 @@ select:focus-visible { outline-offset: -1px; }
  */
 .k-tab { padding: 7px 4px 5px; }
 
+/*
+ * The landing page's layout, the few parts of it that answer to the width of
+ * the screen and so cannot be inline styles.
+ *
+ * A feature row is one column on a phone and two past one, alternating which
+ * side the picture sits on. One column means `minmax(0, 1fr)`, not `1fr`: an
+ * implicit auto column takes its widest child's min-content, and a picture
+ * that will not shrink widens the page (scripts/layout.mjs).
+ */
+.k-split { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(28px, 5vw, 72px); align-items: center; }
+@media (min-width: 900px) {
+  .k-split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .k-split.k-flip > :first-child { order: 2; }
+}
+/* Section links in the header: on a phone the one button is the nav. */
+@media (max-width: 799px) { .k-wide-only { display: none !important; } }
+/* An anchor clears the sticky header rather than landing under it. */
+.k-anchor { scroll-margin-top: 76px; }
+html:has(.k-anchor) { scroll-behavior: smooth; }
+/* The two buttons drawn on the hero's gradient: a white one, and an outline. */
+.k-on-hero { transition: transform .15s ease, box-shadow .15s ease; box-shadow: 0 10px 30px rgba(10,10,18,0.28); }
+.k-on-hero:hover { color: var(--k-accent-ink); transform: translateY(-1px); box-shadow: 0 14px 36px rgba(10,10,18,0.34); }
+.k-ghost:hover { color: var(--k-white); background: rgba(255,255,255,0.10); }
+/* The questions: the browser's own disclosure triangle replaced by a plus that turns. */
+.k-faq > summary { list-style: none; }
+.k-faq > summary::-webkit-details-marker { display: none; }
+.k-faq-mark { transition: transform .2s ease; }
+.k-faq[open] .k-faq-mark { transform: rotate(45deg); }
+
 /* The scrolling policy headline bar on the landing page. */
 .k-ticker { animation: ticker 28s linear infinite; }
 
