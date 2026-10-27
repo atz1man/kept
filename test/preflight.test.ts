@@ -13,12 +13,23 @@ type Tree = ReturnType<typeof readTree>;
 
 const today: Tree = readTree();
 
-/** Today's tree with every placeholder filled in, the way the owner will. */
+/*
+ * Two placeholders have been filled since this gate was written: the contact
+ * address and the listing's domain. Their checks are still held in both
+ * directions, against the files as they were shipped — a gate that only ever
+ * sees the filled-in value could stop reading the file and nobody would know.
+ */
+const shipped: Tree = {
+  ...today,
+  brand: today.brand.replace(/(export const CONTACT_EMAIL\b[^=]*=\s*)'[^']*';/, '$1null;'),
+  listing: today.listing.replaceAll('https://getquidsin.co.uk', 'https://REPLACE_ME'),
+};
+
+/** Today's tree with every remaining placeholder filled in, the way the owner will. */
 function ready(): Tree {
   return {
+    ...today,
     capacitorConfig: today.capacitorConfig.replace(/appId: '[^']+'/, "appId: 'uk.co.example.kept'"),
-    brand: today.brand.replace(/(export const CONTACT_EMAIL\b[^=]*=\s*)null;/, "$1'privacy@example.co.uk';"),
-    listing: today.listing.replaceAll('https://REPLACE_ME', 'https://example.co.uk'),
     stores: today.stores.replace(/(export const TABLE_CHECKED_ON\b[^=]*=\s*)null;/, "$1'2026-10-01';"),
     feedSignature: today.feedSignature.replace(/(const CHECKED_IN_KEY\b[^=]*=\s*)null;/, "$1'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE';"),
   };
@@ -30,7 +41,7 @@ describe('npm run preflight', () => {
   it('names every placeholder this repository ships with', () => {
     // If one of these goes quiet while the placeholder is still in the tree,
     // the gate has stopped reading the file it was written for.
-    expect(failing(preflight(today))).toEqual([
+    expect(failing(preflight(shipped))).toEqual([
       'the bundle identifier is yours',
       'the privacy policy has a contact address',
       'the listing’s URLs are real',
@@ -39,17 +50,28 @@ describe('npm run preflight', () => {
     ]);
   });
 
+  it('has the contact address and the domain filled in, and nothing else yet', () => {
+    expect(failing(preflight(today))).toEqual([
+      'the bundle identifier is yours',
+      'the retailer table has been checked against the shops',
+      'policy updates are signed',
+    ]);
+    // And the shipped fixture really is the old placeholder, not today's file.
+    expect(shipped.brand).not.toBe(today.brand);
+    expect(shipped.listing).not.toBe(today.listing);
+  });
+
   it('passes a tree with everything filled in', () => {
-    // The fixture really did change each file — otherwise "passes" would be
-    // a claim about a tree nobody built.
+    // The fixture really did change each file it fills — otherwise "passes"
+    // would be a claim about a tree nobody built.
     const r = ready();
-    for (const k of Object.keys(r) as (keyof Tree)[]) expect(r[k], String(k)).not.toBe(today[k]);
+    for (const k of ['capacitorConfig', 'stores', 'feedSignature'] as const) expect(r[k], k).not.toBe(today[k]);
     expect(failing(preflight(r))).toEqual([]);
   });
 
   it('fails on each placeholder alone', () => {
     const r = ready();
-    const put = (k: keyof Tree) => failing(preflight({ ...r, [k]: today[k] }));
+    const put = (k: keyof Tree) => failing(preflight({ ...r, [k]: shipped[k] }));
     expect(put('capacitorConfig')).toEqual(['the bundle identifier is yours']);
     expect(put('brand')).toEqual(['the privacy policy has a contact address']);
     expect(put('listing')).toEqual(['the listing’s URLs are real']);
@@ -58,14 +80,14 @@ describe('npm run preflight', () => {
   });
 
   it('takes a feed key supplied at build time', () => {
-    const r = { ...ready(), feedSignature: today.feedSignature };
+    const r = { ...ready(), feedSignature: shipped.feedSignature };
     expect(failing(preflight(r, { VITE_FEED_PUBLIC_KEY: 'k' }))).toEqual([]);
   });
 
   it('does not let a missing feed key block review', () => {
     // The app works unsigned; APN-19 is a recommendation. Everything else is
     // a rejection or an untrue listing.
-    const byName = new Map((preflight(today) as Result[]).map((r) => [r.name, r.blocking]));
+    const byName = new Map((preflight(shipped) as Result[]).map((r) => [r.name, r.blocking]));
     expect(byName.get('policy updates are signed')).toBe(false);
     expect([...byName.values()].filter(Boolean)).toHaveLength(5);
   });
