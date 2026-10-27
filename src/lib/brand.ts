@@ -21,13 +21,15 @@ export const TAGLINE = 'return deadlines, watched';
 export const TAGLINE_LEAD = TAGLINE[0].toUpperCase() + TAGLINE.slice(1);
 
 /**
- * Where privacy questions go. Deliberately unset: it has to be an address
- * someone reads, and that is not a thing to guess. While it is null the page
- * says so in plain view rather than printing an address nobody answers.
+ * Where privacy questions go: a Google Workspace mailbox on the company's
+ * domain, read by a person. It was deliberately unset until one existed —
+ * that is not a thing to guess — and the page said so in plain view rather
+ * than printing an address nobody answered. Setting it back to null brings
+ * that notice back.
  */
 // Read from here by the privacy page and by Settings' "Send feedback", and by
 // `npm run preflight`, which stays red while it is null.
-export const CONTACT_EMAIL: string | null = null;
+export const CONTACT_EMAIL: string | null = 'hello@getquidsin.co.uk';
 
 /**
  * Who publishes Quids In, as the Companies House register has it.
