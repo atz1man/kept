@@ -15,6 +15,7 @@
     "test": "TZ=America/New_York vitest run",
     "smoke": "node scripts/smoke.mjs",
     "icons": "node scripts/make-icons.mjs",
+    "og": "node --experimental-strip-types scripts/make-og.mjs",
     "contrast": "node scripts/contrast.mjs",
     "a11y": "node scripts/a11y.mjs",
     "layout": "node scripts/layout.mjs",
