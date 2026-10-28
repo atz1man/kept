@@ -3,61 +3,68 @@ import { color, font } from '../../tokens';
 import type { Category } from '../../lib/types';
 
 /*
- * The mark: a gold pound coin whose rim is a return arrow (↺), the head
- * closing the circle — money coming back, which is what "quids in" means.
- * It replaced a lowercase k for kept, the old name. Drawn on a 40-unit grid,
- * the same geometry as public/icons/icon.svg (512 units, ×12.8), so the app
- * icon and every mark inside the app are one drawing at different sizes.
+ * The mark: a Q drawn as the countdown ring every receipt in the app carries,
+ * its last stretch spent, with a tick for a tail — a return made in time,
+ * which is what "quids in" means. It replaced a gold coin inside a return
+ * arrow, which said "refund" in the way every refund icon does and had nothing
+ * to do with the ring the product is built around.
+ *
+ * One drawing, on the icon's own 512 grid: these paths are public/icons/icon.svg's,
+ * verbatim, so the app icon and every mark inside the app cannot drift apart.
+ *
+ * The tick is CUT out of the ring rather than drawn over it with an outline:
+ * an outline has to be painted in the tile's colour, which is a gradient, and
+ * would be right at one height of it only. A cut lets whatever is behind show,
+ * so the same drawing works on the tile, the soft tile, and in one colour.
  *
  * Simple on purpose: it has to read at 29px on a Settings row, so it is one
- * coin, one £ and one arrowhead, and nothing finer than the gap between the
- * rim and the face.
+ * ring, one tail and one gap.
  */
-const RIM = 'M32.13 14.6A13.28 13.28 0 1 1 21.39 6.79';
-const HEAD = 'M28.69 16.49L35.94 13.56L27.81 9.26Z';
-const POUND = ['M23.28 16.64C22.62 14.67 18.95 14.14 18.16 17.16L18.16 23.2C18.16 24.38 17.64 25.43 16.32 26.09L23.81 26.09', 'M16.06 20.71L21.31 20.71'];
+const SPENT = 'M245 122A134 134 0 0 1 361 189';
+const RING = 'M361 189A134 134 0 1 1 245 122';
+const TICK = 'M286 335L325 372L407 282';
 
-/**
- * The coin. `face` fills it, as on the app icon; without one it is drawn as
- * line work — the rim's arrow and the £ — for the one-colour uses.
- */
-function CoinGlyph({ rim, ink, face, weight = 3.91, pound = 2.34 }: { rim: string; ink: string; face?: string; weight?: number; pound?: number }) {
+function Glyph({ ring, tick, spent, spentOpacity }: { ring: string; tick: string; spent: string; spentOpacity: number }) {
+  // An id per instance: a page can show several marks, and a shared mask id
+  // would let one cut another's ring.
+  const id = useId().replace(/[^a-zA-Z0-9]/g, '');
   return (
     <g>
-      <path d={RIM} fill="none" stroke={rim} strokeWidth={weight} />
-      <path d={HEAD} fill={rim} stroke={rim} strokeWidth={0.47} strokeLinejoin="round" />
-      {face && <circle cx="20" cy="20" r="9.06" fill={face} />}
-      <g fill="none" stroke={ink} strokeWidth={pound} strokeLinecap="round" strokeLinejoin="round">
-        {POUND.map((d) => <path key={d} d={d} />)}
+      <mask id={`${id}c`} maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
+        <rect width="512" height="512" fill="#FFFFFF" />
+        <path d={TICK} fill="none" stroke="#000000" strokeWidth={80} strokeLinecap="round" strokeLinejoin="round" />
+      </mask>
+      <g mask={`url(#${id}c)`}>
+        <path d={SPENT} fill="none" stroke={spent} strokeOpacity={spentOpacity} strokeWidth={58} />
+        <path d={RING} fill="none" stroke={ring} strokeWidth={58} strokeLinecap="round" />
       </g>
+      <path d={TICK} fill="none" stroke={tick} strokeWidth={46} strokeLinecap="round" strokeLinejoin="round" />
     </g>
   );
 }
 
-/** The logo: the gold coin on the violet tile — the app icon at header size. */
+/** The logo: the gold ring and white tick on the violet tile — the app icon at header size. */
 export function Logo({ size = 28, style }: { size?: number; style?: CSSProperties }) {
-  // An id per instance: the header and the landing page can show two at once,
-  // and a shared gradient id would let one tile paint with the other's.
   const id = useId().replace(/[^a-zA-Z0-9]/g, '');
   return (
-    <svg width={size} height={size} viewBox="0 0 40 40" style={style} aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 512 512" style={style} aria-hidden="true">
       <defs>
         <linearGradient id={`${id}t`} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor={color.accentTile} />
           <stop offset="1" stopColor={color.accentHover} />
         </linearGradient>
       </defs>
-      <rect width="40" height="40" rx="8.75" fill={`url(#${id}t)`} />
-      <CoinGlyph rim={color.gold} face={color.gold} ink={color.goldInk} pound={size < 32 ? 2.6 : 2.34} />
+      <rect width="512" height="512" rx="112" fill={`url(#${id}t)`} />
+      <Glyph ring={color.gold} tick={color.white} spent={color.white} spentOpacity={0.24} />
     </svg>
   );
 }
 
-/** The bare mark, no tile — for surfaces that are themselves the accent. */
+/** The bare mark, no tile, in one colour — for surfaces that are themselves the accent. */
 export function LogoMark({ size = 18, fill = color.accent }: { size?: number; fill?: string }) {
   return (
-    <svg width={size} height={size} viewBox="4 4 32 32" aria-hidden="true">
-      <CoinGlyph rim={fill} ink={fill} weight={4.2} pound={3} />
+    <svg width={size} height={size} viewBox="74 85 364 342" aria-hidden="true">
+      <Glyph ring={fill} tick={fill} spent={fill} spentOpacity={0.28} />
     </svg>
   );
 }
@@ -65,9 +72,9 @@ export function LogoMark({ size = 18, fill = color.accent }: { size?: number; fi
 /** The celebrate variant: the mark on the soft tile — returned in time. */
 export function LogoChecked({ size = 38 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 40 40" aria-hidden="true">
-      <rect width="40" height="40" rx="8.75" fill={color.accentSoft} />
-      <CoinGlyph rim={color.accent} ink={color.accent} />
+    <svg width={size} height={size} viewBox="0 0 512 512" aria-hidden="true">
+      <rect width="512" height="512" rx="112" fill={color.accentSoft} />
+      <Glyph ring={color.accent} tick={color.accent} spent={color.accent} spentOpacity={0.25} />
     </svg>
   );
 }
@@ -75,9 +82,9 @@ export function LogoChecked({ size = 38 }: { size?: number }) {
 /** The empty state: the mark in outline, waiting for a first receipt. */
 export function LogoDashed({ size = 72 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 40 40" style={{ margin: '0 auto 20px' }} aria-hidden="true">
-      <rect x="1" y="1" width="38" height="38" rx="8.5" fill="none" stroke={color.borderSoft} strokeWidth="1" strokeDasharray="2.5 2.5" />
-      <CoinGlyph rim={color.fainter} ink={color.fainter} weight={2.2} pound={1.8} />
+    <svg width={size} height={size} viewBox="0 0 512 512" style={{ margin: '0 auto 20px' }} aria-hidden="true">
+      <rect x="13" y="13" width="486" height="486" rx="109" fill="none" stroke={color.borderSoft} strokeWidth="13" strokeDasharray="32 32" />
+      <Glyph ring={color.fainter} tick={color.fainter} spent={color.fainter} spentOpacity={0.35} />
     </svg>
   );
 }

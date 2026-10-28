@@ -54,7 +54,7 @@ describe('reading a PNG somebody else encoded', () => {
   });
 
   it('reads the mark inside it', () => {
-    // The coin is gold and its face fills the middle third.
+    // The ring is gold and passes through the middle third.
     let found = false;
     for (let y = 170; y < 340 && !found; y += 3) {
       for (let x = 170; x < 340; x += 3) if (near(pixelAt(icon, x, y), MARK)) { found = true; break; }
