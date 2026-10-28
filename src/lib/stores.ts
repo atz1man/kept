@@ -120,8 +120,8 @@ export const STORE_POLICIES: readonly StorePolicy[] = [
   },
   {
     name: 'ASOS', aliases: ['asos'], windowDays: 28, clockStart: 'delivery', cat: 'clothing',
-    policy: 'ASOS · 28 days from delivery for a refund, 45 for credit. Frequent returners get the shorter window.',
-    gotcha: 'ASOS counts the 28 days from the day it arrives, not from your order — put the arrival date on the receipt and Quids In counts from there. After 28 days it is credit, not a refund.',
+    policy: 'ASOS · 28 days from delivery for a refund. An order in several parcels counts from the last one to arrive.',
+    gotcha: 'ASOS counts the 28 days from the day it arrives, not from your order — put the arrival date on the receipt and Quids In counts from there.',
   },
   {
     name: 'Next', commonWord: true, aliases: ['next'], windowDays: 28, clockStart: 'purchase', cat: 'clothing',
