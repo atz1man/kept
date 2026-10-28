@@ -22,6 +22,7 @@
 import './uk-clock.mjs';
 import { spawn } from 'node:child_process';
 import { chromium } from 'playwright';
+import { loadEnv } from 'vite';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { reportOnCrash, sayCrash } from './crash-report.mjs';
 import { answeringBridge } from './answering-bridge.mjs';
@@ -121,6 +122,37 @@ if (!(await waitForServer())) {
 }
 
 const browser = await chromium.launch(EXEC ? { executablePath: EXEC } : {});
+
+/*
+ * The feed host this bundle was built with, read the way `npm run build:ios`
+ * reads it — the `ios` mode's env files and the environment — so the checks
+ * below ask the question of the build they are looking at.
+ *
+ * When there is one, every context answers it from this checkout's own
+ * `public/` instead of letting the bundle reach the live site. A sweep that
+ * depends on a website being up, and on what it happens to be serving, is a
+ * sweep that goes red for reasons that are not in the commit; and the answer
+ * carries the app's own origin in `Access-Control-Allow-Origin`, as the host
+ * does for `capacitor://localhost` (vercel.json), so the app gets as far with
+ * it here as it would on a phone.
+ */
+const FEED_HOST = (loadEnv('ios', ROOT, 'VITE_').VITE_FEED_ORIGIN ?? '').trim().replace(/\/$/, '') || null;
+if (FEED_HOST !== null) {
+  const open = browser.newContext.bind(browser);
+  browser.newContext = async (...args) => {
+    const c = await open(...args);
+    await c.route(`${FEED_HOST}/**`, (route) => {
+      const name = new URL(route.request().url()).pathname.slice(1);
+      const file = `${ROOT}public/${name}`;
+      const headers = { 'access-control-allow-origin': ORIGIN };
+      return /^policy-feed\.(json|sig)$/.test(name) && existsSync(file)
+        ? route.fulfill({ status: 200, headers, contentType: name.endsWith('.json') ? 'application/json' : 'text/plain', body: readFileSync(file, 'utf8') })
+        : route.fulfill({ status: 404, headers, body: '' });
+    });
+    return c;
+  };
+}
+
 const ctx = await browser.newContext({ viewport: { width: 402, height: 874 } });
 
 /*
@@ -308,20 +340,38 @@ if (!/Deadline alerts/.test(settingsText)) {
  * One phrase, looked for everywhere, because agreement is the point: a screen
  * that said something true in other words would pass a check per screen and
  * still leave a reader with two stories.
+ *
+ * Built WITH a feed host the same four surfaces are held to the other story:
+ * the bundle asks that host and nobody else, Settings has a switch that stops
+ * it, and no surface says the list only comes with app updates.
  */
 {
   const SAYS = /comes with app updates/i;
   const CLAIMS = /fetched each time|every launch|download(?:s|ed)? (?:to your phone|an updated)|may download|the whole list downloads/i;
   const said = {};
 
-  if (feedRequests.length > 0) {
+  if (FEED_HOST === null && feedRequests.length > 0) {
     failures.push({ what: 'the iOS bundle, built with no feed host, asked for the policy feed anyway', saw: feedRequests.join(', ') });
   }
+  if (FEED_HOST !== null) {
+    const elsewhere = feedRequests.filter((u) => !u.startsWith(`${FEED_HOST}/`));
+    if (!feedRequests.some((u) => u === `${FEED_HOST}/policy-feed.json`)) {
+      failures.push({ what: `the iOS bundle, built with ${FEED_HOST} as its feed host, never asked it for the policy feed`, saw: feedRequests.join(', ') || 'no feed request' });
+    }
+    if (elsewhere.length > 0) {
+      failures.push({ what: `the iOS bundle asked for the policy feed somewhere other than its feed host, ${FEED_HOST}`, saw: elsewhere.join(', ') });
+    }
+  }
 
-  // Settings, already open: the row, and no switch that switches nothing.
+  // Settings, already open: the row, and a switch exactly when there is
+  // something for it to stop.
   said.Settings = settingsText;
-  if ((await page.getByRole('switch', { name: /Policy watch/ }).count()) > 0) {
+  const switches = await page.getByRole('switch', { name: /Policy watch/ }).count();
+  if (FEED_HOST === null && switches > 0) {
     failures.push({ what: 'Settings offers a Policy watch switch in a build that fetches nothing for it to stop', saw: '' });
+  }
+  if (FEED_HOST !== null && switches === 0) {
+    failures.push({ what: 'Settings offers no Policy watch switch in a build that downloads the feed on every launch', saw: '' });
   }
 
   await page.getByRole('button', { name: /^Watch/ }).click().catch(() => {});
@@ -347,6 +397,10 @@ if (!/Deadline alerts/.test(settingsText)) {
   for (const [where, text] of Object.entries(said)) {
     if (!text) {
       failures.push({ what: `could not read ${where} to check what it says about the policy list`, saw: '' });
+    } else if (FEED_HOST !== null) {
+      if (SAYS.test(text)) {
+        failures.push({ what: `${where} says the policy list only comes with app updates, in a build that downloads it from ${FEED_HOST}`, saw: (text.match(/.*comes with app updates.*/i) ?? [''])[0] });
+      }
     } else if (!SAYS.test(text) || CLAIMS.test(text)) {
       failures.push({
         what: `${where} does not say the policy list comes with app updates, in a build that downloads none`,
@@ -449,9 +503,13 @@ if (!/Deadline alerts/.test(settingsText)) {
   const nerrors = [];
   np.on('pageerror', (e) => nerrors.push(String(e)));
   const elsewhere = [];
+  // The launch's policy-feed download is not the scan, and is checked on its
+  // own above. Exactly those two URLs are set aside, not the host: a scan
+  // posting the photo to the same website must still be caught here.
+  const feedUrls = FEED_HOST === null ? [] : [`${FEED_HOST}/policy-feed.json`, `${FEED_HOST}/policy-feed.sig`];
   np.on('request', (r) => {
     const u = new URL(r.url());
-    if (['http:', 'https:'].includes(u.protocol) && u.origin !== ORIGIN) elsewhere.push(u.origin);
+    if (['http:', 'https:'].includes(u.protocol) && u.origin !== ORIGIN && !feedUrls.includes(r.url())) elsewhere.push(u.origin);
   });
   await np.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
   await np.getByRole('button', { name: 'Skip' }).click().catch(() => {});
