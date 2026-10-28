@@ -72,9 +72,10 @@ export function SectionHead({ eyebrow, title, lede, center, onInk, id }: { eyebr
   );
 }
 
-export function Card({ children, emphasised = true, style }: { children: ReactNode; emphasised?: boolean; style?: CSSProperties }) {
+export function Card({ children, emphasised = true, style, className }: { children: ReactNode; emphasised?: boolean; style?: CSSProperties; className?: string }) {
   return (
     <div
+      className={className}
       style={{
         // As the app draws its cards: an emphasised one floats on a soft
         // shadow, the rest sit in the grey card colour — neither outlined.

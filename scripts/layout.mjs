@@ -308,6 +308,12 @@ async function squeezedText(page, root) {
         // any squeezing, which is a false alarm this rule has no business
         // raising.
         if (el instanceof SVGElement) continue;
+        // An <option> is not laid out in the page at all: the closed select
+        // shows only its chosen value, and the list opens in the platform's
+        // own picker, at its own width. Its box measures 0 however long the
+        // name, so every two-word shop in the landing page's checker read as
+        // squeezed to nothing. The select itself is still measured.
+        if (el instanceof HTMLOptionElement || el instanceof HTMLOptGroupElement) continue;
         const cs = getComputedStyle(el);
         if (cs.display === 'none' || cs.visibility === 'hidden') continue;
         if (cs.textOverflow === 'ellipsis') continue;
