@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MAX_WINDOW_DAYS, applyDraft, arrivalProblem, draftFrom, effectiveWindowStart, validateDraft, windowStartFrom, type ReceiptDraft, purchaseProblem } from '../src/lib/draft';
-import { clockFor } from '../src/lib/stores';
+import { clockFor, findStore } from '../src/lib/stores';
 import { toISODate } from '../src/lib/dates';
 import { derive } from '../src/lib/receipts';
 import { money, toPence } from '../src/lib/money';
@@ -490,7 +490,9 @@ describe('changing the shop', () => {
     if (!out.ok) throw new Error('expected valid');
     const edited = applyDraft(zara, out.value);
     expect(edited.windowStartsOn).toBeUndefined();
-    expect(edited.gotcha).toBeUndefined();
+    // Argos's own small print, or none — never Zara's.
+    expect(edited.gotcha).toBe(findStore('Argos')?.gotcha);
+    expect(edited.gotcha ?? '').not.toMatch(/Zara/);
   });
 
   it('says so plainly when the new shop is not one we have verified', () => {
@@ -551,12 +553,12 @@ describe('a shop that counts from the doormat', () => {
   });
 
   it('does not start a shop that counts from the till on the arrival date', () => {
-    const argos = { ...asos, store: 'Argos', windowDays: 30 };
-    const draft = { ...draftFrom(argos), arrivedOnText: '2026-08-14' };
-    expect(effectiveWindowStart(argos, draft)).toBe('2026-08-10');
+    const currys = { ...asos, store: 'Currys', windowDays: 14 };
+    const draft = { ...draftFrom(currys), arrivedOnText: '2026-08-14' };
+    expect(effectiveWindowStart(currys, draft)).toBe('2026-08-10');
     const out = validateDraft(draft, TODAY);
     if (!out.ok) throw new Error('expected valid');
-    const saved = applyDraft(argos, out.value);
+    const saved = applyDraft(currys, out.value);
     expect(saved.windowStartsOn).toBeUndefined();
     // The arrival is still recorded — the statutory clocks run from it.
     expect(saved.arrivedOn).toBe('2026-08-14');
