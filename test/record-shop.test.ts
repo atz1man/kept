@@ -92,13 +92,13 @@ describe('dating a shop in CHECKED_ON', () => {
   });
 
   it('adds a shop once, and moves the date of one already there', () => {
-    const added = withCheckedOn(STORES, 'H&M', '2026-10-05');
-    expect(checkedNames(added)).toContain('H&M');
+    const added = withCheckedOn(STORES, 'Boots', '2026-10-05');
+    expect(checkedNames(added)).toContain('Boots');
     expect(checkedNames(added)).toHaveLength(checkedNames(STORES).length + 1);
-    const moved = withCheckedOn(added, 'H&M', '2026-11-01');
+    const moved = withCheckedOn(added, 'Boots', '2026-11-01');
     expect(checkedNames(moved)).toHaveLength(checkedNames(added).length);
-    expect(moved).toContain("  'H&M': '2026-11-01',");
-    expect(moved).not.toContain("'H&M': '2026-10-05'");
+    expect(moved).toContain("  'Boots': '2026-11-01',");
+    expect(moved).not.toContain("'Boots': '2026-10-05'");
   });
 
   it('keeps a name with an apostrophe in the quotes the table already uses', () => {

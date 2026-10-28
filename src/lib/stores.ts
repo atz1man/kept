@@ -95,8 +95,9 @@ export const STORE_POLICIES: readonly StorePolicy[] = [
     policy: 'Currys · 14 days change of mind, unopened or unwanted. Refund to original payment method.',
   },
   {
-    name: 'Argos', aliases: ['argos'], windowDays: 30, clockStart: 'purchase', cat: 'kitchen',
-    policy: 'Argos · 30 days with proof of purchase. Return to any store or arrange collection.',
+    name: 'Argos', aliases: ['argos'], windowDays: 30, clockStart: 'purchase', onlineClockStart: 'delivery', cat: 'kitchen',
+    policy: 'Argos · 30 days with proof of purchase: from collection in store, or from delivery for an order sent to you. Return to any store or arrange collection.',
+    gotcha: 'Argos counts an order sent to you from the day it arrives, not from your order — put the arrival date on the receipt and Quids In counts from there.',
   },
   {
     name: 'IKEA', aliases: ['ikea'], windowDays: 365, clockStart: 'purchase', cat: 'furniture',
@@ -119,8 +120,8 @@ export const STORE_POLICIES: readonly StorePolicy[] = [
   },
   {
     name: 'ASOS', aliases: ['asos'], windowDays: 28, clockStart: 'delivery', cat: 'clothing',
-    policy: 'ASOS · 28 days from delivery for a refund, 45 for credit. Frequent returners get the shorter window.',
-    gotcha: 'ASOS counts the 28 days from the day it arrives, not from your order — put the arrival date on the receipt and Quids In counts from there. After 28 days it is credit, not a refund.',
+    policy: 'ASOS · 28 days from delivery for a refund. An order in several parcels counts from the last one to arrive.',
+    gotcha: 'ASOS counts the 28 days from the day it arrives, not from your order — put the arrival date on the receipt and Quids In counts from there.',
   },
   {
     name: 'Next', commonWord: true, aliases: ['next'], windowDays: 28, clockStart: 'purchase', cat: 'clothing',
@@ -137,8 +138,9 @@ export const STORE_POLICIES: readonly StorePolicy[] = [
     gotcha: 'Sale items get 14 days, not 28. An online order counts the 28 days from the day it arrives. Put the arrival date on the receipt and Quids In counts from there; without it the date shown is the earliest it can be.',
   },
   {
-    name: 'H&M', aliases: ['h&m', 'hennes'], windowDays: 28, clockStart: 'purchase', cat: 'clothing',
-    policy: 'H&M · 28 days, unworn with tags and receipt. Online returns free to store.',
+    name: 'H&M', aliases: ['h&m', 'hennes'], windowDays: 30, clockStart: 'purchase', onlineClockStart: 'delivery', cat: 'clothing',
+    policy: 'H&M · 30 days, or 14 for sale items and designer collections. An online order counts from delivery.',
+    gotcha: 'Sale items and designer collections get 14 days at H&M, not 30 — and an online order counts from the day it arrives, not from your order.',
   },
   {
     name: 'Sports Direct', aliases: ['sports direct', 'sportsdirect'], windowDays: 28, clockStart: 'purchase', cat: 'clothing',
@@ -658,6 +660,9 @@ export const CHECKED_ON: Readonly<Record<string, string>> = {
   'Toolstation': '2026-10-03',
   'Habitat': '2026-10-03',
   'The Body Shop': '2026-10-03',
+  'Argos': '2026-10-28',
+  'ASOS': '2026-10-28',
+  'H&M': '2026-10-28',
   'Lookfantastic': '2026-10-03',
   'Holland & Barrett': '2026-10-03',
   'Go Outdoors': '2026-10-03',

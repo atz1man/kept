@@ -64,7 +64,7 @@ describe('"It arrived today"', () => {
   });
 
   it('leaves a shop that counts from the order counting from the order', () => {
-    const r = ordered(6, { store: 'Argos', windowDays: 30 });
+    const r = ordered(6, { store: 'Currys', windowDays: 14 });
     const after = a(reducer(state(r), { type: 'arrived', id: 'a' }, TODAY));
     expect(after.arrivedOn).toBe(toISODate(TODAY));
     expect(after.windowStartsOn).toBeUndefined();

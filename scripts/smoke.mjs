@@ -3617,7 +3617,7 @@ results['a delivery date in the paste is read, not asked for'] =
  * Zara receipt anyone ADDED counted its 30 days from the order — the safe
  * direction, since dispatch is later, but it can say "window closed" on a day
  * Zara would still take the coat back. Two receipts, because the rule is not
- * "set it when the email mentions dispatch": Argos counts from the purchase
+ * "set it when the email mentions dispatch": Currys counts from the purchase
  * and a receipt carrying Zara's clock would be worse than one carrying none.
  */
 const addPaste = async (paste, item) => {
@@ -3632,10 +3632,10 @@ const addPaste = async (paste, item) => {
   return page.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.at(-1));
 };
 const zaraAdded = await addPaste('Zara · Order placed 13 August 2026 · Wool coat · Total £34.99 · Dispatched 15 August 2026', 'Wool coat');
-const argosAdded = await addPaste('Argos · Order placed 13 August 2026 · Kettle · Total £29.00 · Dispatched 15 August 2026', 'Kettle');
+const tillAdded = await addPaste('Currys · Order placed 13 August 2026 · Kettle · Total £29.00 · Dispatched 15 August 2026', 'Kettle');
 results['a dispatch-clocked shop counts from dispatch, and only that shop'] =
   zaraAdded.store === 'Zara' && zaraAdded.windowStartsOn === '2026-08-15' &&
-  argosAdded.store === 'Argos' && argosAdded.windowStartsOn === undefined;
+  tillAdded.store === 'Currys' && tillAdded.windowStartsOn === undefined;
 
 /*
  * The Add card's deadline is the deadline that gets saved.
@@ -3778,9 +3778,9 @@ await page.waitForTimeout(400);
 const zaraDetail = await page.locator('main').innerText();
 await page.getByRole('button', { name: 'Back', exact: true }).click();
 await page.waitForTimeout(300);
-await page.getByRole('button', { name: /Argos, Kettle/ }).click();
+await page.getByRole('button', { name: /Currys, Kettle/ }).click();
 await page.waitForTimeout(400);
-const argosDetail = await page.locator('main').innerText();
+const tillDetail = await page.locator('main').innerText();
 await page.getByRole('button', { name: 'Back', exact: true }).click();
 await page.waitForTimeout(300);
 /*
@@ -3795,20 +3795,20 @@ const asosAdded = await addPaste(
 );
 results['a shop that counts from delivery starts its window there'] =
   asosAdded.store === 'ASOS' && asosAdded.arrivedOn === '2026-08-14' && asosAdded.windowStartsOn === '2026-08-14' &&
-  // And Argos, which counts from the till, records the arrival without
+  // And Currys, which counts from the till, records the arrival without
   // starting its window on it — the statutory clocks still run from there.
-  argosAdded.arrivedOn === undefined && argosAdded.windowStartsOn === undefined;
+  tillAdded.arrivedOn === undefined && tillAdded.windowStartsOn === undefined;
 
 results['an unknown dispatch date is shown as a floor, not a deadline'] =
   zaraNoDispatch.windowStartsOn === undefined &&
   /earliest it can be, never the latest/.test(zaraDetail) &&
   // And not said about a shop that counts from the till, where it is false.
-  !/earliest it can be/.test(argosDetail);
+  !/earliest it can be/.test(tillDetail);
 
 /*
  * And the person can then supply it, which is the half that makes the hedge
  * something other than an instruction to do the impossible. The field is
- * offered only on a shop that counts from dispatch: Argos does not, and a
+ * offered only on a shop that counts from dispatch: Currys does not, and a
  * receipt carrying the wrong clock is worse than one carrying none.
  */
 await page.getByRole('button', { name: /Zara, Linen shirt/ }).click();
@@ -3825,17 +3825,17 @@ const zaraFixed = await page.evaluate(() =>
   JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => r.item === 'Linen shirt'));
 await page.getByRole('button', { name: 'Back', exact: true }).click().catch(() => {});
 await page.waitForTimeout(300);
-await page.getByRole('button', { name: /Argos, Kettle/ }).click();
+await page.getByRole('button', { name: /Currys, Kettle/ }).click();
 await page.waitForTimeout(300);
 await page.getByRole('button', { name: 'Edit', exact: true }).click();
 await page.waitForTimeout(400);
-const dispatchFieldOnArgos = await page.locator('#e-dispatched').count();
+const dispatchFieldOnTill = await page.locator('#e-dispatched').count();
 await page.getByRole('button', { name: 'Cancel' }).click().catch(() => {});
 await page.waitForTimeout(300);
 await page.getByRole('button', { name: 'Back', exact: true }).click().catch(() => {});
 await page.waitForTimeout(300);
 results['the dispatch date can be supplied, on the shop it belongs to'] =
-  dispatchFieldOnZara === 1 && dispatchFieldOnArgos === 0 && zaraFixed.windowStartsOn === '2026-08-16';
+  dispatchFieldOnZara === 1 && dispatchFieldOnTill === 0 && zaraFixed.windowStartsOn === '2026-08-16';
 
 
 /*

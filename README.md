@@ -2820,7 +2820,14 @@ moved on every run, and need a person in an ordinary browser. The other two,
 Sports Direct and JD Williams, were read on an earlier run that day, and Monsoon,
 Richer Sounds and Levi's refused once and read the next time: a bot wall that
 comes and goes is reported each time it is met, never worked round.
-`TABLE_CHECKED_ON` stays unset until the eight are done. Until then the app
+On 28 October three of the eight read (`2026-10-28.md`), and two of them
+corrected the table rather than confirming it. H&M's page gives 30 days, not
+28, with 14 for sale items and designer collections, and counts an online
+order from its arrival. Argos counts an order sent out from its delivery or
+collection, not from the order. ASOS confirmed its 28 days from delivery.
+Amazon and Currys answered with sentences that do not settle the window, and
+Boots, Zara and John Lewis did not read, so five remain for a person.
+`TABLE_CHECKED_ON` stays unset until they are done. Until then the app
 says which shops are which: `CHECKED_ON` in `stores.ts` dates each shop read
 off its own page, and `test/verified.test.ts` refuses any entry without a
 quote from that shop's own site, in a report from that day, naming the row's
