@@ -503,9 +503,13 @@ if (!/Deadline alerts/.test(settingsText)) {
   const nerrors = [];
   np.on('pageerror', (e) => nerrors.push(String(e)));
   const elsewhere = [];
+  // The launch's policy-feed download is not the scan, and is checked on its
+  // own above. Exactly those two URLs are set aside, not the host: a scan
+  // posting the photo to the same website must still be caught here.
+  const feedUrls = FEED_HOST === null ? [] : [`${FEED_HOST}/policy-feed.json`, `${FEED_HOST}/policy-feed.sig`];
   np.on('request', (r) => {
     const u = new URL(r.url());
-    if (['http:', 'https:'].includes(u.protocol) && u.origin !== ORIGIN) elsewhere.push(u.origin);
+    if (['http:', 'https:'].includes(u.protocol) && u.origin !== ORIGIN && !feedUrls.includes(r.url())) elsewhere.push(u.origin);
   });
   await np.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
   await np.getByRole('button', { name: 'Skip' }).click().catch(() => {});
