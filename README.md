@@ -2689,8 +2689,10 @@ screen, and an unticked second scan that leaves nothing on the disk.
   holds, which would be the leak the privacy notice rules out. Inside the
   iPhone app the app's own origin is its bundle, so there the feed is fetched
   only from a host the build names (`VITE_FEED_ORIGIN`, `lib/feed-origin.ts`);
-  until one is set, nothing is fetched and every screen says the list comes
-  with app updates.
+  without one, nothing is fetched and every screen says the list comes with
+  app updates. `.env.ios` names https://getquidsin.co.uk, so the iPhone build
+  downloads the same feed the website serves, and `npm run ios` answers that
+  host from `public/` rather than reaching the live site.
 
   What was missing was provenance, and this entry said so three times before
   anything was done about it. The limits on the feed bound the *damage* — a
