@@ -75,3 +75,31 @@ describe('what the app calls itself', () => {
     ).toBe(configValue('appName'));
   });
 });
+
+describe('the team that signs it', () => {
+  /*
+   * Automatic signing with no team set fails on the first build with "Signing
+   * for App requires a development team", and Xcode's fix is to pick one in
+   * the Signing pane — which writes it into the configuration being edited.
+   * Release is the one that goes to App Store Connect, and the one least
+   * likely to be open. So the team is written down here, for both, and held
+   * to one value.
+   */
+  const teams = (): string[] =>
+    [...readFileSync(PBXPROJ, 'utf8').matchAll(/DEVELOPMENT_TEAM = ([^;]+);/g)].map((m) => m[1].trim());
+  const automatic = (): number =>
+    [...readFileSync(PBXPROJ, 'utf8').matchAll(/CODE_SIGN_STYLE = Automatic;/g)].length;
+
+  it('sets a team on every configuration that signs automatically', () => {
+    expect(automatic()).toBeGreaterThanOrEqual(2);
+    expect(teams()).toHaveLength(automatic());
+  });
+
+  it('uses one team, in the form Apple issues', () => {
+    // A Team ID is ten uppercase letters and digits; anything else is a name
+    // or a typo, and Xcode reports it only as "no account for team".
+    const found = [...new Set(teams())];
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatch(/^[A-Z0-9]{10}$/);
+  });
+});
