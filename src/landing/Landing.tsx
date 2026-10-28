@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { color, font, gradient, shadow, radius } from '../tokens';
 import { Logo, Tick, Wordmark } from '../app/components/Icons';
 import { UNLOCK } from '../lib/pricing';
@@ -11,6 +11,13 @@ import { CompanyDisclosure } from '../pages/Disclosure';
 import { FinePrintArt, HaulArt, LostReceiptsArt } from './sections/ProblemArt';
 import { DeadlinesArt, LetterArt, PhoneOnlyArt, ScanArt, SmallPrintArt, TwoClocksArt } from './sections/ProductArt';
 import { Faq } from './sections/Faq';
+/*
+ * The checker brings the app's deadline and statutory logic with it, and sits
+ * below the hero, so it loads after the page has painted rather than holding
+ * up the first screen (scripts/budget.mjs). Until it arrives its place is held
+ * at its own height, so nothing below jumps.
+ */
+const Checker = lazy(() => import('./sections/Checker').then((m) => ({ default: m.Checker })));
 import { Card, OpenAppButton, SectionHead, WRAP } from './sections/primitives';
 
 /*
@@ -122,6 +129,7 @@ const PLANS = [
 const SHOWN_SHOPS = 20;
 
 const NAV = [
+  { href: '#check', label: 'Check a return' },
   { href: '#how', label: 'How it works' },
   { href: '#private', label: 'Privacy' },
   { href: '#pricing', label: 'Pricing' },
@@ -136,6 +144,13 @@ const NAV = [
 const ON_HERO = { backgroundColor: color.heroEnd, backgroundImage: gradient.hero, color: color.white } as const;
 
 export function Landing() {
+  // The checker's shop, held here so the shop chips further down can load one into it.
+  const [shop, setShop] = useState('ASOS');
+  useReveal();
+  const check = (name: string) => {
+    setShop(name);
+    document.getElementById('check')?.scrollIntoView({ block: 'start' });
+  };
   return (
     <div style={{ minHeight: '100vh', background: color.canvas }}>
       <header style={{ position: 'sticky', top: 0, zIndex: 20, background: color.bar, borderBottom: `1px solid ${color.borderHair}` }}>
@@ -179,8 +194,8 @@ export function Landing() {
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 34, flexWrap: 'wrap' }}>
               <OpenAppButton onHero />
-              <a href="#how" className="k-ghost" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 48, padding: '0 22px', borderRadius: 999, border: `1.5px solid ${color.onHeroSoft}`, color: color.white, fontWeight: 600, fontSize: 15.5 }}>
-                See how it works
+              <a href="#check" className="k-ghost" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 48, padding: '0 22px', borderRadius: 999, border: `1.5px solid ${color.onHeroSoft}`, color: color.white, fontWeight: 600, fontSize: 15.5 }}>
+                Check a return
               </a>
             </div>
             <ul style={{ listStyle: 'none', padding: 0, margin: '30px 0 0', display: 'flex', flexWrap: 'wrap', gap: '10px 22px', fontSize: 14, fontWeight: 600, color: color.white }}>
@@ -237,12 +252,28 @@ export function Landing() {
         </div>
       </div>
 
+      {/* Can I still return it? */}
+      <section id="check" aria-labelledby="check-title" className="k-anchor" style={{ ...WRAP, padding: 'clamp(64px, 9vw, 112px) 28px 0' }}>
+        <SectionHead
+          id="check-title"
+          center
+          eyebrow="Try it now"
+          title="Can you still return it?"
+          lede={`Pick a shop and the day you bought it. This is the same reckoning the app does: the shop’s own window, when its clock really starts, and the ${REJECT_DAYS}-day and ${COOLING_OFF_DAYS}-day rights the law gives you beside it.`}
+        />
+        <div style={{ marginTop: 40 }}>
+          <Suspense fallback={<div style={{ minHeight: 560, borderRadius: radius.hero, background: color.surfaceAlt }} />}>
+            <Checker store={shop} onStore={setShop} />
+          </Suspense>
+        </div>
+      </section>
+
       {/* The problem */}
       <section aria-labelledby="problem" style={{ ...WRAP, padding: 'clamp(64px, 9vw, 112px) 28px 0' }}>
         <SectionHead id="problem" eyebrow="The problem" title="You shop in seconds. The fine print takes hours." lede="Every shop runs its own clock, starts it on a different day, and hides the exceptions where nobody looks. So the money stays with them." />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 18, marginTop: 44 }}>
           {PROBLEMS.map((p) => (
-            <Card key={p.title} style={{ overflow: 'hidden' }}>
+            <Card key={p.title} className="k-reveal" style={{ overflow: 'hidden' }}>
               <div style={{ height: 220 }}>{p.art}</div>
               <div style={{ padding: '22px 24px 26px' }}>
                 <h3 style={{ fontWeight: 650, fontSize: 17.5, margin: 0, letterSpacing: '-0.01em' }}>{p.title}</h3>
@@ -258,7 +289,7 @@ export function Landing() {
         <SectionHead id="how-title" eyebrow="How it works" title="The shop’s clock, the law’s clock, and yours — on one screen." center />
         <div style={{ display: 'grid', gap: 'clamp(56px, 8vw, 104px)', marginTop: 'clamp(48px, 7vw, 80px)' }}>
           {WHY.map((w, i) => (
-            <div key={w.n} className={i % 2 ? 'k-split k-flip' : 'k-split'}>
+            <div key={w.n} className={i % 2 ? 'k-split k-flip k-reveal' : 'k-split k-reveal'}>
               <div style={{ minWidth: 0 }}>
                 <div style={{ display: 'inline-grid', placeItems: 'center', width: 44, height: 44, borderRadius: 14, background: color.accentSoft, fontFamily: font.figures, fontSize: 15, fontWeight: 700, color: color.accentInk }}>{w.n}</div>
                 <h3 style={{ fontFamily: font.display, fontWeight: 700, fontSize: 'clamp(24px, 2.6vw, 32px)', letterSpacing: '-0.03em', lineHeight: 1.15, margin: '18px 0 0' }}>{w.title}</h3>
@@ -285,12 +316,14 @@ export function Landing() {
             lede="Retailers change return windows and never send a memo. When one does, Quids In’s list changes and every receipt you hold is checked against it. A purchase keeps the terms it was made under; you just find out when the shop moves the goalposts for the next one."
           />
           <div style={{ marginTop: 32, fontSize: 14, fontWeight: 600, color: color.bodyStrong }}>
-            Return windows already built in for {STORE_COUNT} UK shops:
+            Return windows already built in for {STORE_COUNT} UK shops. Tap one to check a return:
           </div>
           <ul style={{ listStyle: 'none', padding: 0, margin: '14px 0 0', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {STORE_POLICIES.slice(0, SHOWN_SHOPS).map((s) => (
-              <li key={s.name} style={{ background: color.surface, borderRadius: radius.pill, padding: '8px 14px', fontSize: 14, fontWeight: 600, color: color.ink, boxShadow: shadow.raised }}>
-                {s.name} <span style={{ color: color.muted, fontWeight: 500 }}>· {s.windowDays} days</span>
+              <li key={s.name}>
+                <button type="button" className="k-chip" onClick={() => check(s.name)} aria-label={`Check a ${s.name} return`} style={{ background: color.surface, border: 0, borderRadius: radius.pill, padding: '8px 14px', minHeight: 36, fontSize: 14, fontWeight: 600, color: color.ink, boxShadow: shadow.raised, cursor: 'pointer', fontFamily: font.ui }}>
+                  {s.name} <span style={{ color: color.muted, fontWeight: 500 }}>· {s.windowDays} days</span>
+                </button>
               </li>
             ))}
             {STORE_COUNT > SHOWN_SHOPS && (
@@ -337,6 +370,7 @@ export function Landing() {
           {PLANS.map((t) => (
             <div
               key={t.name}
+              className="k-reveal"
               style={t.featured
                 ? { background: color.surface, borderRadius: radius.hero, padding: '34px 30px', position: 'relative', border: `1.5px solid ${color.accent}`, boxShadow: shadow.raisedLg }
                 : { background: color.surfaceAlt, borderRadius: radius.hero, padding: '34px 30px' }}
@@ -415,6 +449,38 @@ export function Landing() {
       </footer>
     </div>
   );
+}
+
+/**
+ * Sections ease in as they reach the screen, once each.
+ *
+ * Nothing is hidden until this has run: the hiding rule only applies under
+ * `html.k-js`, which this sets, so a page whose script fails or has not
+ * loaded shows everything. Under reduced motion the stylesheet never hides
+ * anything at all. And where there is no IntersectionObserver, everything is
+ * shown at once rather than waiting for an event that will not come.
+ */
+function useReveal() {
+  useEffect(() => {
+    const items = [...document.querySelectorAll('.k-reveal')];
+    if (typeof IntersectionObserver === 'undefined') {
+      items.forEach((el) => el.classList.add('k-in'));
+      return;
+    }
+    document.documentElement.classList.add('k-js');
+    const seen = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          e.target.classList.add('k-in');
+          seen.unobserve(e.target);
+        }
+      },
+      { rootMargin: '0px 0px -8% 0px' },
+    );
+    items.forEach((el) => seen.observe(el));
+    return () => seen.disconnect();
+  }, []);
 }
 
 function FooterLinks({ title, links }: { title: string; links: [string, string][] }) {

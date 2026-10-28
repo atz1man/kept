@@ -455,6 +455,24 @@ html:has(.k-anchor) { scroll-behavior: smooth; }
 .k-faq-mark { transition: transform .2s ease; }
 .k-faq[open] .k-faq-mark { transform: rotate(45deg); }
 
+/* The checker's ring eases to its new length; reduced motion stops it below. */
+.k-ring { transition: stroke-dasharray .6s cubic-bezier(.2,.8,.2,1), stroke .3s ease; }
+.k-chip, .k-pick { transition: transform .15s ease, box-shadow .15s ease; }
+.k-chip:hover, .k-pick:hover { transform: translateY(-1px); }
+.k-seg:has(input:focus-visible) { outline: 2px solid var(--k-focus); outline-offset: 2px; }
+
+/*
+ * The landing page's scroll reveal (useReveal in Landing.tsx): hidden only once
+ * the script has said it will reveal, and never under reduced motion. A ring
+ * inside a section that has not arrived yet starts empty and fills as it does.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .k-js .k-reveal { opacity: 0; transform: translateY(28px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.8,.2,1); }
+  .k-js .k-reveal.k-in { opacity: 1; transform: none; }
+  .k-js .k-reveal:not(.k-in) .k-ring { stroke-dasharray: 0 999; }
+  .k-js .k-reveal .k-ring { transition: stroke-dasharray 1.1s cubic-bezier(.2,.8,.2,1) .25s; }
+}
+
 /* The scrolling policy headline bar on the landing page. */
 .k-ticker { animation: ticker 28s linear infinite; }
 

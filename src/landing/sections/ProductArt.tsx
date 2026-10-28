@@ -44,6 +44,7 @@ function Ring({ days, of, urgent }: { days: number; of: number; urgent?: boolean
       <svg width="46" height="46" viewBox="0 0 46 46" aria-hidden="true">
         <circle cx="23" cy="23" r={r} fill="none" stroke={color.rail} strokeWidth="3.5" />
         <circle
+          className="k-ring"
           cx="23" cy="23" r={r} fill="none" stroke={ink} strokeWidth="3.5" strokeLinecap="round"
           strokeDasharray={`${(c * Math.max(0.06, days / of)).toFixed(1)} ${c.toFixed(1)}`} transform="rotate(-90 23 23)"
         />
