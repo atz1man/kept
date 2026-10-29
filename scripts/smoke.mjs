@@ -16,6 +16,7 @@ import { reportOnCrash, sayCrash } from './crash-report.mjs';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { lightToken } from './token-colour.mjs';
 
 const ORIGIN = process.env.KEPT_ORIGIN ?? 'http://localhost:5183';
 const EXEC = process.env.CHROMIUM_PATH;
@@ -3482,8 +3483,8 @@ results['a delivery date in the paste is read, not asked for'] =
   const lastDay = await ring(/ASOS, Running shoes/);
   const longGone = await ring(/Argos, Toaster/);
   results['the ring still shows something on the last day'] =
-    // The danger red, `color.danger` (#C2261C): the number sits on a white card now, not ink.
-    lastDay.drawn > 1 && lastDay.numberColour === 'rgb(194, 38, 28)' &&
+    // The danger red, `color.danger`: the number sits on a white card now, not ink.
+    lastDay.drawn > 1 && lastDay.numberColour === lightToken('danger') &&
     // And nothing once the window has actually gone, rather than sweeping backwards.
     longGone.drawn <= 0;
   await lastCtx.close();
