@@ -34,20 +34,19 @@ const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 
 // own ground in each scheme, and the scheme the app paints is these two.
 const CANVAS = rgb(palette.light.canvas);
 const DARK_CANVAS = rgb(palette.dark.canvas);
-// The gold coin, read from the token the logo draws with, so icon.svg and the
-// in-app mark cannot quietly pick two different golds.
-const MARK = [1, 3, 5].map((i) => parseInt(color.gold.slice(i, i + 2), 16));
+// The receipt's cream, read from the token the logo draws with, so icon.svg and
+// the in-app mark cannot quietly pick two different creams.
+const MARK = rgb(color.logoPaper);
+const TILE = rgb(color.logoTile);
 
 const near = (got: number[], want: number[]) =>
   want.every((v, i) => Math.abs(got[i] - v) <= 2);
 
 /*
- * The tile is a gradient from #5B4CF5 to #3626CF with a soft light at the
- * top, so no one pixel of it is the accent #4636E8. What every pixel of it IS
- * is the brand indigo: blue well above red and green, and neither white nor
- * ink.
+ * The tile is the logo's tomato, flat, and the iOS export composites onto that
+ * same tomato, so every pixel of the tile IS it, within rounding.
  */
-const tileIndigo = (px: number[]) => px[2] - px[1] > 100 && px[2] - px[0] > 60 && px[2] > 150;
+const tileTomato = (px: number[]) => near(px, TILE);
 
 /*
  * Looked for across a region rather than at one guessed pixel. A hardcoded
@@ -57,7 +56,7 @@ const tileIndigo = (px: number[]) => px[2] - px[1] > 100 && px[2] - px[0] > 60 &
  */
 const hasMark = (image: { width: number; height: number }, box: [number, number, number, number], ink: number[] | 'tile' = MARK) => {
   const [x0, y0, x1, y1] = box;
-  const is = (px: number[]) => (ink === 'tile' ? tileIndigo(px) : near(px, ink));
+  const is = (px: number[]) => (ink === 'tile' ? tileTomato(px) : near(px, ink));
   for (let y = y0; y < y1; y += 4) {
     for (let x = x0; x < x1; x += 4) if (is(pixelAt(image, x, y))) return true;
   }
@@ -77,21 +76,21 @@ describe('the app icon', () => {
     expect(icon.channels).toBe(3);
   });
 
-  it('has square corners, in the brand indigo — not rounded, and not a vendor logo', () => {
+  it('has square corners, in the brand tomato — not rounded, and not a vendor logo', () => {
     /*
      * One assertion doing two jobs, and both matter. iOS masks the icon itself,
      * so a corner that is transparent or white means the artwork was rounded
      * first and will be rounded twice. And the placeholder this replaced had
-     * WHITE corners, so an indigo corner is also the check that it is gone.
+     * WHITE corners, so a tomato corner is also the check that it is gone.
      */
     for (const [x, y] of [[0, 0], [1023, 0], [0, 1023], [1023, 1023]]) {
       const px = pixelAt(icon, x, y);
-      expect(tileIndigo(px), `corner ${x},${y} was ${px}`).toBe(true);
+      expect(tileTomato(px), `corner ${x},${y} was ${px}`).toBe(true);
     }
   });
 
   it('actually has the mark on it, rather than being a blank square', () => {
-    // Without this, every check above passes on a solid indigo rectangle.
+    // Without this, every check above passes on a solid tomato rectangle.
     expect(hasMark(icon, [200, 100, 850, 900])).toBe(true);
   });
 });
@@ -168,11 +167,11 @@ describe('the launch screen', () => {
   });
 
   it('has the mark on it, centred, rather than a plain empty field, in both schemes', () => {
-    // Looked for by the tile's indigo AND the coin's gold: neither ground is
+    // Looked for by the tile's tomato AND the receipt's cream: neither ground is
     // either colour, so neither could come from the ground.
     for (const ground of [CANVAS, DARK_CANVAS]) {
       expect(ground).not.toEqual(MARK);
-      expect(tileIndigo(ground)).toBe(false);
+      expect(tileTomato(ground)).toBe(false);
     }
     for (const path of [SPLASHES[0], DARK_SPLASHES[0]]) {
       const s = decodePng(path);

@@ -221,7 +221,7 @@ export function PhoneOnlyArt() {
           </svg>
           <span>nothing goes back</span>
         </div>
-        <div style={{ width: 132, padding: 6, borderRadius: 30, background: color.heroTop, border: `2px solid ${color.onHeroGlass}`, boxShadow: '0 20px 40px rgba(10,10,18,0.35)' }}>
+        <div style={{ width: 132, padding: 6, borderRadius: 30, background: color.heroTop, border: `2px solid ${color.onHeroGlass}`, boxShadow: '0 20px 40px rgba(42,26,46,0.35)' }}>
           <div style={{ borderRadius: 24, background: color.surface, padding: '18px 8px 12px', display: 'grid', gap: 6 }}>
             <div style={{ width: 34, height: 9, borderRadius: 9, background: color.heroTop, margin: '-10px auto 4px' }} />
             {rows.map(([shop, left, urgent]) => (

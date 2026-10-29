@@ -3,59 +3,60 @@ import { color, font } from '../../tokens';
 import type { Category } from '../../lib/types';
 
 /*
- * The mark: a Q drawn as the countdown ring every receipt in the app carries,
- * its last stretch spent, with a tick for a tail — a return made in time,
- * which is what "quids in" means. It replaced a gold coin inside a return
- * arrow, which said "refund" in the way every refund icon does and had nothing
- * to do with the ring the product is built around.
+ * The mark: a receipt that smiles, because the money came back. Two receipt
+ * lines for eyes, a torn foot, and a smile bent into a return arrow. It
+ * replaced a Q drawn as the countdown ring; the brand moved to warm and human
+ * (cream, tomato, plum), and a ring reads as a timer, where a receipt with a
+ * face reads as the thing you are keeping and the feeling of getting it back.
  *
  * One drawing, on the icon's own 512 grid: these paths are public/icons/icon.svg's,
  * verbatim, so the app icon and every mark inside the app cannot drift apart.
  *
- * The tick is CUT out of the ring rather than drawn over it with an outline:
- * an outline has to be painted in the tile's colour, which is a gradient, and
- * would be right at one height of it only. A cut lets whatever is behind show,
- * so the same drawing works on the tile, the soft tile, and in one colour.
+ * In one colour the face is CUT out of the receipt rather than drawn on it, so
+ * whatever is behind shows through and the same mark works on any ground.
  *
- * Simple on purpose: it has to read at 29px on a Settings row, so it is one
- * ring, one tail and one gap.
+ * Simple on purpose: at 29px on a Settings row it has to read as one paper
+ * shape with a face, so the eyes and smile are heavy and there is no detail
+ * finer than the zigzag.
  */
-const SPENT = 'M245 122A134 134 0 0 1 361 189';
-const RING = 'M361 189A134 134 0 1 1 245 122';
-const TICK = 'M286 335L325 372L407 282';
+const PAPER = 'M136 132Q136 104 164 104L348 104Q376 104 376 132L376 392L356 418L336 392L316 418L296 392L276 418L256 392L236 418L216 392L196 418L176 392L156 418L136 392Z';
+const EYES = ['M196 196L226 196', 'M286 196L316 196'];
+const SMILE = 'M190 268Q256 336 322 268';
+const ARROW = 'M300 246L330 262L314 294';
 
-function Glyph({ ring, tick, spent, spentOpacity }: { ring: string; tick: string; spent: string; spentOpacity: number }) {
-  // An id per instance: a page can show several marks, and a shared mask id
-  // would let one cut another's ring.
-  const id = useId().replace(/[^a-zA-Z0-9]/g, '');
+function Face({ ink, smile }: { ink: string; smile: string }) {
   return (
-    <g>
-      <mask id={`${id}c`} maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
-        <rect width="512" height="512" fill="#FFFFFF" />
-        <path d={TICK} fill="none" stroke="#000000" strokeWidth={80} strokeLinecap="round" strokeLinejoin="round" />
-      </mask>
-      <g mask={`url(#${id}c)`}>
-        <path d={SPENT} fill="none" stroke={spent} strokeOpacity={spentOpacity} strokeWidth={58} />
-        <path d={RING} fill="none" stroke={ring} strokeWidth={58} strokeLinecap="round" />
-      </g>
-      <path d={TICK} fill="none" stroke={tick} strokeWidth={46} strokeLinecap="round" strokeLinejoin="round" />
+    <g fill="none" strokeLinecap="round" strokeLinejoin="round">
+      {EYES.map((d) => <path key={d} d={d} stroke={ink} strokeWidth={22} />)}
+      <path d={SMILE} stroke={smile} strokeWidth={26} />
+      <path d={ARROW} stroke={smile} strokeWidth={22} />
     </g>
   );
 }
 
-/** The logo: the gold ring and white tick on the violet tile — the app icon at header size. */
-export function Logo({ size = 28, style }: { size?: number; style?: CSSProperties }) {
+/** The receipt in one colour, its face cut through to whatever is behind. */
+function Cutout({ fill }: { fill: string }) {
+  // An id per instance: a page can show several marks, and a shared mask id
+  // would let one cut another.
   const id = useId().replace(/[^a-zA-Z0-9]/g, '');
   return (
+    <g>
+      <mask id={`${id}f`} maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
+        <rect width="512" height="512" fill="#FFFFFF" />
+        <Face ink="#000000" smile="#000000" />
+      </mask>
+      <path d={PAPER} fill={fill} mask={`url(#${id}f)`} />
+    </g>
+  );
+}
+
+/** The logo: the cream receipt on the tomato tile — the app icon at header size. */
+export function Logo({ size = 28, style }: { size?: number; style?: CSSProperties }) {
+  return (
     <svg width={size} height={size} viewBox="0 0 512 512" style={style} aria-hidden="true">
-      <defs>
-        <linearGradient id={`${id}t`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={color.accentTile} />
-          <stop offset="1" stopColor={color.accentHover} />
-        </linearGradient>
-      </defs>
-      <rect width="512" height="512" rx="112" fill={`url(#${id}t)`} />
-      <Glyph ring={color.gold} tick={color.white} spent={color.white} spentOpacity={0.24} />
+      <rect width="512" height="512" rx="112" fill={color.logoTile} />
+      <path d={PAPER} fill={color.logoPaper} />
+      <Face ink={color.logoInk} smile={color.logoTile} />
     </svg>
   );
 }
@@ -63,28 +64,28 @@ export function Logo({ size = 28, style }: { size?: number; style?: CSSPropertie
 /** The bare mark, no tile, in one colour — for surfaces that are themselves the accent. */
 export function LogoMark({ size = 18, fill = color.accent }: { size?: number; fill?: string }) {
   return (
-    <svg width={size} height={size} viewBox="74 85 364 342" aria-hidden="true">
-      <Glyph ring={fill} tick={fill} spent={fill} spentOpacity={0.28} />
+    <svg width={size} height={size} viewBox="120 96 272 332" aria-hidden="true">
+      <Cutout fill={fill} />
     </svg>
   );
 }
 
-/** The celebrate variant: the mark on the soft tile — returned in time. */
+/** The celebrate variant: the receipt on the soft tile — returned in time. */
 export function LogoChecked({ size = 38 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 512 512" aria-hidden="true">
       <rect width="512" height="512" rx="112" fill={color.accentSoft} />
-      <Glyph ring={color.accent} tick={color.accent} spent={color.accent} spentOpacity={0.25} />
+      <Cutout fill={color.accent} />
     </svg>
   );
 }
 
-/** The empty state: the mark in outline, waiting for a first receipt. */
+/** The empty state: the receipt in outline, waiting for a first one. */
 export function LogoDashed({ size = 72 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 512 512" style={{ margin: '0 auto 20px' }} aria-hidden="true">
       <rect x="13" y="13" width="486" height="486" rx="109" fill="none" stroke={color.borderSoft} strokeWidth="13" strokeDasharray="32 32" />
-      <Glyph ring={color.fainter} tick={color.fainter} spent={color.fainter} spentOpacity={0.35} />
+      <Cutout fill={color.fainter} />
     </svg>
   );
 }
@@ -92,19 +93,23 @@ export function LogoDashed({ size = 72 }: { size?: number }) {
 export function Wordmark({ size = 24 }: { size?: number }) {
   return (
     /*
-     * The name, set the way "kept." was — the display face at 600, pulled in
-     * half a pixel — in ink throughout. The old mark's green full stop needed
-     * WCAG 1.4.3's logotype exemption (`data-logotype`, which
-     * scripts/contrast.mjs honours); this one is plain ink and does not, so
-     * the contrast sweep measures it like any other text.
+     * "quids in!": the name in lower case, the display face at 700, with "in!" in the
+     * brand's italic serif and the accent ink. The accent ink, not the logo's
+     * bright tomato, so the exclamation reads at text contrast in both schemes
+     * and needs no logotype exemption from the contrast sweep.
      *
-     * nowrap: the name is two words now, and "Quids" over "In" in a header
-     * squeezed at 320px is a different mark.
+     * Read as its proper name: a screen reader hears "Quids In", not the
+     * lower-case styling or the punctuation.
+     *
+     * nowrap: "quids" over "in!" in a header squeezed at 320px is a different mark.
      */
     <span
-      style={{ fontFamily: font.figures, fontSize: size, fontWeight: 600, letterSpacing: '-0.5px', lineHeight: 1, whiteSpace: 'nowrap' }}
+      role="img"
+      aria-label="Quids In"
+      style={{ fontFamily: font.display, fontSize: size, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1, whiteSpace: 'nowrap' }}
     >
-      Quids In
+      quids
+      <span style={{ fontFamily: font.accent, fontStyle: 'italic', fontWeight: 400, fontSize: '1.08em', letterSpacing: '-0.01em', color: color.accentInk, marginLeft: '0.18em' }}>in!</span>
     </span>
   );
 }

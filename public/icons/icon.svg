@@ -1,25 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <defs>
-    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#5B4CF5"/>
-      <stop offset="1" stop-color="#3626CF"/>
-    </linearGradient>
-    <linearGradient id="light" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.16"/>
-      <stop offset="0.45" stop-color="#FFFFFF" stop-opacity="0"/>
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" rx="112" fill="url(#tile)"/>
-  <rect width="512" height="512" rx="112" fill="url(#light)"/>
+  <rect width="512" height="512" rx="112" fill="#F0532B"/>
   <g transform="translate(0 0) scale(1)">
-    <mask id="cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
-      <rect width="512" height="512" fill="#FFFFFF"/>
-      <path d="M286 335L325 372L407 282" fill="none" stroke="#000000" stroke-width="80" stroke-linecap="round" stroke-linejoin="round"/>
-    </mask>
-    <g mask="url(#cut)">
-      <path d="M245 122A134 134 0 0 1 361 189" fill="none" stroke="#FFFFFF" stroke-opacity="0.24" stroke-width="58"/>
-      <path d="M361 189A134 134 0 1 1 245 122" fill="none" stroke="#F7C948" stroke-width="58" stroke-linecap="round"/>
+    <path d="M136 132Q136 104 164 104L348 104Q376 104 376 132L376 392L356 418L336 392L316 418L296 392L276 418L256 392L236 418L216 392L196 418L176 392L156 418L136 392Z" fill="#FFF5EA"/>
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M196 196L226 196" stroke="#2A1A2E" stroke-width="22"/>
+      <path d="M286 196L316 196" stroke="#2A1A2E" stroke-width="22"/>
+      <path d="M190 268Q256 336 322 268" stroke="#F0532B" stroke-width="26"/>
+      <path d="M300 246L330 262L314 294" stroke="#F0532B" stroke-width="22"/>
     </g>
-    <path d="M286 335L325 372L407 282" fill="none" stroke="#FFFFFF" stroke-width="46" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
 </svg>

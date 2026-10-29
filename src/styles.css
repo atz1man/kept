@@ -13,6 +13,19 @@
   font-style: normal;
   font-display: swap;
 }
+/*
+ * The brand's one accent face: Instrument Serif, italic only, for the "in!"
+ * of the wordmark and a single warm word per screen. Latin subset (OFL;
+ * licence beside it). Everything else, and every figure, stays in Geist,
+ * which carries the tabular digits money columns are lined up with.
+ */
+@font-face {
+  font-family: 'Instrument Serif';
+  src: url('/fonts/instrument-serif-italic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
 
 * { -webkit-tap-highlight-color: transparent; }
 
@@ -45,57 +58,60 @@
  */
 :root {
   color-scheme: light dark;
-  --k-ink: #0A0A12;
-  --k-ink-hover: #000000;
-  --k-ink-surface: #0A0A12;
+  --k-ink: #2A1A2E;
+  --k-ink-hover: #1A0F1D;
+  --k-ink-surface: #2A1A2E;
   --k-canvas: #FFFFFF;
   --k-surface: #FFFFFF;
-  --k-surface-alt: #F4F5F8;
-  --k-surface-hover: #F7F8FA;
-  --k-surface-deep: #E8EAF0;
+  --k-surface-alt: #FBEFE4;
+  --k-surface-hover: #FFF8F1;
+  --k-surface-deep: #F3E1D3;
   --k-white: #FFFFFF;
   --k-bar: rgba(255,255,255,0.94);
-  --k-scrim: rgba(10,10,18,0.55);
-  --k-accent: #4636E8;
-  --k-accent-hover: #3626CF;
-  --k-accent-tile: #5B4CF5;
-  --k-accent-soft: #EEEDFF;
-  --k-accent-soft-hover: #E2E0FF;
-  --k-accent-ink: #3B2BD6;
-  --k-on-accent-soft: #EEEDFF;
-  --k-accent-figure: #4636E8;
-  --k-focus: #4636E8;
+  --k-scrim: rgba(42,26,46,0.55);
+  --k-accent: #C93D1A;
+  --k-accent-hover: #B83516;
+  --k-accent-tile: #D4421D;
+  --k-accent-soft: #FFE6D9;
+  --k-accent-soft-hover: #FFD8C2;
+  --k-accent-ink: #A93014;
+  --k-on-accent-soft: #FFF0E8;
+  --k-accent-figure: #4B2A50;
+  --k-focus: #C93D1A;
   --k-focus-halo: #FFFFFF;
-  --k-gold: #F7C948;
-  --k-hero-top: #0F0B3D;
-  --k-hero-mid: #3A27C9;
-  --k-hero-end: #2453E6;
-  --k-on-hero-soft: #E9E7FF;
-  --k-on-hero-glass: rgba(255,255,255,0.16);
-  --k-on-hero-chip: rgba(15,11,61,0.25);
-  --k-muted: #5F6270;
-  --k-faint: #9A9DA8;
-  --k-fainter: #B4B7C0;
-  --k-body: #3A3D48;
-  --k-body-strong: #22242D;
-  --k-on-ink-body: #D5D7DE;
-  --k-on-ink-faint: #8B8E99;
-  --k-danger: #C2261C;
-  --k-danger-fill: #C2261C;
-  --k-danger-dot: #E5372B;
-  --k-danger-chip-bg: rgba(229,55,43,0.10);
-  --k-danger-border: rgba(229,55,43,0.4);
-  --k-on-ink-danger: #FF9C8F;
-  --k-caution: #FFF1D6;
+  --k-gold: #FFC547;
+  --k-logo-tile: #F0532B;
+  --k-logo-paper: #FFF5EA;
+  --k-logo-ink: #2A1A2E;
+  --k-hero-top: #8A2812;
+  --k-hero-mid: #B83516;
+  --k-hero-end: #C93D1A;
+  --k-on-hero-soft: #FFF5EE;
+  --k-on-hero-glass: rgba(255,255,255,0.2);
+  --k-on-hero-chip: rgba(42,26,46,0.28);
+  --k-muted: #6B5A6C;
+  --k-faint: #A08FA0;
+  --k-fainter: #BFB0BD;
+  --k-body: #4A3A4D;
+  --k-body-strong: #2F2033;
+  --k-on-ink-body: #E8DCE5;
+  --k-on-ink-faint: #A794A6;
+  --k-danger: #B3122E;
+  --k-danger-fill: #B3122E;
+  --k-danger-dot: #E0263F;
+  --k-danger-chip-bg: rgba(224,38,63,0.10);
+  --k-danger-border: rgba(224,38,63,0.4);
+  --k-on-ink-danger: #FF9DA8;
+  --k-caution: #FFF0CC;
   --k-caution-ink: #7A4B00;
-  --k-border: rgba(10,10,18,0.10);
-  --k-border-hair: rgba(10,10,18,0.06);
-  --k-border-soft: rgba(10,10,18,0.13);
+  --k-border: rgba(42,26,46,0.10);
+  --k-border-hair: rgba(42,26,46,0.06);
+  --k-border-soft: rgba(42,26,46,0.13);
   --k-on-ink-border: rgba(255,255,255,0.12);
   --k-on-ink-border-strong: rgba(255,255,255,0.18);
   --k-on-ink-dash: rgba(255,255,255,0.16);
-  --k-rail: rgba(10,10,18,0.12);
-  --k-dot-off: rgba(10,10,18,0.18);
+  --k-rail: rgba(42,26,46,0.12);
+  --k-dot-off: rgba(42,26,46,0.18);
   --k-cat-audio-tint: #E7EEFB;
   --k-cat-audio-ink: #2A55A8;
   --k-cat-kitchen-tint: #FCEEE2;
@@ -106,63 +122,66 @@
   --k-cat-beauty-ink: #A12F5B;
   --k-cat-furniture-tint: #E9F2E3;
   --k-cat-furniture-ink: #43652A;
-  --k-cat-other-tint: #F4F5F8;
-  --k-cat-other-ink: #0A0A12;
+  --k-cat-other-tint: #FBEFE4;
+  --k-cat-other-ink: #2A1A2E;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-scheme="light"]) {
-    --k-ink: #F4F4F8;
+    --k-ink: #FFF5EA;
     --k-ink-hover: #FFFFFF;
-    --k-ink-surface: #2A2A35;
-    --k-canvas: #0B0B12;
-    --k-surface: #23232E;
-    --k-surface-alt: #17171F;
-    --k-surface-hover: #2A2A36;
-    --k-surface-deep: #30303C;
+    --k-ink-surface: #3A2A3E;
+    --k-canvas: #1B1220;
+    --k-surface: #2A1D2F;
+    --k-surface-alt: #221726;
+    --k-surface-hover: #33243A;
+    --k-surface-deep: #3A2A40;
     --k-white: #FFFFFF;
-    --k-bar: rgba(23,23,31,0.94);
+    --k-bar: rgba(34,23,38,0.94);
     --k-scrim: rgba(0,0,0,0.6);
-    --k-accent: #5A4BFA;
-    --k-accent-hover: #4A3BF0;
-    --k-accent-tile: #5B4CF5;
-    --k-accent-soft: #252148;
-    --k-accent-soft-hover: #2F2A5C;
-    --k-accent-ink: #ABA4FF;
-    --k-on-accent-soft: #EEEDFF;
-    --k-accent-figure: #ABA4FF;
-    --k-focus: #ABA4FF;
-    --k-focus-halo: #0B0B12;
-    --k-gold: #F7C948;
-    --k-hero-top: #0F0B3D;
-    --k-hero-mid: #3A27C9;
-    --k-hero-end: #2453E6;
-    --k-on-hero-soft: #E9E7FF;
-    --k-on-hero-glass: rgba(255,255,255,0.16);
-    --k-on-hero-chip: rgba(15,11,61,0.25);
-    --k-muted: #A0A3B1;
-    --k-faint: #9EA1B0;
-    --k-fainter: #5F6272;
-    --k-body: #CDD0DA;
-    --k-body-strong: #E6E7EE;
-    --k-on-ink-body: #D5D7DE;
-    --k-on-ink-faint: #A3A6B3;
-    --k-danger: #FF7B70;
-    --k-danger-fill: #CC3226;
-    --k-danger-dot: #FF5F52;
-    --k-danger-chip-bg: rgba(255,95,82,0.16);
-    --k-danger-border: rgba(255,95,82,0.5);
-    --k-on-ink-danger: #FF9C8F;
+    --k-accent: #C93D1A;
+    --k-accent-hover: #B83516;
+    --k-accent-tile: #D4421D;
+    --k-accent-soft: #3E2229;
+    --k-accent-soft-hover: #4A2830;
+    --k-accent-ink: #FF9B7A;
+    --k-on-accent-soft: #FFF0E8;
+    --k-accent-figure: #E8C6E0;
+    --k-focus: #FF9B7A;
+    --k-focus-halo: #1B1220;
+    --k-gold: #FFC547;
+    --k-logo-tile: #F0532B;
+    --k-logo-paper: #FFF5EA;
+    --k-logo-ink: #2A1A2E;
+    --k-hero-top: #8A2812;
+    --k-hero-mid: #B83516;
+    --k-hero-end: #C93D1A;
+    --k-on-hero-soft: #FFF5EE;
+    --k-on-hero-glass: rgba(255,255,255,0.2);
+    --k-on-hero-chip: rgba(42,26,46,0.28);
+    --k-muted: #B3A2B2;
+    --k-faint: #A897A8;
+    --k-fainter: #6E5C70;
+    --k-body: #E2D5DF;
+    --k-body-strong: #F2E8EF;
+    --k-on-ink-body: #E8DCE5;
+    --k-on-ink-faint: #B3A2B2;
+    --k-danger: #FF8A95;
+    --k-danger-fill: #C8243B;
+    --k-danger-dot: #FF5A6A;
+    --k-danger-chip-bg: rgba(255,90,106,0.16);
+    --k-danger-border: rgba(255,90,106,0.5);
+    --k-on-ink-danger: #FF9DA8;
     --k-caution: #3A2A0E;
     --k-caution-ink: #FFC970;
-    --k-border: rgba(255,255,255,0.12);
-    --k-border-hair: rgba(255,255,255,0.07);
-    --k-border-soft: rgba(255,255,255,0.16);
+    --k-border: rgba(255,245,234,0.12);
+    --k-border-hair: rgba(255,245,234,0.07);
+    --k-border-soft: rgba(255,245,234,0.16);
     --k-on-ink-border: rgba(255,255,255,0.12);
     --k-on-ink-border-strong: rgba(255,255,255,0.18);
     --k-on-ink-dash: rgba(255,255,255,0.16);
-    --k-rail: rgba(255,255,255,0.16);
-    --k-dot-off: rgba(255,255,255,0.24);
+    --k-rail: rgba(255,245,234,0.16);
+    --k-dot-off: rgba(255,245,234,0.24);
     --k-cat-audio-tint: #16233D;
     --k-cat-audio-ink: #8DB4FF;
     --k-cat-kitchen-tint: #33210F;
@@ -173,8 +192,8 @@
     --k-cat-beauty-ink: #F59BBE;
     --k-cat-furniture-tint: #1C2A14;
     --k-cat-furniture-ink: #A3CF7E;
-    --k-cat-other-tint: #17171F;
-    --k-cat-other-ink: #F4F4F8;
+    --k-cat-other-tint: #221726;
+    --k-cat-other-ink: #FFF5EA;
   }
 }
 
@@ -326,12 +345,12 @@ a:hover { color: var(--k-accent-ink); }
 .k-primary, .k-secondary { border-radius: 999px !important; }
 .k-primary:not(:disabled) {
   background-image: linear-gradient(var(--k-accent-tile), var(--k-accent-hover)) !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 1px 2px rgba(54,38,207,0.30), 0 6px 18px rgba(54,38,207,0.24);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 1px 2px rgba(184,53,22,0.30), 0 6px 18px rgba(184,53,22,0.24);
 }
 .k-primary:not(:disabled):hover { background-image: linear-gradient(var(--k-accent), var(--k-accent-hover)) !important; }
-.k-primary:not(:disabled):active { background-image: linear-gradient(var(--k-accent-hover), var(--k-accent-hover)) !important; box-shadow: inset 0 1px 2px rgba(10,10,18,0.2); }
+.k-primary:not(:disabled):active { background-image: linear-gradient(var(--k-accent-hover), var(--k-accent-hover)) !important; box-shadow: inset 0 1px 2px rgba(42,26,46,0.2); }
 .k-secondary:not(:disabled) {
-  box-shadow: 0 1px 2px rgba(10,10,18,0.05), 0 2px 8px rgba(10,10,18,0.05);
+  box-shadow: 0 1px 2px rgba(42,26,46,0.05), 0 2px 8px rgba(42,26,46,0.05);
 }
 .k-secondary:not(:disabled):active { background: var(--k-surface-deep) !important; box-shadow: none; }
 /* Pressed, everything gives a little; reduced motion keeps it still. */
@@ -446,8 +465,8 @@ select:focus-visible { outline-offset: -1px; }
 .k-anchor { scroll-margin-top: 76px; }
 html:has(.k-anchor) { scroll-behavior: smooth; }
 /* The two buttons drawn on the hero's gradient: a white one, and an outline. */
-.k-on-hero { transition: transform .15s ease, box-shadow .15s ease; box-shadow: 0 10px 30px rgba(10,10,18,0.28); }
-.k-on-hero:hover { color: var(--k-accent-ink); transform: translateY(-1px); box-shadow: 0 14px 36px rgba(10,10,18,0.34); }
+.k-on-hero { transition: transform .15s ease, box-shadow .15s ease; box-shadow: 0 10px 30px rgba(42,26,46,0.28); }
+.k-on-hero:hover { color: var(--k-accent-ink); transform: translateY(-1px); box-shadow: 0 14px 36px rgba(42,26,46,0.34); }
 .k-ghost:hover { color: var(--k-white); background: rgba(255,255,255,0.10); }
 /* The questions: the browser's own disclosure triangle replaced by a plus that turns. */
 .k-faq > summary { list-style: none; }

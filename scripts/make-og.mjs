@@ -32,16 +32,22 @@ const HEIGHT = 630;
 
 const svg = readFileSync(new URL('public/icons/icon.svg', ROOT), 'utf8');
 const font = readFileSync(new URL('public/fonts/geist.woff2', ROOT)).toString('base64');
+const accent = readFileSync(new URL('public/fonts/instrument-serif-italic.woff2', ROOT)).toString('base64');
 // The headline is the landing page's own h1, read out of it, so the picture
 // and the page cannot say two different things.
 const landing = readFileSync(new URL('src/landing/Landing.tsx', ROOT), 'utf8');
-const HEADLINE = (landing.match(/<h1[^>]*>\s*([^<]+?)\s*<\/h1>/) ?? [])[1];
+// The h1 may carry the brand's italic accent on one word, as a styled span:
+// that word becomes an <em> here, and every other tag is dropped.
+const H1 = (landing.match(/<h1[^>]*>([\s\S]*?)<\/h1>/) ?? [])[1];
+const HEADLINE = H1 && H1.replace(/<span[^>]*>([^<]*)<\/span>/g, '<em>$1</em>').replace(/<(?!\/?em>)[^>]+>/g, '').replace(/\s+/g, ' ').trim();
 if (!HEADLINE) throw new Error('could not read the landing page’s h1 — Landing.tsx changed shape');
 const HOST = new URL(JSON.parse(readFileSync(new URL('store/listing.json', ROOT), 'utf8')).urls.marketing).host;
 
 const c = palette.light;
 const html = `<!doctype html><html><head><style>
   @font-face { font-family: Geist; src: url(data:font/woff2;base64,${font}) format('woff2'); font-weight: 100 900; }
+  @font-face { font-family: 'Instrument Serif'; src: url(data:font/woff2;base64,${accent}) format('woff2'); font-style: italic; font-weight: 400; }
+  em { font-family: 'Instrument Serif', serif; font-style: italic; font-weight: 400; letter-spacing: -0.01em; color: ${c.gold}; }
   html, body { margin: 0; }
   body { width: ${WIDTH}px; height: ${HEIGHT}px; overflow: hidden; font-family: Geist, sans-serif;
     background-color: ${c.heroEnd}; background-image: ${heroGradient(c)}; color: ${c.white};
@@ -55,7 +61,7 @@ const html = `<!doctype html><html><head><style>
 </style></head><body>
   <div class="disc" style="width:720px;height:720px;right:-260px;top:-360px;opacity:.35"></div>
   <div class="disc" style="width:460px;height:460px;left:-200px;bottom:-300px;opacity:.25"></div>
-  <div class="brand">${svg}<span>Quids In</span></div>
+  <div class="brand">${svg}<span style="font-weight:700;letter-spacing:-0.04em">quids <em style="color:${c.white}">in!</em></span></div>
   <h1>${HEADLINE}</h1>
   <div class="foot"><span>${TAGLINE_LEAD}</span><span class="host">${HOST}</span></div>
 </body></html>`;

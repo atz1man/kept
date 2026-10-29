@@ -22,6 +22,7 @@ import { chromium } from 'playwright';
 import { reportOnCrash, sayCrash } from './crash-report.mjs';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { lightToken } from './token-colour.mjs';
 
 const require = createRequire(import.meta.url);
 const AXE_SOURCE = readFileSync(require.resolve('axe-core'), 'utf8');
@@ -534,11 +535,12 @@ await ringPage.getByRole('button', { name: 'Skip' }).click().catch(() => {});
 await ringPage.waitForTimeout(400);
 await ringPage.getByRole('button', { name: /Currys, JBL/ }).click();
 await ringPage.waitForTimeout(500);
+const FOCUS = lightToken('focus');
 const ringless = [];
 let ringsSeen = 0;
 for (let i = 0; i < 40; i += 1) {
   await ringPage.keyboard.press('Tab');
-  const seen = await ringPage.evaluate(() => {
+  const seen = await ringPage.evaluate((focus) => {
     const el = document.activeElement;
     if (!el || el === document.body || !el.matches(':focus-visible')) return null;
     const cs = getComputedStyle(el);
@@ -546,10 +548,10 @@ for (let i = 0; i < 40; i += 1) {
       what: (el.textContent ?? el.tagName).trim().slice(0, 30),
       // Both halves, by the colours the tokens define.
       hasHalo: /rgb\(255,\s*255,\s*255\)/.test(cs.boxShadow) && /5px/.test(cs.boxShadow),
-      // `color.accent`, #4636E8 — the outline styles.css draws.
-      hasOutline: /rgb\(70,\s*54,\s*232\)/.test(cs.outlineColor) && parseFloat(cs.outlineWidth) >= 2,
+      // `color.focus` — the outline styles.css draws.
+      hasOutline: cs.outlineColor.replace(/\s+/g, '') === focus.replace(/\s+/g, '') && parseFloat(cs.outlineWidth) >= 2,
     };
-  });
+  }, FOCUS);
   if (!seen) continue;
   ringsSeen += 1;
   if (!seen.hasHalo || !seen.hasOutline) {
