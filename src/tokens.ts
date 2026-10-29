@@ -113,14 +113,12 @@ const light = {
   focusHalo: '#FFFFFF',
 
   /**
-   * The coin in the mark: Quids In is money coming back, so the one thing on
-   * the violet tile is a gold pound. Only the logo uses these. 3.5:1 against
-   * the tile's lightest stop, so the coin holds its edge at 29px; `goldInk` is
-   * the pound sign struck on it, 7.9:1 on the gold — a darker gold rather than
-   * the ink, so it reads as one object rather than a sticker on one.
+   * The ring in the mark: Quids In is money coming back, so the one colour on
+   * the violet tile besides the white tick is gold. Only the logo and a few
+   * hero accents use it. 3.5:1 against the tile's lightest stop, so the ring
+   * holds its edge at 29px.
    */
   gold: '#F7C948',
-  goldInk: '#4A2F00',
 
   /**
    * The hero's gradient, top to bottom. `heroEnd` is the LIGHTEST stop, and is
@@ -233,7 +231,6 @@ const dark = {
   focusHalo: '#0B0B12',
 
   gold: '#F7C948',
-  goldInk: '#4A2F00',
 
   heroTop: '#0F0B3D',
   heroMid: '#3A27C9',

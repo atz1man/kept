@@ -158,19 +158,19 @@ describe.each(SCHEMES)('%s', (scheme) => {
     });
   });
 
-  describe('the coin in the mark', () => {
+  describe('the ring and tick in the mark', () => {
     /*
-     * Not text, so WCAG asks 3:1 of it (SC 1.4.11) — but the pound sign is the
-     * whole point of the icon and has to survive 29px on a settings row, so it
-     * is held to the text minimum. The coin against its own tile is held to the
-     * graphic one, at the tile's lightest stop.
+     * Not text, so WCAG asks 3:1 of them (SC 1.4.11). Both are held to it at
+     * BOTH ends of the tile's gradient: the ring and the tick have to survive
+     * 29px on a settings row, wherever on the tile they sit.
      */
-    it('the pound sign reads on the gold', () => {
-      expect(contrast(color.goldInk, color.gold)).toBeGreaterThanOrEqual(AA_TEXT);
-    });
-    it('the coin stands off the violet tile, at both ends of its gradient', () => {
+    it('the gold ring stands off the violet tile, at both ends of its gradient', () => {
       expect(contrast(color.gold, color.accentTile)).toBeGreaterThanOrEqual(AA_LARGE);
       expect(contrast(color.gold, color.accentHover)).toBeGreaterThanOrEqual(AA_LARGE);
+    });
+    it('the white tick stands off the violet tile, at both ends of its gradient', () => {
+      expect(contrast(color.white, color.accentTile)).toBeGreaterThanOrEqual(AA_LARGE);
+      expect(contrast(color.white, color.accentHover)).toBeGreaterThanOrEqual(AA_LARGE);
     });
   });
 });
