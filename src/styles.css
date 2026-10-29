@@ -440,6 +440,8 @@ select:focus-visible { outline-offset: -1px; }
 }
 /* Section links in the header: on a phone the one button is the nav. */
 @media (max-width: 799px) { .k-wide-only { display: none !important; } }
+/* Room to float beside the hero's phone without reaching the headline. */
+@media (max-width: 1099px) { .k-xwide-only { display: none !important; } }
 /* An anchor clears the sticky header rather than landing under it. */
 .k-anchor { scroll-margin-top: 76px; }
 html:has(.k-anchor) { scroll-behavior: smooth; }
@@ -473,6 +475,11 @@ html:has(.k-anchor) { scroll-behavior: smooth; }
 
 /* The scrolling policy headline bar on the landing page. */
 .k-ticker { animation: ticker 60s linear infinite; }
+@keyframes kFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@media (prefers-reduced-motion: no-preference) {
+  .k-float { animation: kFloat 6s ease-in-out infinite; }
+  .k-float-late { animation-delay: -3s; }
+}
 /*
  * A marquee is a window onto a moving line, so its ends always cut a word in
  * half. Fading both edges into the bar makes that read as motion rather than
