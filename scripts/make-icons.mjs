@@ -53,7 +53,7 @@ const iosIcon = svg.replaceAll('<rect width="512" height="512" rx="112"', '<rect
  */
 const SCHEMES = [
   { file: 'splash-2732x2732', ground: '#FFFFFF', rgb: [255, 255, 255] },
-  { file: 'splash-dark-2732x2732', ground: '#0B0B12', rgb: [11, 11, 18] },
+  { file: 'splash-dark-2732x2732', ground: '#1B1220', rgb: [27, 18, 32] },
 ];
 const inner = svg.slice(svg.indexOf('>', svg.indexOf('<svg')) + 1, svg.lastIndexOf('</svg>'));
 /*
@@ -101,8 +101,8 @@ const shoot = async (source, size, background) => {
 
 const ICON = new URL('../ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png', import.meta.url);
 const TMP = new URL('../ios/App/App/Assets.xcassets/AppIcon.appiconset/.tmp.png', import.meta.url);
-writeFileSync(TMP, await shoot(iosIcon, 1024, '#4636E8'));
-writeOpaquePng(ICON, decodePng(TMP), [70, 54, 232]);
+writeFileSync(TMP, await shoot(iosIcon, 1024, '#F0532B'));
+writeOpaquePng(ICON, decodePng(TMP), [240, 83, 43]);
 rmSync(TMP);
 console.log(`AppIcon-512@2x.png 1024x1024 ${readFileSync(ICON).length}b, no alpha`);
 

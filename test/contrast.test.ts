@@ -158,21 +158,22 @@ describe.each(SCHEMES)('%s', (scheme) => {
     });
   });
 
-  describe('the ring and tick in the mark', () => {
+  describe('the receipt in the mark', () => {
     /*
-     * Not text, so WCAG asks 3:1 of them (SC 1.4.11). Both are held to it at
-     * BOTH ends of the tile's gradient: the ring and the tick have to survive
-     * 29px on a settings row, wherever on the tile they sit.
+     * Not text, so WCAG asks 3:1 of it (SC 1.4.11). The receipt is the whole
+     * mark and has to hold its edge against the tile at 29px on a settings row;
+     * its eyes have to read on the paper, and so does the smile, which is the
+     * tile's own tomato cut back onto the receipt.
      */
-    it('the gold ring stands off the violet tile, at both ends of its gradient', () => {
-      expect(contrast(color.gold, color.accentTile)).toBeGreaterThanOrEqual(AA_LARGE);
-      expect(contrast(color.gold, color.accentHover)).toBeGreaterThanOrEqual(AA_LARGE);
+    it('the cream receipt stands off the tomato tile', () => {
+      expect(contrast(color.logoPaper, color.logoTile)).toBeGreaterThanOrEqual(AA_LARGE);
     });
-    it('the white tick stands off the violet tile, at both ends of its gradient', () => {
-      expect(contrast(color.white, color.accentTile)).toBeGreaterThanOrEqual(AA_LARGE);
-      expect(contrast(color.white, color.accentHover)).toBeGreaterThanOrEqual(AA_LARGE);
+    it('the eyes and the smile read on the receipt', () => {
+      expect(contrast(color.logoInk, color.logoPaper)).toBeGreaterThanOrEqual(AA_LARGE);
+      expect(contrast(color.logoTile, color.logoPaper)).toBeGreaterThanOrEqual(AA_LARGE);
     });
   });
+
 });
 
 describe('what the faint tokens are and are not for', () => {

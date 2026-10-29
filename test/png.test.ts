@@ -24,7 +24,11 @@ import { decodePng, pixelAt, writeOpaquePng } from '../scripts/png.mjs';
  * decoder's own output.
  */
 const WEB_ICON = join(__dirname, '..', 'public', 'icons', 'icon-512.png');
-const MARK = [1, 3, 5].map((i) => parseInt(color.gold.slice(i, i + 2), 16));
+const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+// The receipt's cream and the tile's tomato, read from the tokens the in-app
+// logo draws with, so icon.svg and the mark in the app cannot pick two of either.
+const MARK = rgb(color.logoPaper);
+const TILE = rgb(color.logoTile);
 const near = (got: number[], want: number[]) => want.every((v, i) => Math.abs(got[i] - v) <= 2);
 
 describe('reading a PNG somebody else encoded', () => {
@@ -36,9 +40,9 @@ describe('reading a PNG somebody else encoded', () => {
 
   it('finds the rounded-rectangle the source SVG describes', () => {
     /*
-     * icon.svg is `<rect width=512 height=512 rx=112 fill=url(#tile)>`, an indigo gradient, on a
+     * icon.svg is `<rect width=512 height=512 rx=112 fill=#F0532B>`, the logo's tomato, on a
      * transparent ground. So every CORNER is outside the curve and must be
-     * transparent, and every EDGE MIDPOINT is inside it and must be opaque indigo.
+     * transparent, and every EDGE MIDPOINT is inside it and must be opaque tomato.
      * Garbage from a mis-unfiltered scanline satisfies neither, and — unlike a
      * single spot check — it cannot satisfy them by luck either, because the
      * two sets have to come out opposite.
@@ -49,12 +53,12 @@ describe('reading a PNG somebody else encoded', () => {
     for (const [x, y] of [[256, 0], [256, 511], [0, 256], [511, 256]]) {
       const px = pixelAt(icon, x, y);
       expect(px[3], `edge ${x},${y} alpha`).toBe(255);
-      expect(px[2] - px[1] > 100 && px[2] - px[0] > 60, `edge ${x},${y} was ${px}, not the tile's indigo`).toBe(true);
+      expect(near(px, TILE), `edge ${x},${y} was ${px}, not the tile's tomato`).toBe(true);
     }
   });
 
   it('reads the mark inside it', () => {
-    // The ring is gold and passes through the middle third.
+    // The receipt is cream and fills the middle third.
     let found = false;
     for (let y = 170; y < 340 && !found; y += 3) {
       for (let x = 170; x < 340; x += 3) if (near(pixelAt(icon, x, y), MARK)) { found = true; break; }

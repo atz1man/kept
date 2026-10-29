@@ -206,7 +206,7 @@ export function Landing() {
               <span style={{ minWidth: 0 }}>No account · no cloud · no one sees your receipts</span>
             </div>
             <h1 style={{ fontFamily: font.display, fontSize: 'clamp(40px, 6vw, 70px)', fontWeight: 700, lineHeight: 1.02, letterSpacing: '-0.04em', margin: 0, color: color.white }}>
-              Never miss a refund again.
+              Never miss a refund <span style={{ fontFamily: font.accent, fontStyle: 'italic', fontWeight: 400, letterSpacing: '-0.01em', color: color.gold }}>again.</span>
             </h1>
             <p style={{ fontSize: 'clamp(17px, 1.6vw, 19.5px)', lineHeight: 1.6, color: color.onHeroSoft, maxWidth: 540, margin: '24px 0 0' }}>
               Quids In counts down every return window, knows each shop’s real rules and your legal rights, and puts whatever is about to run out first.
@@ -246,7 +246,7 @@ export function Landing() {
               phone drawn the way a phone looks: a thin frame, a status bar and
               the camera island, so the page shows a device rather than a box.
             */}
-            <div style={{ position: 'relative', margin: '0 auto', maxWidth: 400, padding: 7, borderRadius: 58, background: color.heroTop, boxShadow: '0 40px 90px rgba(10,10,18,0.5), inset 0 0 0 1.5px rgba(255,255,255,0.14)' }}>
+            <div style={{ position: 'relative', margin: '0 auto', maxWidth: 400, padding: 7, borderRadius: 58, background: color.heroTop, boxShadow: '0 40px 90px rgba(42,26,46,0.5), inset 0 0 0 1.5px rgba(255,255,255,0.14)' }}>
               <div style={{ borderRadius: 51, overflow: 'hidden', background: color.canvas }}>
                 <div aria-hidden="true" style={{ height: 40, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 30px', fontSize: 13, fontWeight: 650, color: color.ink, fontFamily: font.figures, position: 'relative' }}>
                   <span>9:41</span>
@@ -265,14 +265,14 @@ export function Landing() {
               </div>
             </div>
             {/* Two moments from the product, floating beside the phone on wide screens. */}
-            <div aria-hidden="true" className="k-xwide-only k-float" style={{ position: 'absolute', left: -150, top: 300, display: 'flex', alignItems: 'center', gap: 12, background: color.surface, borderRadius: 18, padding: '12px 16px 12px 12px', boxShadow: '0 18px 40px rgba(10,10,18,0.28)' }}>
+            <div aria-hidden="true" className="k-xwide-only k-float" style={{ position: 'absolute', left: -150, top: 300, display: 'flex', alignItems: 'center', gap: 12, background: color.surface, borderRadius: 18, padding: '12px 16px 12px 12px', boxShadow: '0 18px 40px rgba(42,26,46,0.28)' }}>
               <MiniRing days={2} of={days('ASOS')} />
               <span>
                 <span style={{ display: 'block', fontSize: 13.5, fontWeight: 650, color: color.ink }}>ASOS · linen shirt</span>
                 <span style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: color.danger }}>2 days to send it back</span>
               </span>
             </div>
-            <div aria-hidden="true" className="k-xwide-only k-float k-float-late" style={{ position: 'absolute', right: -96, bottom: 170, display: 'flex', alignItems: 'center', gap: 12, background: color.surface, borderRadius: 18, padding: '12px 18px 12px 12px', boxShadow: '0 18px 40px rgba(10,10,18,0.28)' }}>
+            <div aria-hidden="true" className="k-xwide-only k-float k-float-late" style={{ position: 'absolute', right: -96, bottom: 170, display: 'flex', alignItems: 'center', gap: 12, background: color.surface, borderRadius: 18, padding: '12px 18px 12px 12px', boxShadow: '0 18px 40px rgba(42,26,46,0.28)' }}>
               <span style={{ width: 40, height: 40, borderRadius: 12, background: color.gold, display: 'grid', placeItems: 'center' }}>
                 <Tick size={20} stroke={color.ink} width={2.8} />
               </span>

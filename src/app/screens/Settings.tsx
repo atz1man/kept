@@ -678,7 +678,7 @@ function Toggle({ label, detail, value, disabled, onChange }: {
           <span
             style={{
               width: 16, height: 16, borderRadius: 999, background: color.white,
-              boxShadow: '0 1px 2px rgba(10,10,18,0.2)',
+              boxShadow: '0 1px 2px rgba(42,26,46,0.2)',
               transform: `translateX(${value ? 16 : 0}px)`, transition: 'transform .2s',
             }}
           />
