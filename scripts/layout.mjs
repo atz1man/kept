@@ -316,6 +316,15 @@ async function squeezedText(page, root) {
         if (el instanceof HTMLOptionElement || el instanceof HTMLOptGroupElement) continue;
         const cs = getComputedStyle(el);
         if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+        /*
+         * Not laid out at all: inside an ancestor that is `display: none`.
+         * Its own computed display is still `block`, so the line above lets it
+         * through and it measures 0 wide, which read as "squeezed to nothing".
+         * The landing page's floating hero cards are hidden this way below
+         * 1100px, and every word in them was reported. Text that is not on the
+         * screen cannot be squeezed on it.
+         */
+        if (el.getClientRects().length === 0) continue;
         if (cs.textOverflow === 'ellipsis') continue;
         /*
          * `clientWidth` is 0 on a non-replaced INLINE element, always — it is
