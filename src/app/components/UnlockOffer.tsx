@@ -1,20 +1,22 @@
 import type { CSSProperties } from 'react';
 import { color, radius } from '../../tokens';
-import { PURCHASES_OFF, type StoreNote, type StoreView } from '../../lib/app-store';
-import { unlockLabel, type Offer } from '../../lib/pricing';
+import { PURCHASES_OFF, type PlanId, type StoreNote, type StoreView } from '../../lib/app-store';
+import { planLabel, RENEWAL_TERMS, TERMS_OF_USE_URL, type Offer } from '../../lib/pricing';
 import { Pressable } from './Pressable';
 
 /**
- * The button that sells the unlock, wherever the app offers it: Settings, and
- * the add screen at the cap. One component, so the two cannot come to say
+ * The buttons that sell Plus, wherever the app offers it: Settings, and the
+ * add screen at the cap. One component, so the two cannot come to say
  * different things.
  *
- * On the web it opens the sheet that says nothing is charged. On iPhone it
- * opens the App Store's own sheet. Around it are what a one-off purchase owes
- * the person buying it, and what App Review looks for:
- * - the App Store's price for their storefront;
- * - a way to restore it;
- * - words for every way it can end.
+ * One button per plan, the yearly first and filled. On the web each opens the
+ * sheet that says nothing is charged. On iPhone each opens the App Store's
+ * own sheet, and around them is what an auto-renewing subscription owes the
+ * person buying it, and what App Review looks for (Guideline 3.1.2):
+ * - each plan's name, period and the App Store's price for their storefront;
+ * - that it renews until cancelled, and how to cancel;
+ * - the terms of use and the privacy policy, a tap away;
+ * - a way to restore it, and words for every way a purchase can end.
  */
 export function UnlockOffer({
   offer,
@@ -25,7 +27,7 @@ export function UnlockOffer({
 }: {
   offer: Exclude<Offer, { kind: 'none' }>;
   store: StoreView;
-  onUnlock: () => void;
+  onUnlock: (plan: PlanId) => void;
   onRestore: () => void;
   buttonStyle?: CSSProperties;
 }) {
@@ -38,20 +40,37 @@ export function UnlockOffer({
         // it can be changed, instead.
         <div style={{ marginTop: 14, fontSize: 13, color: color.body, lineHeight: 1.55 }}>{PURCHASES_OFF}</div>
       ) : (
-        <Pressable
-          className="k-primary"
-          onClick={onUnlock}
-          disabled={waiting}
-          aria-busy={store.busy === 'buying'}
-          style={{
-            marginTop: 16, padding: 14, minHeight: 44, textAlign: 'center',
-            background: color.accent, color: color.white, border: 0, borderRadius: radius.control,
-            fontWeight: 600, fontSize: 15, opacity: waiting ? 0.7 : 1,
-            ...buttonStyle,
-          }}
-        >
-          {store.busy === 'buying' ? 'Waiting for the App Store…' : unlockLabel(offer.price)}
-        </Pressable>
+        <div style={{ display: 'grid', gap: 8, marginTop: 16, ...buttonStyle }}>
+          {offer.plans.map((plan, i) => (
+            <Pressable
+              key={plan.id}
+              className={i === 0 ? 'k-primary' : undefined}
+              onClick={() => onUnlock(plan.id)}
+              disabled={waiting}
+              aria-busy={store.busy === 'buying'}
+              style={{
+                padding: 13, minHeight: 44, textAlign: 'center', borderRadius: radius.control,
+                fontWeight: 600, fontSize: 15, opacity: waiting ? 0.7 : 1,
+                ...(i === 0
+                  ? { background: color.accent, color: color.white, border: 0 }
+                  : { background: 'transparent', color: color.accentInk, border: `1.5px solid ${color.accent}` }),
+              }}
+            >
+              {planLabel(plan)}
+            </Pressable>
+          ))}
+          {store.busy === 'buying' && (
+            <div style={{ fontSize: 13, color: color.muted, textAlign: 'center' }}>Waiting for the App Store…</div>
+          )}
+        </div>
+      )}
+      {appStore && (
+        <p style={{ fontSize: 12, color: color.muted, lineHeight: 1.55, margin: '10px 0 0' }}>
+          {RENEWAL_TERMS}{' '}
+          <a href={TERMS_OF_USE_URL} target="_blank" rel="noreferrer" style={{ color: color.accentInk }}>Terms of use</a>
+          {' · '}
+          <a href="/privacy/" style={{ color: color.accentInk }}>Privacy</a>
+        </p>
       )}
       {appStore && <RestorePurchase store={store} onRestore={onRestore} />}
     </>

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { color, font, radius, shadow } from '../../tokens';
-import { UNLOCK } from '../../lib/pricing';
+import { PLAN_PRICES } from '../../lib/pricing';
 import { Pressable } from './Pressable';
 
 /**
@@ -85,8 +85,9 @@ export function UpgradeNotice({ onUnlock, onCancel }: { onUnlock: () => void; on
           Nothing has been charged
         </h2>
         <p style={{ fontSize: 14, color: color.body, lineHeight: 1.6, margin: '10px 0 0' }}>
-          Quids In cannot take payments yet — there is no card box, no {UNLOCK.price} leaving your account, and nothing to
-          cancel later. {UNLOCK.price}, once, is what it is <em>meant</em> to cost.
+          Quids In cannot take payments in the browser — there is no card box, nothing leaving your account, and nothing
+          to cancel later. Plus is <em>meant</em> to cost {PLAN_PRICES.monthly} a month or {PLAN_PRICES.yearly} a year, and
+          Family {PLAN_PRICES.family} a year.
         </p>
         <p style={{ fontSize: 14, color: color.body, lineHeight: 1.6, margin: '10px 0 0' }}>
           You can unlock everything now anyway, for free, and keep it.

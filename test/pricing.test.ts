@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { capsLibrary, offerFor, unlockLabel, UNLOCK, restoreOnlyOffered } from '../src/lib/pricing';
+import { capsLibrary, offerFor, planLabel, PLAN_PRICES, RENEWAL_TERMS, restoreOnlyOffered, WEB_PLANS } from '../src/lib/pricing';
 import { quotaFull, type AppState } from '../src/app/state';
 import { FREE_TIER_LIMIT } from '../src/lib/quota';
 import { DEFAULT_SETTINGS } from '../src/lib/storage';
@@ -9,19 +9,22 @@ import { toPence } from '../src/lib/money';
 import type { Receipt } from '../src/lib/types';
 
 /**
- * One price, paid once.
+ * Quids In Plus, by the month or the year, and Family by the year.
  *
- * The product sold three — monthly, yearly and lifetime — for an app whose
- * whole job is a handful of dates a month, and the agreement suite had to hold
- * three figures together across two entry points. Now there is one unlock,
- * and the claim printed beside it everywhere is "no subscription", so what is
- * worth asserting is that the claim stays true: the price is a single figure
- * paid once, and nothing a person can read offers a period to pay by.
+ * The product sold one unlock, paid once, and earned nothing after the day it
+ * was bought for an app that keeps checking shops' windows and the law for as
+ * long as it is used. It is a subscription now. What is worth asserting is
+ * what makes that honest: every figure a person reads comes from the one table
+ * here, so the landing page, Settings and the add screen cannot disagree, and
+ * nothing anywhere still promises "no subscription" or "pay once".
  */
 describe('what kept costs', () => {
-  it('is one figure in pounds, paid once', () => {
-    expect(UNLOCK.price).toMatch(/^£\d+\.\d{2}$/);
-    expect(UNLOCK.suffix.trim()).toBe('once');
+  it('is three figures in pounds, the year about half twelve months', () => {
+    for (const price of Object.values(PLAN_PRICES)) expect(price).toMatch(/^£\d+\.\d{2}$/);
+    const pence = (p: string) => Math.round(Number(p.slice(1)) * 100);
+    expect(pence(PLAN_PRICES.yearly)).toBeLessThanOrEqual(pence(PLAN_PRICES.monthly) * 12 * 0.51);
+    // Family costs more than one person's year: it is the same unlock, shared.
+    expect(pence(PLAN_PRICES.family)).toBeGreaterThan(pence(PLAN_PRICES.yearly));
   });
 
   const SRC = join(__dirname, '..', 'src');
@@ -30,23 +33,37 @@ describe('what kept costs', () => {
       const p = join(dir, n);
       return statSync(p).isDirectory() ? walk(p) : /\.tsx?$/.test(n) ? [p] : [];
     });
-  // Comments are history and may name the old tiers; what a person reads is
+  // Comments are history and may name the old unlock; what a person reads is
   // a string or JSX text, and comments are blanked before matching.
   const uncommented = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-  const PERIOD = /£\d+(?:\.\d{2})?\s*(?:\/\s*(?:mo|month|yr|year)\b|a month|a year|per month|per year)|['"]\/\s*(?:mo|month|yr|year)['"]|\b(?:monthly|yearly|annual) (?:plan|price|subscription)\b/i;
+  const PRICES = new RegExp(Object.values(PLAN_PRICES).map((p) => p.replace(/[.$]/g, '\\$&')).join('|'));
+  const STALE = /no subscription(?! here)|pay once|paid once|one payment|single payment|unlocks? [^.]*for good/i;
 
-  it('is never offered by the month or the year, anywhere in the product', () => {
-    const offenders = walk(SRC).filter((f) => PERIOD.test(uncommented(readFileSync(f, 'utf8'))));
+  it('writes each plan’s price in one place only', () => {
+    const offenders = walk(SRC).filter((f) => !f.endsWith(join('lib', 'pricing.ts')) && PRICES.test(uncommented(readFileSync(f, 'utf8'))));
     expect(offenders.map((f) => f.slice(SRC.length + 1))).toEqual([]);
   });
 
-  it('would notice a period if one came back', () => {
-    // The sweep over an empty match is the sweep that reports success for a
-    // question it never asked: each shape the old tiers wore is caught.
-    for (const s of ["{ price: '£2.99', suffix: '/mo' }", '£16.99/yr', '£2.99 a month', 'the yearly plan']) {
-      expect(PERIOD.test(s), s).toBe(true);
+  it('no longer promises the one-off unlock anywhere in the product', () => {
+    const offenders = walk(SRC).filter((f) => STALE.test(uncommented(readFileSync(f, 'utf8'))));
+    expect(offenders.map((f) => f.slice(SRC.length + 1))).toEqual([]);
+  });
+
+  it('would notice either if one came back', () => {
+    // A sweep over an empty match reports success for a question it never asked.
+    for (const p of Object.values(PLAN_PRICES)) expect(PRICES.test(`{ price: '${p}' }`), p).toBe(true);
+    for (const s of ['One payment, no subscription', 'Pay once', 'a single payment unlocks unlimited receipts for good']) {
+      expect(STALE.test(s), s).toBe(true);
     }
+    // The web's own sentence is the one place "no subscription" is still true.
+    expect(STALE.test('There is no subscription here to cancel.')).toBe(false);
     expect(walk(SRC).length).toBeGreaterThan(20);
+  });
+
+  it('says how a subscription renews and how to stop it', () => {
+    expect(RENEWAL_TERMS).toMatch(/renew/i);
+    expect(RENEWAL_TERMS).toMatch(/cancel/i);
+    expect(RENEWAL_TERMS).toMatch(/24 hours/);
   });
 });
 
@@ -65,29 +82,33 @@ describe('what kept costs', () => {
  * StoreKit emulated, in scripts/ios-bundle.mjs.
  */
 describe('what each build sells', () => {
-  const forSale = { kind: 'for-sale', price: '£9.99', canPay: true } as const;
+  const plans = [{ id: 'yearly', price: '£29.99' }, { id: 'monthly', price: '£4.99' }, { id: 'family', price: '£49.99' }] as const;
+  const forSale = { kind: 'for-sale', plans: [...plans], canPay: true } as const;
 
-  it('sells the web’s unlock at the one price, whatever the App Store says', () => {
-    expect(offerFor(false, { kind: 'absent' }, null)).toEqual({ kind: 'web', price: UNLOCK.price });
-    expect(offerFor(false, forSale, '£9.99')).toEqual({ kind: 'web', price: UNLOCK.price });
+  it('sells the web’s plans at the landing page’s prices, whatever the App Store says', () => {
+    expect(offerFor(false, { kind: 'absent' }, null)).toEqual({ kind: 'web', plans: WEB_PLANS });
+    expect(offerFor(false, forSale, '£29.99')).toEqual({ kind: 'web', plans: WEB_PLANS });
+    expect(WEB_PLANS.map((p) => p.id)).toEqual(['yearly', 'monthly', 'family']);
   });
 
-  it('sells on iPhone exactly what the App Store sells, at its price', () => {
-    expect(offerFor(true, forSale, null)).toEqual({ kind: 'app-store', price: '£9.99', canPay: true });
-    // Another storefront's price is shown as Apple wrote it, not as £9.99.
-    expect(offerFor(true, { kind: 'for-sale', price: '9,99 €', canPay: true }, '£9.99')).toEqual({ kind: 'app-store', price: '9,99 €', canPay: true });
-    expect(offerFor(true, { kind: 'for-sale', price: '£9.99', canPay: false }, null)).toEqual({ kind: 'app-store', price: '£9.99', canPay: false });
+  it('sells on iPhone exactly what the App Store sells, at its prices', () => {
+    expect(offerFor(true, forSale, null)).toEqual({ kind: 'app-store', plans: [...plans], canPay: true });
+    // Another storefront's price is shown as Apple wrote it.
+    const euro = { kind: 'for-sale', plans: [{ id: 'monthly', price: '5,99 €' }], canPay: true } as const;
+    expect(offerFor(true, euro, '£29.99')).toEqual({ kind: 'app-store', plans: [{ id: 'monthly', price: '5,99 €' }], canPay: true });
+    expect(offerFor(true, { ...forSale, canPay: false }, null)).toEqual({ kind: 'app-store', plans: [...plans], canPay: false });
   });
 
   it('sells nothing on iPhone with no StoreKit, or where the App Store does not sell the unlock', () => {
     // Even with a price remembered: those are answers, not silence.
-    expect(offerFor(true, { kind: 'absent' }, '£9.99')).toEqual({ kind: 'none' });
-    expect(offerFor(true, { kind: 'not-for-sale' }, '£9.99')).toEqual({ kind: 'none' });
+    expect(offerFor(true, { kind: 'absent' }, '£29.99')).toEqual({ kind: 'none' });
+    expect(offerFor(true, { kind: 'not-for-sale' }, '£29.99')).toEqual({ kind: 'none' });
   });
 
   it('keeps the offer, at the last price, while the App Store cannot be asked', () => {
-    expect(offerFor(true, { kind: 'unreachable' }, '£9.99')).toEqual({ kind: 'app-store', price: '£9.99', canPay: true });
-    expect(offerFor(true, { kind: 'asking' }, '£9.99')).toEqual({ kind: 'app-store', price: '£9.99', canPay: true });
+    const remembered = { kind: 'app-store', plans: [{ id: 'yearly', price: '£29.99' }], canPay: true };
+    expect(offerFor(true, { kind: 'unreachable' }, '£29.99')).toEqual(remembered);
+    expect(offerFor(true, { kind: 'asking' }, '£29.99')).toEqual(remembered);
   });
 
   it('offers nothing before the App Store has ever answered', () => {
@@ -96,18 +117,18 @@ describe('what each build sells', () => {
   });
 
   it('caps the library exactly where something is offered', () => {
-    expect(capsLibrary({ kind: 'web', price: UNLOCK.price })).toBe(true);
-    expect(capsLibrary({ kind: 'app-store', price: null, canPay: true })).toBe(true);
+    expect(capsLibrary({ kind: 'web', plans: WEB_PLANS })).toBe(true);
     // Purchases switched off still caps: the door is there, and its key is in
     // Screen Time, which the button's place says.
-    expect(capsLibrary({ kind: 'app-store', price: '£9.99', canPay: false })).toBe(true);
+    expect(capsLibrary({ kind: 'app-store', plans: [...plans], canPay: false })).toBe(true);
     expect(capsLibrary({ kind: 'none' })).toBe(false);
   });
 
-  it('words the button the same way wherever it is', () => {
-    expect(unlockLabel('£9.99')).toBe('Unlock unlimited · £9.99 once');
-    expect(unlockLabel(UNLOCK.price)).toBe(`Unlock unlimited · ${UNLOCK.price}${UNLOCK.suffix}`);
-    expect(unlockLabel(null)).toBe('Unlock unlimited');
+  it('words each plan’s button the same way wherever it is', () => {
+    expect(planLabel({ id: 'yearly', price: '£29.99' })).toBe('Plus · £29.99 a year');
+    expect(planLabel({ id: 'monthly', price: '£4.99' })).toBe('Plus · £4.99 a month');
+    expect(planLabel({ id: 'family', price: '£49.99' })).toBe('Family · £49.99 a year');
+    expect(planLabel({ id: 'monthly', price: '5,99 €' })).toBe('Plus · 5,99 € a month');
   });
 
   const withPlatform = (native: boolean) => {
@@ -146,19 +167,19 @@ describe('what each build sells', () => {
     expect(quotaFull(overFull({ store: { shelf: { kind: 'absent' }, busy: null, note: null } }))).toBe(false);
   });
 
-  it('holds the cap on an iPhone where the App Store sells the unlock', () => {
+  it('holds the cap on an iPhone where the App Store sells Plus', () => {
     withPlatform(true);
     expect(quotaFull(overFull({ store: { shelf: forSale, busy: null, note: null } }))).toBe(true);
   });
 
   it('holds the cap offline on an iPhone the App Store has answered before', () => {
     withPlatform(true);
-    expect(quotaFull(overFull({ store: { shelf: { kind: 'unreachable' }, busy: null, note: null } }, 'free', '£9.99'))).toBe(true);
+    expect(quotaFull(overFull({ store: { shelf: { kind: 'unreachable' }, busy: null, note: null } }, 'free', '£29.99'))).toBe(true);
   });
 
-  it('lifts the cap for someone who bought the unlock', () => {
+  it('lifts the cap for someone who holds Plus', () => {
     withPlatform(true);
-    expect(quotaFull(overFull({ store: { shelf: forSale, busy: null, note: null } }, 'pro', '£9.99'))).toBe(false);
+    expect(quotaFull(overFull({ store: { shelf: forSale, busy: null, note: null } }, 'pro', '£29.99'))).toBe(false);
   });
 });
 
@@ -181,7 +202,8 @@ describe('restore, when there is nothing to buy', () => {
     expect(restoreOnlyOffered(true, none, { kind: 'absent' }, true)).toBe(false);
     expect(restoreOnlyOffered(false, none, { kind: 'not-for-sale' }, true)).toBe(false);
     expect(restoreOnlyOffered(true, none, { kind: 'not-for-sale' }, false)).toBe(false);
-    const forSale = { kind: 'for-sale', price: '£9.99', canPay: true } as const;
+    const plans = [{ id: 'yearly', price: '£29.99' }, { id: 'monthly', price: '£4.99' }, { id: 'family', price: '£49.99' }] as const;
+  const forSale = { kind: 'for-sale', plans: [...plans], canPay: true } as const;
     expect(restoreOnlyOffered(true, offerFor(true, forSale, null), forSale, true)).toBe(false);
   });
 });

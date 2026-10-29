@@ -12,7 +12,7 @@ import { passedDeadline } from '../../lib/passed-deadline';
 import { findStore, policyFor, windowFor } from '../../lib/stores';
 import { windowInForceFor } from '../../lib/policy-feed';
 import type { Offer } from '../../lib/pricing';
-import type { StoreView } from '../../lib/app-store';
+import type { PlanId, StoreView } from '../../lib/app-store';
 import { FREE_TIER_LIMIT } from '../../lib/quota';
 import { isNative } from '../../lib/mirror';
 import { savePhoto, scannedPhotoToKeep } from '../../lib/photos';
@@ -37,7 +37,7 @@ interface Props {
   /** The policy feed, so a new purchase gets the window in force today. */
   updates: readonly PolicyUpdate[];
   onSave: (r: Receipt) => void;
-  onUpgrade: () => void;
+  onUpgrade: (plan: PlanId) => void;
   /** What this build sells at the cap (lib/pricing.ts). */
   offer: Offer;
   /** The App Store on iPhone: its answers and anything in flight. */

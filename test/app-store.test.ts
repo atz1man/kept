@@ -15,11 +15,14 @@ import {
   rememberedPrice,
   shelfFromError,
   STORE_ASKING,
-  UNLOCK_PRODUCT_ID,
+  ENTITLEMENT_IDS,
+  LEGACY_UNLOCK_ID,
+  PLAN_ORDER,
+  PLAN_PRODUCTS,
   type FailReason,
   type Outcome,
 } from '../src/lib/app-store';
-import { UNLOCK } from '../src/lib/pricing';
+import { PLAN_PRICES } from '../src/lib/pricing';
 import { reducer, type AppState } from '../src/app/state';
 import { DEFAULT_SETTINGS } from '../src/lib/storage';
 
@@ -46,22 +49,34 @@ describe('reading what StoreKit says', () => {
     for (const raw of ['', '   ', 'free', 'x'.repeat(30) + '1', 9.99, null, undefined, {}]) expect(readPrice(raw), String(raw)).toBeNull();
   });
 
-  it('finds the unlock on the shelf, with its price and whether purchases are allowed', () => {
-    const products = [{ id: 'something.else', displayPrice: '£1.99' }, { id: UNLOCK_PRODUCT_ID, displayPrice: '£9.99' }];
-    expect(readShelf({ products, canPay: true })).toEqual({ kind: 'for-sale', price: '£9.99', canPay: true });
-    expect(readShelf({ products, canPay: false })).toEqual({ kind: 'for-sale', price: '£9.99', canPay: false });
-    // Only an explicit refusal turns the button off.
-    expect(readShelf({ products })).toEqual({ kind: 'for-sale', price: '£9.99', canPay: true });
+  it('finds each plan on the shelf, in the order they are offered, with whether purchases are allowed', () => {
+    const products = [
+      { id: 'something.else', displayPrice: '£1.99' },
+      { id: PLAN_PRODUCTS.family, displayPrice: '£49.99' },
+      { id: PLAN_PRODUCTS.monthly, displayPrice: '£4.99' },
+      { id: PLAN_PRODUCTS.yearly, displayPrice: '£29.99' },
+    ];
+    const plans = [{ id: 'yearly', price: '£29.99' }, { id: 'monthly', price: '£4.99' }, { id: 'family', price: '£49.99' }];
+    expect(readShelf({ products, canPay: true })).toEqual({ kind: 'for-sale', plans, canPay: true });
+    expect(readShelf({ products, canPay: false })).toEqual({ kind: 'for-sale', plans, canPay: false });
+    // Only an explicit refusal turns the buttons off.
+    expect(readShelf({ products })).toEqual({ kind: 'for-sale', plans, canPay: true });
+    // A plan the App Store does not sell here is simply not offered.
+    expect(readShelf({ products: [{ id: PLAN_PRODUCTS.monthly, displayPrice: '5,99 €' }] })).toEqual({
+      kind: 'for-sale', plans: [{ id: 'monthly', price: '5,99 €' }], canPay: true,
+    });
   });
 
-  it('reads an answer without the unlock as not for sale: not live yet, or not in this storefront', () => {
+  it('reads an answer with no plan as not for sale: not live yet, or not in this storefront', () => {
     expect(readShelf({ products: [], canPay: true })).toEqual({ kind: 'not-for-sale' });
     expect(readShelf({ products: [{ id: 'something.else', displayPrice: '£1.99' }] })).toEqual({ kind: 'not-for-sale' });
-    expect(readShelf({ products: [{ id: UNLOCK_PRODUCT_ID, displayPrice: '' }] })).toEqual({ kind: 'not-for-sale' });
+    expect(readShelf({ products: [{ id: PLAN_PRODUCTS.yearly, displayPrice: '' }] })).toEqual({ kind: 'not-for-sale' });
+    // The old one-off unlock is never sold again, even if the App Store still lists it.
+    expect(readShelf({ products: [{ id: LEGACY_UNLOCK_ID, displayPrice: '£9.99' }] })).toEqual({ kind: 'not-for-sale' });
   });
 
   it('reads a malformed answer as no answer, so it cannot clear the remembered price', () => {
-    for (const raw of [null, undefined, 'products', {}, { products: 'kept.unlimited' }]) expect(readShelf(raw)).toEqual({ kind: 'unreachable' });
+    for (const raw of [null, undefined, 'products', {}, { products: 'kept.plus.yearly' }]) expect(readShelf(raw)).toEqual({ kind: 'unreachable' });
   });
 
   it('tells "nothing to buy with here" from "could not reach the App Store"', () => {
@@ -74,6 +89,7 @@ describe('reading what StoreKit says', () => {
   it('reads ownership, and treats an unverified or garbled answer as deciding nothing', () => {
     expect(readOwnership({ state: 'owned' })).toBe('owned');
     expect(readOwnership({ state: 'revoked' })).toBe('revoked');
+    expect(readOwnership({ state: 'expired' })).toBe('expired');
     expect(readOwnership({ state: 'none' })).toBe('none');
     for (const raw of [{ state: 'unverified' }, { state: 'OWNED' }, { owned: true }, null, 'owned']) expect(readOwnership(raw)).toBe('unknown');
   });
@@ -97,6 +113,7 @@ describe('reading what StoreKit says', () => {
     expect(readRestore({ outcome: 'synced' }, 'owned')).toEqual({ kind: 'restored' });
     expect(readRestore({ outcome: 'synced' }, 'none')).toEqual({ kind: 'nothing-to-restore' });
     expect(readRestore({ outcome: 'synced' }, 'revoked')).toEqual({ kind: 'nothing-to-restore' });
+    expect(readRestore({ outcome: 'synced' }, 'expired')).toEqual({ kind: 'nothing-to-restore' });
     // A sync followed by silence is not "you never bought it".
     expect(readRestore({ outcome: 'synced' }, 'unknown')).toEqual({ kind: 'restore-failed', reason: 'unknown' });
     expect(readRestore({ outcome: 'cancelled' }, 'owned')).toEqual({ kind: 'cancelled' });
@@ -112,9 +129,12 @@ describe('reading what StoreKit says', () => {
 });
 
 describe('what the answers decide', () => {
-  it('unlocks on ownership and relocks only on a revocation, never on silence', () => {
+  it('unlocks on ownership and relocks only on a revocation or an expiry, never on silence', () => {
     expect(planAfter('free', 'owned')).toBe('pro');
     expect(planAfter('pro', 'revoked')).toBe('free');
+    // A subscription whose paid period ended unrenewed is a verified answer.
+    expect(planAfter('pro', 'expired')).toBe('free');
+    expect(planAfter('free', 'expired')).toBe('free');
     // A new phone says "none" before its records arrive: a paying customer
     // must not be locked out by a record that is slow to arrive.
     expect(planAfter('pro', 'none')).toBe('pro');
@@ -125,14 +145,15 @@ describe('what the answers decide', () => {
     expect(planAfter('free', 'unknown')).toBe('free');
   });
 
-  it('remembers the App Store’s price until it says otherwise', () => {
-    expect(rememberedPrice({ kind: 'for-sale', price: '£9.99', canPay: true }, null)).toBe('£9.99');
-    expect(rememberedPrice({ kind: 'for-sale', price: '£10.99', canPay: true }, '£9.99')).toBe('£10.99');
-    expect(rememberedPrice({ kind: 'not-for-sale' }, '£9.99')).toBeNull();
-    expect(rememberedPrice({ kind: 'absent' }, '£9.99')).toBeNull();
+  it('remembers the first plan’s price until the App Store says otherwise', () => {
+    const shelf = (price: string) => ({ kind: 'for-sale', plans: [{ id: 'yearly', price }, { id: 'monthly', price: '£4.99' }], canPay: true }) as const;
+    expect(rememberedPrice(shelf('£29.99'), null)).toBe('£29.99');
+    expect(rememberedPrice(shelf('£34.99'), '£29.99')).toBe('£34.99');
+    expect(rememberedPrice({ kind: 'not-for-sale' }, '£29.99')).toBeNull();
+    expect(rememberedPrice({ kind: 'absent' }, '£29.99')).toBeNull();
     // Silence keeps it: this is what stops offline lifting the cap.
-    expect(rememberedPrice({ kind: 'unreachable' }, '£9.99')).toBe('£9.99');
-    expect(rememberedPrice({ kind: 'asking' }, '£9.99')).toBe('£9.99');
+    expect(rememberedPrice({ kind: 'unreachable' }, '£29.99')).toBe('£29.99');
+    expect(rememberedPrice({ kind: 'asking' }, '£29.99')).toBe('£29.99');
   });
 });
 
@@ -200,11 +221,12 @@ describe('the reducer, as StoreKit answers', () => {
   });
   const today = new Date(2026, 9, 4);
 
-  it('remembers the price the App Store quotes, and forgets it when the unlock comes off sale', () => {
-    const shelved = reducer(base(), { type: 'store-shelf', shelf: { kind: 'for-sale', price: '£9.99', canPay: true } }, today);
-    expect(shelved.settings.appStorePrice).toBe('£9.99');
-    expect(shelved.store.shelf).toEqual({ kind: 'for-sale', price: '£9.99', canPay: true });
-    expect(reducer(shelved, { type: 'store-shelf', shelf: { kind: 'unreachable' } }, today).settings.appStorePrice).toBe('£9.99');
+  it('remembers the price the App Store quotes, and forgets it when Plus comes off sale', () => {
+    const forSale = { kind: 'for-sale', plans: [{ id: 'yearly', price: '£29.99' }], canPay: true } as const;
+    const shelved = reducer(base(), { type: 'store-shelf', shelf: forSale }, today);
+    expect(shelved.settings.appStorePrice).toBe('£29.99');
+    expect(shelved.store.shelf).toEqual(forSale);
+    expect(reducer(shelved, { type: 'store-shelf', shelf: { kind: 'unreachable' } }, today).settings.appStorePrice).toBe('£29.99');
     expect(reducer(shelved, { type: 'store-shelf', shelf: { kind: 'not-for-sale' } }, today).settings.appStorePrice).toBeNull();
   });
 
@@ -236,6 +258,9 @@ describe('the reducer, as StoreKit answers', () => {
     const refunded = reducer(base('pro'), { type: 'store-ownership', ownership: 'revoked' }, today);
     expect(refunded.settings.plan).toBe('free');
     expect(refunded.store.note?.tone).toBe('bad');
+    const lapsed = reducer(base('pro'), { type: 'store-ownership', ownership: 'expired' }, today);
+    expect(lapsed.settings.plan).toBe('free');
+    expect(lapsed.store.note?.text).toMatch(/subscription has ended/);
   });
 
   it('changes nothing at all on an answer that decides nothing', () => {
@@ -251,7 +276,7 @@ describe('the reducer, as StoreKit answers', () => {
   });
 
   it('keeps the purchase through Erase everything, which erases what is on the phone, not what was paid for', () => {
-    const wiped = reducer(base('pro', '£9.99'), { type: 'wipe' }, today);
+    const wiped = reducer(base('pro', '£29.99'), { type: 'wipe' }, today);
     expect(wiped.settings.plan).toBe('pro');
   });
 });
@@ -307,7 +332,7 @@ describe('the Swift plugin and the TypeScript agree', () => {
       else if (outcome === 'failed') expect(readPurchase({ outcome, reason: 'network' })).toEqual({ kind: 'failed', reason: 'network' });
       else expect(readPurchase({ outcome }).kind, `"${outcome}" from Swift is not read`).toBe(outcome);
     }
-    expect([...states].sort()).toEqual(['none', 'owned', 'revoked', 'unverified']);
+    expect([...states].sort()).toEqual(['expired', 'none', 'owned', 'revoked', 'unverified']);
     for (const state of states) expect(readOwnership({ state })).toBe(state === 'unverified' ? 'unknown' : state);
     for (const reason of reasons) {
       if (reason === 'cancelled') continue;
@@ -315,16 +340,35 @@ describe('the Swift plugin and the TypeScript agree', () => {
     }
   });
 
-  it('asks for the unlock by the id App Store Connect and the StoreKit file use', () => {
-    expect(lib).toContain(`UNLOCK_PRODUCT_ID = '${UNLOCK_PRODUCT_ID}'`);
+  it('asks for each plan by the id App Store Connect and the StoreKit file use', () => {
+    for (const id of PLAN_ORDER) expect(lib).toContain(`${id}: '${PLAN_PRODUCTS[id]}'`);
+    expect(lib).toContain(`LEGACY_UNLOCK_ID = '${LEGACY_UNLOCK_ID}'`);
+    expect(ENTITLEMENT_IDS).toEqual([...PLAN_ORDER.map((id) => PLAN_PRODUCTS[id]), LEGACY_UNLOCK_ID]);
     const config = JSON.parse(readFileSync(join(ROOT, 'ios', 'App', 'Kept.storekit'), 'utf8')) as {
-      products: { productID: string; type: string; displayPrice: string; familyShareable: boolean }[];
+      products: { productID: string; type: string }[];
+      subscriptionGroups: {
+        name: string;
+        subscriptions: { productID: string; type: string; displayPrice: string; familyShareable: boolean; recurringSubscriptionPeriod: string }[];
+      }[];
       settings: { _storefront: string };
     };
-    expect(config.products.map((p) => p.productID)).toEqual([UNLOCK_PRODUCT_ID]);
-    expect(config.products[0].type).toBe('NonConsumable');
-    // The price someone testing in Xcode sees is the price the web charges.
-    expect(`£${config.products[0].displayPrice}`).toBe(UNLOCK.price);
+    // One group, so a person holds one plan and moving between them is Apple's upgrade, not a second charge.
+    expect(config.subscriptionGroups).toHaveLength(1);
+    const subs = config.subscriptionGroups[0].subscriptions;
+    expect(subs.map((p) => p.productID)).toEqual(PLAN_ORDER.map((id) => PLAN_PRODUCTS[id]));
+    for (const sub of subs) expect(sub.type).toBe('RecurringSubscription');
+    const by = (id: string) => subs.find((p) => p.productID === id)!;
+    // The prices someone testing in Xcode sees are the prices the landing page shows.
+    for (const id of PLAN_ORDER) expect(`£${by(PLAN_PRODUCTS[id]).displayPrice}`, id).toBe(PLAN_PRICES[id]);
+    expect(by(PLAN_PRODUCTS.monthly).recurringSubscriptionPeriod).toBe('P1M');
+    expect(by(PLAN_PRODUCTS.yearly).recurringSubscriptionPeriod).toBe('P1Y');
+    expect(by(PLAN_PRODUCTS.family).recurringSubscriptionPeriod).toBe('P1Y');
+    // Family is Family because it is shared; the others are one person's.
+    expect(subs.map((p) => [p.productID, p.familyShareable])).toEqual([
+      [PLAN_PRODUCTS.yearly, false], [PLAN_PRODUCTS.monthly, false], [PLAN_PRODUCTS.family, true],
+    ]);
+    // The old unlock stays testable, so restoring it can be tried in Xcode.
+    expect(config.products.map((p) => [p.productID, p.type])).toEqual([[LEGACY_UNLOCK_ID, 'NonConsumable']]);
     expect(config.settings._storefront).toBe('GBR');
   });
 });

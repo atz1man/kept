@@ -19,8 +19,11 @@ import {
   readShelf,
   reasonFromError,
   shelfFromError,
-  UNLOCK_PRODUCT_ID,
+  ENTITLEMENT_IDS,
+  PLAN_ORDER,
+  PLAN_PRODUCTS,
   type Outcome,
+  type PlanId,
   type Ownership,
   type Shelf,
 } from '../lib/app-store';
@@ -29,7 +32,7 @@ import type { Action } from './state';
 interface PurchasesPlugin {
   products(options: { ids: string[] }): Promise<unknown>;
   purchase(options: { id: string }): Promise<unknown>;
-  entitlement(options: { id: string }): Promise<unknown>;
+  entitlement(options: { ids: string[] }): Promise<unknown>;
   restore(): Promise<unknown>;
   requestReview(): Promise<unknown>;
   addListener(eventName: 'entitlementChanged', listener: () => void): Promise<PluginListenerHandle>;
@@ -53,7 +56,7 @@ function within<T>(asked: Promise<T>, ms: number): Promise<T> {
 
 export async function askShelf(): Promise<Shelf> {
   try {
-    return readShelf(await within(Purchases.products({ ids: [UNLOCK_PRODUCT_ID] }), ASK_BUDGET_MS));
+    return readShelf(await within(Purchases.products({ ids: PLAN_ORDER.map((id) => PLAN_PRODUCTS[id]) }), ASK_BUDGET_MS));
   } catch (e) {
     return shelfFromError(e);
   }
@@ -61,16 +64,16 @@ export async function askShelf(): Promise<Shelf> {
 
 export async function askOwnership(): Promise<Ownership> {
   try {
-    return readOwnership(await within(Purchases.entitlement({ id: UNLOCK_PRODUCT_ID }), ASK_BUDGET_MS));
+    return readOwnership(await within(Purchases.entitlement({ ids: [...ENTITLEMENT_IDS] }), ASK_BUDGET_MS));
   } catch {
     return 'unknown';
   }
 }
 
 /** No time limit: the App Store's sheet stays up for as long as the person takes to decide. */
-export async function buyUnlock(): Promise<Outcome> {
+export async function buyPlan(plan: PlanId): Promise<Outcome> {
   try {
-    return readPurchase(await Purchases.purchase({ id: UNLOCK_PRODUCT_ID }));
+    return readPurchase(await Purchases.purchase({ id: PLAN_PRODUCTS[plan] }));
   } catch (e) {
     return { kind: 'failed', reason: reasonFromError(e) };
   }
@@ -130,7 +133,7 @@ function onOwnershipChange(changed: () => void): () => void {
  * Never in the landing page's demo, which is the web anyway, and never on the
  * web, where the unlock is the honest free flag (`UpgradeNotice`).
  */
-export function useAppStore(dispatch: (action: Action) => void, embedded: boolean): { buy: () => void; restore: () => void } {
+export function useAppStore(dispatch: (action: Action) => void, embedded: boolean): { buy: (plan: PlanId) => void; restore: () => void } {
   const native = isNative() && !embedded;
 
   useEffect(() => {
@@ -156,7 +159,7 @@ export function useAppStore(dispatch: (action: Action) => void, embedded: boolea
   /*
    * One request at a time. The buttons wait while one is in flight, but a
    * double tap lands before the re-render that disables them, and two
-   * purchase sheets for one unlock is a real way to be confused about what
+   * purchase sheets for one subscription is a real way to be confused about what
    * you paid.
    */
   const inFlight = useRef(false);
@@ -173,7 +176,7 @@ export function useAppStore(dispatch: (action: Action) => void, embedded: boolea
     },
     [dispatch],
   );
-  const buy = useCallback(() => once('buying', buyUnlock), [once]);
+  const buy = useCallback((plan: PlanId) => once('buying', () => buyPlan(plan)), [once]);
   const restore = useCallback(() => once('restoring', restoreUnlock), [once]);
   return { buy, restore };
 }

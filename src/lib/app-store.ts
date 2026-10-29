@@ -1,8 +1,10 @@
 import type { Plan } from './quota';
+import { PLAN_ORDER, type PlanId, type PlanOffer } from './pricing';
 
 /**
- * The unlock on iPhone, sold through the App Store: what StoreKit's answers
- * mean for the person's plan, and what the app says after each one.
+ * Quids In Plus on iPhone, sold through the App Store as a subscription: what
+ * StoreKit's answers mean for the person's plan, and what the app says after
+ * each one.
  *
  * The native half is packages/purchases (StoreKit 2). It only asks StoreKit and
  * passes on what it was told. Every DECISION is here, where it can be tested
@@ -17,21 +19,49 @@ import type { Plan } from './quota';
  * whatever else it says.
  *
  * Nothing relocks on silence. "No record of a purchase" is what a new phone
- * says before its records arrive, so only an explicit revocation (a refund,
- * or family sharing withdrawn) takes the unlock away. Being wrong in that
- * direction costs one refunded £9.99; being wrong the other way locks a paying
+ * says before its records arrive, so only an explicit answer takes the unlock
+ * away: a revocation (a refund, or family sharing withdrawn) or a verified
+ * subscription whose period ended unrenewed. Being wrong in the generous
+ * direction costs one month of Plus; being wrong the other way locks a paying
  * customer out of their own library.
  *
- * And no wall without a door. The free tier's cap stands only where the
- * unlock can be bought: where the App Store has said it sells it, now or at
+ * And no wall without a door. The free tier's cap stands only where Plus
+ * can be bought: where the App Store has said it sells it, now or at
  * its last answer. That last part matters. Offline the App Store cannot
  * answer, and "offline lifts the cap" would make airplane mode the way to
  * unlimited. So the price it last quoted is remembered, and the cap stands on
  * it: the door is still there, and it opens once the phone is online.
  */
 
-/** The unlock's product id in App Store Connect and in ios/App/Kept.storekit. Never reused once live, and not renamed with the app: a product id is permanent in App Store Connect. */
-export const UNLOCK_PRODUCT_ID = 'kept.unlimited';
+/**
+ * What the App Store sells: Quids In Plus by the month or the year, and Family
+ * by the year, all in one subscription group so a person holds at most one of
+ * them and moving between them is Apple's upgrade, not a second charge.
+ * Family is the same unlock with Family Sharing switched on in App Store
+ * Connect, which is how it reaches up to six people.
+ *
+ * Product ids are permanent in App Store Connect: never reused, never renamed
+ * with the app. The order here is the order the plans are offered in.
+ */
+export const PLAN_PRODUCTS: Record<PlanId, string> = {
+  yearly: 'kept.plus.yearly',
+  monthly: 'kept.plus.monthly',
+  family: 'kept.family.yearly',
+};
+
+// The plans themselves, and their order, are pricing's: the landing page reads
+// them, and it should not carry the App Store's code to do so.
+export { PLAN_ORDER, type PlanId, type PlanOffer } from './pricing';
+
+/**
+ * The one-off unlock the app sold before subscriptions. It is no longer
+ * offered, but anyone holding it keeps unlimited: ownership is asked about it
+ * alongside the subscriptions, and a refund of it still relocks.
+ */
+export const LEGACY_UNLOCK_ID = 'kept.unlimited';
+
+/** Every product whose ownership unlocks the app. */
+export const ENTITLEMENT_IDS: readonly string[] = [...PLAN_ORDER.map((id) => PLAN_PRODUCTS[id]), LEGACY_UNLOCK_ID];
 
 /** How long to wait for the App Store to say what it sells, or what was bought, before treating it as unreachable. */
 export const ASK_BUDGET_MS = 20_000;
@@ -46,11 +76,16 @@ export type Shelf =
   | { kind: 'unreachable' }
   /** The App Store answered without the unlock: not on sale in this storefront, or not live yet. */
   | { kind: 'not-for-sale' }
-  /** On sale, at the App Store's own price for this storefront. `canPay` is false when Screen Time or a device manager turns purchases off. */
-  | { kind: 'for-sale'; price: string; canPay: boolean };
+  /** On sale: the plans the App Store sells, in `PLAN_ORDER`, each at its own price for this storefront. Never empty. `canPay` is false when Screen Time or a device manager turns purchases off. */
+  | { kind: 'for-sale'; plans: readonly PlanOffer[]; canPay: boolean };
 
-/** Whether this Apple ID owns the unlock, as StoreKit knows it on this phone. `unknown` decides nothing. */
-export type Ownership = 'owned' | 'revoked' | 'none' | 'unknown';
+/**
+ * Whether this Apple ID holds Plus, as StoreKit knows it on this phone.
+ * `expired` is a subscription StoreKit has a verified record of, whose paid
+ * period has ended with no renewal (and no grace period). `unknown` decides
+ * nothing.
+ */
+export type Ownership = 'owned' | 'revoked' | 'expired' | 'none' | 'unknown';
 
 /** The failures the app words differently. */
 export type FailReason = 'network' | 'not-allowed' | 'not-for-sale' | 'unknown';
@@ -81,13 +116,15 @@ export function readPrice(raw: unknown): string | null {
 export function readShelf(raw: unknown): Shelf {
   const r = typeof raw === 'object' && raw !== null ? (raw as { products?: unknown; canPay?: unknown }) : null;
   if (!r || !Array.isArray(r.products)) return { kind: 'unreachable' };
-  const unlock = r.products.find(
-    (p): p is { displayPrice?: unknown } => typeof p === 'object' && p !== null && (p as { id?: unknown }).id === UNLOCK_PRODUCT_ID,
-  );
-  const price = readPrice(unlock?.displayPrice);
-  if (price === null) return { kind: 'not-for-sale' };
-  // Only an explicit "no" turns the button off: a missing flag is not a refusal.
-  return { kind: 'for-sale', price, canPay: r.canPay !== false };
+  const products = r.products.filter((p): p is { id?: unknown; displayPrice?: unknown } => typeof p === 'object' && p !== null);
+  const plans: PlanOffer[] = [];
+  for (const id of PLAN_ORDER) {
+    const price = readPrice(products.find((p) => p.id === PLAN_PRODUCTS[id])?.displayPrice);
+    if (price !== null) plans.push({ id, price });
+  }
+  if (plans.length === 0) return { kind: 'not-for-sale' };
+  // Only an explicit "no" turns the buttons off: a missing flag is not a refusal.
+  return { kind: 'for-sale', plans, canPay: r.canPay !== false };
 }
 
 /**
@@ -103,7 +140,7 @@ export function shelfFromError(e: unknown): Shelf {
 export function readOwnership(raw: unknown): Ownership {
   const state = typeof raw === 'object' && raw !== null ? (raw as { state?: unknown }).state : undefined;
   // `unverified` is deliberately not here: it decides nothing either way.
-  return state === 'owned' || state === 'revoked' || state === 'none' ? state : 'unknown';
+  return state === 'owned' || state === 'revoked' || state === 'expired' || state === 'none' ? state : 'unknown';
 }
 
 function readReason(raw: unknown): FailReason {
@@ -150,23 +187,27 @@ export function readRestore(raw: unknown, after: Ownership): Outcome {
   return after === 'unknown' ? { kind: 'restore-failed', reason: 'unknown' } : { kind: 'nothing-to-restore' };
 }
 
-/** The plan after StoreKit's answer. Owned unlocks, revoked relocks, and anything else leaves the plan as it was. */
+/**
+ * The plan after StoreKit's answer. Owned unlocks; revoked and expired relock;
+ * anything else leaves the plan as it was. Expired relocks because it is an
+ * answer, not silence: a verified record of a period that ended unrenewed.
+ */
 export function planAfter(plan: Plan, ownership: Ownership): Plan {
   if (ownership === 'owned') return 'pro';
-  if (ownership === 'revoked') return 'free';
+  if (ownership === 'revoked' || ownership === 'expired') return 'free';
   return plan;
 }
 
 /**
  * The price to remember, which is what keeps the cap standing while the App
- * Store cannot be asked: its own price when it sells the unlock, nothing once
- * it says it does not (or there is no StoreKit to ask), and otherwise
+ * Store cannot be asked: the first plan's price when it sells Plus, nothing
+ * once it says it does not (or there is no StoreKit to ask), and otherwise
  * whatever it said last.
  */
 export function rememberedPrice(shelf: Shelf, before: string | null): string | null {
   switch (shelf.kind) {
     case 'for-sale':
-      return shelf.price;
+      return shelf.plans[0].price;
     case 'not-for-sale':
     case 'absent':
       return null;
@@ -202,7 +243,7 @@ export const STORE_ASKING: StoreView = { shelf: { kind: 'asking' }, busy: null, 
 export function ownershipNote(before: Plan, after: Plan): StoreNote | null {
   if (before === 'free' && after === 'pro') return { tone: 'ok', text: UNLOCKED };
   if (before === 'pro' && after === 'free') {
-    return { tone: 'bad', text: 'The unlock was refunded, or is no longer shared with you, so the free limit applies again. Nothing you’ve saved is lost.' };
+    return { tone: 'bad', text: 'Your Plus subscription has ended, was refunded, or is no longer shared with you, so the free limit applies again. Nothing you’ve saved is lost.' };
   }
   return null;
 }
@@ -246,7 +287,7 @@ export function noteFor(outcome: Outcome): StoreNote | null {
     case 'restored':
       return { tone: 'ok', text: 'Restored — there’s no limit on receipts on this iPhone.' };
     case 'nothing-to-restore':
-      return { tone: 'wait', text: 'There’s no unlock on this Apple ID to restore.' };
+      return { tone: 'wait', text: 'There’s no active Plus subscription on this Apple ID to restore.' };
     case 'restore-failed':
       return { tone: 'bad', text: outcome.reason === 'network' ? UNREACHABLE : 'The App Store couldn’t restore purchases just now. Try again in a moment.' };
   }
@@ -260,7 +301,7 @@ function failedWords(reason: FailReason): string {
       return PURCHASES_OFF;
     case 'not-for-sale':
       // Certain: the purchase never started, because there was nothing to buy.
-      return 'The App Store isn’t selling the unlock here right now, so nothing was charged.';
+      return 'The App Store isn’t selling that plan here right now, so nothing was charged.';
     case 'unknown':
       return 'The purchase didn’t go through. If you were charged, Quids In unlocks by itself as soon as the App Store confirms it.';
   }
