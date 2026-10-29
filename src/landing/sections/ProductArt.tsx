@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { color, font, gradient, radius, shadow } from '../../tokens';
+import { color, font, radius, shadow } from '../../tokens';
 import { CameraGlyph, Tick } from '../../app/components/Icons';
 
 /*
@@ -20,12 +20,20 @@ function Figure({ label, children, style }: { label: string; children: ReactNode
       role="img"
       aria-label={label}
       style={{
-        background: color.surfaceAlt, borderRadius: radius.hero, padding: 'clamp(18px, 4vw, 36px)',
-        display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12, minHeight: 300,
+        // The lightest stop is the declared colour, so the contrast sweep
+        // measures anything set straight on the ground where it is weakest.
+        backgroundColor: color.surfaceAlt, backgroundImage: `linear-gradient(160deg, ${color.accentSoft} 0%, ${color.surfaceAlt} 62%)`,
+        borderRadius: radius.hero, padding: 'clamp(22px, 4.5vw, 44px)',
+        display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 12, minHeight: 340,
         position: 'relative', overflow: 'hidden', ...style,
       }}
     >
-      {children}
+      {/* The brand's one graphic device, the countdown ring, as a watermark. */}
+      <svg aria-hidden="true" width="260" height="260" viewBox="0 0 260 260" style={{ position: 'absolute', right: -70, top: -80, pointerEvents: 'none' }}>
+        <circle cx="130" cy="130" r="100" fill="none" stroke={color.accent} strokeOpacity="0.07" strokeWidth="26" />
+        <circle cx="130" cy="130" r="100" fill="none" stroke={color.accent} strokeOpacity="0.14" strokeWidth="26" strokeLinecap="round" strokeDasharray="420 629" transform="rotate(-90 130 130)" />
+      </svg>
+      <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 'inherit' }}>{children}</div>
     </div>
   );
 }
@@ -111,22 +119,20 @@ export function TwoClocksArt({ shopDays, lawDays, coolingDays }: { shopDays: num
 
 /** A letter to the shop, drafted. */
 export function LetterArt() {
-  const line = (w: string, strong = false) => (
-    <div style={{ height: strong ? 8 : 7, width: w, borderRadius: 4, background: strong ? color.ink : color.muted, opacity: strong ? 0.7 : 0.28 }} />
-  );
   return (
     <Figure label="A letter to the shop, drafted for you, quoting the Consumer Rights Act 2015">
-      <div style={{ ...panel, padding: '24px 24px 20px', display: 'grid', gap: 10, maxWidth: 420, width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: color.muted }}>To the customer services team</div>
-        {line('82%')}
-        {line('64%')}
-        <div style={{ background: color.accentSoft, borderRadius: 10, padding: '10px 12px', margin: '4px 0' }}>
-          <div style={{ fontSize: 12, fontWeight: 650, color: color.accentInk }}>Consumer Rights Act 2015</div>
-          <div style={{ fontSize: 13, color: color.ink, marginTop: 3, lineHeight: 1.45 }}>The goods are not of satisfactory quality, and I am asking for a repair or a replacement.</div>
+      <div style={{ ...panel, padding: '22px 24px 20px', display: 'grid', gap: 10, maxWidth: 430, width: '100%', margin: '0 auto', boxSizing: 'border-box', fontSize: 13.5, lineHeight: 1.55, color: color.body }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, color: color.muted }}>
+          <span style={{ fontWeight: 600 }}>To: Currys customer services</span>
+          <span>Draft</span>
         </div>
-        {line('90%')}
-        {line('72%')}
-        {line('40%', true)}
+        <div style={{ color: color.ink, fontWeight: 650 }}>Re: JBL headphones, order 4471-2290</div>
+        <div>The left earcup stopped working on day 12. Under the Consumer Rights Act 2015 the goods must be of satisfactory quality.</div>
+        <div style={{ background: color.accentSoft, borderRadius: 10, padding: '10px 12px' }}>
+          <div style={{ fontSize: 12, fontWeight: 650, color: color.accentInk }}>Section 22: the right to reject</div>
+          <div style={{ fontSize: 13, color: color.ink, marginTop: 3 }}>As this is within 30 days of delivery, I am rejecting them for a full refund.</div>
+        </div>
+        <div>Yours faithfully,</div>
       </div>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
         {['Copy', 'Email it', 'Share'].map((a) => (
@@ -190,29 +196,41 @@ export function SmallPrintArt({ cards }: { cards: { store: string; days: number;
 
 /** Where your data goes: nowhere. Drawn on the hero gradient. */
 export function PhoneOnlyArt() {
+  const rows = [['ASOS', '2 days', true], ['Currys', '9 days', false], ['IKEA', '301 days', false]] as const;
   return (
     <div
       role="img"
-      aria-label="Your receipts stay on your phone; only the list of shop policies comes down to it"
+      aria-label="Your receipts stay on your phone; only the list of shop policies comes down to it, and nothing about you goes back"
       style={{ display: 'grid', placeItems: 'center', padding: '12px 0' }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(12px, 3vw, 28px)' }}>
-        <div style={{ width: 84, height: 84, borderRadius: 24, background: color.onHeroChip, display: 'grid', placeItems: 'center', color: color.white, fontSize: 13, fontWeight: 600, textAlign: 'center', lineHeight: 1.3 }}>
-          Shop<br />policies
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(14px, 3vw, 30px)' }}>
+        <div style={{ display: 'grid', gap: 10, justifyItems: 'center' }}>
+          <div style={{ width: 92, padding: '14px 10px', borderRadius: 22, background: color.onHeroChip, border: `1px solid ${color.onHeroGlass}`, display: 'grid', gap: 6, justifyItems: 'center', color: color.white, fontSize: 12.5, fontWeight: 600, textAlign: 'center', lineHeight: 1.3 }}>
+            <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10" stroke={color.gold} strokeWidth="2.2" strokeLinecap="round" /></svg>
+            Shop<br />policies
+          </div>
         </div>
-        <div style={{ display: 'grid', gap: 6, justifyItems: 'center', color: color.onHeroSoft, fontSize: 12, fontWeight: 600 }}>
-          <span>download</span>
-          <svg width="72" height="12" viewBox="0 0 72 12" aria-hidden="true">
-            <path d="M2 6h64M60 1.5L66.5 6 60 10.5" fill="none" stroke={color.white} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="4 5" />
+        <div style={{ display: 'grid', gap: 10, justifyItems: 'center', color: color.white, fontSize: 12, fontWeight: 600 }}>
+          <span>comes down</span>
+          <svg width="80" height="12" viewBox="0 0 80 12" aria-hidden="true">
+            <path d="M2 6h72M68 1.5L74.5 6 68 10.5" fill="none" stroke={color.gold} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <svg width="80" height="12" viewBox="0 0 80 12" aria-hidden="true">
+            <path d="M78 6H8M14 1.5L7.5 6 14 10.5" fill="none" stroke={color.white} strokeOpacity="0.45" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="4 5" />
+            <path d="M34 0L46 12M46 0L34 12" stroke={color.white} strokeWidth="2.2" strokeLinecap="round" />
           </svg>
           <span>nothing goes back</span>
         </div>
-        <div style={{ width: 112, height: 196, borderRadius: 26, border: `3px solid ${color.white}`, background: color.heroTop, display: 'grid', placeItems: 'center', padding: 10, boxSizing: 'border-box' }}>
-          <div style={{ display: 'grid', gap: 7, width: '100%' }}>
-            {[0.9, 0.7, 0.8].map((w, i) => (
-              <div key={i} style={{ background: gradient.hero, backgroundColor: color.heroEnd, borderRadius: 8, height: 26, width: `${w * 100}%` }} />
+        <div style={{ width: 132, padding: 6, borderRadius: 30, background: color.heroTop, border: `2px solid ${color.onHeroGlass}`, boxShadow: '0 20px 40px rgba(10,10,18,0.35)' }}>
+          <div style={{ borderRadius: 24, background: color.surface, padding: '18px 8px 12px', display: 'grid', gap: 6 }}>
+            <div style={{ width: 34, height: 9, borderRadius: 9, background: color.heroTop, margin: '-10px auto 4px' }} />
+            {rows.map(([shop, left, urgent]) => (
+              <div key={shop} style={{ display: 'flex', justifyContent: 'space-between', gap: 4, alignItems: 'center', background: color.surfaceAlt, borderRadius: 9, padding: '7px 8px', fontSize: 11 }}>
+                <span style={{ fontWeight: 650, color: color.ink }}>{shop}</span>
+                <span style={{ fontWeight: 650, color: urgent ? color.danger : color.bodyStrong, whiteSpace: 'nowrap' }}>{left}</span>
+              </div>
             ))}
-            <div style={{ color: color.white, fontSize: 11.5, fontWeight: 600, textAlign: 'center', marginTop: 4 }}>Your receipts</div>
+            <div style={{ textAlign: 'center', fontSize: 10.5, fontWeight: 600, color: color.muted, marginTop: 2 }}>Only on this phone</div>
           </div>
         </div>
       </div>

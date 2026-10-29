@@ -5,11 +5,9 @@ import { UNLOCK } from '../lib/pricing';
 import { FREE_TIER_LIMIT } from '../lib/quota';
 import { STORE_COUNT, STORE_POLICIES, findStore } from '../lib/stores';
 import { COOLING_OFF_DAYS, REJECT_DAYS } from '../lib/legal';
-import { CONTACT_EMAIL, TAGLINE, TAGLINE_LEAD } from '../lib/brand';
+import { CONTACT_EMAIL, TAGLINE } from '../lib/brand';
 import { tickerLines } from './ticker';
 import { CompanyDisclosure } from '../pages/Disclosure';
-import { FinePrintArt, HaulArt, LostReceiptsArt } from './sections/ProblemArt';
-import { DeadlinesArt, LetterArt, PhoneOnlyArt, ScanArt, SmallPrintArt, TwoClocksArt } from './sections/ProductArt';
 import { Faq } from './sections/Faq';
 /*
  * The checker brings the app's deadline and statutory logic with it, and sits
@@ -18,6 +16,27 @@ import { Faq } from './sections/Faq';
  * at its own height, so nothing below jumps.
  */
 const Checker = lazy(() => import('./sections/Checker').then((m) => ({ default: m.Checker })));
+/*
+ * The illustrations are the heaviest thing below the fold, and none of them is
+ * on the first screen, so they arrive the same way: after the page has painted,
+ * each held at its own height until it does (`Art` below).
+ */
+const problemArt = () => import('./sections/ProblemArt');
+const productArt = () => import('./sections/ProductArt');
+const HaulArt = lazy(() => problemArt().then((m) => ({ default: m.HaulArt })));
+const LostReceiptsArt = lazy(() => problemArt().then((m) => ({ default: m.LostReceiptsArt })));
+const FinePrintArt = lazy(() => problemArt().then((m) => ({ default: m.FinePrintArt })));
+const DeadlinesArt = lazy(() => productArt().then((m) => ({ default: m.DeadlinesArt })));
+const LetterArt = lazy(() => productArt().then((m) => ({ default: m.LetterArt })));
+const PhoneOnlyArt = lazy(() => productArt().then((m) => ({ default: m.PhoneOnlyArt })));
+const ScanArt = lazy(() => productArt().then((m) => ({ default: m.ScanArt })));
+const SmallPrintArt = lazy(() => productArt().then((m) => ({ default: m.SmallPrintArt })));
+const TwoClocksArt = lazy(() => productArt().then((m) => ({ default: m.TwoClocksArt })));
+
+/** A picture that loads after the page, holding its place until it does. */
+function Art({ height, children }: { height: number | string; children: ReactNode }) {
+  return <Suspense fallback={<div style={{ minHeight: height, height: '100%', borderRadius: radius.hero, background: color.surfaceAlt }} />}>{children}</Suspense>;
+}
 import { Card, OpenAppButton, SectionHead, WRAP } from './sections/primitives';
 
 /*
@@ -87,20 +106,20 @@ const EXAMPLE_ROWS = [
  */
 const WHY: { n: string; title: string; body: string; link?: { href: string; label: string }; art: ReactNode }[] = [
   // "a heads-up when something must go back this week" implied a background
-  // service. See notify.ts: a web app cannot wake itself, and the onboarding
-  // was corrected for this exact claim while these two lines kept making it.
-  { n: '01', title: 'Deadline alerts', body: 'A clear countdown on every item, works offline, and an alert the moment you open Quids In with something due this week. No background service, because a web app cannot wake itself — so it checks every time you come back.', art: <DeadlinesArt rows={EXAMPLE_ROWS} /> },
-  { n: '02', title: 'Knows the real policies', body: `IKEA’s ${days('IKEA')} days, Boots’ ${days('Boots')}, Apple’s ${days('Apple')} — Quids In’s own list of windows for ${STORE_COUNT} major UK retailers, plus the gotchas: Zara’s clock starts at dispatch, Uniqlo won’t refund online orders in store.`, art: <SmallPrintArt cards={SMALL_PRINT} /> },
+  // service. See notify.ts: a web app cannot wake itself, so the copy names
+  // the moment it happens — when you open it — without advertising the limit.
+  { n: '01', title: 'Every deadline, soonest first', body: 'A countdown on every purchase, even offline. Open Quids In and whatever runs out this week is the first thing you see.', art: <DeadlinesArt rows={EXAMPLE_ROWS} /> },
+  { n: '02', title: 'Knows the real policies', body: `IKEA’s ${days('IKEA')} days, Boots’ ${days('Boots')}, Apple’s ${days('Apple')}: the real windows for ${STORE_COUNT} UK shops, and the catches. Zara’s clock starts at dispatch; Uniqlo won’t refund online orders in store.`, art: <SmallPrintArt cards={SMALL_PRINT} /> },
   // The two numbers the whole legal half of the product turns on, taken from
   // the module that computes them rather than typed again here. They were
   // prose, beside three shop windows that had already been made derived for
   // exactly this reason.
-  { n: '03', title: 'Knows your legal rights', body: `The Consumer Rights Act gives you ${REJECT_DAYS} days to reject faulty goods for a full refund, and online orders carry a ${COOLING_OFF_DAYS}-day cooling-off by law. Quids In shows the legal deadline beside the shop’s own.`, link: { href: '/rights/', label: 'What the law gives you →' }, art: <TwoClocksArt shopDays={days('Zara')} lawDays={REJECT_DAYS} coolingDays={COOLING_OFF_DAYS} /> },
+  { n: '03', title: 'Knows your legal rights', body: `The law gives you ${REJECT_DAYS} days to reject faulty goods for a full refund, and a ${COOLING_OFF_DAYS}-day cooling-off on online orders. Quids In shows the legal deadline beside the shop’s own.`, link: { href: '/rights/', label: 'What the law gives you →' }, art: <TwoClocksArt shopDays={days('Zara')} lawDays={REJECT_DAYS} coolingDays={COOLING_OFF_DAYS} /> },
   // Scanning is read on the phone and never uploaded, and it never saves by
   // itself: what it read is shown to be checked first, because OCR on a
   // creased thermal slip is not always right. The copy says so.
-  { n: '04', title: 'Paste or scan, done', body: 'Paste an order email, or photograph a till receipt, and Quids In reads the store, total and date on your phone and sets the deadline. You check what it read before anything is saved.', art: <ScanArt /> },
-  { n: '05', title: 'When it breaks', body: 'Put a warranty length on a receipt and Quids In counts it down beside the return window. If something goes wrong, it says what the law gives you that day — a refund, or a free repair — and drafts the letter to the shop, with the right section of the Consumer Rights Act in it.', art: <LetterArt /> },
+  { n: '04', title: 'Paste or scan, done', body: 'Paste an order email or photograph a till receipt. Quids In reads the shop, total and date on your phone, and you check it before it saves.', art: <ScanArt /> },
+  { n: '05', title: 'When it breaks', body: 'If something breaks, Quids In says what the law gives you that day, a refund or a free repair, and drafts the letter to the shop with the right section of the Consumer Rights Act in it.', art: <LetterArt /> },
 ];
 
 /*
@@ -110,7 +129,7 @@ const WHY: { n: string; title: string; body: string; link?: { href: string; labe
  */
 const PRIVATE = {
   title: 'Private by design',
-  body: 'Everything lives on your phone. No account, nothing uploaded, no one reading your purchases. Policy updates download to you; nothing about you goes back. Export a backup anytime.',
+  body: 'Everything lives on your phone. No account, nothing uploaded, nobody reading your purchases. Shop policies download to you; nothing about you goes back.',
   points: ['No account to make', 'No receipts uploaded', 'Works offline', 'Your backup, your file'],
 };
 
@@ -187,10 +206,10 @@ export function Landing() {
               <span style={{ minWidth: 0 }}>No account · no cloud · no one sees your receipts</span>
             </div>
             <h1 style={{ fontFamily: font.display, fontSize: 'clamp(40px, 6vw, 70px)', fontWeight: 700, lineHeight: 1.02, letterSpacing: '-0.04em', margin: 0, color: color.white }}>
-              Know every return deadline before it passes.
+              Never miss a refund again.
             </h1>
             <p style={{ fontSize: 'clamp(17px, 1.6vw, 19.5px)', lineHeight: 1.6, color: color.onHeroSoft, maxWidth: 540, margin: '24px 0 0' }}>
-              Quids In remembers every receipt, knows each shop’s real return policy and your legal rights — and shows you what is about to run out the moment you open it.
+              Quids In counts down every return window, knows each shop’s real rules and your legal rights, and puts whatever is about to run out first.
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 34, flexWrap: 'wrap' }}>
               <OpenAppButton onHero />
@@ -206,15 +225,15 @@ export function Landing() {
                 </li>
               ))}
             </ul>
-            {/* One source with the footer below and with Settings — see
-                lib/brand.ts for what it used to say and why it does not. */}
-            <div style={{ marginTop: 22, fontSize: 14, fontWeight: 600, color: color.onHeroSoft }}>
-              {TAGLINE_LEAD}
-            </div>
           </div>
 
-          <div style={{ minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', marginBottom: 14 }}>
+          <div style={{ minWidth: 0, position: 'relative' }}>
+            {/* The brand's one device, the countdown ring, large behind the phone. */}
+            <svg aria-hidden="true" viewBox="0 0 520 520" style={{ position: 'absolute', width: 'min(560px, 120%)', left: '50%', top: '50%', transform: 'translate(-50%, -46%)', pointerEvents: 'none' }}>
+              <circle cx="260" cy="260" r="230" fill="none" stroke={color.onHeroGlass} strokeWidth="18" />
+              <circle cx="260" cy="260" r="230" fill="none" stroke={color.gold} strokeWidth="18" strokeLinecap="round" strokeDasharray="1130 1445" transform="rotate(-90 260 260)" />
+            </svg>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', marginBottom: 14 }}>
               <span className="k-pulse" style={{ width: 8, height: 8, borderRadius: 999, background: color.gold }} />
               <span style={{ fontSize: 13.5, fontWeight: 600, color: color.white }}>
                 Live demo — try it
@@ -224,24 +243,50 @@ export function Landing() {
               The real app, not a video: it is the same build served from /app/,
               so the demo cannot drift from the product the way a recording does.
               Onboarding is skipped for the embed via the query flag. Set in a
-              phone's bezel, drawn in the page's ink.
+              phone drawn the way a phone looks: a thin frame, a status bar and
+              the camera island, so the page shows a device rather than a box.
             */}
-            <div style={{ margin: '0 auto', maxWidth: 418, padding: 8, borderRadius: 52, background: color.ink, boxShadow: '0 30px 80px rgba(10,10,18,0.45)' }}>
-              <div style={{ borderRadius: 44, overflow: 'hidden', background: color.canvas }}>
+            <div style={{ position: 'relative', margin: '0 auto', maxWidth: 400, padding: 7, borderRadius: 58, background: color.heroTop, boxShadow: '0 40px 90px rgba(10,10,18,0.5), inset 0 0 0 1.5px rgba(255,255,255,0.14)' }}>
+              <div style={{ borderRadius: 51, overflow: 'hidden', background: color.canvas }}>
+                <div aria-hidden="true" style={{ height: 40, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 30px', fontSize: 13, fontWeight: 650, color: color.ink, fontFamily: font.figures, position: 'relative' }}>
+                  <span>9:41</span>
+                  <span style={{ position: 'absolute', left: '50%', top: 9, transform: 'translateX(-50%)', width: 104, height: 26, borderRadius: 20, background: color.heroTop }} />
+                  <span style={{ display: 'inline-flex', gap: 5, alignItems: 'center' }}>
+                    <svg width="16" height="11" viewBox="0 0 16 11"><path d="M1 10h2V7H1zM5 10h2V5H5zM9 10h2V3H9zM13 10h2V1h-2z" fill={color.ink} /></svg>
+                    <svg width="24" height="11" viewBox="0 0 24 11"><rect x="0.5" y="0.5" width="20" height="10" rx="3" fill="none" stroke={color.ink} opacity="0.5" /><rect x="2" y="2" width="15" height="7" rx="1.5" fill={color.ink} /><rect x="21.5" y="3.5" width="1.5" height="4" rx="0.75" fill={color.ink} opacity="0.5" /></svg>
+                  </span>
+                </div>
                 <iframe
                   src="/app/?embed=1"
                   title="Quids In — live app demo"
                   loading="lazy"
-                  style={{ width: '100%', height: 812, border: 0, display: 'block' }}
+                  style={{ width: '100%', height: 772, border: 0, display: 'block' }}
                 />
               </div>
+            </div>
+            {/* Two moments from the product, floating beside the phone on wide screens. */}
+            <div aria-hidden="true" className="k-xwide-only k-float" style={{ position: 'absolute', left: -150, top: 300, display: 'flex', alignItems: 'center', gap: 12, background: color.surface, borderRadius: 18, padding: '12px 16px 12px 12px', boxShadow: '0 18px 40px rgba(10,10,18,0.28)' }}>
+              <MiniRing days={2} of={days('ASOS')} />
+              <span>
+                <span style={{ display: 'block', fontSize: 13.5, fontWeight: 650, color: color.ink }}>ASOS · linen shirt</span>
+                <span style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: color.danger }}>2 days to send it back</span>
+              </span>
+            </div>
+            <div aria-hidden="true" className="k-xwide-only k-float k-float-late" style={{ position: 'absolute', right: -96, bottom: 170, display: 'flex', alignItems: 'center', gap: 12, background: color.surface, borderRadius: 18, padding: '12px 18px 12px 12px', boxShadow: '0 18px 40px rgba(10,10,18,0.28)' }}>
+              <span style={{ width: 40, height: 40, borderRadius: 12, background: color.gold, display: 'grid', placeItems: 'center' }}>
+                <Tick size={20} stroke={color.ink} width={2.8} />
+              </span>
+              <span>
+                <span style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: color.muted }}>Returned in time</span>
+                <span style={{ display: 'block', fontSize: 17, fontWeight: 700, color: color.ink, fontFamily: font.figures }}>£89.00 back</span>
+              </span>
             </div>
           </div>
         </div>
       </section>
 
       {/* Ticker */}
-      <div style={{ background: color.surface, borderBottom: `1px solid ${color.borderHair}`, padding: '16px 0', overflow: 'hidden', whiteSpace: 'nowrap' }} aria-hidden="true">
+      <div className="k-ticker-edge" style={{ background: color.surface, borderBottom: `1px solid ${color.borderHair}`, padding: '16px 0', overflow: 'hidden', whiteSpace: 'nowrap' }} aria-hidden="true">
         <div className="k-ticker" style={{ display: 'inline-flex', gap: 48, fontSize: 14, fontWeight: 500, color: color.body }}>
           {[...TICKER, ...TICKER].map((line, i) => (
             <span key={i} style={{ display: 'inline-flex', gap: 48 }}>
@@ -259,7 +304,7 @@ export function Landing() {
           center
           eyebrow="Try it now"
           title="Can you still return it?"
-          lede={`Pick a shop and the day you bought it. This is the same reckoning the app does: the shop’s own window, when its clock really starts, and the ${REJECT_DAYS}-day and ${COOLING_OFF_DAYS}-day rights the law gives you beside it.`}
+          lede={`Pick a shop and the day you bought it. You get the shop’s real deadline and the ${REJECT_DAYS}-day and ${COOLING_OFF_DAYS}-day rights the law adds, worked out exactly as the app does.`}
         />
         <div style={{ marginTop: 40 }}>
           <Suspense fallback={<div style={{ minHeight: 560, borderRadius: radius.hero, background: color.surfaceAlt }} />}>
@@ -270,11 +315,11 @@ export function Landing() {
 
       {/* The problem */}
       <section aria-labelledby="problem" style={{ ...WRAP, padding: 'clamp(64px, 9vw, 112px) 28px 0' }}>
-        <SectionHead id="problem" eyebrow="The problem" title="You shop in seconds. The fine print takes hours." lede="Every shop runs its own clock, starts it on a different day, and hides the exceptions where nobody looks. So the money stays with them." />
+        <SectionHead id="problem" eyebrow="The problem" title="You shop in seconds. The fine print takes hours." lede="Every shop runs its own clock and hides the exceptions. Miss one, and the money stays with them." />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 18, marginTop: 44 }}>
           {PROBLEMS.map((p) => (
             <Card key={p.title} className="k-reveal" style={{ overflow: 'hidden' }}>
-              <div style={{ height: 220 }}>{p.art}</div>
+              <div style={{ height: 220 }}><Art height={220}>{p.art}</Art></div>
               <div style={{ padding: '22px 24px 26px' }}>
                 <h3 style={{ fontWeight: 650, fontSize: 17.5, margin: 0, letterSpacing: '-0.01em' }}>{p.title}</h3>
                 <p style={{ fontSize: 14.5, color: color.body, lineHeight: 1.6, margin: '8px 0 0' }}>{p.body}</p>
@@ -300,7 +345,7 @@ export function Landing() {
                   </a>
                 )}
               </div>
-              <div style={{ minWidth: 0 }}>{w.art}</div>
+              <div style={{ minWidth: 0 }}><Art height={340}>{w.art}</Art></div>
             </div>
           ))}
         </div>
@@ -313,7 +358,7 @@ export function Landing() {
             id="watch"
             eyebrow="Policy watch"
             title="Shops rewrite the rules quietly. Quids In checks your receipts when they do."
-            lede="Retailers change return windows and never send a memo. When one does, Quids In’s list changes and every receipt you hold is checked against it. A purchase keeps the terms it was made under; you just find out when the shop moves the goalposts for the next one."
+            lede="When a shop changes its return window, Quids In’s list changes and checks every receipt you hold. A purchase keeps the terms it was made under; you just hear when the goalposts move."
           />
           <div style={{ marginTop: 32, fontSize: 14, fontWeight: 600, color: color.bodyStrong }}>
             Return windows already built in for {STORE_COUNT} UK shops. Tap one to check a return:
@@ -357,7 +402,7 @@ export function Landing() {
               </a>
             </div>
             <div style={{ minWidth: 0 }}>
-              <PhoneOnlyArt />
+              <Art height={260}><PhoneOnlyArt /></Art>
             </div>
           </div>
         </div>
@@ -481,6 +526,21 @@ function useReveal() {
     items.forEach((el) => seen.observe(el));
     return () => seen.disconnect();
   }, []);
+}
+
+/** A deadline ring at card size, as the receipt list draws one. */
+function MiniRing({ days: left, of }: { days: number; of: number }) {
+  const r = 16;
+  const c = 2 * Math.PI * r;
+  return (
+    <span style={{ position: 'relative', width: 42, height: 42, flexShrink: 0, display: 'inline-block' }}>
+      <svg width="42" height="42" viewBox="0 0 42 42">
+        <circle cx="21" cy="21" r={r} fill="none" stroke={color.rail} strokeWidth="4" />
+        <circle cx="21" cy="21" r={r} fill="none" stroke={color.danger} strokeWidth="4" strokeLinecap="round" strokeDasharray={`${(c * Math.max(0.08, left / of)).toFixed(1)} ${c.toFixed(1)}`} transform="rotate(-90 21 21)" />
+      </svg>
+      <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontFamily: font.figures, fontWeight: 700, fontSize: 14, color: color.danger }}>{left}</span>
+    </span>
+  );
 }
 
 function FooterLinks({ title, links }: { title: string; links: [string, string][] }) {
