@@ -136,13 +136,16 @@ export async function answeringBridge(ctx, { shot = '', disk = {}, slowMirrorMs 
      * sale. It answers the way the Swift plugin does. What this Apple ID owns
      * is kept like the disk, so it survives a reload, as StoreKit's own record
      * does:
-     * - `price`: the App Store's displayPrice, or null when it sells nothing;
+     * - `price`: the App Store's displayPrice for Plus yearly, or null when it
+     *   sells nothing; `monthly`, if given, is Plus monthly's, and with it
+     *   Family is sold too, at `family` (or nothing if that is not given);
      * - `canPay`: false when Screen Time switches purchases off;
      * - `owned`: what StoreKit holds at launch;
      * - `purchase`: how the App Store's sheet ends;
      * - `restoreFinds`: what a sync turns up;
      * - `offline`: the App Store cannot be reached at all.
-     * `__approve()` is an Ask to Buy approval and `__refund()` a refund. Both
+     * `__approve()` is an Ask to Buy approval, `__refund()` a refund and
+     * `__lapse()` a subscription that ended unrenewed. Each
      * arrive as StoreKit's own `Transaction.updates` would, through the event
      * the plugin raises. `reviews` counts the rating prompts asked for, which,
      * as on a phone, answer nothing whether or not Apple showed one.
@@ -150,7 +153,7 @@ export async function answeringBridge(ctx, { shot = '', disk = {}, slowMirrorMs 
     if (appStore !== null) {
       const STORE = '__keptStore';
       if (sessionStorage.getItem(STORE) === null) {
-        sessionStorage.setItem(STORE, JSON.stringify({ owned: appStore.owned ?? 'none', purchases: 0, restores: 0, reviews: 0 }));
+        sessionStorage.setItem(STORE, JSON.stringify({ owned: appStore.owned ?? 'none', purchases: 0, bought: [], restores: 0, reviews: 0 }));
       }
       const record = () => JSON.parse(sessionStorage.getItem(STORE));
       const keep = (r) => sessionStorage.setItem(STORE, JSON.stringify(r));
@@ -159,23 +162,30 @@ export async function answeringBridge(ctx, { shot = '', disk = {}, slowMirrorMs 
       const offline = () => Promise.reject(Object.assign(new Error('The Internet connection appears to be offline.'), { code: 'network' }));
       w.__approve = () => (keep({ ...record(), owned: 'owned' }), changed());
       w.__refund = () => (keep({ ...record(), owned: 'revoked' }), changed());
+      w.__lapse = () => (keep({ ...record(), owned: 'expired' }), changed());
       plugins.Purchases = {
         products: async ({ ids }) => {
           if (appStore.offline) return offline();
-          const sold = appStore.price ? [{ id: 'kept.unlimited', displayName: 'Unlimited receipts', displayPrice: appStore.price }] : [];
+          const sold = [
+            appStore.price && { id: 'kept.plus.yearly', displayName: 'Quids In Plus', displayPrice: appStore.price },
+            appStore.price && appStore.monthly && { id: 'kept.plus.monthly', displayName: 'Quids In Plus', displayPrice: appStore.monthly },
+            appStore.price && appStore.family && { id: 'kept.family.yearly', displayName: 'Quids In Family', displayPrice: appStore.family },
+          ].filter(Boolean);
           return { products: sold.filter((p) => ids.includes(p.id)), canPay: appStore.canPay ?? true };
         },
-        purchase: async () => {
+        purchase: async ({ id }) => {
           const r = record();
-          keep({ ...r, purchases: r.purchases + 1 });
+          keep({ ...r, purchases: r.purchases + 1, bought: [...r.bought, id] });
           if (appStore.offline) return { outcome: 'failed', reason: 'network' };
           const ending = appStore.purchase ?? 'purchased';
           if (ending === 'purchased') keep({ ...record(), owned: 'owned' });
           if (ending.startsWith('failed:')) return { outcome: 'failed', reason: ending.slice('failed:'.length) };
           return { outcome: ending };
         },
-        entitlement: async () => {
+        entitlement: async ({ ids }) => {
           if (appStore.offline) return offline();
+          // The real plugin refuses a call that names nothing to look for.
+          if (!Array.isArray(ids) || ids.length === 0) return Promise.reject(Object.assign(new Error('No product was named.'), { code: 'INVALID' }));
           return { state: record().owned };
         },
         restore: async () => {

@@ -12,9 +12,9 @@ import { COMPANY, CONTACT_EMAIL, TAGLINE } from '../../lib/brand';
 import { LEGAL_DISCLAIMER } from '../../lib/legal';
 import { checkedCount, CHECKED_ON, STORE_COUNT, tableCheck } from '../../lib/stores';
 import { discardSetAside, setAsideData, urgentDayChoices, type Settings as SettingsShape } from '../../lib/storage';
-import { restoreOnlyOffered, type Offer } from '../../lib/pricing';
+import { FAMILY_SIZE, MANAGE_SUBSCRIPTIONS_URL, restoreOnlyOffered, type Offer } from '../../lib/pricing';
 import { MAX_LETTER_NAME, readLetterName } from '../../lib/sign-off';
-import type { StoreView } from '../../lib/app-store';
+import type { PlanId, StoreView } from '../../lib/app-store';
 import { countedAgainstQuota, FREE_TIER_LIMIT, meterWords } from '../../lib/quota';
 import { Pressable } from '../components/Pressable';
 import { ChevronRight, ChevronUpDown } from '../components/Icons';
@@ -36,7 +36,7 @@ interface Props {
   onWipe: () => void;
   onClearSamples: () => void;
   /** The web's sheet, or the App Store's purchase: App decides which (lib/pricing.ts `Offer`). */
-  onUpgrade: () => void;
+  onUpgrade: (plan: PlanId) => void;
   onChange: (patch: Partial<SettingsShape>) => void;
   /** What this build sells, if anything. */
   offer: Offer;
@@ -430,7 +430,7 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
       {restoreOnlyOffered(isNative(), offer, store.shelf, free) && (
         <Group
           marker="plan"
-          head="Bought the unlock before?"
+          head="Subscribed before?"
           headId="set-restore"
           foot={<p>The App Store isn’t offering it just now, but anything this Apple ID already owns can still be restored.</p>}
         >
@@ -451,7 +451,7 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
                   said ten in a lifetime. The count is of OPEN ones (quota.ts):
                   say so, or the free plan reads smaller than it is. */}
               <p>Ones you have returned or kept do not count, so a return frees a slot.</p>
-              <p>One payment. No subscription, nothing to cancel.</p>
+              <p>Plus has no limit on receipts. Family is Plus for up to {FAMILY_SIZE} people, shared through Apple Family Sharing.</p>
             </>
           }
         >
@@ -473,7 +473,7 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
               <div style={{ height: '100%', background: color.accent, borderRadius: 999, width: `${usagePct}%` }} />
             </div>
           </li>
-          {/* One price: the landing page's on the web, the App Store's on iPhone — see lib/pricing.ts. */}
+          {/* The landing page's prices on the web, the App Store's on iPhone — see lib/pricing.ts. */}
           <li style={{ padding: '0 16px 8px' }}>
             <UnlockOffer offer={offer} store={store} onUnlock={onUpgrade} onRestore={onRestorePurchase} buttonStyle={{ marginTop: 12 }} />
           </li>
@@ -495,11 +495,17 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
           headId="set-plan"
           between={isNative() && <div role="status">{store.note && <Note note={store.note} />}</div>}
           foot={
-            <p>
-              {isNative()
-                ? 'Paid once, through the App Store. There is no subscription here to cancel.'
-                : 'Nothing was charged and no card was taken — Quids In cannot accept payments yet. There is no subscription here to cancel.'}
-            </p>
+            isNative() ? (
+              <p>
+                Quids In Plus, through the App Store. It renews until you cancel it, which you can do at any time in{' '}
+                <a href={MANAGE_SUBSCRIPTIONS_URL} target="_blank" rel="noreferrer" style={{ color: color.accentInk, fontWeight: 600 }}>
+                  your Apple ID’s subscriptions
+                </a>
+                .
+              </p>
+            ) : (
+              <p>Nothing was charged and no card was taken — Quids In cannot take payments in the browser. There is no subscription here to cancel.</p>
+            )
           }
         >
           <li className="k-cell">

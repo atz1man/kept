@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { color, font, gradient, shadow, radius } from '../tokens';
 import { Logo, Tick, Wordmark } from '../app/components/Icons';
-import { UNLOCK } from '../lib/pricing';
+import { FAMILY_SIZE, PLAN_PRICES } from '../lib/pricing';
 import { FREE_TIER_LIMIT } from '../lib/quota';
 import { STORE_COUNT, STORE_POLICIES, findStore } from '../lib/stores';
 import { COOLING_OFF_DAYS, REJECT_DAYS } from '../lib/legal';
@@ -140,8 +140,9 @@ const PRIVATE = {
  * cosmetic drift.
  */
 const PLANS = [
-  { name: 'Free', price: '£0', suffix: '', lines: [`Your first ${FREE_TIER_LIMIT} receipts`, 'Every shop, every deadline', 'Scanning and letters included'], featured: false },
-  { name: 'Unlimited', price: UNLOCK.price, suffix: UNLOCK.suffix, lines: ['Unlimited receipts, for good', 'One payment, no subscription', 'Everything in Free'], featured: true },
+  { name: 'Free', price: '£0', suffix: '', note: null, lines: [`Your first ${FREE_TIER_LIMIT} receipts`, 'Every shop, every deadline', 'Scanning and letters included'], featured: false },
+  { name: 'Plus', price: PLAN_PRICES.monthly, suffix: ' a month', note: `or ${PLAN_PRICES.yearly} a year`, lines: ['Unlimited receipts', 'Everything in Free', 'Cancel any time'], featured: true },
+  { name: 'Family', price: PLAN_PRICES.family, suffix: ' a year', note: null, lines: [`Plus for up to ${FAMILY_SIZE} people`, 'Through Apple Family Sharing', 'One bill for the household'], featured: false },
 ];
 
 /** The shops named as chips: the table opens with the biggest, and a hundred chips is a wall. */
@@ -410,8 +411,8 @@ export function Landing() {
 
       {/* Pricing */}
       <section id="pricing" aria-labelledby="pricing-title" className="k-anchor" style={{ ...WRAP, padding: 'clamp(72px, 10vw, 128px) 28px 0' }}>
-        <SectionHead id="pricing-title" center eyebrow="Pricing" title={<>Free for your first {FREE_TIER_LIMIT} receipts.</>} lede={<>Then {UNLOCK.price}, once, for unlimited. No subscription.</>} />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: 20, maxWidth: 680, margin: '48px auto 0' }}>
+        <SectionHead id="pricing-title" center eyebrow="Pricing" title={<>Free for your first {FREE_TIER_LIMIT} receipts.</>} lede={<>Then Plus for unlimited, from {PLAN_PRICES.monthly} a month. Cancel any time.</>} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: 20, maxWidth: 980, margin: '48px auto 0' }}>
           {PLANS.map((t) => (
             <div
               key={t.name}
@@ -422,7 +423,7 @@ export function Landing() {
             >
               {t.featured && (
                 <div style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: color.accent, color: color.white, fontSize: 12, fontWeight: 600, padding: '5px 14px', borderRadius: radius.pill, whiteSpace: 'nowrap' }}>
-                  Pay once
+                  Unlimited
                 </div>
               )}
               <h3 style={{ fontWeight: 600, fontSize: 15, color: color.muted, margin: 0 }}>{t.name}</h3>
@@ -430,6 +431,7 @@ export function Landing() {
                 {t.price}
                 <span style={{ fontSize: 16, color: color.muted, fontWeight: 500, letterSpacing: 0 }}>{t.suffix}</span>
               </div>
+              {t.note && <div style={{ fontSize: 14, color: color.body, marginTop: 4 }}>{t.note}</div>}
               <ul style={{ listStyle: 'none', padding: 0, margin: '20px 0 0', display: 'grid', gap: 10, fontSize: 15, color: color.body }}>
                 {t.lines.map((l) => (
                   <li key={l} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

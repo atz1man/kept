@@ -38,7 +38,7 @@ is on it too. Green before you Archive — `test/preflight.test.ts` holds the ch
 
 | | Step | Who | Where |
 |---|---|---|---|
-| ✅ | The unlock is sold only through In-App Purchase, with Restore purchase beside it (3.1.1) | done | `packages/purchases` (StoreKit 2, verified on the device), decisions in `src/lib/app-store.ts`. `test/app-store.test.ts` pins every outcome, and `npm run ios` buys, cancels, waits for Ask to Buy, restores, refunds and goes offline on the bundle that ships. Where the App Store sells nothing, the app shows no price and no cap (APN-18) |
+| ✅ | Quids In Plus is sold only through In-App Purchase, as auto-renewable subscriptions with the renewal terms, Terms of use, Privacy and Restore purchase beside the buttons (3.1.1, 3.1.2) | done | `packages/purchases` (StoreKit 2, verified on the device), decisions in `src/lib/app-store.ts`. `test/app-store.test.ts` pins every outcome, including a lapsed subscription relocking, and `npm run ios` buys, cancels, waits for Ask to Buy, restores, refunds and goes offline on the bundle that ships. Where the App Store sells nothing, the app shows no price and no cap (APN-18) |
 | ✅ | iPhone only — no iPad layout to be judged on (2.4.1) | done | `test/ios-device-family.test.ts` |
 | ✅ | A privacy policy page, served by the app and linked from Settings (5.1.1) | done | `/privacy/` |
 | ✅ | No invented ratings or testimonials on the marketing page | done | APN-17 |
@@ -65,10 +65,12 @@ is on it too. Green before you Archive — `test/preflight.test.ts` holds the ch
 | | Step | Who | Where |
 |---|---|---|---|
 | ☐ | In Xcode, Signing & Capabilities → + Capability → **In-App Purchase**, on the App target | **you** (Mac) | Nothing in the repository changes when you add it, so nothing here can check it |
-| ☐ | Create it: **Non-Consumable**, Product ID **`kept.unlimited`** exactly, reference name "Unlimited receipts" | **you** | App Store Connect → your app → In-App Purchases. The id is in `src/lib/app-store.ts` and `ios/App/Kept.storekit`, and Apple never lets an id be used twice, so a typo cannot be fixed by deleting it |
-| ☐ | Price **£9.99** with the **United Kingdom** as the base country, so it matches the web's `UNLOCK.price`; Apple sets the other countries from it | **you** | The app shows whatever price the App Store sends for the person's country, so nothing in the code changes |
-| ☐ | English (UK): display name "Unlimited receipts", description "No limit on receipts. Paid once." | **you** | The same words as `ios/App/Kept.storekit` |
-| ☐ | Family Sharing: off unless you decide otherwise | **you** — a decision | `Kept.storekit` has it off. Turning it on later cannot be undone |
+| ☐ | Create a subscription group **Quids In Plus**, and in it three auto-renewable subscriptions with these Product IDs exactly: **`kept.plus.yearly`** (1 year), **`kept.plus.monthly`** (1 month), **`kept.family.yearly`** (1 year) | **you** | App Store Connect → your app → Subscriptions. The ids are in `src/lib/app-store.ts` and `ios/App/Kept.storekit`, and Apple never lets an id be used twice, so a typo cannot be fixed by deleting it. Order the group yearly, monthly, family so upgrades and downgrades go the right way |
+| ☐ | Prices with the **United Kingdom** as the base country: **£29.99**, **£4.99**, **£49.99**, matching `PLAN_PRICES` in `src/lib/pricing.ts`; Apple sets the other countries from them | **you** | The app shows whatever price the App Store sends for the person's country, so nothing in the code changes |
+| ☐ | English (UK): display names "Quids In Plus" (both Plus plans) and "Quids In Family"; descriptions as in `ios/App/Kept.storekit` | **you** | |
+| ☐ | Family Sharing: **on** for `kept.family.yearly` only | **you** | `Kept.storekit` has it the same way. Turning it on cannot be undone, which is why it is only on the plan sold as shared |
+| ☐ | App Information → License Agreement: leave Apple's standard EULA, which the app and the description link to | **you** | `TERMS_OF_USE_URL` in `src/lib/pricing.ts` |
+| ☐ | Do NOT create `kept.unlimited`. It was the old one-off unlock and is never sold; the app still honours it if a tester bought one in the sandbox | **you** | |
 | ☐ | A review screenshot of where it is sold (Settings, the free plan), and add the purchase to the app version you submit. The first in-app purchase has to go with a version | **you** | The version page → In-App Purchases and Subscriptions |
 | ☐ | A Sandbox tester; on a phone, buy, Restore purchase, and refund (Settings → App Store → Sandbox Account → Manage) | **you** (device) | Users and Access → Sandbox. TestFlight purchases are sandbox too, so testers are never charged |
 | ☐ | Optional: buy without App Store Connect, in the Simulator. Drag `ios/App/Kept.storekit` into the Xcode project with no target ticked, then Product → Scheme → Edit Scheme → Run → Options → StoreKit Configuration. Debug → StoreKit → Manage Transactions refunds, approves Ask to Buy and fails a purchase on demand | **you** (Mac) | |

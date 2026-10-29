@@ -4354,7 +4354,7 @@ results['a full free tier actually refuses the save'] =
 const planOf = () => page.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).settings.plan);
 await page.getByRole('button', { name: 'Settings', exact: true }).click();
 await page.waitForTimeout(400);
-const priceButton = page.getByRole('button', { name: /^Unlock unlimited · £\d+\.\d{2}/ });
+const priceButton = page.getByRole('button', { name: /^Plus · £\d+\.\d{2} a year$/ });
 const pressed = ((await priceButton.innerText().catch(() => '')).match(/£\d+\.\d{2}/) ?? [])[0];
 await priceButton.click();
 await page.waitForTimeout(400);
@@ -4377,7 +4377,7 @@ for (let i = 0; i < 4; i += 1) {
 await page.keyboard.press('Escape');
 await page.waitForTimeout(300);
 results['the price sheet keeps focus while open, and gives it back to the price'] =
-  trapped && (await page.evaluate(() => /^Unlock unlimited · £/.test(document.activeElement?.textContent ?? '')));
+  trapped && (await page.evaluate(() => /^Plus · £/.test(document.activeElement?.textContent ?? '')));
 await priceButton.click({ timeout: 2000 }).catch(() => {});
 await page.waitForTimeout(300);
 // And it must be leaveable without buying anything. The clicks below are

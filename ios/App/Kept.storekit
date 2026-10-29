@@ -1,35 +1,102 @@
 {
-  "identifier" : "6F1D2A7C",
-  "nonRenewingSubscriptions" : [
-
-  ],
-  "products" : [
+  "identifier": "6F1D2A7C",
+  "nonRenewingSubscriptions": [],
+  "products": [
     {
-      "displayPrice" : "9.99",
-      "familyShareable" : false,
-      "internalID" : "6739104511",
-      "localizations" : [
+      "displayPrice": "9.99",
+      "familyShareable": false,
+      "internalID": "6739104511",
+      "localizations": [
         {
-          "description" : "No limit on receipts. Paid once.",
-          "displayName" : "Unlimited receipts",
-          "locale" : "en_GB"
+          "description": "No limit on receipts. Paid once. No longer sold; kept so earlier buyers keep it.",
+          "displayName": "Unlimited receipts",
+          "locale": "en_GB"
         }
       ],
-      "productID" : "kept.unlimited",
-      "referenceName" : "Unlimited receipts",
-      "type" : "NonConsumable"
+      "productID": "kept.unlimited",
+      "referenceName": "Unlimited receipts",
+      "type": "NonConsumable"
     }
   ],
-  "settings" : {
-    "_failTransactionsEnabled" : false,
-    "_locale" : "en_GB",
-    "_storefront" : "GBR"
+  "settings": {
+    "_failTransactionsEnabled": false,
+    "_locale": "en_GB",
+    "_storefront": "GBR"
   },
-  "subscriptionGroups" : [
-
+  "subscriptionGroups": [
+    {
+      "id": "21540001",
+      "localizations": [],
+      "name": "Quids In Plus",
+      "subscriptions": [
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "29.99",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "6739104512",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "No limit on receipts. Renews every year.",
+              "displayName": "Quids In Plus",
+              "locale": "en_GB"
+            }
+          ],
+          "productID": "kept.plus.yearly",
+          "recurringSubscriptionPeriod": "P1Y",
+          "referenceName": "Plus yearly",
+          "subscriptionGroupID": "21540001",
+          "type": "RecurringSubscription"
+        },
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "4.99",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "6739104513",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "No limit on receipts. Renews every month.",
+              "displayName": "Quids In Plus",
+              "locale": "en_GB"
+            }
+          ],
+          "productID": "kept.plus.monthly",
+          "recurringSubscriptionPeriod": "P1M",
+          "referenceName": "Plus monthly",
+          "subscriptionGroupID": "21540001",
+          "type": "RecurringSubscription"
+        },
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "49.99",
+          "familyShareable": true,
+          "groupNumber": 1,
+          "internalID": "6739104514",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "Plus for your Family Sharing group. Renews every year.",
+              "displayName": "Quids In Family",
+              "locale": "en_GB"
+            }
+          ],
+          "productID": "kept.family.yearly",
+          "recurringSubscriptionPeriod": "P1Y",
+          "referenceName": "Family yearly",
+          "subscriptionGroupID": "21540001",
+          "type": "RecurringSubscription"
+        }
+      ]
+    }
   ],
-  "version" : {
-    "major" : 2,
-    "minor" : 0
+  "version": {
+    "major": 2,
+    "minor": 0
   }
 }

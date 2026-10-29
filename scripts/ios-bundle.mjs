@@ -952,17 +952,18 @@ if (!/Deadline alerts/.test(settingsText)) {
 
 
 /*
- * The unlock, bought through the App Store (StoreKit 2, packages/purchases).
+ * Quids In Plus, bought through the App Store (StoreKit 2, packages/purchases).
  *
  * Every check above boots a build where nothing is for sale. These boot it
  * with the App Store answering as StoreKit does, at the cap (ten open receipts
  * of the person's own), and walk each way a purchase can end. What is held:
- * - the App Store's price is on the button, never the web's;
+ * - the App Store's price is on each plan's button, never the web's, and
+ *   the renewal terms, Terms of use and Privacy are beside them;
  * - Restore purchase sits beside it;
  * - a verified purchase lifts the cap there and then, so the receipt being
  *   added can be saved;
  * - nothing else unlocks;
- * - an approval or a refund, which only StoreKit can report, moves the plan
+ * - an approval, a refund or a lapse, which only StoreKit can report, moves the plan
  *   by itself;
  * - going offline is not a way round the cap.
  * lib/app-store.ts decides all of it, and test/app-store.test.ts pins those
@@ -1014,7 +1015,7 @@ if (!/Deadline alerts/.test(settingsText)) {
     await p.getByRole('button', { name: 'Read it' }).click({ timeout: 5000 }).catch(() => {});
     await p.waitForTimeout(400);
   };
-  const buyButton = (p, price = '£9.99') => p.getByRole('button', { name: `Unlock unlimited · ${price} once`, exact: true });
+  const buyButton = (p, price = '£29.99') => p.getByRole('button', { name: `Plus · ${price} a year`, exact: true });
   const done = async ({ c, errs }, what) => {
     if (errs.length > 0) failures.push({ what: `${what} raised page errors`, saw: errs.join(' | ') });
     await c.close();
@@ -1022,7 +1023,7 @@ if (!/Deadline alerts/.test(settingsText)) {
 
   // On sale: offered at the App Store's price, with Restore; bought at the cap.
   {
-    const run = await boot({ price: '£9.99' });
+    const run = await boot({ price: '£29.99' });
     const { p } = run;
     await tab(p, 'Settings');
     const before = await body(p);
@@ -1030,7 +1031,13 @@ if (!/Deadline alerts/.test(settingsText)) {
       failures.push({ what: 'the iPhone build does not offer the unlock at the App Store’s price, beside the free plan’s count', saw: near(before, 'Free plan') });
     }
     if ((await p.getByRole('button', { name: 'Restore purchase', exact: true }).count()) !== 1) {
-      failures.push({ what: 'no Restore purchase beside a one-off unlock, which App Review asks for', saw: near(before, 'Unlock') });
+      failures.push({ what: 'no Restore purchase beside the subscription, which App Review asks for', saw: near(before, 'Plus') });
+    }
+    // Guideline 3.1.2: what renews and how to stop it, with the terms and the privacy policy, before the purchase.
+    if (!/renew automatically until cancelled[\s\S]*24 hours/.test(before)
+      || (await p.getByRole('link', { name: 'Terms of use', exact: true }).count()) !== 1
+      || (await p.getByRole('link', { name: 'Privacy', exact: true }).count()) < 1) {
+      failures.push({ what: 'the subscription is offered without its renewal terms, Terms of use and Privacy links', saw: near(before, 'renew') });
     }
     // axe over controls only this build has: the web sweeps never see them.
     await p.evaluate(AXE_SOURCE);
@@ -1060,14 +1067,19 @@ if (!/Deadline alerts/.test(settingsText)) {
       if (count !== 11) failures.push({ what: 'the receipt being added when the cap lifted could not then be saved', saw: `${count} receipts` });
       await tab(p, 'Settings');
       const bought = await body(p);
-      if (!/Unlocked/.test(bought) || !/Paid once, through the App Store/.test(bought)) {
-        failures.push({ what: 'Settings does not say the unlock was bought through the App Store', saw: near(bought, 'Unlocked') });
+      if (!/Unlocked/.test(bought) || !/Quids In Plus, through the App Store/.test(bought)) {
+        failures.push({ what: 'Settings does not say Plus was bought through the App Store', saw: near(bought, 'Unlocked') });
+      }
+      const manage = p.getByRole('link', { name: 'your Apple ID’s subscriptions', exact: true });
+      if ((await manage.getAttribute('href').catch(() => null)) !== 'https://apps.apple.com/account/subscriptions') {
+        failures.push({ what: 'a subscriber is not shown where to manage or cancel the subscription', saw: near(bought, 'renews') });
       }
       if (/Nothing was charged|no card was taken/.test(bought)) {
         failures.push({ what: 'the iPhone app says nothing was charged after a real App Store purchase', saw: near(bought, 'charged') });
       }
-      const purchases = await p.evaluate(() => window.__keptStore().purchases);
+      const { purchases, bought: products } = await p.evaluate(() => window.__keptStore());
       if (purchases !== 1) failures.push({ what: 'one tap did not make exactly one purchase', saw: `${purchases} purchases` });
+      if (products[0] !== 'kept.plus.yearly') failures.push({ what: 'the yearly button did not buy the yearly plan', saw: products.join(', ') });
       // It stays bought: a relaunch asks StoreKit again, which agrees.
       await p.reload({ waitUntil: 'networkidle' });
       await p.waitForTimeout(700);
@@ -1077,15 +1089,33 @@ if (!/Deadline alerts/.test(settingsText)) {
     await done(run, 'buying the unlock');
   }
 
-  // Another storefront: Apple's price for it, as Apple wrote it, never the web's £9.99.
+  // Another storefront: Apple's price for it, as Apple wrote it, never the web's £29.99.
   {
-    const run = await boot({ price: '9,99 €' });
+    const run = await boot({ price: '29,99 €' });
     await tab(run.p, 'Settings');
     const t = await body(run.p);
-    if ((await buyButton(run.p, '9,99 €').count()) !== 1 || /£9\.99/.test(t)) {
-      failures.push({ what: 'the button does not carry the App Store’s own price for the storefront', saw: near(t, 'Unlock') });
+    if ((await buyButton(run.p, '29,99 €').count()) !== 1 || /£29\.99/.test(t)) {
+      failures.push({ what: 'the button does not carry the App Store’s own price for the storefront', saw: near(t, 'Plus') });
     }
     await done(run, 'another storefront');
+  }
+
+  // Every plan the App Store sells is offered, in order, and each button buys its own plan.
+  {
+    const run = await boot({ price: '£29.99', monthly: '£4.99', family: '£49.99' });
+    const { p } = run;
+    await tab(p, 'Settings');
+    const names = await p.locator('#set-plan').locator('xpath=ancestor::section[1]').getByRole('button').allInnerTexts().catch(() => []);
+    const plans = names.filter((n) => /^(Plus|Family) · /.test(n));
+    const want = ['Plus · £29.99 a year', 'Plus · £4.99 a month', 'Family · £49.99 a year'];
+    if (plans.join('|') !== want.join('|')) failures.push({ what: 'the App Store’s three plans are not offered in order, at its prices', saw: plans.join(' | ') || names.join(' | ') });
+    await p.getByRole('button', { name: 'Plus · £4.99 a month', exact: true }).click({ timeout: 5000 }).catch(() => {});
+    await p.waitForTimeout(700);
+    const { bought: products } = await p.evaluate(() => window.__keptStore());
+    if (products.join() !== 'kept.plus.monthly' || (await plan(p)) !== 'pro') {
+      failures.push({ what: 'the monthly button did not buy the monthly plan', saw: `${products.join(', ')} · plan ${await plan(p)}` });
+    }
+    await done(run, 'choosing a plan');
   }
 
   // Each way a purchase can end without one: nothing unlocks, and each says what happened.
@@ -1095,7 +1125,7 @@ if (!/Deadline alerts/.test(settingsText)) {
     ['failed:network', /Couldn’t reach the App Store[\s\S]*Quids In unlocks by itself/, 'a purchase the connection dropped'],
     ['failed:not-allowed', /turned off on this iPhone/, 'a purchase Screen Time refused'],
   ]) {
-    const run = await boot({ price: '£9.99', purchase: ending });
+    const run = await boot({ price: '£29.99', purchase: ending });
     const { p } = run;
     await tab(p, 'Settings');
     await buyButton(p).click({ timeout: 5000 }).catch(() => {});
@@ -1110,7 +1140,7 @@ if (!/Deadline alerts/.test(settingsText)) {
 
   // Ask to Buy: waiting, said as such; then approved elsewhere, and unlocked with no second tap.
   {
-    const run = await boot({ price: '£9.99', purchase: 'pending' });
+    const run = await boot({ price: '£29.99', purchase: 'pending' });
     const { p } = run;
     await tab(p, 'Settings');
     await buyButton(p).click({ timeout: 5000 }).catch(() => {});
@@ -1132,7 +1162,7 @@ if (!/Deadline alerts/.test(settingsText)) {
 
   // Restore: a purchase from another phone comes back; a restore that finds none says so.
   {
-    const run = await boot({ price: '£9.99', restoreFinds: 'owned' });
+    const run = await boot({ price: '£29.99', restoreFinds: 'owned' });
     const { p } = run;
     await tab(p, 'Settings');
     await p.getByRole('button', { name: 'Restore purchase', exact: true }).click({ timeout: 5000 }).catch(() => {});
@@ -1157,13 +1187,13 @@ if (!/Deadline alerts/.test(settingsText)) {
     await done(run, 'restoring with nothing on sale');
   }
   {
-    const run = await boot({ price: '£9.99' });
+    const run = await boot({ price: '£29.99' });
     const { p } = run;
     await tab(p, 'Settings');
     await p.getByRole('button', { name: 'Restore purchase', exact: true }).click({ timeout: 5000 }).catch(() => {});
     await p.waitForTimeout(700);
     const note = await noteOf(p);
-    if ((await plan(p)) !== 'free' || !/no unlock on this Apple ID/.test(note)) {
+    if ((await plan(p)) !== 'free' || !/no active Plus subscription on this Apple ID/.test(note)) {
       failures.push({ what: 'a restore that found nothing did not say so, or unlocked anyway', saw: `${note || '(nothing said)'} · plan ${await plan(p)}` });
     }
     await done(run, 'restoring nothing');
@@ -1171,7 +1201,7 @@ if (!/Deadline alerts/.test(settingsText)) {
 
   // A refund: StoreKit revokes the purchase, the cap comes back, and the app says why.
   {
-    const run = await boot({ price: '£9.99', owned: 'owned' }, { plan: 'pro', appStorePrice: '£9.99' });
+    const run = await boot({ price: '£29.99', owned: 'owned' }, { plan: 'pro', appStorePrice: '£29.99' });
     const { p } = run;
     await tab(p, 'Settings');
     if (!/Unlocked/.test(await body(p))) failures.push({ what: 'a purchase StoreKit holds did not show as unlocked', saw: '' });
@@ -1185,20 +1215,39 @@ if (!/Deadline alerts/.test(settingsText)) {
   }
   // A refund while the app was closed is found at launch.
   {
-    const run = await boot({ price: '£9.99', owned: 'revoked' }, { plan: 'pro', appStorePrice: '£9.99' });
+    const run = await boot({ price: '£29.99', owned: 'revoked' }, { plan: 'pro', appStorePrice: '£29.99' });
     if ((await plan(run.p)) !== 'free') failures.push({ what: 'a refund made while the app was closed was not found at launch', saw: `plan ${await plan(run.p)}` });
     await done(run, 'a refund found at launch');
   }
+  // A subscription that ends unrenewed: StoreKit says so, the cap comes back, and the app says why.
+  {
+    const run = await boot({ price: '£29.99', owned: 'owned' }, { plan: 'pro', appStorePrice: '£29.99' });
+    const { p } = run;
+    await tab(p, 'Settings');
+    await p.evaluate(() => window.__lapse());
+    await p.waitForTimeout(800);
+    const t = await body(p);
+    if ((await plan(p)) !== 'free' || !/10 of 10 open receipts/.test(t) || !/subscription has ended/.test(t)) {
+      failures.push({ what: 'a lapsed subscription did not put the cap back, with the reason', saw: `plan ${await plan(p)} · ${near(t, 'Free plan')}` });
+    }
+    await done(run, 'a lapsed subscription');
+  }
+  // Lapsed while the app was closed: found at launch.
+  {
+    const run = await boot({ price: '£29.99', owned: 'expired' }, { plan: 'pro', appStorePrice: '£29.99' });
+    if ((await plan(run.p)) !== 'free') failures.push({ what: 'a subscription that lapsed while the app was closed was not found at launch', saw: `plan ${await plan(run.p)}` });
+    await done(run, 'a lapse found at launch');
+  }
   // A new phone whose record has not arrived yet: "none" relocks nothing.
   {
-    const run = await boot({ price: '£9.99', owned: 'none' }, { plan: 'pro', appStorePrice: '£9.99' });
+    const run = await boot({ price: '£29.99', owned: 'none' }, { plan: 'pro', appStorePrice: '£29.99' });
     if ((await plan(run.p)) !== 'pro') failures.push({ what: 'a paying customer was locked out because StoreKit had no record yet', saw: `plan ${await plan(run.p)}` });
     await done(run, 'a slow record');
   }
 
   // Offline, once the App Store has quoted a price: the cap stands, at that price, and the door says why it will not open.
   {
-    const run = await boot({ offline: true }, { appStorePrice: '£9.99' });
+    const run = await boot({ offline: true }, { appStorePrice: '£29.99' });
     const { p } = run;
     await pasteOne(p);
     if ((await p.getByRole('button', { name: 'Unlock unlimited to save this' }).count()) !== 1 || (await buyButton(p).count()) !== 1) {
@@ -1223,7 +1272,7 @@ if (!/Deadline alerts/.test(settingsText)) {
 
   // Purchases switched off: no button that can only be refused, and where to change it instead.
   {
-    const run = await boot({ price: '£9.99', canPay: false });
+    const run = await boot({ price: '£29.99', canPay: false });
     await tab(run.p, 'Settings');
     const t = await body(run.p);
     if ((await buyButton(run.p).count()) !== 0 || !/turned off on this iPhone[\s\S]*Screen Time/.test(t)) {

@@ -30,6 +30,7 @@ import { Settings } from './screens/Settings';
 import { Watch } from './screens/Watch';
 import { offerOf, quotaFull, useApp } from './state';
 import { useAppStore } from './purchases';
+import type { PlanId } from '../lib/app-store';
 import { backTarget, screenDepth } from './back';
 import { LetterNameContext, type LetterName } from './letter-name';
 
@@ -39,7 +40,7 @@ export function App() {
   // the web the sheet that says nothing is charged (lib/pricing.ts `Offer`).
   const offer = offerOf(state);
   const appStore = useAppStore(dispatch, state.embedded);
-  const upgrade = offer.kind === 'app-store' ? appStore.buy : () => dispatch({ type: 'upgrade-ask' });
+  const upgrade = offer.kind === 'app-store' ? appStore.buy : (_plan: PlanId) => dispatch({ type: 'upgrade-ask' });
 
   /*
    * The phone's own Back. One history entry per level (`screenDepth`), pushed

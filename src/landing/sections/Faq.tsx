@@ -20,7 +20,7 @@ import { COMPANY, CONTACT_EMAIL } from '../../lib/brand';
 const FAQ: { q: string; a: ReactNode }[] = [
   {
     q: 'Is Quids In free?',
-    a: `Yes, for your first ${FREE_TIER_LIMIT} receipts, with every feature included. After that, a single payment unlocks unlimited receipts for good. There is no subscription and nothing renews.`,
+    a: `Yes, for your first ${FREE_TIER_LIMIT} receipts, with every feature included. After that, Quids In Plus unlocks unlimited receipts, by the month or by the year, and Family covers everyone in an Apple Family Sharing group. Both renew until you cancel, which takes a moment in your Apple ID settings.`,
   },
   {
     q: 'Do I need an account?',

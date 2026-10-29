@@ -3,8 +3,9 @@ import Capacitor
 import StoreKit
 import UIKit
 
-/// The one thing kept sells — unlimited receipts, paid for once — through the
-/// App Store, with StoreKit 2.
+/// What kept sells — Quids In Plus, an auto-renewable subscription by the
+/// month or the year, and Family by the year — through the App Store, with
+/// StoreKit 2.
 ///
 /// StoreKit 2 checks each transaction's signature on the device and hands it
 /// over as `.verified` or `.unverified`. Only a verified transaction unlocks
@@ -141,44 +142,70 @@ public class PurchasesPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    /// Whether this Apple ID owns the product, as StoreKit knows it on this
-    /// iPhone. The answer is one of:
-    /// - `owned`;
+    /// Whether this Apple ID holds any of these products, as StoreKit knows
+    /// it on this iPhone. The answer is one of:
+    /// - `owned`: a current entitlement. For a subscription that includes a
+    ///   billing grace period, which StoreKit counts as entitled;
+    /// - `unverified`: a record whose signature does not check, which decides
+    ///   nothing either way;
     /// - `revoked`: refunded, or no longer shared by the family;
-    /// - `unverified`;
-    /// - `none`: no record of it here.
+    /// - `expired`: a verified subscription whose period ended unrenewed;
+    /// - `none`: no record of any of them here.
     ///
-    /// `none` is not proof the product was never bought. On a new phone the
-    /// record can arrive later, which is what `restore` is for. So the app
-    /// relocks only on `revoked`, and a paying customer is never locked out
-    /// because a record was slow to arrive.
+    /// `none` is not proof nothing was bought. On a new phone the record can
+    /// arrive later, which is what `restore` is for. So the app relocks only
+    /// on `revoked` or `expired`, both verified answers, and a paying customer
+    /// is never locked out because a record was slow to arrive.
     @objc func entitlement(_ call: CAPPluginCall) {
         guard #available(iOS 15.0, *) else {
             call.unavailable("StoreKit 2 needs iOS 15.")
             return
         }
-        guard let id = call.getString("id") else {
+        let ids = Set(call.getArray("ids", String.self) ?? [])
+        guard !ids.isEmpty else {
             call.reject("No product was named.", "INVALID")
             return
         }
         Task {
-            guard let latest = await Transaction.latest(for: id) else {
-                call.resolve(["state": "none"])
-                return
+            for await result in Transaction.currentEntitlements {
+                if case .verified(let transaction) = result, ids.contains(transaction.productID), transaction.revocationDate == nil {
+                    call.resolve(["state": "owned"])
+                    return
+                }
             }
-            switch latest {
-            case .verified(let transaction):
-                call.resolve(["state": transaction.revocationDate == nil ? "owned" : "revoked"])
-            case .unverified:
+            var unverified = false, revoked = false, expired = false
+            for id in ids {
+                switch await Transaction.latest(for: id) {
+                case .verified(let transaction):
+                    if transaction.revocationDate != nil {
+                        revoked = true
+                    } else if let ends = transaction.expirationDate, ends < Date() {
+                        expired = true
+                    }
+                case .unverified:
+                    unverified = true
+                case nil:
+                    break
+                }
+            }
+            // An unverified record outranks the others: it might be the one
+            // that is current, and nothing relocks on a maybe.
+            if unverified {
                 call.resolve(["state": "unverified"])
+            } else if revoked {
+                call.resolve(["state": "revoked"])
+            } else if expired {
+                call.resolve(["state": "expired"])
+            } else {
+                call.resolve(["state": "none"])
             }
         }
     }
 
     /// Restore purchase. This asks the App Store for this Apple ID's purchases
     /// now, and may ask the person to sign in, which is why it runs only when
-    /// they press the button. App Review expects that button for a one-off
-    /// purchase, and expects it never to run by itself.
+    /// they press the button. App Review expects that button for a
+    /// subscription, and expects it never to run by itself.
     @objc func restore(_ call: CAPPluginCall) {
         guard #available(iOS 15.0, *) else {
             call.unavailable("StoreKit 2 needs iOS 15.")

@@ -5,7 +5,8 @@ import { COOLING_OFF_DAYS, REJECT_DAYS, RETURN_AFTER_CANCEL_DAYS } from '../src/
 import { WARRANTY_NOTICE_DAYS } from '../src/lib/alerts';
 import { STORE_COUNT, STORE_POLICIES, TABLE_CHECKED_ON } from '../src/lib/stores';
 import { FREE_TIER_LIMIT } from '../src/lib/quota';
-import { UNLOCK_PRODUCT_ID } from '../src/lib/app-store';
+import { PLAN_ORDER, PLAN_PRODUCTS } from '../src/lib/app-store';
+import { FAMILY_SIZE, PLAN_PRICES, TERMS_OF_USE_URL } from '../src/lib/pricing';
 import { feedOrigin, feedRefreshes } from '../src/lib/feed-origin';
 import { loadEnv } from 'vite';
 import { addSubtitle } from '../src/lib/receipt-scan';
@@ -214,14 +215,22 @@ describe('what it costs', () => {
     expect(listing.reviewNotes).toContain(`once ${FREE_TIER_LIMIT} are open`);
   });
 
-  it('gives the reviewer the product id the app asks for, and where Restore is', () => {
-    expect(listing.reviewNotes).toContain(UNLOCK_PRODUCT_ID);
+  it('gives the reviewer every product id the app asks for, and where Restore is', () => {
+    for (const id of PLAN_ORDER) expect(listing.reviewNotes).toContain(PLAN_PRODUCTS[id]);
     expect(listing.reviewNotes).toContain('Restore purchase');
   });
 
-  it('promises what the unlock is: paid once, no subscription', () => {
-    expect(listing.description).toMatch(/paid once/i);
-    expect(listing.description).toMatch(/no subscription/i);
+  it('says what a subscription costs and how it renews, with the terms and privacy links Apple requires (3.1.2)', () => {
+    expect(listing.description).toContain(`${PLAN_PRICES.monthly} a month or ${PLAN_PRICES.yearly} a year`);
+    expect(listing.description).toContain(`${PLAN_PRICES.family} a year`);
+    expect(listing.description).toContain(`up to ${FAMILY_SIZE} people`);
+    expect(listing.description).toMatch(/renews automatically unless it is cancelled at least 24 hours before/);
+    expect(listing.description).toContain(TERMS_OF_USE_URL);
+    expect(listing.description).toContain(listing.urls.privacyPolicy);
+    // The one-off unlock is gone; nothing may still promise it.
+    for (const field of [listing.price, listing.description, listing.reviewNotes]) {
+      expect(field).not.toMatch(/paid once|no subscription|non-consumable|kept\.unlimited/i);
+    }
   });
 });
 
