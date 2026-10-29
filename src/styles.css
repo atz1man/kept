@@ -472,7 +472,16 @@ html:has(.k-anchor) { scroll-behavior: smooth; }
 }
 
 /* The scrolling policy headline bar on the landing page. */
-.k-ticker { animation: ticker 28s linear infinite; }
+.k-ticker { animation: ticker 60s linear infinite; }
+/*
+ * A marquee is a window onto a moving line, so its ends always cut a word in
+ * half. Fading both edges into the bar makes that read as motion rather than
+ * as text clipped by mistake, which is how it looked in a still.
+ */
+.k-ticker-edge {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
 
 /*
  * Visible to a screen reader, to nobody else. Not `display:none`, which

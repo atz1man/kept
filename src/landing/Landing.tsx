@@ -5,7 +5,7 @@ import { UNLOCK } from '../lib/pricing';
 import { FREE_TIER_LIMIT } from '../lib/quota';
 import { STORE_COUNT, STORE_POLICIES, findStore } from '../lib/stores';
 import { COOLING_OFF_DAYS, REJECT_DAYS } from '../lib/legal';
-import { CONTACT_EMAIL, TAGLINE, TAGLINE_LEAD } from '../lib/brand';
+import { CONTACT_EMAIL, TAGLINE } from '../lib/brand';
 import { tickerLines } from './ticker';
 import { CompanyDisclosure } from '../pages/Disclosure';
 import { FinePrintArt, HaulArt, LostReceiptsArt } from './sections/ProblemArt';
@@ -87,20 +87,20 @@ const EXAMPLE_ROWS = [
  */
 const WHY: { n: string; title: string; body: string; link?: { href: string; label: string }; art: ReactNode }[] = [
   // "a heads-up when something must go back this week" implied a background
-  // service. See notify.ts: a web app cannot wake itself, and the onboarding
-  // was corrected for this exact claim while these two lines kept making it.
-  { n: '01', title: 'Deadline alerts', body: 'A clear countdown on every item, works offline, and an alert the moment you open Quids In with something due this week. No background service, because a web app cannot wake itself — so it checks every time you come back.', art: <DeadlinesArt rows={EXAMPLE_ROWS} /> },
-  { n: '02', title: 'Knows the real policies', body: `IKEA’s ${days('IKEA')} days, Boots’ ${days('Boots')}, Apple’s ${days('Apple')} — Quids In’s own list of windows for ${STORE_COUNT} major UK retailers, plus the gotchas: Zara’s clock starts at dispatch, Uniqlo won’t refund online orders in store.`, art: <SmallPrintArt cards={SMALL_PRINT} /> },
+  // service. See notify.ts: a web app cannot wake itself, so the copy names
+  // the moment it happens — when you open it — without advertising the limit.
+  { n: '01', title: 'Every deadline, soonest first', body: 'A countdown on every purchase, even offline. Open Quids In and whatever runs out this week is the first thing you see.', art: <DeadlinesArt rows={EXAMPLE_ROWS} /> },
+  { n: '02', title: 'Knows the real policies', body: `IKEA’s ${days('IKEA')} days, Boots’ ${days('Boots')}, Apple’s ${days('Apple')}: the real windows for ${STORE_COUNT} UK shops, and the catches. Zara’s clock starts at dispatch; Uniqlo won’t refund online orders in store.`, art: <SmallPrintArt cards={SMALL_PRINT} /> },
   // The two numbers the whole legal half of the product turns on, taken from
   // the module that computes them rather than typed again here. They were
   // prose, beside three shop windows that had already been made derived for
   // exactly this reason.
-  { n: '03', title: 'Knows your legal rights', body: `The Consumer Rights Act gives you ${REJECT_DAYS} days to reject faulty goods for a full refund, and online orders carry a ${COOLING_OFF_DAYS}-day cooling-off by law. Quids In shows the legal deadline beside the shop’s own.`, link: { href: '/rights/', label: 'What the law gives you →' }, art: <TwoClocksArt shopDays={days('Zara')} lawDays={REJECT_DAYS} coolingDays={COOLING_OFF_DAYS} /> },
+  { n: '03', title: 'Knows your legal rights', body: `The law gives you ${REJECT_DAYS} days to reject faulty goods for a full refund, and a ${COOLING_OFF_DAYS}-day cooling-off on online orders. Quids In shows the legal deadline beside the shop’s own.`, link: { href: '/rights/', label: 'What the law gives you →' }, art: <TwoClocksArt shopDays={days('Zara')} lawDays={REJECT_DAYS} coolingDays={COOLING_OFF_DAYS} /> },
   // Scanning is read on the phone and never uploaded, and it never saves by
   // itself: what it read is shown to be checked first, because OCR on a
   // creased thermal slip is not always right. The copy says so.
-  { n: '04', title: 'Paste or scan, done', body: 'Paste an order email, or photograph a till receipt, and Quids In reads the store, total and date on your phone and sets the deadline. You check what it read before anything is saved.', art: <ScanArt /> },
-  { n: '05', title: 'When it breaks', body: 'Put a warranty length on a receipt and Quids In counts it down beside the return window. If something goes wrong, it says what the law gives you that day — a refund, or a free repair — and drafts the letter to the shop, with the right section of the Consumer Rights Act in it.', art: <LetterArt /> },
+  { n: '04', title: 'Paste or scan, done', body: 'Paste an order email or photograph a till receipt. Quids In reads the shop, total and date on your phone, and you check it before it saves.', art: <ScanArt /> },
+  { n: '05', title: 'When it breaks', body: 'If something breaks, Quids In says what the law gives you that day, a refund or a free repair, and drafts the letter to the shop with the right section of the Consumer Rights Act in it.', art: <LetterArt /> },
 ];
 
 /*
@@ -110,7 +110,7 @@ const WHY: { n: string; title: string; body: string; link?: { href: string; labe
  */
 const PRIVATE = {
   title: 'Private by design',
-  body: 'Everything lives on your phone. No account, nothing uploaded, no one reading your purchases. Policy updates download to you; nothing about you goes back. Export a backup anytime.',
+  body: 'Everything lives on your phone. No account, nothing uploaded, nobody reading your purchases. Shop policies download to you; nothing about you goes back.',
   points: ['No account to make', 'No receipts uploaded', 'Works offline', 'Your backup, your file'],
 };
 
@@ -206,11 +206,6 @@ export function Landing() {
                 </li>
               ))}
             </ul>
-            {/* One source with the footer below and with Settings — see
-                lib/brand.ts for what it used to say and why it does not. */}
-            <div style={{ marginTop: 22, fontSize: 14, fontWeight: 600, color: color.onHeroSoft }}>
-              {TAGLINE_LEAD}
-            </div>
           </div>
 
           <div style={{ minWidth: 0 }}>
@@ -241,7 +236,7 @@ export function Landing() {
       </section>
 
       {/* Ticker */}
-      <div style={{ background: color.surface, borderBottom: `1px solid ${color.borderHair}`, padding: '16px 0', overflow: 'hidden', whiteSpace: 'nowrap' }} aria-hidden="true">
+      <div className="k-ticker-edge" style={{ background: color.surface, borderBottom: `1px solid ${color.borderHair}`, padding: '16px 0', overflow: 'hidden', whiteSpace: 'nowrap' }} aria-hidden="true">
         <div className="k-ticker" style={{ display: 'inline-flex', gap: 48, fontSize: 14, fontWeight: 500, color: color.body }}>
           {[...TICKER, ...TICKER].map((line, i) => (
             <span key={i} style={{ display: 'inline-flex', gap: 48 }}>
@@ -259,7 +254,7 @@ export function Landing() {
           center
           eyebrow="Try it now"
           title="Can you still return it?"
-          lede={`Pick a shop and the day you bought it. This is the same reckoning the app does: the shop’s own window, when its clock really starts, and the ${REJECT_DAYS}-day and ${COOLING_OFF_DAYS}-day rights the law gives you beside it.`}
+          lede={`Pick a shop and the day you bought it. You get the shop’s real deadline and the ${REJECT_DAYS}-day and ${COOLING_OFF_DAYS}-day rights the law adds, worked out exactly as the app does.`}
         />
         <div style={{ marginTop: 40 }}>
           <Suspense fallback={<div style={{ minHeight: 560, borderRadius: radius.hero, background: color.surfaceAlt }} />}>
@@ -270,7 +265,7 @@ export function Landing() {
 
       {/* The problem */}
       <section aria-labelledby="problem" style={{ ...WRAP, padding: 'clamp(64px, 9vw, 112px) 28px 0' }}>
-        <SectionHead id="problem" eyebrow="The problem" title="You shop in seconds. The fine print takes hours." lede="Every shop runs its own clock, starts it on a different day, and hides the exceptions where nobody looks. So the money stays with them." />
+        <SectionHead id="problem" eyebrow="The problem" title="You shop in seconds. The fine print takes hours." lede="Every shop runs its own clock and hides the exceptions. Miss one, and the money stays with them." />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 18, marginTop: 44 }}>
           {PROBLEMS.map((p) => (
             <Card key={p.title} className="k-reveal" style={{ overflow: 'hidden' }}>
@@ -313,7 +308,7 @@ export function Landing() {
             id="watch"
             eyebrow="Policy watch"
             title="Shops rewrite the rules quietly. Quids In checks your receipts when they do."
-            lede="Retailers change return windows and never send a memo. When one does, Quids In’s list changes and every receipt you hold is checked against it. A purchase keeps the terms it was made under; you just find out when the shop moves the goalposts for the next one."
+            lede="When a shop changes its return window, Quids In’s list changes and checks every receipt you hold. A purchase keeps the terms it was made under; you just hear when the goalposts move."
           />
           <div style={{ marginTop: 32, fontSize: 14, fontWeight: 600, color: color.bodyStrong }}>
             Return windows already built in for {STORE_COUNT} UK shops. Tap one to check a return:
