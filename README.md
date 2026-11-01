@@ -1577,11 +1577,15 @@ scrim over the tab bar as a defect, which is what a modal is *for*, so it now
 narrows to the open dialog's own buttons and still fails when those are
 covered.
 
-### The unlock on iPhone
+### Quids In Plus on iPhone
 
 The iPhone app sells unlimited receipts through In-App Purchase. Guideline
 3.1.1 allows nothing else, and until StoreKit the iOS build sold nothing at all
-(APN-18). It is one non-consumable, `kept.unlimited`. `packages/purchases` is
+(APN-18). Since PR #198 it is three auto-renewable subscriptions in one group:
+Plus yearly (`kept.plus.yearly`, £29.99), Plus monthly (`kept.plus.monthly`,
+£4.99) and Family (`kept.family.yearly`, £49.99, Family Sharing on). The old
+one-off unlock, `kept.unlimited`, is no longer sold, but owning it still
+counts. `packages/purchases` is
 the native half, in StoreKit 2. It only asks StoreKit and reports what it was
 told; every decision is in `lib/app-store.ts`, because the native half cannot
 run here and an untested branch on this path costs someone money.
@@ -1593,32 +1597,34 @@ nothing a proxy rewrites can unlock the app.
 
 **Nothing relocks on silence.** A new phone reports "no purchase" until its
 records arrive. Relocking on that would lock a paying customer out of their
-own library, so only an explicit revocation (a refund, or a family member no
-longer sharing) puts the cap back. Being wrong in that direction costs one
-refunded £9.99. A transaction that arrives outside a purchase call, such as an
+own library, so only an explicit answer puts the cap back: a revocation (a
+refund, or a family member no longer sharing) or a verified subscription whose
+period ended unrenewed. Being wrong in that direction costs one month of
+Plus. A transaction that arrives outside a purchase call, such as an
 Ask to Buy approval, a purchase on another phone or a refund, comes through
 StoreKit's `Transaction.updates`. The plugin listens from launch and the plan
 follows, with a sentence saying why it moved.
 
 **No wall without a door, and no way round it either.** The cap stands only
-where the App Store sells the unlock. But "offline lifts the cap" would make
+where the App Store sells Plus. But "offline lifts the cap" would make
 airplane mode the way to unlimited, so the price the App Store last quoted is
 remembered and the cap stands on it. On a first launch offline, before the App
 Store has ever answered, there is no cap. Where Screen Time switches purchases
 off, the button is replaced by where to switch them back on.
 
-**The App Store's price, not ours.** The button shows StoreKit's
-`displayPrice` for the person's storefront ("£9.99", "9,99 €"). A hard-coded
-"£9.99" would be wrong in every other country, and could disagree with the
-sheet Apple shows next.
+**The App Store's price, not ours.** Each plan's button shows StoreKit's
+`displayPrice` for the person's storefront ("£29.99", "29,99 €"). A hard-coded
+"£29.99" would be wrong in every other country, and could disagree with the
+sheet Apple shows next. Beside the buttons are the renewal terms, Terms of use
+and Privacy (Guideline 3.1.2), and a subscriber is shown where to cancel.
 
 **Every ending has words, and none of them guesses about money.** A cancelled
 sheet says nothing. A failure says "nothing was charged" only where that is
 certain, which is when the App Store had nothing to sell. A dropped connection
 mid-purchase can still end in a charge, so it says what happens if it did: the
 App Store finishes the transaction and the app unlocks by itself. Restore
-purchase sits directly under the button, which App Review expects for a
-one-off purchase.
+purchase sits directly under the buttons, which App Review expects for a
+subscription.
 
 `test/app-store.test.ts` pins each of those decisions. It also reads the Swift
 and the TypeScript and checks they agree on every name that crosses the bridge:
@@ -1634,6 +1640,8 @@ walks it all on the bundle that ships, with StoreKit emulated in the bridge:
 - Ask to Buy, approved later;
 - both kinds of restore;
 - a refund while open, and one found at launch;
+- a lapsed subscription while open, and one found at launch;
+- each plan's button buying its own product;
 - a slow record on a new phone;
 - offline with a remembered price, and offline on a first launch;
 - nothing on sale.
@@ -2680,9 +2688,9 @@ screen, and an unticked second scan that leaves nothing on the disk.
   cancels what is waiting, that a first purchase asks for permission exactly
   once, and that a refusal lodges nothing while Settings says where to
   change it. Each of those has a broken version it names.
-- **Payments on the web.** The web's one-off unlock (£9.99, once) sets the local plan flag
+- **Payments on the web.** Choosing a plan on the web sets the local plan flag
   and says plainly that nothing was charged. No card, no billing, nothing to cancel. The
-  iPhone app sells the real unlock through In-App Purchase; see *The unlock on iPhone*.
+  iPhone app sells Quids In Plus through In-App Purchase; see *Quids In Plus on iPhone*.
 - **Signing the policy feed.** The feed is fetched from the app's own origin,
   validated entry by entry and merged (`lib/policy-feed.ts`), and the download
   is of *all* changes — never a query naming the shops a particular user

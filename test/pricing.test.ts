@@ -35,9 +35,15 @@ describe('what kept costs', () => {
     });
   // Comments are history and may name the old unlock; what a person reads is
   // a string or JSX text, and comments are blanked before matching.
-  const uncommented = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  // A quoted string is stepped over whole, so `accept="image/*"` is not read
+  // as a comment opening: it was, and everything up to the next `*/` (the
+  // add screen's own "unlock unlimited once") went unswept.
+  const uncommented = (src: string) =>
+    src
+      .replace(/("(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')|\/\*[\s\S]*?\*\//g, (_m, quoted) => quoted ?? '')
+      .replace(/^\s*\/\/.*$/gm, '');
   const PRICES = new RegExp(Object.values(PLAN_PRICES).map((p) => p.replace(/[.$]/g, '\\$&')).join('|'));
-  const STALE = /no subscription(?! here)|pay once|paid once|one payment|single payment|unlocks? [^.]*for good/i;
+  const STALE = /no subscription(?! here)|pay once|paid once|one payment|single payment|unlocks? [^.]*for good|unlock\w* [^.]*\bonce\b/i;
 
   it('writes each plan’s price in one place only', () => {
     const offenders = walk(SRC).filter((f) => !f.endsWith(join('lib', 'pricing.ts')) && PRICES.test(uncommented(readFileSync(f, 'utf8'))));
@@ -52,12 +58,15 @@ describe('what kept costs', () => {
   it('would notice either if one came back', () => {
     // A sweep over an empty match reports success for a question it never asked.
     for (const p of Object.values(PLAN_PRICES)) expect(PRICES.test(`{ price: '${p}' }`), p).toBe(true);
-    for (const s of ['One payment, no subscription', 'Pay once', 'a single payment unlocks unlimited receipts for good']) {
+    for (const s of ['One payment, no subscription', 'Pay once', 'a single payment unlocks unlimited receipts for good', 'or unlock unlimited once, and one missed return pays for it']) {
       expect(STALE.test(s), s).toBe(true);
     }
     // The web's own sentence is the one place "no subscription" is still true.
     expect(STALE.test('There is no subscription here to cancel.')).toBe(false);
     expect(walk(SRC).length).toBeGreaterThan(20);
+    // A `/*` inside a string is not a comment, so what follows it is still read.
+    expect(STALE.test(uncommented('<input accept="image/*" />\n or unlock unlimited once.\n{/* note */}'))).toBe(true);
+    expect(uncommented('a /* gone */ b')).toBe('a  b');
   });
 
   it('says how a subscription renews and how to stop it', () => {

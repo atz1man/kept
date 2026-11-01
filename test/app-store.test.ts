@@ -27,7 +27,7 @@ import { reducer, type AppState } from '../src/app/state';
 import { DEFAULT_SETTINGS } from '../src/lib/storage';
 
 /**
- * The unlock on iPhone: every decision StoreKit's answers lead to.
+ * Quids In Plus on iPhone: every decision StoreKit's answers lead to.
  *
  * The money path is where an untested branch costs someone money, in one of
  * two ways: charged and still locked, or locked out of what they paid for.
