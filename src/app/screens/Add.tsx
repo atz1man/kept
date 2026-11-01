@@ -741,7 +741,7 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
           <div style={{ fontWeight: 600, fontSize: 15 }}>That’s {FREE_TIER_LIMIT} receipts open, the free plan’s limit</div>
           <div style={{ fontSize: 13, color: color.body, lineHeight: 1.55, marginTop: 6 }}>
             Quids In has tracked {trackedTotal} for free. Return something you are already tracking, or mark one you are keeping, and a slot frees up —
-            or unlock unlimited once, and one missed return pays for it.
+            or go unlimited with Quids In Plus.
           </div>
           <UnlockOffer
             offer={offer}
