@@ -69,7 +69,8 @@ describe('deadlines', () => {
     // Arrived, and the shop's clock started on that day: a date.
     expect(find(online({ purchasedOn: iso(-10), arrivedOn: iso(-6), windowStartsOn: iso(-6) }), 'The shop’s own return window closes')!.hedged).toBe(false);
     // Online from a shop that counts from the order: the order IS its date.
-    expect(find(counter({ distance: true, purchasedOn: iso(-10) }), 'The shop’s own return window closes')!.hedged).toBe(false);
+    // Currys, since John Lewis now counts an online order from delivery.
+    expect(find(counter({ store: 'Currys', windowDays: 14, distance: true, purchasedOn: iso(-10) }), 'The shop’s own return window closes')!.hedged).toBe(false);
   });
 
   it('never call a floor that has gone by "passed" — the parcel may have come later', () => {

@@ -163,17 +163,6 @@
       ],
       "cat": "clothing"
     },
-    "Office": {
-      "home": "https://www.office.co.uk/",
-      "returns": [
-        "https://www.office.co.uk/view/content/returnsinfo-page"
-      ],
-      "aliases": [
-        "office"
-      ],
-      "cat": "clothing",
-      "commonWord": true
-    },
     "Footasylum": {
       "home": "https://www.footasylum.com/",
       "returns": [
@@ -568,29 +557,6 @@
       "cat": "other",
       "commonWord": true
     },
-    "Ernest Jones": {
-      "home": "https://www.ernestjones.co.uk/",
-      "returns": [
-        "https://www.ernestjones.co.uk/refunds"
-      ],
-      "aliases": [
-        "ernest jones",
-        "ernestjones"
-      ],
-      "cat": "other"
-    },
-    "H.Samuel": {
-      "home": "https://www.hsamuel.co.uk/",
-      "returns": [
-        "https://www.hsamuel.co.uk/returns"
-      ],
-      "aliases": [
-        "h.samuel",
-        "h samuel",
-        "hsamuel"
-      ],
-      "cat": "other"
-    },
     "Goldsmiths": {
       "home": "https://www.goldsmiths.co.uk/",
       "returns": [
@@ -913,17 +879,6 @@
       ],
       "cat": "clothing"
     },
-    "Thorntons": {
-      "home": "https://www.thorntons.com/uk/en/",
-      "returns": [
-        "https://www.thorntons.com/uk/en/terms-and-conditions"
-      ],
-      "aliases": [
-        "thorntons"
-      ],
-      "cat": "kitchen",
-      "commonWord": true
-    },
     "Moonpig": {
       "home": "https://www.moonpig.com/uk/",
       "returns": [
@@ -945,17 +900,6 @@
         "funkypigeon"
       ],
       "cat": "other"
-    },
-    "Dell": {
-      "home": "https://www.dell.com/en-gb",
-      "returns": [
-        "https://www.dell.com/en-gb/shop/lp/return-policy"
-      ],
-      "aliases": [
-        "dell"
-      ],
-      "cat": "other",
-      "commonWord": true
     },
     "Lenovo": {
       "home": "https://www.lenovo.com/gb/en/",
@@ -987,27 +931,6 @@
       "aliases": [
         "scan computers",
         "scan.co.uk"
-      ],
-      "cat": "other"
-    },
-    "Overclockers UK": {
-      "home": "https://www.overclockers.co.uk/",
-      "returns": [
-        "https://www.overclockers.co.uk/returns"
-      ],
-      "aliases": [
-        "overclockers"
-      ],
-      "cat": "other"
-    },
-    "Laptops Direct": {
-      "home": "https://www.laptopsdirect.co.uk/",
-      "returns": [
-        "https://www.laptopsdirect.co.uk/content/cancellation-returns-process"
-      ],
-      "aliases": [
-        "laptops direct",
-        "laptopsdirect"
       ],
       "cat": "other"
     },
@@ -1055,17 +978,6 @@
       ],
       "cat": "clothing"
     },
-    "Sosandar": {
-      "home": "https://www.sosandar.com/",
-      "returns": [
-        "https://www.sosandar.com/returns",
-        "https://help.sosandar.com/hc/en-gb/articles/18169993767441-What-is-your-returns-policy"
-      ],
-      "aliases": [
-        "sosandar"
-      ],
-      "cat": "clothing"
-    },
     "Hush": {
       "home": "https://www.hush-uk.com/",
       "returns": [
@@ -1088,17 +1000,6 @@
       ],
       "cat": "clothing"
     },
-    "Rixo": {
-      "home": "https://rixolondon.com/",
-      "returns": [
-        "https://rixolondon.com/pages/returns"
-      ],
-      "aliases": [
-        "rixo"
-      ],
-      "cat": "clothing",
-      "commonWord": true
-    },
     "Free People": {
       "home": "https://www.freepeople.com/uk/",
       "returns": [
@@ -1120,19 +1021,6 @@
         "anthropologie"
       ],
       "cat": "clothing"
-    },
-    "In The Style": {
-      "home": "https://www.inthestyle.com/",
-      "returns": [
-        "https://www.inthestyle.com/pages/returns",
-        "https://www.inthestyle.com/policies/refund-policy"
-      ],
-      "aliases": [
-        "in the style",
-        "inthestyle"
-      ],
-      "cat": "clothing",
-      "commonWord": true
     },
     "Quiz": {
       "home": "https://www.quizclothing.co.uk/",

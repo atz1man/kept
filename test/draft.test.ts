@@ -246,7 +246,7 @@ describe('the window a receipt says it has', () => {
   const boots: Receipt = {
     id: 'r1', store: 'Boots', item: 'No7 set', cat: 'beauty', amount: toPence(24.98),
     purchasedOn: '2026-08-20', windowDays: 35, distance: false, status: 'active',
-    policy: 'Boots · 35 days, unopened, with receipt. Advantage Card refunds go back as points.',
+    policy: 'Boots · 35 days, unopened, with receipt: from purchase in store, from delivery online. Advantage Card refunds go back as points.',
   };
   const edit = (patch: Partial<ReceiptDraft>) => applyDraft(boots, valid({ ...draftFrom(boots), ...patch }));
 

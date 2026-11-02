@@ -64,12 +64,12 @@ describe('recording a shop read by hand', () => {
   });
 
   it('holds a shop with a separate online window to both numbers', () => {
-    // New Look: 28 days in store, 14 online. A quote for one is half the claim.
-    const nl = row('New Look');
-    expect(nl.onlineWindowDays).toBe(14);
-    const url = own['New Look'][0];
-    expect(manualRecord({ row: nl, url, quotes: ['Return in store within 28 days.'], own: own['New Look'] }).problems.join(' ')).toMatch(/table says 14 days/);
-    expect(manualRecord({ row: nl, url, quotes: ['Return in store within 28 days.', 'Online orders: 14 days from delivery.'], own: own['New Look'] }).ok).toBe(true);
+    // Snow+Rock: 30 days in store, 14 online. A quote for one is half the claim.
+    const sr = row('Snow+Rock');
+    expect(sr.onlineWindowDays).toBe(14);
+    const url = own['Snow+Rock'][0];
+    expect(manualRecord({ row: sr, url, quotes: ['Return in store within 30 days.'], own: own['Snow+Rock'] }).problems.join(' ')).toMatch(/table says 14 days/);
+    expect(manualRecord({ row: sr, url, quotes: ['Return in store within 30 days.', 'Online orders: 14 days from delivery.'], own: own['Snow+Rock'] }).ok).toBe(true);
   });
 
   it('accepts exactly what the evidence test accepts for the window', () => {
@@ -92,13 +92,13 @@ describe('dating a shop in CHECKED_ON', () => {
   });
 
   it('adds a shop once, and moves the date of one already there', () => {
-    const added = withCheckedOn(STORES, 'Boots', '2026-10-05');
-    expect(checkedNames(added)).toContain('Boots');
+    const added = withCheckedOn(STORES, 'Currys', '2026-10-05');
+    expect(checkedNames(added)).toContain('Currys');
     expect(checkedNames(added)).toHaveLength(checkedNames(STORES).length + 1);
-    const moved = withCheckedOn(added, 'Boots', '2026-11-01');
+    const moved = withCheckedOn(added, 'Currys', '2026-11-01');
     expect(checkedNames(moved)).toHaveLength(checkedNames(added).length);
-    expect(moved).toContain("  'Boots': '2026-11-01',");
-    expect(moved).not.toContain("'Boots': '2026-10-05'");
+    expect(moved).toContain("  'Currys': '2026-11-01',");
+    expect(moved).not.toContain("'Currys': '2026-10-05'");
   });
 
   it('keeps a name with an apostrophe in the quotes the table already uses', () => {
