@@ -7,7 +7,7 @@
     "Argos": ["https://www.argos.co.uk/help/returns/", "https://help.argos.co.uk/help/refunds-&-returns/how-do-i-return-a-home-delivered-item-or-product-i-collected-in-store", "https://help.argos.co.uk/help/refunds-&-returns/returns-product-support-and-repairs/returnsproductsupportrepairs"],
     "IKEA": ["https://www.ikea.com/gb/en/customer-service/returns-claims/return-policy/"],
     "Zara": ["https://www.zara.com/uk/en/help-center/ReturnPolicy", "https://www.zara.com/uk/en/help-center/HowToReturn", "https://www.zara.com/uk/en/help-center/ReturnSpecialConditions"],
-    "Boots": ["https://www.boots.com/help/returns", "https://www.boots.com/returns-exchanges"],
+    "Boots": ["https://www.boots.com/help/returns", "https://www.boots.com/returns-exchanges", "https://assets.boots.com/content/dam/boots/files/uk-returns-form-2024.pdf"],
     "Uniqlo": ["https://www.uniqlo.com/uk/en/help/returns", "https://faq-uk.uniqlo.com/articles/en_US/FAQ/What-is-your-online-returns-policy", "https://faq-uk.uniqlo.com/articles/en_US/FAQ/What-is-your-store-returns-policy"],
     "ASOS": ["https://www.asos.com/customer-care/returns-refunds/what-is-your-returns-policy/", "https://www.asos.com/payments-and-deliveries/returns/"],
     "Next": ["https://www.next.co.uk/help/returns", "https://zendesk.next.co.uk/hc/en-gb/articles/16963491072913-Our-Returns-Policy", "https://www4.next.co.uk/returns"],
@@ -41,7 +41,7 @@
     "Lookfantastic": ["https://www.lookfantastic.com/c/info/refunds-returns/"],
     "Holland & Barrett": ["https://www.hollandandbarrett.com/info/delivery-and-returns/returns/"],
     "Go Outdoors": ["https://www.gooutdoors.co.uk/policies/refund-policy"],
-    "Pets at Home": ["https://www.petsathome.com/support/refund-and-returns"],
+    "Pets at Home": ["https://www.petsathome.com/support/refund-and-returns", "https://www.petsathome.com/terms-and-conditions"],
     "Aldi": ["https://help.aldi.co.uk/faqs/article/Can-I-return-things-I-buy-in-your-stores"],
     "FatFace": ["https://www.fatface.com/terms"],
     "Richer Sounds": ["https://customerservice.richersounds.com/hc/en-gb/articles/360012946177-Unwanted-items"],
@@ -101,6 +101,16 @@
     "Cotswold Outdoor": ["https://help.cotswoldoutdoor.com/hc/en-gb/articles/4411467010834-Returns-Policy"],
     "GAME": ["https://help.game.co.uk/hc/en-gb/articles/6018073554719-DELIVERY-AND-RETURNS"],
     "Home Bargains": ["https://help.homebargains.co.uk/hc/en-gb/articles/200213017-What-is-your-returns-policy-for-in-store-purchases"],
-    "Space NK": ["https://help.spacenk.com/hc/en-us/articles/360002297754-Returns-Policy-Store-Online"]
+    "Space NK": ["https://help.spacenk.com/hc/en-us/articles/360002297754-Returns-Policy-Store-Online"],
+    "Office": ["https://www.office.co.uk/view/content/returnsinfo-page"],
+    "Rixo": ["https://rixolondon.com/pages/returns"],
+    "Ernest Jones": ["https://www.ernestjones.co.uk/refunds"],
+    "H.Samuel": ["https://www.hsamuel.co.uk/returns"],
+    "Sosandar": ["https://www.sosandar.com/returns"],
+    "In The Style": ["https://www.inthestyle.com/pages/returns"],
+    "Laptops Direct": ["https://www.laptopsdirect.co.uk/content/cancellation-returns-process"],
+    "Overclockers UK": ["https://www.overclockers.co.uk/returns"],
+    "Dell": ["https://www.dell.com/en-gb/shop/lp/return-policy"],
+    "Thorntons": ["https://www.thorntons.com/uk/en/terms-and-conditions"]
   }
 }

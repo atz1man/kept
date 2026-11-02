@@ -37,7 +37,7 @@ import { reportOnCrash, sayCrash } from './crash-report.mjs';
 
 /** The raw shot, then the headline's two lines (the second in gold), then the subline (\n breaks it where a sentence ends). */
 export const CAPTIONS = [
-  ['01-deadlines', 'Every return deadline,', 'in one place.', 'The shop’s real window for 101 UK retailers, counted for you.'],
+  ['01-deadlines', 'Every return deadline,', 'in one place.', 'The shop’s real window for 111 UK retailers, counted for you.'],
   ['02-shop-clock-and-your-rights', 'Your legal rights,', 'counted too.', '30 days to reject a fault. 14 days to cancel online.\nIt shows which closes first.'],
   ['03-paste-an-order-email', 'Paste the order email.', 'It reads the rest.', 'Shop, total and date —\nand it asks when it isn’t sure.'],
   ['04-scan-a-till-receipt', 'Snap the till receipt.', 'Never uploaded.', 'Read on your phone. No account, nothing leaves it.'],

@@ -110,8 +110,9 @@ export const STORE_POLICIES: readonly StorePolicy[] = [
     gotcha: 'Zara counts from the day the parcel is dispatched, not the day it arrives — the window is already running when it lands.',
   },
   {
-    name: 'Boots', commonWord: true, aliases: ['boots'], windowDays: 35, clockStart: 'purchase', cat: 'beauty',
-    policy: 'Boots · 35 days, unopened, with receipt. Advantage Card refunds go back as points.',
+    name: 'Boots', commonWord: true, aliases: ['boots'], windowDays: 35, clockStart: 'purchase', onlineClockStart: 'delivery', cat: 'beauty',
+    policy: 'Boots · 35 days, unopened, with receipt: from purchase in store, from delivery online. Advantage Card refunds go back as points.',
+    gotcha: 'An online order counts the 35 days from the day it arrives. Put the arrival date on the receipt and Quids In counts from there; without it the date shown is the earliest it can be.',
   },
   {
     name: 'Uniqlo', aliases: ['uniqlo'], windowDays: 30, clockStart: 'purchase', onlineClockStart: 'delivery', cat: 'clothing',
@@ -124,13 +125,14 @@ export const STORE_POLICIES: readonly StorePolicy[] = [
     gotcha: 'ASOS counts the 28 days from the day it arrives, not from your order — put the arrival date on the receipt and Quids In counts from there.',
   },
   {
-    name: 'Next', commonWord: true, aliases: ['next'], windowDays: 28, clockStart: 'purchase', cat: 'clothing',
-    policy: 'Next · 28 days for a full refund to the way you paid, unworn with tags.',
-    gotcha: 'After the 28 days Next still takes it back, but as an eVoucher, not a refund.',
+    name: 'Next', commonWord: true, aliases: ['next'], windowDays: 28, clockStart: 'purchase', onlineClockStart: 'delivery', cat: 'clothing',
+    policy: 'Next · 28 days for a full refund to the way you paid, unworn with tags: from purchase in store, from delivery online (or from collection, for an order sent to a store).',
+    gotcha: 'Next counts an online order’s 28 days from the day it arrives. Put the arrival date on the receipt and Quids In counts from there; without it the date shown is the earliest it can be. After the 28 days Next still takes it back, but as an eVoucher, not a refund.',
   },
   {
-    name: 'John Lewis', aliases: ['john lewis'], windowDays: 35, clockStart: 'purchase',
-    policy: 'John Lewis · 35 days with proof of purchase, unused and in original packaging.',
+    name: 'John Lewis', aliases: ['john lewis'], windowDays: 30, clockStart: 'purchase', onlineClockStart: 'delivery',
+    policy: 'John Lewis · 30 days after you receive it, unused with proof of purchase: from purchase in a shop, from delivery online.',
+    gotcha: 'John Lewis counts an online order’s 30 days from the day it arrives. Put the arrival date on the receipt and Quids In counts from there; without it the date shown is the earliest it can be.',
   },
   {
     name: 'M&S', aliases: ['m&s', 'marks and spencer', 'marks & spencer'], windowDays: 28, clockStart: 'purchase', onlineClockStart: 'delivery', cat: 'clothing',
@@ -278,8 +280,9 @@ export const STORE_POLICIES: readonly StorePolicy[] = [
     gotcha: 'Refurbished items bought online get 14 days from delivery, not 28. An online order counts the 28 days from the day it arrives. Put the arrival date on the receipt and Quids In counts from there; without it the date shown is the earliest it can be.',
   },
   {
-    name: 'Pets at Home', aliases: ['pets at home', 'petsathome'], windowDays: 30, clockStart: 'purchase',
-    policy: 'Pets at Home · 30 days with proof of purchase if you change your mind.',
+    name: 'Pets at Home', aliases: ['pets at home', 'petsathome'], windowDays: 30, clockStart: 'purchase', onlineClockStart: 'delivery',
+    policy: 'Pets at Home · 30 days with proof of purchase if you change your mind, unwanted and unused: from purchase in store, from delivery online.',
+    gotcha: 'An online order counts the 30 days from the day it arrives. Put the arrival date on the receipt and Quids In counts from there; without it the date shown is the earliest it can be.',
   },
   /*
    * Added 3 October 2026, second reading: these shops' homepages refuse an
@@ -370,8 +373,9 @@ export const STORE_POLICIES: readonly StorePolicy[] = [
     gotcha: 'Sale items get 14 days, not 30.',
   },
   {
-    name: 'Dune London', aliases: ['dune london', 'dunelondon'], windowDays: 28, clockStart: 'purchase', cat: 'clothing',
-    policy: 'Dune London · 28 days for a refund, within their returns conditions.',
+    name: 'Dune London', aliases: ['dune london', 'dunelondon'], windowDays: 28, clockStart: 'purchase', onlineClockStart: 'delivery', cat: 'clothing',
+    policy: 'Dune London · 28 days for a refund: from purchase in store, from delivery for a home delivery.',
+    gotcha: 'A home delivery counts the 28 days from the day it arrives; a click-and-collect order from the day it was ready to collect. Put the arrival date on the receipt and Quids In counts from there; without it the date shown is the earliest it can be.',
   },
   {
     name: 'Crew Clothing', aliases: ['crew clothing', 'crewclothing'], windowDays: 28, clockStart: 'purchase', cat: 'clothing',
@@ -550,9 +554,9 @@ export const STORE_POLICIES: readonly StorePolicy[] = [
     gotcha: 'Bought in the store, it is 14 days, not 30. An online order counts the 30 days from the day it arrives. Put the arrival date on the receipt and Quids In counts from there; without it the date shown is the earliest it can be.',
   },
   {
-    name: 'New Look', aliases: ['new look', 'newlook'], windowDays: 28, clockStart: 'purchase', onlineWindowDays: 14, onlineClockStart: 'delivery', cat: 'clothing',
-    policy: 'New Look · 28 days from purchase in store with a receipt; online, tell them within 14 days from delivery, then 14 more to send it back.',
-    gotcha: 'Online it is 14 days, not 28, counted from the day it arrives. Put the arrival date on the receipt and Quids In counts from there; without it the date shown is the earliest it can be. Sale items bought in store get 14 days, for an exchange only.',
+    name: 'New Look', aliases: ['new look', 'newlook'], windowDays: 28, clockStart: 'purchase', onlineClockStart: 'delivery', cat: 'clothing',
+    policy: 'New Look · 28 days, discounted items included (sale items 14): from the date on your receipt in store, from delivery or collection online.',
+    gotcha: 'An online order counts the 28 days from the day it arrives. Put the arrival date on the receipt and Quids In counts from there; without it the date shown is the earliest it can be. Sale items get 14 days: in store for an exchange only.',
   },
   {
     name: 'Snow+Rock', aliases: ['snow+rock', 'snow and rock', 'snowandrock'], windowDays: 30, clockStart: 'purchase', onlineWindowDays: 14, onlineClockStart: 'delivery', cat: 'clothing',
@@ -560,9 +564,9 @@ export const STORE_POLICIES: readonly StorePolicy[] = [
     gotcha: 'Sale, clearance and outlet items get 14 days, and an online order delivered to you gets 14 from the day it arrives. Put the arrival date on the receipt and Quids In counts from there; without it the date shown is the earliest it can be. Explore More members get 100 days on full-priced products bought in store.',
   },
   {
-    name: 'Fortnum & Mason', aliases: ['fortnum & mason', 'fortnum and mason', 'fortnums'], windowDays: 30, clockStart: 'purchase', onlineWindowDays: 14, onlineClockStart: 'delivery', cat: 'kitchen',
-    policy: 'Fortnum & Mason · 30 days from purchase in store, with your receipt; an online order, 14 days from delivery.',
-    gotcha: 'Online it is the 14-day cooling-off period, not 30, counted from the day it arrives. Put the arrival date on the receipt and Quids In counts from there; without it the date shown is the earliest it can be.',
+    name: 'Fortnum & Mason', aliases: ['fortnum & mason', 'fortnum and mason', 'fortnums'], windowDays: 30, clockStart: 'purchase', onlineClockStart: 'delivery', cat: 'kitchen',
+    policy: 'Fortnum & Mason · 30 days from purchase in store, with your receipt; an online or phone order, 30 days from the day you receive it (their goodwill guarantee, beyond the legal 14), counted from delivery.',
+    gotcha: 'An online order counts the 30 days from the day it arrives, and once you tell them, it has to go back within 14 days. Put the arrival date on the receipt and Quids In counts from there; without it the date shown is the earliest it can be.',
   },
   /*
    * Added 3 October 2026, fourth reading: candidates whose pages answered on
@@ -590,6 +594,65 @@ export const STORE_POLICIES: readonly StorePolicy[] = [
   {
     name: 'Space NK', aliases: ['space nk', 'spacenk'], windowDays: 28, clockStart: 'purchase', cat: 'beauty',
     policy: 'Space NK · 28 days from purchase with proof of purchase, sale items included.',
+  },
+  /*
+   * Added 2 November 2026: candidates whose own pages state the window for
+   * the way people buy from them (online-only shops, or both channels), each
+   * read twice, independently. Quotes in
+   * store/retailer-check/2026-11-02-fetched.md. Shops whose pages state only
+   * an online window while they also sell in their own shops stay
+   * candidates: a countdown for an in-store purchase would claim a right
+   * their page does not give.
+   */
+  {
+    name: 'Office', commonWord: true, aliases: ['office'], windowDays: 28, clockStart: 'purchase', onlineClockStart: 'delivery', cat: 'clothing',
+    policy: 'Office · full-price items 28 days (sale items 14): from purchase in store, from delivery online. Concessions excluded.',
+    gotcha: 'Sale items get 14 days, not 28. An online order counts from the day it arrives. Put the arrival date on the receipt and Quids In counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'Rixo', commonWord: true, aliases: ['rixo'], windowDays: 14, clockStart: 'purchase', onlineClockStart: 'delivery', cat: 'clothing',
+    policy: 'Rixo · 14 days: from purchase in store, from delivery online. Sale items bought in store are exchange only.',
+    gotcha: 'An online order counts the 14 days from the day it arrives. Put the arrival date on the receipt and Quids In counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'Ernest Jones', aliases: ['ernest jones', 'ernestjones'], windowDays: 30, clockStart: 'purchase', onlineClockStart: 'delivery',
+    policy: 'Ernest Jones · 30 days: in store from purchase; online from delivery (the period ends 30 days after the day following delivery). Clearance items get an exchange or credit, not a refund; piercing items excluded unless unopened.',
+    gotcha: 'Their page gives 30 days in store without saying when they start, so Quids In counts from the day you bought it, the earliest it could be. An online order counts from the day it arrives. Put the arrival date on the receipt and Quids In counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'H.Samuel', aliases: ['h.samuel', 'h samuel', 'hsamuel'], windowDays: 30, clockStart: 'purchase', onlineClockStart: 'delivery',
+    policy: 'H.Samuel · 30 days: in store from purchase; online from delivery, ending 30 days after the day following delivery. Clearance items get an exchange or credit, not a refund.',
+    gotcha: 'Their page gives 30 days in store without saying when they start, so Quids In counts from the day you bought it, the earliest it could be. An online order counts from the day it arrives. Put the arrival date on the receipt and Quids In counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'Sosandar', aliases: ['sosandar'], windowDays: 14, clockStart: 'delivery', cat: 'clothing',
+    policy: 'Sosandar · 14 days from delivery. Earrings and face coverings cannot be returned.',
+    gotcha: 'Sosandar counts the 14 days from the day it arrives, not from your order. Put the arrival date on the receipt and Quids In counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'In The Style', commonWord: true, aliases: ['in the style', 'inthestyle'], windowDays: 14, clockStart: 'delivery', cat: 'clothing',
+    policy: 'In The Style · 14 days from delivery (the day you receive your parcel), unworn. No exchanges.',
+    gotcha: 'In The Style counts the 14 days from the day it arrives, not from your order. Put the arrival date on the receipt and Quids In counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'Laptops Direct', aliases: ['laptops direct', 'laptopsdirect'], windowDays: 14, clockStart: 'delivery',
+    policy: 'Laptops Direct · 14 days from delivery (the day after it arrives) to cancel, in writing. Goods sent back without a written cancellation can cost a £49 fee.',
+    gotcha: 'Cancel in writing within the 14 days, counted from the day it arrives. Put the arrival date on the receipt and Quids In counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'Overclockers UK', aliases: ['overclockers uk', 'overclockers'], windowDays: 14, clockStart: 'delivery',
+    policy: 'Overclockers UK · 14 days from delivery once a product has been opened; 30 days from the final delivery if it is unopened and brand new. Unsealed software cannot be returned.',
+    gotcha: 'Quids In shows the 14 days that apply once a product is opened. Still sealed, you have 30 days from the last delivery. Put the arrival date on the receipt and Quids In counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'Dell', commonWord: true, aliases: ['dell'], windowDays: 14, clockStart: 'delivery',
+    policy: 'Dell · 14 days from delivery (or from your order confirmation, if that came later) to ask to cancel and return; then send it back within 14 days.',
+    gotcha: 'Dell counts the 14 days from delivery (or your order confirmation, if that came later). Put the arrival date on the receipt and Quids In counts from there; without it the date shown is the earliest it can be.',
+  },
+  {
+    name: 'Thorntons', commonWord: true, aliases: ['thorntons'], windowDays: 14, clockStart: 'delivery', cat: 'kitchen',
+    policy: 'Thorntons · 14 days from delivery to cancel an order under £250 that is not personalised, then 14 more to send it back.',
+    gotcha: 'The 14 days count from the day it arrives. Personalised gifts and orders of £250 or more are not covered. Put the arrival date on the receipt and Quids In counts from there; without it the date shown is the earliest it can be.',
   },
 ] as const;
 
@@ -634,7 +697,7 @@ export const CHECKED_ON: Readonly<Record<string, string>> = {
   Apple: '2026-10-03',
   'IKEA': '2026-10-03',
   'Uniqlo': '2026-10-03',
-  'Next': '2026-10-03',
+  'Next': '2026-11-02',
   'M&S': '2026-10-03',
   'Sports Direct': '2026-10-03',
   'Screwfix': '2026-10-03',
@@ -666,7 +729,7 @@ export const CHECKED_ON: Readonly<Record<string, string>> = {
   'Lookfantastic': '2026-10-03',
   'Holland & Barrett': '2026-10-03',
   'Go Outdoors': '2026-10-03',
-  'Pets at Home': '2026-10-03',
+  'Pets at Home': '2026-11-02',
   'Aldi': '2026-10-03',
   'FatFace': '2026-10-03',
   'Richer Sounds': '2026-10-03',
@@ -683,7 +746,7 @@ export const CHECKED_ON: Readonly<Record<string, string>> = {
   'Gymshark': '2026-10-03',
   'Oliver Bonas': '2026-10-03',
   'Kurt Geiger': '2026-10-03',
-  'Dune London': '2026-10-03',
+  'Dune London': '2026-11-02',
   'Crew Clothing': '2026-10-03',
   'Peacocks': '2026-10-03',
   'Cult Beauty': '2026-10-03',
@@ -719,14 +782,26 @@ export const CHECKED_ON: Readonly<Record<string, string>> = {
   "Lands' End": '2026-10-03',
   'Toast': '2026-10-03',
   'Liberty': '2026-10-03',
-  'New Look': '2026-10-03',
+  'New Look': '2026-11-02',
   'Snow+Rock': '2026-10-03',
-  'Fortnum & Mason': '2026-10-03',
+  'Fortnum & Mason': '2026-11-02',
   'Bonmarché': '2026-10-03',
   'Cotswold Outdoor': '2026-10-03',
   'GAME': '2026-10-03',
   'Home Bargains': '2026-10-03',
   'Space NK': '2026-10-03',
+  'John Lewis': '2026-11-02',
+  'Boots': '2026-11-02',
+  'Office': '2026-11-02',
+  'Rixo': '2026-11-02',
+  'Ernest Jones': '2026-11-02',
+  'H.Samuel': '2026-11-02',
+  'Sosandar': '2026-11-02',
+  'In The Style': '2026-11-02',
+  'Laptops Direct': '2026-11-02',
+  'Overclockers UK': '2026-11-02',
+  'Dell': '2026-11-02',
+  'Thorntons': '2026-11-02',
 };
 
 /**
