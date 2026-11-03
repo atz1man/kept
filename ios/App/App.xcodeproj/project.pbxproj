@@ -25,7 +25,9 @@
 		7A1C0E5B9D2F4A6B8C3E1D08 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 7A1C0E5B9D2F4A6B8C3E1D07 /* PrivacyInfo.xcprivacy */; };
 		915A4C5D958FE42D205AB48E /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0A36230F0D94B3CC5FDD709E /* Foundation.framework */; };
 		A084ECDBA7D38E1E42DFC39D /* Pods_App.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */; };
+		D964AC3F47AF507C6E430429 /* QuidsInIntentsCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10479C41D9CDB33FBA85C0EF /* QuidsInIntentsCore.swift */; };
 		E02FF6F3F74714649234C263 /* QuidsInShare.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 1A0011145CB9522EFC56608C /* QuidsInShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		E0F0CA94954E0BA0D348314C /* QuidsInIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23D0202588DB2632D66C1234 /* QuidsInIntents.swift */; };
 		F4861C30E3CA1859BA7C4585 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 582A4D53B78EE7DE84BD517B /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
@@ -64,8 +66,10 @@
 /* Begin PBXFileReference section */
 		04CEDAE7CD12AC01810C6A69 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/SwiftUI.framework; sourceTree = DEVELOPER_DIR; };
 		0A36230F0D94B3CC5FDD709E /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		10479C41D9CDB33FBA85C0EF /* QuidsInIntentsCore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QuidsInIntentsCore.swift; sourceTree = "<group>"; };
 		1A0011145CB9522EFC56608C /* QuidsInShare.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = QuidsInShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		211CD560D14DEAFAEB650FF6 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		23D0202588DB2632D66C1234 /* QuidsInIntents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QuidsInIntents.swift; sourceTree = "<group>"; };
 		280E7491A0D8C65D9089C22F /* QuidsInWidget.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = QuidsInWidget.entitlements; sourceTree = "<group>"; };
 		28B4A54A0BCC74B436E66092 /* UniformTypeIdentifiers.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UniformTypeIdentifiers.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/UniformTypeIdentifiers.framework; sourceTree = DEVELOPER_DIR; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
@@ -179,6 +183,8 @@
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
 				98BC29507F91C0048EA7641A /* App.entitlements */,
+				10479C41D9CDB33FBA85C0EF /* QuidsInIntentsCore.swift */,
+				23D0202588DB2632D66C1234 /* QuidsInIntents.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -393,6 +399,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
+				D964AC3F47AF507C6E430429 /* QuidsInIntentsCore.swift in Sources */,
+				E0F0CA94954E0BA0D348314C /* QuidsInIntents.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -563,6 +571,11 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-weak_framework",
+					AppIntents,
+				);
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = uk.co.kept.REPLACE_ME;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -585,6 +598,11 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-weak_framework",
+					AppIntents,
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = uk.co.kept.REPLACE_ME;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
