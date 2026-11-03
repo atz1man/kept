@@ -44,6 +44,7 @@
     "@capacitor/local-notifications": "^6.1.3",
     "@kept/purchases": "file:packages/purchases",
     "@kept/receipt-scanner": "file:packages/receipt-scanner",
+    "@kept/share-inbox": "file:packages/share-inbox",
     "@kept/widget-bridge": "file:packages/widget-bridge",
     "@tesseract.js-data/eng": "^1.0.0",
     "pdfjs-dist": "^6.4.299",

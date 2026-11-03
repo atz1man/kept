@@ -134,9 +134,9 @@ export function strippedShareUrl(href: string): string | null {
  * diagram under it. That is Web Share Target, and it is Chromium's. Safari
  * has never implemented it, on iOS or anywhere else, so an iPhone reading
  * that panel is being sent to add a home screen icon that will not appear in
- * any share sheet — and in the iOS app it is wrong a second way over, because
- * a Capacitor app appears in the share sheet only if it ships a share
- * extension target, and `ios/App` has none.
+ * any share sheet. In the iOS app the route is the share extension
+ * (ios/App/QuidsInShare), whose own steps differ: Mail shares selected text,
+ * and the order waits in the app rather than opening it.
  *
  * There is no feature test for it. `share_target` is a manifest entry, read
  * by the browser at install time; nothing in the page can ask whether it was
@@ -159,10 +159,11 @@ export function shareRoute(native: boolean): ShareRoute {
     return {
       steps: false,
       heading: 'Coming from your email app?',
-      // Says why the paste box and not the share button, without telling
-      // someone holding the released app that "this build" is unfinished —
-      // which is how the old line read in the store build.
-      body: 'Mail can’t hand an email straight to Quids In, so copy the order email and paste it above.',
+      // The iPhone app ships a share extension (ios/App/QuidsInShare). Mail
+      // shares SELECTED text, not a whole message, so the line says what to
+      // select; a PDF or a screenshot shares whole. Apple does not let an
+      // extension open its app, so it says the order is waiting here.
+      body: 'In Mail, select the order’s text, tap Share and choose Quids In — or share its PDF or a screenshot. It’s waiting here when you come back. Or copy it and paste it above.',
     };
   }
   return {

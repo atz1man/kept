@@ -6,6 +6,7 @@ import { isNative } from '../lib/mirror';
 import { cleanupPhotos } from '../lib/photos';
 import { onNotificationTap, syncScheduled } from './schedule-native';
 import { writeWidget } from './widget-native';
+import { takeShared } from './share-inbox-native';
 import { widgetSnapshot } from '../lib/widget-snapshot';
 import { askForReview } from './purchases';
 import { celebrationLeft, shouldAskForReview, type ReviewAsked } from '../lib/review-prompt';
@@ -30,6 +31,10 @@ export interface AppState extends KeptState {
   screen: Screen;
   /** An order email shared in from another app, waiting for the Add screen. */
   sharedText: string | null;
+  /** A PDF or picture shared in from another app on iPhone, waiting for the Add screen. */
+  sharedFile?: File | null;
+  /** Counts shares that arrived while the app was open, so Add starts afresh for each. */
+  shareId?: number;
   /** True in the landing page's demo, framed or not (see embed.ts): nothing is read or written to disk. */
   embedded: boolean;
   /**
@@ -130,6 +135,7 @@ export interface AppState extends KeptState {
 
 export type Action =
   | { type: 'go'; screen: Screen }
+  | { type: 'incoming'; text?: string; file?: File }
   | { type: 'open'; id: string }
   | { type: 'ob-next' }
   | { type: 'ob-skip' }
@@ -212,6 +218,16 @@ export function openingScreen(
 
 export function reducer(state: AppState, action: Action, today: Date): AppState {
   switch (action.type) {
+    case 'incoming':
+      // Shared in from another app while Quids In was closed or behind it:
+      // straight to Add, as a share at launch does (`openingScreen`).
+      return {
+        ...state,
+        screen: 'add',
+        sharedText: action.text ?? null,
+        sharedFile: action.file ?? null,
+        shareId: (state.shareId ?? 0) + 1,
+      };
     case 'go':
       // The edit screen belongs to the receipt open behind it, so the
       // selection survives the trip in both directions.
@@ -800,6 +816,7 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         receipts: [...state.receipts, action.receipt],
         screen: 'home',
         sharedText: null,
+        sharedFile: null,
         justAdded: action.receipt.id,
         justDeleted: null,
         justKept: null,
@@ -1079,6 +1096,8 @@ export function useApp() {
         // what they came to do.
         screen: openingScreen({ shared: incoming !== null, onboardingSeen: base.onboardingSeen, embedded: demo }),
         sharedText: incoming,
+        sharedFile: null,
+        shareId: 0,
         embedded: demo,
         justDeleted: null,
         justKept: null, justReturned: null, justSent: null, justAdded: null, justUnswapped: null, justSwapped: null,
@@ -1196,6 +1215,24 @@ export function useApp() {
       done = true;
       stop?.();
     };
+  }, [state.embedded]);
+
+  /*
+   * Anything shared in through the iPhone's share sheet (src/lib/share-inbox.ts),
+   * collected when the app opens and each time it comes back to the front —
+   * which is when someone who just shared an order email arrives here.
+   */
+  useEffect(() => {
+    if (state.embedded || !isNative()) return;
+    const collect = () => {
+      if (document.visibilityState !== 'visible') return;
+      void takeShared().then((incoming) => {
+        if (incoming) rawDispatch({ type: 'incoming', ...incoming });
+      });
+    };
+    collect();
+    document.addEventListener('visibilitychange', collect);
+    return () => document.removeEventListener('visibilitychange', collect);
   }, [state.embedded]);
 
   /*

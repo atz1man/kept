@@ -526,8 +526,11 @@ export function App() {
 
       {screen === 'add' && (
         <Add
+          // A new share while Add is open starts it afresh, so it is read.
+          key={state.shareId ?? 0}
           today={today}
           sharedText={state.sharedText ?? undefined}
+          sharedFile={state.sharedFile ?? undefined}
           quotaFull={quotaFull(state)}
           trackedTotal={money(sumPence(state.receipts.filter(countsAsMoney(state.receipts)).map((r) => r.amount)))}
           updates={state.updates}

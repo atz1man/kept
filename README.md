@@ -390,6 +390,7 @@ src/lib/          the decision logic — pure, tested, no React
   receipts.ts     days left, deadlines, bucketing, the 30-day timeline
   christmas.ts    each shop's Christmas returns date, quoted from its own page, and which purchases it covers
   widget-snapshot.ts the next deadlines the iPhone's Home Screen widget shows, handed to it as dates
+  share-inbox.ts  what the iPhone's share extension hands over — text to the paste box, a PDF or picture to the file reader
   returns-pages.ts each shop's own returns page, read from store/retailer-sources.json
   urgency.ts      the red / yellow / neutral ladder
   alerts.ts       which deadlines are worth interrupting someone about

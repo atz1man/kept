@@ -27,23 +27,32 @@ end
 app_group = project.main_group.find_subpath('App', false)
 app_group.new_reference('App.entitlements') unless app_group.files.any? { |f| f.path == 'App.entitlements' }
 
-NAME = 'QuidsInWidget'
-unless project.targets.any? { |t| t.name == NAME }
-  widget = project.new_target(:app_extension, NAME, :ios, '16.0')
-  group = project.main_group.new_group(NAME, NAME)
-  source = group.new_reference('QuidsInWidget.swift')
+# Each extension the app carries: its folder (also the target's name), the
+# suffix on the app's bundle identifier, its Swift sources, and the system
+# frameworks it links.
+EXTENSIONS = [
+  { name: 'QuidsInWidget', suffix: 'widget', sources: ['QuidsInWidget.swift'], frameworks: %w[WidgetKit SwiftUI] },
+  { name: 'QuidsInShare', suffix: 'share', sources: ['ShareViewController.swift'], frameworks: %w[UniformTypeIdentifiers] },
+]
+
+embed = app.copy_files_build_phases.find { |p| p.name == 'Embed App Extensions' }
+EXTENSIONS.each do |ext|
+  next if project.targets.any? { |t| t.name == ext[:name] }
+  target = project.new_target(:app_extension, ext[:name], :ios, '16.0')
+  group = project.main_group.new_group(ext[:name], ext[:name])
+  sources = ext[:sources].map { |f| group.new_reference(f) }
   group.new_reference('Info.plist')
-  group.new_reference('QuidsInWidget.entitlements')
+  group.new_reference("#{ext[:name]}.entitlements")
   manifest = group.new_reference('PrivacyInfo.xcprivacy')
-  widget.add_file_references([source])
-  widget.add_resources([manifest])
-  widget.add_system_framework(%w[WidgetKit SwiftUI])
-  widget.build_configurations.each do |config|
+  target.add_file_references(sources)
+  target.add_resources([manifest])
+  target.add_system_framework(ext[:frameworks])
+  target.build_configurations.each do |config|
     s = config.build_settings
-    s['PRODUCT_BUNDLE_IDENTIFIER'] = "#{bundle_id}.widget"
+    s['PRODUCT_BUNDLE_IDENTIFIER'] = "#{bundle_id}.#{ext[:suffix]}"
     s['PRODUCT_NAME'] = '$(TARGET_NAME)'
-    s['INFOPLIST_FILE'] = "#{NAME}/Info.plist"
-    s['CODE_SIGN_ENTITLEMENTS'] = "#{NAME}/QuidsInWidget.entitlements"
+    s['INFOPLIST_FILE'] = "#{ext[:name]}/Info.plist"
+    s['CODE_SIGN_ENTITLEMENTS'] = "#{ext[:name]}/#{ext[:name]}.entitlements"
     s['SWIFT_VERSION'] = '5.0'
     s['TARGETED_DEVICE_FAMILY'] = '1' # iPhone only, as the app is (test/ios-device-family.test.ts)
     s['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
@@ -54,11 +63,13 @@ unless project.targets.any? { |t| t.name == NAME }
     s['DEVELOPMENT_TEAM'] = app.build_configurations.first.build_settings['DEVELOPMENT_TEAM']
     s['LD_RUNPATH_SEARCH_PATHS'] = '$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks'
   end
-  # The app carries the widget: built first, then copied into PlugIns.
-  app.add_dependency(widget)
-  embed = app.new_copy_files_build_phase('Embed App Extensions')
-  embed.dst_subfolder_spec = Xcodeproj::Constants::COPY_FILES_BUILD_PHASE_DESTINATIONS[:plug_ins]
-  build_file = embed.add_file_reference(widget.product_reference, true)
+  # The app carries the extension: built first, then copied into PlugIns.
+  app.add_dependency(target)
+  unless embed
+    embed = app.new_copy_files_build_phase('Embed App Extensions')
+    embed.dst_subfolder_spec = Xcodeproj::Constants::COPY_FILES_BUILD_PHASE_DESTINATIONS[:plug_ins]
+  end
+  build_file = embed.add_file_reference(target.product_reference, true)
   build_file.settings = { 'ATTRIBUTES' => ['RemoveHeadersOnCopy'] }
 end
 
