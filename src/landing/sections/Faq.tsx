@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { color, font, radius } from '../../tokens';
 import { FREE_TIER_LIMIT } from '../../lib/quota';
 import { STORE_COUNT } from '../../lib/stores';
-import { COOLING_OFF_DAYS, LEGAL_DISCLAIMER, REJECT_DAYS } from '../../lib/legal';
+import { LEGAL_DISCLAIMER } from '../../lib/legal';
 import { COMPANY, CONTACT_EMAIL } from '../../lib/brand';
 import { APP_STORE, IPHONE_ANSWER_ID } from '../app-store-listing';
 
@@ -24,20 +24,12 @@ const FAQ: { q: string; a: ReactNode; id?: string }[] = [
     a: `Yes, for your first ${FREE_TIER_LIMIT} receipts, with every feature included. After that, Quids In Plus unlocks unlimited receipts, by the month or by the year, and Family covers everyone in an Apple Family Sharing group. Both renew until you cancel, which takes a moment in your Apple ID settings.`,
   },
   {
-    q: 'Do I need an account?',
-    a: 'No. There is nothing to sign up for and no password to forget. Open Quids In and add a receipt.',
-  },
-  {
-    q: 'Where are my receipts kept?',
-    a: 'On your phone, and nowhere else. Nothing about your purchases is uploaded: the one thing Quids In downloads is its list of shop policies, and nothing about you goes back the other way. You can export a backup file whenever you like.',
+    q: 'Do I need an account? Where are my receipts kept?',
+    a: 'No account: nothing to sign up for and no password to forget. Your receipts stay on your phone, and nowhere else. Nothing about your purchases is uploaded: the one thing Quids In downloads is its list of shop policies, and nothing about you goes back the other way. You can export a backup file whenever you like.',
   },
   {
     q: 'Which shops does it know?',
     a: `${STORE_COUNT} of the UK’s big retailers, each with its returns window, the day the clock starts, and the small print. Any other shop works too: you enter the window from the receipt, and Quids In marks it as entered by you rather than checked.`,
-  },
-  {
-    q: 'What does the law give me?',
-    a: `If something is faulty, the Consumer Rights Act 2015 gives you ${REJECT_DAYS} days to reject it for a full refund. Most things bought online also come with a ${COOLING_OFF_DAYS}-day cooling-off period, faulty or not. Quids In shows both beside the shop’s own deadline.`,
   },
   {
     q: 'Will it remind me before a deadline?',
