@@ -9,6 +9,8 @@ import { CONTACT_EMAIL, TAGLINE } from '../lib/brand';
 import { tickerLines } from './ticker';
 import { CompanyDisclosure } from '../pages/Disclosure';
 import { Faq } from './sections/Faq';
+import { Proof } from './sections/Proof';
+import { ChristmasReturns } from './sections/ChristmasReturns';
 /*
  * The checker brings the app's deadline and statutory logic with it, and sits
  * below the hero, so it loads after the page has painted rather than holding
@@ -309,6 +311,9 @@ export function Landing() {
         </div>
       </section>
 
+      {/* Christmas returns, in season only */}
+      <ChristmasReturns today={new Date()} onCheck={check} />
+
       {/* How it works: the product, row by row */}
       <section id="how" aria-labelledby="how-title" className="k-anchor" style={{ ...WRAP, padding: 'clamp(72px, 10vw, 128px) 28px 0' }}>
         <SectionHead id="how-title" eyebrow="How it works" title="The shop’s clock, the law’s clock, and yours — on one screen." lede="Every shop runs its own clock and hides the exceptions. Miss one, and the money stays with them. Three steps keep it with you." center />
@@ -354,6 +359,9 @@ export function Landing() {
           ))}
         </div>
       </section>
+
+      {/* Proof: checked, not guessed */}
+      <Proof today={new Date()} />
 
       {/* Pricing */}
       <section id="pricing" aria-labelledby="pricing-title" className="k-anchor" style={{ ...WRAP, padding: 'clamp(72px, 10vw, 128px) 28px 0' }}>
