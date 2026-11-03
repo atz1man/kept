@@ -22,9 +22,12 @@ import { describe, expect, it } from 'vitest';
 const ROOT = join(__dirname, '..');
 const PBXPROJ = join(ROOT, 'ios', 'App', 'App.xcodeproj', 'project.pbxproj');
 
-const bundleIds = (): string[] =>
+const allBundleIds = (): string[] =>
   [...readFileSync(PBXPROJ, 'utf8').matchAll(/PRODUCT_BUNDLE_IDENTIFIER = ([^;]+);/g)]
     .map((m) => m[1].trim().replace(/^"|"$/g, ''));
+
+/** The app's own, Debug and Release; the widget extension's are checked separately below. */
+const bundleIds = (): string[] => allBundleIds().filter((id) => !id.endsWith('.widget'));
 
 const configValue = (key: string): string | undefined =>
   readFileSync(join(ROOT, 'capacitor.config.ts'), 'utf8')
@@ -55,6 +58,16 @@ describe('what the app calls itself', () => {
       `project.pbxproj says ${bundleIds()[0]} and capacitor.config.ts says ${configValue('appId')} — `
         + 'both need changing; `npx cap sync ios` does not do it for you',
     ).toBe(configValue('appId'));
+  });
+
+  it('names the widget after the app, and shares one App Group between them', () => {
+    // An extension whose identifier does not start with its app's is refused
+    // on upload; a group the two name differently is a widget that never
+    // sees what the app wrote.
+    const widget = allBundleIds().filter((id) => id.endsWith('.widget'));
+    expect(widget).toEqual([`${configValue('appId')}.widget`, `${configValue('appId')}.widget`]);
+    const groups = [...readFileSync(PBXPROJ, 'utf8').matchAll(/KEPT_APP_GROUP = ([^;]+);/g)].map((m) => m[1]);
+    expect(groups).toEqual([`group.${configValue('appId')}`, `group.${configValue('appId')}`]);
   });
 
   it('lets Info.plist derive the identifier rather than repeat it', () => {

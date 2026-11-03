@@ -37,13 +37,14 @@ const families = (): string[] =>
     .map((m) => m[1].trim().replace(/^"|"$/g, ''));
 
 describe('the devices this app claims', () => {
-  it('finds both build configurations', () => {
-    // Debug and Release each carry one; fewer means the regex read nothing.
-    expect(families().length).toBe(2);
+  it('finds every build configuration', () => {
+    // Debug and Release for the app and for the widget extension; fewer means
+    // the regex read nothing, or a target lost its setting.
+    expect(families().length).toBe(4);
   });
 
-  it('is iPhone only, the same in Debug and Release', () => {
-    expect(families()).toEqual(['1', '1']);
+  it('is iPhone only, the same in Debug and Release, and so is the widget it carries', () => {
+    expect(families()).toEqual(['1', '1', '1', '1']);
   });
 });
 

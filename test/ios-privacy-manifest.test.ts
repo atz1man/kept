@@ -45,6 +45,8 @@ const UNDECLARED_SOURCES = [
   join(ROOT, 'node_modules', '@capacitor', 'filesystem', 'ios'),
   join(ROOT, 'node_modules', '@capacitor', 'local-notifications', 'ios'),
   join(ROOT, 'ios', 'App', 'App'),
+  // kept's own plugins, compiled into the app.
+  join(ROOT, 'packages'),
 ];
 
 function swiftUnder(dir: string): string[] {
@@ -116,10 +118,22 @@ describe('what the manifest declares', () => {
 });
 
 describe('the four edits that make it ship', () => {
+  /*
+   * The APP's manifest. The widget extension carries its own
+   * (ios/App/QuidsInWidget), so there are two references with this name now;
+   * the app's is the one listed in the App group.
+   */
+  const appGroup = (): string => {
+    const group = PBXPROJ.slice(PBXPROJ.indexOf('/* App */ = {\n\t\t\tisa = PBXGroup;'));
+    return group.slice(0, group.indexOf('};'));
+  };
   const fileRef = (): string | null =>
-    (PBXPROJ.match(/([0-9A-F]{24}) \/\* PrivacyInfo\.xcprivacy \*\/ = \{isa = PBXFileReference/) ?? [])[1] ?? null;
+    [...PBXPROJ.matchAll(/([0-9A-F]{24}) \/\* PrivacyInfo\.xcprivacy \*\/ = \{isa = PBXFileReference/g)]
+      .map((m) => m[1])
+      .find((id) => appGroup().includes(id)) ?? null;
   const buildFile = (): string | null =>
-    (PBXPROJ.match(/([0-9A-F]{24}) \/\* PrivacyInfo\.xcprivacy in Resources \*\/ = \{isa = PBXBuildFile/) ?? [])[1] ?? null;
+    [...PBXPROJ.matchAll(/([0-9A-F]{24}) \/\* PrivacyInfo\.xcprivacy in Resources \*\/ = \{isa = PBXBuildFile; fileRef = ([0-9A-F]{24})/g)]
+      .find((m) => m[2] === fileRef())?.[1] ?? null;
 
   const section = (name: string): string => {
     const start = PBXPROJ.indexOf(`/* Begin ${name} section */`);
@@ -133,14 +147,14 @@ describe('the four edits that make it ship', () => {
   });
 
   it('sits in the App group, so Xcode shows it where it is on disk', () => {
-    const group = PBXPROJ.slice(PBXPROJ.indexOf('/* App */ = {\n\t\t\tisa = PBXGroup;'));
-    expect(group.slice(0, group.indexOf('};'))).toContain(fileRef()!);
+    expect(fileRef()).not.toBeNull();
+    expect(appGroup()).toContain(fileRef()!);
   });
 
   it('has a build file pointing at that reference', () => {
     const line = section('PBXBuildFile')
       .split('\n')
-      .find((l) => l.includes('PrivacyInfo.xcprivacy'));
+      .find((l) => l.includes('PrivacyInfo.xcprivacy') && l.includes(`fileRef = ${fileRef()}`));
     expect(line).toBeDefined();
     expect(line).toContain(`fileRef = ${fileRef()}`);
   });

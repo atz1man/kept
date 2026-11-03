@@ -51,6 +51,23 @@
 				<string>C617.1</string>
 			</array>
 		</dict>
+		<!--
+			User defaults, reason 1C8F.1: "information only accessible to the
+			apps and app extensions in the same App Group".
+
+			packages/widget-bridge writes the Home Screen widget's next deadlines
+			into the App Group's defaults, and the widget (its own manifest,
+			ios/App/QuidsInWidget/PrivacyInfo.xcprivacy) reads them. Nothing else
+			reads or writes defaults, and nothing leaves the phone.
+		-->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>1C8F.1</string>
+			</array>
+		</dict>
 	</array>
 </dict>
 </plist>

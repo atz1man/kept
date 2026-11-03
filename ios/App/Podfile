@@ -16,6 +16,7 @@ def capacitor_pods
   pod 'CapacitorLocalNotifications', :path => '../../node_modules/@capacitor/local-notifications'
   pod 'KeptPurchases', :path => '../../packages/purchases'
   pod 'KeptReceiptScanner', :path => '../../packages/receipt-scanner'
+  pod 'KeptWidgetBridge', :path => '../../packages/widget-bridge'
 end
 
 target 'App' do

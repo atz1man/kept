@@ -33,6 +33,7 @@ is on it too. Green before you Archive — `test/preflight.test.ts` holds the ch
 | ☐ | Open `ios/App/App.xcworkspace`, set the signing team, build to your own iPhone | **you** (Mac) | APN-22 — nothing here has ever been compiled; expect surprises |
 | ☐ | Check the keyboard never covers a field you are typing in | **you** (device) | APN-23 |
 | ☐ | Check `PrivacyInfo.xcprivacy` is inside the built `.app` | **you** (Mac) | APN-25 |
+| ☐ | The Home Screen widget: in Xcode → App and QuidsInWidget targets → Signing & Capabilities, let automatic signing register the App Group `group.<bundle id>` for both (it is already in both entitlements as `$(KEPT_APP_GROUP)`), build, add the widget to the Home Screen and the Lock Screen, and check it shows the same next deadline as the app | **you** (Mac, device) | `scripts/ios-targets.rb` added the target; `test/widget.test.ts` holds the two halves to one key, one shape and one group, and the decoding was compiled and run against the app's own output on Linux Swift 6.0.3 — but the widget itself has never been built |
 
 ## 3. What would get it rejected
 

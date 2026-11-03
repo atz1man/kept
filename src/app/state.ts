@@ -5,6 +5,8 @@ import { embedded } from '../lib/embed';
 import { isNative } from '../lib/mirror';
 import { cleanupPhotos } from '../lib/photos';
 import { onNotificationTap, syncScheduled } from './schedule-native';
+import { writeWidget } from './widget-native';
+import { widgetSnapshot } from '../lib/widget-snapshot';
 import { askForReview } from './purchases';
 import { celebrationLeft, shouldAskForReview, type ReviewAsked } from '../lib/review-prompt';
 import { addDays, currentDay, daysBetween, fromISODate, toISODate, ukDay } from '../lib/dates';
@@ -1195,6 +1197,16 @@ export function useApp() {
       stop?.();
     };
   }, [state.embedded]);
+
+  /*
+   * The Home Screen widget's next deadlines, rewritten whenever the receipts
+   * or the day change (src/lib/widget-snapshot.ts). Not from the embedded demo,
+   * which is a sample library on a web page, and only in the iPhone app.
+   */
+  useEffect(() => {
+    if (state.embedded || !isNative()) return;
+    void writeWidget(widgetSnapshot(state.receipts, today));
+  }, [state.embedded, state.receipts, today]);
 
   /*
    * Lodge the deadlines with iOS, so they arrive when the app is closed.
