@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
-import { color, font, gradient, shadow, radius } from '../tokens';
+import { color, font, gradient, palette, shadow, radius } from '../tokens';
 import { Logo, Tick, Wordmark } from '../app/components/Icons';
 import { FAMILY_SIZE, PLAN_PRICES } from '../lib/pricing';
 import { FREE_TIER_LIMIT } from '../lib/quota';
@@ -37,7 +37,7 @@ const TwoClocksArt = lazy(() => productArt().then((m) => ({ default: m.TwoClocks
 function Art({ height, children }: { height: number | string; children: ReactNode }) {
   return <Suspense fallback={<div style={{ minHeight: height, height: '100%', borderRadius: radius.hero, background: color.surfaceAlt }} />}>{children}</Suspense>;
 }
-import { Card, OpenAppButton, SectionHead, WRAP } from './sections/primitives';
+import { AppStoreButton, Card, OpenAppButton, SectionHead, WRAP } from './sections/primitives';
 
 /*
  * Every grid below uses `minmax(min(Npx, 100%), 1fr)` rather than a bare
@@ -213,10 +213,11 @@ export function Landing() {
               Quids In counts down every return window, knows each shop’s real rules and your legal rights, and puts whatever is about to run out first.
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 34, flexWrap: 'wrap' }}>
+              {/* The App Store first, where a visitor looks for an iPhone app;
+                  the web app beside it, which works today. "Check a return"
+                  is in the bar above and is the section straight below. */}
+              <AppStoreButton />
               <OpenAppButton onHero />
-              <a href="#check" className="k-ghost" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 48, padding: '0 22px', borderRadius: 999, border: `1.5px solid ${color.onHeroSoft}`, color: color.white, fontWeight: 600, fontSize: 15.5 }}>
-                Check a return
-              </a>
             </div>
             <ul style={{ listStyle: 'none', padding: 0, margin: '30px 0 0', display: 'flex', flexWrap: 'wrap', gap: '10px 22px', fontSize: 14, fontWeight: 600, color: color.white }}>
               {[`Free for your first ${FREE_TIER_LIMIT} receipts`, 'No account needed', 'Works offline'].map((t) => (
@@ -247,11 +248,20 @@ export function Landing() {
               phone drawn the way a phone looks: a thin frame, a status bar and
               the camera island, so the page shows a device rather than a box.
             */}
-            <div style={{ position: 'relative', margin: '0 auto', maxWidth: 400, padding: 7, borderRadius: 58, background: color.heroTop, boxShadow: '0 40px 90px rgba(42,26,46,0.5), inset 0 0 0 1.5px rgba(255,255,255,0.14)' }}>
-              <div style={{ borderRadius: 51, overflow: 'hidden', background: color.canvas }}>
+            {/* An iPhone's proportions and finish: a dark frame with a lighter
+                rim, the side buttons, and the Dynamic Island in black — not the
+                hero's red, which read as a red blob on a red page. Theme-fixed,
+                as a phone's frame is. */}
+            <div style={{ position: 'relative', margin: '0 auto', maxWidth: 400 }}>
+            <span aria-hidden="true" style={{ position: 'absolute', left: -3, top: 150, width: 4, height: 34, borderRadius: 3, background: palette.dark.canvas }} />
+            <span aria-hidden="true" style={{ position: 'absolute', left: -3, top: 206, width: 4, height: 62, borderRadius: 3, background: palette.dark.canvas }} />
+            <span aria-hidden="true" style={{ position: 'absolute', left: -3, top: 280, width: 4, height: 62, borderRadius: 3, background: palette.dark.canvas }} />
+            <span aria-hidden="true" style={{ position: 'absolute', right: -3, top: 230, width: 4, height: 96, borderRadius: 3, background: palette.dark.canvas }} />
+            <div style={{ position: 'relative', padding: 10, borderRadius: 62, background: palette.dark.canvas, boxShadow: '0 40px 90px rgba(42,26,46,0.5), inset 0 0 0 2px rgba(255,255,255,0.16)' }}>
+              <div style={{ borderRadius: 52, overflow: 'hidden', background: color.canvas }}>
                 <div aria-hidden="true" style={{ height: 40, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 30px', fontSize: 13, fontWeight: 650, color: color.ink, fontFamily: font.figures, position: 'relative' }}>
                   <span>9:41</span>
-                  <span style={{ position: 'absolute', left: '50%', top: 9, transform: 'translateX(-50%)', width: 104, height: 26, borderRadius: 20, background: color.heroTop }} />
+                  <span style={{ position: 'absolute', left: '50%', top: 9, transform: 'translateX(-50%)', width: 110, height: 30, borderRadius: 20, background: palette.dark.canvas }} />
                   <span style={{ display: 'inline-flex', gap: 5, alignItems: 'center' }}>
                     <svg width="16" height="11" viewBox="0 0 16 11"><path d="M1 10h2V7H1zM5 10h2V5H5zM9 10h2V3H9zM13 10h2V1h-2z" fill={color.ink} /></svg>
                     <svg width="24" height="11" viewBox="0 0 24 11"><rect x="0.5" y="0.5" width="20" height="10" rx="3" fill="none" stroke={color.ink} opacity="0.5" /><rect x="2" y="2" width="15" height="7" rx="1.5" fill={color.ink} /><rect x="21.5" y="3.5" width="1.5" height="4" rx="0.75" fill={color.ink} opacity="0.5" /></svg>
@@ -266,14 +276,14 @@ export function Landing() {
               </div>
             </div>
             {/* Two moments from the product, floating beside the phone on wide screens. */}
-            <div aria-hidden="true" className="k-xwide-only k-float" style={{ position: 'absolute', left: -150, top: 300, display: 'flex', alignItems: 'center', gap: 12, background: color.surface, borderRadius: 18, padding: '12px 16px 12px 12px', boxShadow: '0 18px 40px rgba(42,26,46,0.28)' }}>
+            <div aria-hidden="true" className="k-xwide-only k-float" style={{ position: 'absolute', left: -190, top: 250, zIndex: 1, display: 'flex', alignItems: 'center', gap: 12, background: color.surface, borderRadius: 18, padding: '12px 16px 12px 12px', boxShadow: '0 18px 40px rgba(42,26,46,0.28)' }}>
               <MiniRing days={2} of={days('ASOS')} />
               <span>
                 <span style={{ display: 'block', fontSize: 13.5, fontWeight: 650, color: color.ink }}>ASOS · linen shirt</span>
                 <span style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: color.danger }}>2 days to send it back</span>
               </span>
             </div>
-            <div aria-hidden="true" className="k-xwide-only k-float k-float-late" style={{ position: 'absolute', right: -96, bottom: 170, display: 'flex', alignItems: 'center', gap: 12, background: color.surface, borderRadius: 18, padding: '12px 18px 12px 12px', boxShadow: '0 18px 40px rgba(42,26,46,0.28)' }}>
+            <div aria-hidden="true" className="k-xwide-only k-float k-float-late" style={{ position: 'absolute', right: -150, bottom: 150, zIndex: 1, display: 'flex', alignItems: 'center', gap: 12, background: color.surface, borderRadius: 18, padding: '12px 18px 12px 12px', boxShadow: '0 18px 40px rgba(42,26,46,0.28)' }}>
               <span style={{ width: 40, height: 40, borderRadius: 12, background: color.gold, display: 'grid', placeItems: 'center' }}>
                 <Tick size={20} stroke={color.ink} width={2.8} />
               </span>
@@ -281,6 +291,7 @@ export function Landing() {
                 <span style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: color.muted }}>Returned in time</span>
                 <span style={{ display: 'block', fontSize: 17, fontWeight: 700, color: color.ink, fontFamily: font.figures }}>£89.00 back</span>
               </span>
+            </div>
             </div>
           </div>
         </div>

@@ -27,7 +27,12 @@ const DIST = process.env.DIST ?? 'dist';
 /** Gzipped bytes allowed on each page's first load, and what it weighed when set. */
 const BUDGETS = {
   'app/index.html': { ceiling: 160_000, measured: 138_247 },
-  'index.html': { ceiling: 76_000, measured: 65_472 },
+  // Raised 3 November 2026 from 76,000. The landing's checker counts a deadline
+  // with the app's own code, so the shops' Christmas dates (src/lib/christmas.ts)
+  // are on this page by design, and the App Store button and its answer
+  // followed: 75,633 before the button, 76,013 with it. Five per cent above that,
+  // not fifteen, because nothing new is meant to be on this page's path.
+  'index.html': { ceiling: 80_000, measured: 76_013 },
   'privacy/index.html': { ceiling: 58_000, measured: 50_515 },
   'rights/index.html': { ceiling: 69_000, measured: 59_976 },
 };

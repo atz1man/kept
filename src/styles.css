@@ -464,10 +464,12 @@ select:focus-visible { outline-offset: -1px; }
 /* An anchor clears the sticky header rather than landing under it. */
 .k-anchor { scroll-margin-top: 76px; }
 html:has(.k-anchor) { scroll-behavior: smooth; }
-/* The two buttons drawn on the hero's gradient: a white one, and an outline. */
+/* The white button drawn on the hero's gradient. */
 .k-on-hero { transition: transform .15s ease, box-shadow .15s ease; box-shadow: 0 10px 30px rgba(42,26,46,0.28); }
 .k-on-hero:hover { color: var(--k-accent-ink); transform: translateY(-1px); box-shadow: 0 14px 36px rgba(42,26,46,0.34); }
-.k-ghost:hover { color: var(--k-white); background: rgba(255,255,255,0.10); }
+/* The App Store button stays the App Store's black, with white type, under the pointer too. */
+.k-store { transition: transform .15s ease; }
+.k-store:hover { color: var(--k-white); transform: translateY(-1px); }
 /* The questions: the browser's own disclosure triangle replaced by a plus that turns. */
 .k-faq > summary { list-style: none; }
 .k-faq > summary::-webkit-details-marker { display: none; }

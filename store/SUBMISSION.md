@@ -83,6 +83,7 @@ is on it too. Green before you Archive — `test/preflight.test.ts` holds the ch
 | ☐ | Raise `version` in `package.json` with every App Store version | **you**, each release | The rating prompt asks at most once per version (`src/lib/review-prompt.ts`), and the version it compares is that one, not Xcode's. Left at one number, it asks once and never again |
 | ✅ | The rating prompt: Apple's own (StoreKit), asked only as the celebration of a person's *second* real refund is left, once per version, 120 days apart | done | `test/review-prompt.test.ts`; `npm run ios` counts the asks. A reviewer meets it only by refunding two receipts of their own (samples never ask), so it is not in `reviewNotes`. TestFlight never shows the dialog; a development build always does, and a Release build on a device shows it as Apple decides |
 | ☐ | Submit for review | **you** | APN-28 |
+| ☐ | Once it is live: put the App Store link and the app's Apple ID in `src/landing/app-store-listing.ts`, and Apple's "Download on the App Store" badge (from Apple's marketing guidelines page) at `public/badges/download-on-the-app-store.svg` | **you**, then Claude | The website then shows Apple's badge instead of "Coming to the App Store", and Safari on an iPhone offers the app in a banner. `test/app-store-badge.test.ts` refuses a link without the badge artwork |
 
 ### Questions the review team may ask, answered in `store/listing.json` → `reviewNotes`
 
