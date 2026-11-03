@@ -27,7 +27,7 @@ const allBundleIds = (): string[] =>
     .map((m) => m[1].trim().replace(/^"|"$/g, ''));
 
 /** The app's own, Debug and Release; the widget extension's are checked separately below. */
-const bundleIds = (): string[] => allBundleIds().filter((id) => !id.endsWith('.widget'));
+const bundleIds = (): string[] => allBundleIds().filter((id) => !/\.(widget|share)$/.test(id));
 
 const configValue = (key: string): string | undefined =>
   readFileSync(join(ROOT, 'capacitor.config.ts'), 'utf8')
@@ -60,12 +60,14 @@ describe('what the app calls itself', () => {
     ).toBe(configValue('appId'));
   });
 
-  it('names the widget after the app, and shares one App Group between them', () => {
+  it('names the widget and the share extension after the app, and shares one App Group among them', () => {
     // An extension whose identifier does not start with its app's is refused
     // on upload; a group the two name differently is a widget that never
     // sees what the app wrote.
     const widget = allBundleIds().filter((id) => id.endsWith('.widget'));
     expect(widget).toEqual([`${configValue('appId')}.widget`, `${configValue('appId')}.widget`]);
+    const share = allBundleIds().filter((id) => id.endsWith('.share'));
+    expect(share).toEqual([`${configValue('appId')}.share`, `${configValue('appId')}.share`]);
     const groups = [...readFileSync(PBXPROJ, 'utf8').matchAll(/KEPT_APP_GROUP = ([^;]+);/g)].map((m) => m[1]);
     expect(groups).toEqual([`group.${configValue('appId')}`, `group.${configValue('appId')}`]);
   });

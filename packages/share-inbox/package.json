@@ -1,0 +1,13 @@
+{
+  "name": "@kept/share-inbox",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Quids In on iOS: collects what the share extension left in the App Group, once.",
+  "license": "UNLICENSED",
+  "author": "kept",
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    }
+  }
+}

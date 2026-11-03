@@ -92,7 +92,7 @@ describe('what it writes', () => {
     expect(files).toEqual([
       'capacitor.config.ts',
       'ios/App/App/capacitor.config.json',
-      // The app's pair, the widget's pair, and the App Group they share.
+      // The app's pair, the extensions' pairs, and the App Group they share.
       'ios/App/App.xcodeproj/project.pbxproj',
       'ios/App/App.xcodeproj/project.pbxproj',
       'ios/App/App.xcodeproj/project.pbxproj',
@@ -127,7 +127,7 @@ describe('what it writes', () => {
     );
     // Both configurations, which is the pair `cap sync` will not fix — and the
     // widget's pair after the app's, named from it.
-    expect(ids.sort()).toEqual(['uk.co.apnexus.kept', 'uk.co.apnexus.kept', 'uk.co.apnexus.kept.widget', 'uk.co.apnexus.kept.widget']);
+    expect(ids.sort()).toEqual(['uk.co.apnexus.kept', 'uk.co.apnexus.kept', 'uk.co.apnexus.kept.share', 'uk.co.apnexus.kept.share', 'uk.co.apnexus.kept.widget', 'uk.co.apnexus.kept.widget']);
     expect([...read('ios/App/App.xcodeproj/project.pbxproj').matchAll(/KEPT_APP_GROUP = ([^;]+);/g)].map((m) => m[1]))
       .toEqual(['group.uk.co.apnexus.kept', 'group.uk.co.apnexus.kept']);
 
@@ -152,7 +152,7 @@ describe('what it writes', () => {
         /PRODUCT_BUNDLE_IDENTIFIER = ([^;]+);/g,
       ),
     ].map((m) => m[1]);
-    expect(ids.sort()).toEqual(['uk.co.apnexus.kept', 'uk.co.apnexus.kept', 'uk.co.apnexus.kept.widget', 'uk.co.apnexus.kept.widget']);
+    expect(ids.sort()).toEqual(['uk.co.apnexus.kept', 'uk.co.apnexus.kept', 'uk.co.apnexus.kept.share', 'uk.co.apnexus.kept.share', 'uk.co.apnexus.kept.widget', 'uk.co.apnexus.kept.widget']);
   });
 
   it('writes nothing when a file does not hold what it expects', () => {

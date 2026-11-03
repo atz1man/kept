@@ -64,17 +64,19 @@ const SITES = [
   {
     // The app's own pair, Debug and Release — not the widget's, below.
     file: join(ROOT, 'ios/App/App.xcodeproj/project.pbxproj'),
-    find: /PRODUCT_BUNDLE_IDENTIFIER = ((?:(?!\.widget;)[^;])+);/g,
+    find: /PRODUCT_BUNDLE_IDENTIFIER = ((?:(?!\.(?:widget|share);)[^;])+);/g,
     write: (id) => `PRODUCT_BUNDLE_IDENTIFIER = ${id};`,
     expect: 2,
   },
   {
-    // The Home Screen widget (scripts/ios-targets.rb). An extension's identifier
-    // must start with its app's, or App Store Connect refuses the upload.
+    // The extensions the app carries — the Home Screen widget and the share
+    // extension (scripts/ios-targets.rb), Debug and Release each. An
+    // extension's identifier must start with its app's, or App Store Connect
+    // refuses the upload.
     file: join(ROOT, 'ios/App/App.xcodeproj/project.pbxproj'),
-    find: /PRODUCT_BUNDLE_IDENTIFIER = ([^;]+)\.widget;/g,
-    write: (id) => `PRODUCT_BUNDLE_IDENTIFIER = ${id}.widget;`,
-    expect: 2,
+    find: /PRODUCT_BUNDLE_IDENTIFIER = ([^;]+)\.(widget|share);/g,
+    write: (id, match) => `PRODUCT_BUNDLE_IDENTIFIER = ${id}.${match[2]};`,
+    expect: 4,
   },
   {
     // The App Group the app and the widget share, read by both entitlements
@@ -119,7 +121,7 @@ function main() {
   // Read each file again at write time: three sites share the project file,
   // and writing from the copy read before the first of them would undo it.
   for (const { site } of changes) {
-    writeFileSync(site.file, readFileSync(site.file, 'utf8').replace(site.find, () => site.write(id)));
+    writeFileSync(site.file, readFileSync(site.file, 'utf8').replace(site.find, (...match) => site.write(id, match)));
   }
 
   console.log(`✓ bundle identifier set to ${id}`);

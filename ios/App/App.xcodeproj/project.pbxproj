@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		0891818DDBE6234C578FC561 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0A36230F0D94B3CC5FDD709E /* Foundation.framework */; };
+		0F9E6C466B151DAB13C129D5 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF0E9161E0F829983E84158A /* ShareViewController.swift */; };
+		2599DFF7650AC24F0F459570 /* UniformTypeIdentifiers.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 28B4A54A0BCC74B436E66092 /* UniformTypeIdentifiers.framework */; };
 		25D45F04F375638386789BF5 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CDB11CB8F52B6F741609B840 /* WidgetKit.framework */; };
 		25E35C78E73C488CA309235A /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 04CEDAE7CD12AC01810C6A69 /* SwiftUI.framework */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
@@ -21,7 +23,10 @@
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		641BD1C223A6AD3EF59DF696 /* QuidsInWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = B2926A71908CD580B636D789 /* QuidsInWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		7A1C0E5B9D2F4A6B8C3E1D08 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 7A1C0E5B9D2F4A6B8C3E1D07 /* PrivacyInfo.xcprivacy */; };
+		915A4C5D958FE42D205AB48E /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0A36230F0D94B3CC5FDD709E /* Foundation.framework */; };
 		A084ECDBA7D38E1E42DFC39D /* Pods_App.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */; };
+		E02FF6F3F74714649234C263 /* QuidsInShare.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 1A0011145CB9522EFC56608C /* QuidsInShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		F4861C30E3CA1859BA7C4585 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 582A4D53B78EE7DE84BD517B /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -31,6 +36,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 7EAF4D94348836C3DB918AFC;
 			remoteInfo = QuidsInWidget;
+		};
+		C4A6170C0BCBBB45C42A1744 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5CEEC1A5E3FF51A5F9A67FE2;
+			remoteInfo = QuidsInShare;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -42,6 +54,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				641BD1C223A6AD3EF59DF696 /* QuidsInWidget.appex in Embed App Extensions */,
+				E02FF6F3F74714649234C263 /* QuidsInShare.appex in Embed App Extensions */,
 			);
 			name = "Embed App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -51,8 +64,10 @@
 /* Begin PBXFileReference section */
 		04CEDAE7CD12AC01810C6A69 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/SwiftUI.framework; sourceTree = DEVELOPER_DIR; };
 		0A36230F0D94B3CC5FDD709E /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		1A0011145CB9522EFC56608C /* QuidsInShare.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = QuidsInShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		211CD560D14DEAFAEB650FF6 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		280E7491A0D8C65D9089C22F /* QuidsInWidget.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = QuidsInWidget.entitlements; sourceTree = "<group>"; };
+		28B4A54A0BCC74B436E66092 /* UniformTypeIdentifiers.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UniformTypeIdentifiers.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/UniformTypeIdentifiers.framework; sourceTree = DEVELOPER_DIR; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
 		4AF25D9ABFD63BFAC6B6DAA5 /* QuidsInWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QuidsInWidget.swift; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
@@ -63,13 +78,17 @@
 		504EC3111FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
+		582A4D53B78EE7DE84BD517B /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		590F5CE252D7CD67C5813FB1 /* QuidsInShare.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = QuidsInShare.entitlements; sourceTree = "<group>"; };
 		6645027DF1A08B93333F50EA /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		7A1C0E5B9D2F4A6B8C3E1D07 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		98BC29507F91C0048EA7641A /* App.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
+		A8BDD1997D4BCBE9E6879C0E /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_App.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		AF51FD2D460BCFE21FA515B2 /* Pods-App.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.release.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.release.xcconfig"; sourceTree = "<group>"; };
 		B2926A71908CD580B636D789 /* QuidsInWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = QuidsInWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CDB11CB8F52B6F741609B840 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/WidgetKit.framework; sourceTree = DEVELOPER_DIR; };
+		CF0E9161E0F829983E84158A /* ShareViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		FC68EB0AF532CFC21C3344DD /* Pods-App.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.debug.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -92,6 +111,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		F8ED297905ED7AAE9269B67A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				915A4C5D958FE42D205AB48E /* Foundation.framework in Frameworks */,
+				2599DFF7650AC24F0F459570 /* UniformTypeIdentifiers.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -104,6 +132,18 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		39A8495EF336CCFF6893D6B1 /* QuidsInShare */ = {
+			isa = PBXGroup;
+			children = (
+				CF0E9161E0F829983E84158A /* ShareViewController.swift */,
+				A8BDD1997D4BCBE9E6879C0E /* Info.plist */,
+				590F5CE252D7CD67C5813FB1 /* QuidsInShare.entitlements */,
+				582A4D53B78EE7DE84BD517B /* PrivacyInfo.xcprivacy */,
+			);
+			name = QuidsInShare;
+			path = QuidsInShare;
+			sourceTree = "<group>";
+		};
 		504EC2FB1FED79650016851F = {
 			isa = PBXGroup;
 			children = (
@@ -112,6 +152,7 @@
 				7F8756D8B27F46E3366F6CEA /* Pods */,
 				27E2DDA53C4D2A4D1A88CE4A /* Frameworks */,
 				EE596925B88A5C27CE48ACDC /* QuidsInWidget */,
+				39A8495EF336CCFF6893D6B1 /* QuidsInShare */,
 			);
 			sourceTree = "<group>";
 		};
@@ -120,6 +161,7 @@
 			children = (
 				504EC3041FED79650016851F /* App.app */,
 				B2926A71908CD580B636D789 /* QuidsInWidget.appex */,
+				1A0011145CB9522EFC56608C /* QuidsInShare.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -156,6 +198,7 @@
 				0A36230F0D94B3CC5FDD709E /* Foundation.framework */,
 				CDB11CB8F52B6F741609B840 /* WidgetKit.framework */,
 				04CEDAE7CD12AC01810C6A69 /* SwiftUI.framework */,
+				28B4A54A0BCC74B436E66092 /* UniformTypeIdentifiers.framework */,
 			);
 			name = iOS;
 			sourceTree = "<group>";
@@ -190,11 +233,29 @@
 			);
 			dependencies = (
 				E9902AE51DE82F7F9369FC05 /* PBXTargetDependency */,
+				5D8AA4CA7FD045F4555BFC50 /* PBXTargetDependency */,
 			);
 			name = App;
 			productName = App;
 			productReference = 504EC3041FED79650016851F /* App.app */;
 			productType = "com.apple.product-type.application";
+		};
+		5CEEC1A5E3FF51A5F9A67FE2 /* QuidsInShare */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 83697877BA069FBC271EFEBD /* Build configuration list for PBXNativeTarget "QuidsInShare" */;
+			buildPhases = (
+				664785B452EE6F15DFC7DFA4 /* Sources */,
+				F8ED297905ED7AAE9269B67A /* Frameworks */,
+				46C65B058E1B9D3C7C3F2A68 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = QuidsInShare;
+			productName = QuidsInShare;
+			productReference = 1A0011145CB9522EFC56608C /* QuidsInShare.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 		7EAF4D94348836C3DB918AFC /* QuidsInWidget */ = {
 			isa = PBXNativeTarget;
@@ -244,11 +305,20 @@
 			targets = (
 				504EC3031FED79650016851F /* App */,
 				7EAF4D94348836C3DB918AFC /* QuidsInWidget */,
+				5CEEC1A5E3FF51A5F9A67FE2 /* QuidsInShare */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		46C65B058E1B9D3C7C3F2A68 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F4861C30E3CA1859BA7C4585 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		47C4040DD1041186C79EA424 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -326,9 +396,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		664785B452EE6F15DFC7DFA4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0F9E6C466B151DAB13C129D5 /* ShareViewController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		5D8AA4CA7FD045F4555BFC50 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = QuidsInShare;
+			target = 5CEEC1A5E3FF51A5F9A67FE2 /* QuidsInShare */;
+			targetProxy = C4A6170C0BCBBB45C42A1744 /* PBXContainerItemProxy */;
+		};
 		E9902AE51DE82F7F9369FC05 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = QuidsInWidget;
@@ -552,6 +636,49 @@
 			};
 			name = Debug;
 		};
+		EE536AE0555BCC616241B380 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = QuidsInShare/QuidsInShare.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3256K8G3S4;
+				INFOPLIST_FILE = QuidsInShare/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = uk.co.kept.REPLACE_ME.share;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		EF22C265F409BA53E45A7F36 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = QuidsInShare/QuidsInShare.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3256K8G3S4;
+				INFOPLIST_FILE = QuidsInShare/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = uk.co.kept.REPLACE_ME.share;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -569,6 +696,15 @@
 			buildConfigurations = (
 				504EC3171FED79650016851F /* Debug */,
 				504EC3181FED79650016851F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		83697877BA069FBC271EFEBD /* Build configuration list for PBXNativeTarget "QuidsInShare" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EF22C265F409BA53E45A7F36 /* Release */,
+				EE536AE0555BCC616241B380 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

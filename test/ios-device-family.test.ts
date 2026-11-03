@@ -38,13 +38,13 @@ const families = (): string[] =>
 
 describe('the devices this app claims', () => {
   it('finds every build configuration', () => {
-    // Debug and Release for the app and for the widget extension; fewer means
+    // Debug and Release for the app and for each extension it carries; fewer means
     // the regex read nothing, or a target lost its setting.
-    expect(families().length).toBe(4);
+    expect(families().length).toBe(6);
   });
 
-  it('is iPhone only, the same in Debug and Release, and so is the widget it carries', () => {
-    expect(families()).toEqual(['1', '1', '1', '1']);
+  it('is iPhone only, the same in Debug and Release, and so is each extension it carries', () => {
+    expect(families()).toEqual(['1', '1', '1', '1', '1', '1']);
   });
 });
 

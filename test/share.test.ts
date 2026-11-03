@@ -51,24 +51,24 @@ describe('receiving a shared order email', () => {
 });
 
 describe('what the Add screen teaches about sharing', () => {
-  it('does not draw the three steps in the iOS app', () => {
+  it('does not draw the web steps in the iOS app', () => {
     /*
-     * The steps are a promise about the device reading them — open the order,
-     * tap share, pick kept. A Capacitor app appears in the iOS share sheet
-     * only if it ships a share extension target, and ios/App has none, so in
-     * the native build those steps end at a sheet kept is not in.
+     * The three steps are Web Share Target's — add to the home screen, then
+     * share. The iPhone app gets into the share sheet through its own share
+     * extension (ios/App/QuidsInShare) instead, and its steps differ.
      */
     expect(shareRoute(true).steps).toBe(false);
   });
 
-  it('sends someone in the iOS app to the paste box instead', () => {
+  it('teaches the iPhone app’s share extension as it actually works, with paste kept as the fallback', () => {
     const route = shareRoute(true);
+    // Mail shares only the text that is SELECTED, so the line says select it.
+    expect(route.body).toMatch(/select the order’s text, tap Share and choose Quids In/);
+    // An extension cannot open its app, so it says where the order will be.
+    expect(route.body).toMatch(/waiting here/);
     expect(route.body).toMatch(/paste/i);
-    // And says why, rather than leaving a capability quietly missing —
-    // without calling the released app unfinished: the old line said Quids In
-    // "needs a share extension this build does not have yet".
-    expect(route.body).toMatch(/Mail can’t/);
-    expect(route.body).not.toMatch(/\bbuild\b|\byet\b|share extension/i);
+    // And it never calls the released app unfinished.
+    expect(route.body).not.toMatch(/\bbuild\b|\byet\b/i);
   });
 
   it('names the platform the share sheet route works on, rather than guessing', () => {

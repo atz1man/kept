@@ -32,6 +32,8 @@ interface Props {
    * and waits to be told to try is not the flow the three-step strip promises.
    */
   sharedText?: string;
+  /** A PDF or picture shared in from another app on iPhone (src/lib/share-inbox.ts), read as a picked file is. */
+  sharedFile?: File;
   quotaFull: boolean;
   trackedTotal: string;
   /** The policy feed, so a new purchase gets the window in force today. */
@@ -83,7 +85,7 @@ function PencilGlyph() {
 /** How the Add screen can be opened already doing something: the camera, the file picker, the paste box. */
 export type AddStart = 'scan' | 'file' | 'paste';
 
-export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSave, onUpgrade, offer, store, onRestorePurchase, start, onStarted }: Props) {
+export function Add({ today, sharedText, sharedFile, quotaFull, trackedTotal, updates, onSave, onUpgrade, offer, store, onRestorePurchase, start, onStarted }: Props) {
   const route = shareRoute(isNative());
   const [text, setText] = useState(sharedText ?? '');
   const [parsed, setParsed] = useState<ParsedReceipt | null>(null);
@@ -446,6 +448,14 @@ export function Add({ today, sharedText, quotaFull, trackedTotal, updates, onSav
     // Once, on arrival: the screen's own buttons do the rest.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!sharedFile || readShare) return;
+    setReadShare(true);
+    void readFile(sharedFile);
+    // One-shot, gated on the same flag as a shared text below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sharedFile, readShare]);
 
   useEffect(() => {
     if (!sharedText || readShare) return;
