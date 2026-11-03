@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { christmasDeadline } from '../../lib/christmas';
 import { color, font, radius } from '../../tokens';
 import { applyDraft, countsFromDispatch, draftFrom, effectiveWindowStart, validateDraft, type DraftErrors, type ReceiptDraft } from '../../lib/draft';
 import { addDays, addMonths, fmtDateLong, fmtDateNear, fromISODate, toISODate } from '../../lib/dates';
@@ -54,7 +55,12 @@ export function Edit({ receipt, today, onSave, onCancel }: Props) {
   // the dispatch date, on a shop that uses one. Previewing from the purchase
   // date showed a deadline two days adrift from the receipt's own.
   const windowStart = effectiveWindowStart(receipt, draft);
-  const deadline = previewable ? fmtDateNear(addDays(fromISODate(windowStart), windowDays), today) : null;
+  // And the shop's Christmas date where it covers the purchase — the date
+  // `derive` will give once saved, so the preview does not show an earlier one.
+  const ordinary = previewable ? addDays(fromISODate(windowStart), windowDays) : null;
+  const deadline = ordinary
+    ? fmtDateNear(christmasDeadline({ store: draft.store, purchasedOn: draft.purchasedOn, distance: draft.distance }, ordinary) ?? ordinary, today)
+    : null;
 
   const warrantyMonths = Number(draft.warrantyMonthsText.trim());
   const warrantyEnds =

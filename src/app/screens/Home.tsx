@@ -738,7 +738,7 @@ function HeroCard({ receipt, today, onOpen }: { receipt: Receipt; today: Date; o
           <div
             style={{
               height: '100%', borderRadius: radius.pill, background: d.daysLeft <= 3 ? color.dangerDot : gradient.accent,
-              width: `${Math.max(4, Math.round((1 - windowRemaining(d.daysLeft, receipt.windowDays)) * 100))}%`,
+              width: `${Math.max(4, Math.round((1 - windowRemaining(d.daysLeft, d.windowLength)) * 100))}%`,
               transition: 'width .6s ease',
             }}
           />

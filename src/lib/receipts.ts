@@ -1,5 +1,6 @@
 import { addDays, addMonths, daysBetween, fmtDateNear, fromISODate, startOfDay } from './dates';
 import { sumPence } from './money';
+import { christmasDeadline } from './christmas';
 import { clockFor, findStore } from './stores';
 import type { Receipt } from './types';
 
@@ -62,6 +63,15 @@ export interface DerivedReceipt {
   daysLeft: number;
   /** Days of the window already spent. */
   daysUsed: number;
+  /**
+   * How many days the window runs, start to deadline: `windowDays`, or more
+   * where a Christmas extension carries the deadline past it. What the ring
+   * and "12 of 28 days used" measure against, so neither reads full in
+   * December for a present that can go back until the end of January.
+   */
+  windowLength: number;
+  /** True where the deadline is a shop's Christmas date rather than its ordinary window. */
+  christmas: boolean;
   expired: boolean;
   /** Present only when the receipt carries a warranty. */
   warranty?: DerivedWarranty;
@@ -175,7 +185,13 @@ export function floorWords(clock: 'delivery' | 'dispatch'): { countsFrom: string
 
 export function derive(r: Receipt, today: Date): DerivedReceipt {
   const windowStart = fromISODate(r.windowStartsOn ?? r.purchasedOn);
-  const deadline = addDays(windowStart, r.windowDays);
+  const ordinary = addDays(windowStart, r.windowDays);
+  // The shop's Christmas date, where it covers this purchase and is later
+  // (christmas.ts). Here, once, so every surface that reads a deadline — the
+  // reminders, Home, the iOS schedule, the claim pack — reads the same one.
+  const xmas = christmasDeadline(r, ordinary);
+  const deadline = xmas ?? ordinary;
+  const windowLength = xmas ? daysBetween(windowStart, xmas) : r.windowDays;
   const daysLeft = daysBetween(today, deadline);
   const elapsed = daysBetween(windowStart, today);
   return {
@@ -185,7 +201,9 @@ export function derive(r: Receipt, today: Date): DerivedReceipt {
     // Clamped: a receipt back-dated by a typo must not report "-4 of 30 days
     // used", and one long past its deadline shows the window as fully spent
     // rather than overflowing the progress ring.
-    daysUsed: Math.max(0, Math.min(r.windowDays, elapsed)),
+    daysUsed: Math.max(0, Math.min(windowLength, elapsed)),
+    windowLength,
+    christmas: xmas !== null,
     expired: daysLeft < 0,
     warranty: deriveWarranty(r, today),
   };

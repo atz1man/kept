@@ -4,6 +4,7 @@ import { REFUND_CHASE_DAYS, REJECT_DAYS } from './legal';
 import { money } from './money';
 import { derive, floorClock, floorWords, refundOf } from './receipts';
 import { REG34_CLOCK, refundIsStatutory } from './refund-chase';
+import { christmasDeadline } from './christmas';
 import { windowChecked } from './stores';
 import type { Receipt } from './types';
 import { possessive } from './words';
@@ -214,6 +215,13 @@ export function copyFor(rung: AlertRung, r: Receipt, daysLeft: number, deadline:
    * never say wrongly: the shop may well give longer.
    */
   const checked = windowChecked(r);
+  /*
+   * Where the date is a shop's Christmas returns date (christmas.ts), "the 28
+   * days saved for it" is not what is ending: say what is.
+   */
+  const span = christmasDeadline(r, addDays(fromISODate(r.windowStartsOn ?? r.purchasedOn), r.windowDays))
+    ? { these: 'its Christmas returns time', end: 'ends', are: 'is', its: 'its Christmas returns time is' }
+    : { these: `the ${r.windowDays} days saved for it`, end: 'end', are: 'are', its: `its ${r.windowDays} days are` };
   const unchecked = `Quids In hasn’t checked ${possessive(r.store)} returns policy, so check the receipt.`;
   /*
    * And for a floor (`floorClock`), the date is not the date at all: counted
@@ -245,16 +253,16 @@ export function copyFor(rung: AlertRung, r: Receipt, daysLeft: number, deadline:
       if (floor) {
         return checked
           ? { title: 'The window may close today', body: `${what} — ${money(r.amount)} back if it goes back today, the earliest its window can close. ${counts}, so it may give longer — ${addIt}.` }
-          : { title: 'The saved window may end today', body: `${what} — the ${r.windowDays} days saved for it end today at the earliest. ${counts}, so it may give longer — ${addIt}. ${unchecked}` };
+          : { title: 'The saved window may end today', body: `${what} — ${span.these} ${span.end} today at the earliest. ${counts}, so it may give longer — ${addIt}. ${unchecked}` };
       }
       return checked
         ? { title: 'Today is the last day', body: `${what} — ${money(r.amount)} back, but only if it goes back today.` }
-        : { title: 'The saved window ends today', body: `${what} — the ${r.windowDays} days saved for it end today. ${unchecked}` };
+        : { title: 'The saved window ends today', body: `${what} — ${span.these} ${span.end} today. ${unchecked}` };
     case 'closed':
       if (floor) {
         return {
           title: checked ? 'That window may have closed' : 'The saved window may have passed',
-          body: `${what} — counted from your order its ${r.windowDays} days are up, but ${counts}, so it may still be open — ${addIt}.${checked ? '' : ` ${unchecked}`} If it turns out to be faulty, you still have rights.`,
+          body: `${what} — counted from your order ${span.its} up, but ${counts}, so it may still be open — ${addIt}.${checked ? '' : ` ${unchecked}`} If it turns out to be faulty, you still have rights.`,
         };
       }
       return checked
@@ -264,7 +272,7 @@ export function copyFor(rung: AlertRung, r: Receipt, daysLeft: number, deadline:
           }
         : {
             title: 'The saved window has passed',
-            body: `${what} — the ${r.windowDays} days saved for it are up. Quids In hasn’t checked ${possessive(r.store)} returns policy, so check the receipt: the shop may give longer. If it turns out to be faulty, you still have rights.`,
+            body: `${what} — ${span.these} ${span.are} up. Quids In hasn’t checked ${possessive(r.store)} returns policy, so check the receipt: the shop may give longer. If it turns out to be faulty, you still have rights.`,
           };
     case 'reject': {
       // `daysLeft` and `deadline` are the RIGHT's here. After it, the shop

@@ -388,6 +388,7 @@ src/lib/          the decision logic — pure, tested, no React
   flatten.ts      finding the receipt in a photo and laying it flat before it is read
   passed-deadline.ts what the add card says under a return deadline that has already gone
   receipts.ts     days left, deadlines, bucketing, the 30-day timeline
+  christmas.ts    each shop's Christmas returns date, quoted from its own page, and which purchases it covers
   returns-pages.ts each shop's own returns page, read from store/retailer-sources.json
   urgency.ts      the red / yellow / neutral ladder
   alerts.ts       which deadlines are worth interrupting someone about
