@@ -148,20 +148,37 @@ export function Checker({ store, onStore }: { store: string; onStore: (s: string
               </div>
             )}
 
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 10 }}>
-              {got.rights.map((r) => (
-                <li key={r.chip} style={{ background: color.surface, borderRadius: radius.card, padding: '12px 16px' }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 700, color: r.live ? color.accentInk : color.muted, textTransform: 'uppercase', letterSpacing: '0.02em' }}>{r.chip}</div>
-                  <div style={{ fontSize: 14, lineHeight: 1.55, color: color.body, marginTop: 4 }}>{r.body}</div>
-                </li>
-              ))}
-              {got.shop.gotcha && (
-                <li style={{ background: color.caution, borderRadius: radius.card, padding: '12px 16px' }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 700, color: color.cautionInk, textTransform: 'uppercase', letterSpacing: '0.02em' }}>The small print</div>
-                  <div style={{ fontSize: 14, lineHeight: 1.55, color: color.cautionInk, marginTop: 4 }}>{got.shop.gotcha}</div>
-                </li>
-              )}
-            </ul>
+            {/* The shop's own small print stays in view: it is about THIS shop,
+                and it is short. The statutory cards are the same two or three
+                for every purchase and were most of the checker's height on a
+                phone, so they fold under one line that says what is in them. */}
+            {got.shop.gotcha && (
+              <div style={{ background: color.caution, borderRadius: radius.card, padding: '12px 16px' }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: color.cautionInk, textTransform: 'uppercase', letterSpacing: '0.02em' }}>The small print</div>
+                <div style={{ fontSize: 14, lineHeight: 1.55, color: color.cautionInk, marginTop: 4 }}>{got.shop.gotcha}</div>
+              </div>
+            )}
+
+            {got.rights.length > 0 && (
+              <details className="k-faq" style={{ background: color.surface, borderRadius: radius.card }}>
+                <summary style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 16px', minHeight: 44, cursor: 'pointer', fontSize: 14.5, fontWeight: 650, color: color.ink }}>
+                  <span>Your legal rights on this purchase <span style={{ fontWeight: 500, color: color.muted }}>· {got.rights.length}</span></span>
+                  <span className="k-faq-mark" aria-hidden="true" style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 999, background: color.surfaceAlt, display: 'grid', placeItems: 'center' }}>
+                    <svg width="11" height="11" viewBox="0 0 12 12">
+                      <path d="M6 1v10M1 6h10" fill="none" stroke={color.ink} strokeWidth="1.8" strokeLinecap="round" />
+                    </svg>
+                  </span>
+                </summary>
+                <ul style={{ listStyle: 'none', padding: '0 16px 14px', margin: 0, display: 'grid', gap: 12 }}>
+                  {got.rights.map((r) => (
+                    <li key={r.chip}>
+                      <div style={{ fontSize: 12.5, fontWeight: 700, color: r.live ? color.accentInk : color.muted, textTransform: 'uppercase', letterSpacing: '0.02em' }}>{r.chip}</div>
+                      <div style={{ fontSize: 14, lineHeight: 1.55, color: color.body, marginTop: 4 }}>{r.body}</div>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
 
             <p style={{ fontSize: 13, color: color.muted, margin: 0, lineHeight: 1.55 }}>
               {got.checkedOn

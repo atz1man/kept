@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { color, font, palette, radius, shadow } from '../../tokens';
+import { color, font, palette, shadow } from '../../tokens';
 import { APP_STORE, BADGE_PATH, IPHONE_ANSWER_ID } from '../app-store-listing';
 import { LogoMark } from '../../app/components/Icons';
 
@@ -69,24 +69,6 @@ export function SectionHead({ eyebrow, title, lede, center, onInk, id }: { eyebr
           {lede}
         </p>
       )}
-    </div>
-  );
-}
-
-export function Card({ children, emphasised = true, style, className }: { children: ReactNode; emphasised?: boolean; style?: CSSProperties; className?: string }) {
-  return (
-    <div
-      className={className}
-      style={{
-        // As the app draws its cards: an emphasised one floats on a soft
-        // shadow, the rest sit in the grey card colour — neither outlined.
-        background: emphasised ? color.surface : color.surfaceAlt,
-        borderRadius: radius.cardLg,
-        boxShadow: emphasised ? shadow.raisedLg : undefined,
-        ...style,
-      }}
-    >
-      {children}
     </div>
   );
 }

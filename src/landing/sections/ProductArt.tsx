@@ -117,32 +117,6 @@ export function TwoClocksArt({ shopDays, lawDays, coolingDays }: { shopDays: num
   );
 }
 
-/** A letter to the shop, drafted. */
-export function LetterArt() {
-  return (
-    <Figure label="A letter to the shop, drafted for you, quoting the Consumer Rights Act 2015">
-      <div style={{ ...panel, padding: '22px 24px 20px', display: 'grid', gap: 10, maxWidth: 430, width: '100%', margin: '0 auto', boxSizing: 'border-box', fontSize: 13.5, lineHeight: 1.55, color: color.body }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12, color: color.muted }}>
-          <span style={{ fontWeight: 600 }}>To: Currys customer services</span>
-          <span>Draft</span>
-        </div>
-        <div style={{ color: color.ink, fontWeight: 650 }}>Re: JBL headphones, order 4471-2290</div>
-        <div>The left earcup stopped working on day 12. Under the Consumer Rights Act 2015 the goods must be of satisfactory quality.</div>
-        <div style={{ background: color.accentSoft, borderRadius: 10, padding: '10px 12px' }}>
-          <div style={{ fontSize: 12, fontWeight: 650, color: color.accentInk }}>Section 22: the right to reject</div>
-          <div style={{ fontSize: 13, color: color.ink, marginTop: 3 }}>As this is within 30 days of delivery, I am rejecting them for a full refund.</div>
-        </div>
-        <div>Yours faithfully,</div>
-      </div>
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-        {['Copy', 'Email it', 'Share'].map((a) => (
-          <span key={a} style={{ fontSize: 12.5, fontWeight: 600, color: color.ink, background: color.surface, borderRadius: radius.pill, padding: '7px 14px', boxShadow: shadow.raised }}>{a}</span>
-        ))}
-      </div>
-    </Figure>
-  );
-}
-
 /** The add screen after a scan: what it read, waiting to be checked. */
 export function ScanArt() {
   const field = (label: string, value: string) => (
@@ -173,23 +147,6 @@ export function ScanArt() {
           Save receipt
         </div>
       </div>
-    </Figure>
-  );
-}
-
-/** The small print a shop hides, as cards. */
-export function SmallPrintArt({ cards }: { cards: { store: string; days: number; text: string }[] }) {
-  return (
-    <Figure label={`The small print Quids In already knows: ${cards.map((c) => `${c.store}, ${c.days} days`).join('; ')}`} style={{ gap: 14 }}>
-      {cards.map((c, i) => (
-        <div key={c.store} style={{ ...panel, marginLeft: i === 1 ? 'clamp(0px, 4vw, 28px)' : 0, marginRight: i === 1 ? 0 : 'clamp(0px, 4vw, 28px)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontWeight: 650, fontSize: 15, color: color.ink }}>{c.store}</span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: color.accentInk, background: color.accentSoft, padding: '4px 10px', borderRadius: radius.chip, whiteSpace: 'nowrap' }}>{c.days} days</span>
-          </div>
-          <div style={{ fontSize: 13.5, color: color.body, lineHeight: 1.55, marginTop: 8 }}>{c.text}</div>
-        </div>
-      ))}
     </Figure>
   );
 }

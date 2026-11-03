@@ -21,23 +21,17 @@ const Checker = lazy(() => import('./sections/Checker').then((m) => ({ default: 
  * on the first screen, so they arrive the same way: after the page has painted,
  * each held at its own height until it does (`Art` below).
  */
-const problemArt = () => import('./sections/ProblemArt');
 const productArt = () => import('./sections/ProductArt');
-const HaulArt = lazy(() => problemArt().then((m) => ({ default: m.HaulArt })));
-const LostReceiptsArt = lazy(() => problemArt().then((m) => ({ default: m.LostReceiptsArt })));
-const FinePrintArt = lazy(() => problemArt().then((m) => ({ default: m.FinePrintArt })));
 const DeadlinesArt = lazy(() => productArt().then((m) => ({ default: m.DeadlinesArt })));
-const LetterArt = lazy(() => productArt().then((m) => ({ default: m.LetterArt })));
 const PhoneOnlyArt = lazy(() => productArt().then((m) => ({ default: m.PhoneOnlyArt })));
 const ScanArt = lazy(() => productArt().then((m) => ({ default: m.ScanArt })));
-const SmallPrintArt = lazy(() => productArt().then((m) => ({ default: m.SmallPrintArt })));
 const TwoClocksArt = lazy(() => productArt().then((m) => ({ default: m.TwoClocksArt })));
 
 /** A picture that loads after the page, holding its place until it does. */
 function Art({ height, children }: { height: number | string; children: ReactNode }) {
   return <Suspense fallback={<div style={{ minHeight: height, height: '100%', borderRadius: radius.hero, background: color.surfaceAlt }} />}>{children}</Suspense>;
 }
-import { AppStoreButton, Card, OpenAppButton, SectionHead, WRAP } from './sections/primitives';
+import { AppStoreButton, OpenAppButton, SectionHead, WRAP } from './sections/primitives';
 
 /*
  * Every grid below uses `minmax(min(Npx, 100%), 1fr)` rather than a bare
@@ -47,16 +41,11 @@ import { AppStoreButton, Card, OpenAppButton, SectionHead, WRAP } from './sectio
  * the space that actually exists. scripts/layout.mjs fails the build if it
  * comes back.
  */
-const PROBLEMS = [
-  { art: <HaulArt />, title: 'The haul is the easy part', body: 'Five shops, one afternoon, five different return clocks — all already ticking.' },
-  { art: <LostReceiptsArt />, title: 'Receipts go to die', body: 'Jacket pockets, kitchen drawers, a 9,000-email inbox. Proof of purchase, permanently lost.' },
-  { art: <FinePrintArt />, title: 'Nobody reads clause 14b', body: '“30 days from dispatch, unworn, tags attached, exclusions apply.” Quids In reads it so you never have to.' },
-];
 
 /**
  * The small print this page shows is the table's, not news.
  *
- * These cards used to be the three newest policy CHANGES, read from the seed
+ * Cards on this page used to show the three newest policy CHANGES, read from the seed
  * so they could not drift from the feed — which held them to the wrong thing.
  * The seed's changes are samples nobody had checked against the retailers, and
  * the served feed that matched them called itself "verified". On this page
@@ -65,16 +54,12 @@ const PROBLEMS = [
  * from whatever day the page was opened.
  *
  * What kept does know is its own table — the windows and gotchas the README's
- * pre-ship pass checks against each retailer's terms. So the cards show that,
- * read from `stores.ts`, and the section says what policy watch does without
- * pretending anything has been published through it yet.
+ * pre-ship pass checks against each retailer's terms. So the ticker and step 02
+ * show that, read from `stores.ts`, and step 03 says what policy watch does
+ * without pretending anything has been published through it yet.
  */
 const TICKER = tickerLines();
 
-const SMALL_PRINT = ['Zara', 'Uniqlo', 'ASOS'].map((name) => {
-  const s = findStore(name);
-  return { store: name, days: s?.windowDays ?? 0, text: s?.gotcha ?? '' };
-});
 
 /**
  * The three windows this page names are the table's, not a second copy of it.
@@ -100,26 +85,25 @@ const EXAMPLE_ROWS = [
 ];
 
 /**
- * What Quids In does, one row each, with the screen that does it beside the
- * words. The order is the order someone meets them in: the deadlines first,
- * because that is what the app opens on.
+ * What Quids In does, in three steps — in the order someone meets them:
+ * getting a receipt in, what it knows about it, and what it does from then
+ * on. Five rows became three, and the problem section above them went
+ * (its line is now the lede), because on a phone the page was seventeen
+ * screens long and pricing sat behind all of it.
  */
-const WHY: { n: string; title: string; body: string; link?: { href: string; label: string }; art: ReactNode }[] = [
-  // "a heads-up when something must go back this week" implied a background
-  // service. See notify.ts: a web app cannot wake itself, so the copy names
-  // the moment it happens — when you open it — without advertising the limit.
-  { n: '01', title: 'Every deadline, soonest first', body: 'A countdown on every purchase, even offline. Open Quids In and whatever runs out this week is the first thing you see.', art: <DeadlinesArt rows={EXAMPLE_ROWS} /> },
-  { n: '02', title: 'Knows the real policies', body: `IKEA’s ${days('IKEA')} days, Boots’ ${days('Boots')}, Apple’s ${days('Apple')}: the real windows for ${STORE_COUNT} UK shops, and the catches. Zara’s clock starts at dispatch; Uniqlo won’t refund online orders in store.`, art: <SmallPrintArt cards={SMALL_PRINT} /> },
-  // The two numbers the whole legal half of the product turns on, taken from
-  // the module that computes them rather than typed again here. They were
-  // prose, beside three shop windows that had already been made derived for
-  // exactly this reason.
-  { n: '03', title: 'Knows your legal rights', body: `The law gives you ${REJECT_DAYS} days to reject faulty goods for a full refund, and a ${COOLING_OFF_DAYS}-day cooling-off on online orders. Quids In shows the legal deadline beside the shop’s own.`, link: { href: '/rights/', label: 'What the law gives you →' }, art: <TwoClocksArt shopDays={days('Zara')} lawDays={REJECT_DAYS} coolingDays={COOLING_OFF_DAYS} /> },
+const WHY: { n: string; title: string; body: string; link?: { href: string; label: string }; shops?: boolean; art: ReactNode }[] = [
   // Scanning is read on the phone and never uploaded, and it never saves by
   // itself: what it read is shown to be checked first, because OCR on a
   // creased thermal slip is not always right. The copy says so.
-  { n: '04', title: 'Paste or scan, done', body: 'Paste an order email or photograph a till receipt. Quids In reads the shop, total and date on your phone, and you check it before it saves.', art: <ScanArt /> },
-  { n: '05', title: 'When it breaks', body: 'If something breaks, Quids In says what the law gives you that day, a refund or a free repair, and drafts the letter to the shop with the right section of the Consumer Rights Act in it.', art: <LetterArt /> },
+  { n: '01', title: 'Paste or scan, done', body: 'Paste an order email or photograph a till receipt. Quids In reads the shop, total and date on your phone, and you check it before it saves.', art: <ScanArt /> },
+  // The shop windows and the two statutory periods are the modules' own
+  // numbers, not prose: the page whose claim is "knows the real numbers"
+  // cannot be the one place they are typed from memory.
+  { n: '02', title: 'Knows the shop’s rules, and the law’s', body: `IKEA’s ${days('IKEA')} days, Boots’ ${days('Boots')}, Apple’s ${days('Apple')}: the real windows for ${STORE_COUNT} UK shops, and the catches: Zara’s clock starts at dispatch; Uniqlo won’t refund online orders in store. Beside each, what the law adds: ${REJECT_DAYS} days to reject faulty goods, and a ${COOLING_OFF_DAYS}-day cooling-off on online orders.`, link: { href: '/rights/', label: 'What the law gives you →' }, shops: true, art: <TwoClocksArt shopDays={days('Zara')} lawDays={REJECT_DAYS} coolingDays={COOLING_OFF_DAYS} /> },
+  // "a heads-up when something must go back this week" implied a background
+  // service. See notify.ts: a web app cannot wake itself, so the copy names
+  // the moment it happens — when you open it — without advertising the limit.
+  { n: '03', title: 'Every deadline, soonest first', body: 'A countdown on every purchase, even offline, with whatever runs out this week at the top. When a shop changes its window, the next time you open Quids In it shows which of your receipts that touches. And if something breaks, it says what the law gives you that day and drafts the letter to the shop.', art: <DeadlinesArt rows={EXAMPLE_ROWS} /> },
 ];
 
 /*
@@ -145,8 +129,8 @@ const PLANS = [
   { name: 'Family', price: PLAN_PRICES.family, suffix: ' a year', note: null, lines: [`Plus for up to ${FAMILY_SIZE} people`, 'Through Apple Family Sharing', 'One bill for the household'], featured: false },
 ];
 
-/** The shops named as chips: the table opens with the biggest, and a hundred chips is a wall. */
-const SHOWN_SHOPS = 20;
+/** The shops named as chips under step 02: the table opens with the biggest, and a hundred chips is a wall — twenty were two phone screens. */
+const SHOWN_SHOPS = 12;
 
 const NAV = [
   { href: '#check', label: 'Check a return' },
@@ -325,25 +309,9 @@ export function Landing() {
         </div>
       </section>
 
-      {/* The problem */}
-      <section aria-labelledby="problem" style={{ ...WRAP, padding: 'clamp(64px, 9vw, 112px) 28px 0' }}>
-        <SectionHead id="problem" eyebrow="The problem" title="You shop in seconds. The fine print takes hours." lede="Every shop runs its own clock and hides the exceptions. Miss one, and the money stays with them." />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 18, marginTop: 44 }}>
-          {PROBLEMS.map((p) => (
-            <Card key={p.title} className="k-reveal" style={{ overflow: 'hidden' }}>
-              <div style={{ height: 220 }}><Art height={220}>{p.art}</Art></div>
-              <div style={{ padding: '22px 24px 26px' }}>
-                <h3 style={{ fontWeight: 650, fontSize: 17.5, margin: 0, letterSpacing: '-0.01em' }}>{p.title}</h3>
-                <p style={{ fontSize: 14.5, color: color.body, lineHeight: 1.6, margin: '8px 0 0' }}>{p.body}</p>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </section>
-
       {/* How it works: the product, row by row */}
       <section id="how" aria-labelledby="how-title" className="k-anchor" style={{ ...WRAP, padding: 'clamp(72px, 10vw, 128px) 28px 0' }}>
-        <SectionHead id="how-title" eyebrow="How it works" title="The shop’s clock, the law’s clock, and yours — on one screen." center />
+        <SectionHead id="how-title" eyebrow="How it works" title="The shop’s clock, the law’s clock, and yours — on one screen." lede="Every shop runs its own clock and hides the exceptions. Miss one, and the money stays with them. Three steps keep it with you." center />
         <div style={{ display: 'grid', gap: 'clamp(56px, 8vw, 104px)', marginTop: 'clamp(48px, 7vw, 80px)' }}>
           {WHY.map((w, i) => (
             <div key={w.n} className={i % 2 ? 'k-split k-flip k-reveal' : 'k-split k-reveal'}>
@@ -356,67 +324,34 @@ export function Landing() {
                     {w.link.label}
                   </a>
                 )}
+                {w.shops && (
+                  <>
+                    {/* The shops it already knows, each one loading itself into the
+                        checker above: the proof of "the real windows", one tap away. */}
+                    <div style={{ marginTop: 18, fontSize: 14, fontWeight: 600, color: color.bodyStrong }}>Tap a shop to check a return:</div>
+                <ul style={{ listStyle: 'none', padding: 0, margin: '14px 0 0', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {STORE_POLICIES.slice(0, SHOWN_SHOPS).map((s) => (
+                    <li key={s.name}>
+                      <button type="button" className="k-chip" onClick={() => check(s.name)} aria-label={`Check a ${s.name} return`} style={{ background: color.surface, border: 0, borderRadius: radius.pill, padding: '8px 14px', minHeight: 36, fontSize: 14, fontWeight: 600, color: color.ink, boxShadow: shadow.raised, cursor: 'pointer', fontFamily: font.ui }}>
+                        {s.name} <span style={{ color: color.muted, fontWeight: 500 }}>· {s.windowDays} days</span>
+                      </button>
+                    </li>
+                  ))}
+                  {STORE_COUNT > SHOWN_SHOPS && (
+                    <li style={{ background: color.accentSoft, borderRadius: radius.pill, padding: '8px 14px', fontSize: 14, fontWeight: 600, color: color.accentInk }}>
+                      and {STORE_COUNT - SHOWN_SHOPS} more
+                    </li>
+                  )}
+                </ul>
+                    <p style={{ fontSize: 14, color: color.muted, margin: '14px 0 0', lineHeight: 1.6 }}>
+                      Shopping somewhere else? Enter the window from your receipt, and Quids In counts it down just the same.
+                    </p>
+                  </>
+                )}
               </div>
               <div style={{ minWidth: 0 }}><Art height={340}>{w.art}</Art></div>
             </div>
           ))}
-        </div>
-      </section>
-
-      {/* Policy watch, and the shops it already knows */}
-      <section aria-labelledby="watch" style={{ ...WRAP, padding: 'clamp(72px, 10vw, 128px) 28px 0' }}>
-        <div style={{ background: color.surfaceAlt, borderRadius: radius.hero, padding: 'clamp(28px, 5vw, 56px)' }}>
-          <SectionHead
-            id="watch"
-            eyebrow="Policy watch"
-            title="Shops rewrite the rules quietly. Quids In checks your receipts when they do."
-            lede="When a shop changes its return window, Quids In’s list changes and checks every receipt you hold. A purchase keeps the terms it was made under; you just hear when the goalposts move."
-          />
-          <div style={{ marginTop: 32, fontSize: 14, fontWeight: 600, color: color.bodyStrong }}>
-            Return windows already built in for {STORE_COUNT} UK shops. Tap one to check a return:
-          </div>
-          <ul style={{ listStyle: 'none', padding: 0, margin: '14px 0 0', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {STORE_POLICIES.slice(0, SHOWN_SHOPS).map((s) => (
-              <li key={s.name}>
-                <button type="button" className="k-chip" onClick={() => check(s.name)} aria-label={`Check a ${s.name} return`} style={{ background: color.surface, border: 0, borderRadius: radius.pill, padding: '8px 14px', minHeight: 36, fontSize: 14, fontWeight: 600, color: color.ink, boxShadow: shadow.raised, cursor: 'pointer', fontFamily: font.ui }}>
-                  {s.name} <span style={{ color: color.muted, fontWeight: 500 }}>· {s.windowDays} days</span>
-                </button>
-              </li>
-            ))}
-            {STORE_COUNT > SHOWN_SHOPS && (
-              <li style={{ background: color.accentSoft, borderRadius: radius.pill, padding: '8px 14px', fontSize: 14, fontWeight: 600, color: color.accentInk }}>
-                and {STORE_COUNT - SHOWN_SHOPS} more
-              </li>
-            )}
-          </ul>
-          <p style={{ fontSize: 14, color: color.muted, margin: '18px 0 0', lineHeight: 1.6 }}>
-            Shopping somewhere else? Enter the window from your receipt, and Quids In counts it down just the same.
-          </p>
-        </div>
-      </section>
-
-      {/* Private by design */}
-      <section id="private" aria-labelledby="private-title" className="k-anchor" style={{ ...WRAP, padding: 'clamp(72px, 10vw, 128px) 28px 0' }}>
-        <div style={{ ...ON_HERO, borderRadius: radius.hero, padding: 'clamp(28px, 6vw, 72px)', position: 'relative', overflow: 'hidden' }}>
-          <div className="k-split">
-            <div style={{ minWidth: 0 }}>
-              <SectionHead id="private-title" onInk eyebrow="Privacy" title={PRIVATE.title} lede={PRIVATE.body} />
-              <ul style={{ listStyle: 'none', padding: 0, margin: '28px 0 0', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: 12 }}>
-                {PRIVATE.points.map((p) => (
-                  <li key={p} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 15, fontWeight: 600, background: color.onHeroChip, borderRadius: 14, padding: '12px 14px' }}>
-                    <Tick size={16} stroke={color.gold} width={2.6} />
-                    {p}
-                  </li>
-                ))}
-              </ul>
-              <a href="/privacy/" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 14, fontSize: 15, fontWeight: 600, color: color.white, textDecoration: 'underline', textUnderlineOffset: 4 }}>
-                Read the privacy policy
-              </a>
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <Art height={260}><PhoneOnlyArt /></Art>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -456,6 +391,31 @@ export function Landing() {
         </div>
       </section>
 
+      {/* Private by design */}
+      <section id="private" aria-labelledby="private-title" className="k-anchor" style={{ ...WRAP, padding: 'clamp(72px, 10vw, 128px) 28px 0' }}>
+        <div style={{ ...ON_HERO, borderRadius: radius.hero, padding: 'clamp(28px, 6vw, 72px)', position: 'relative', overflow: 'hidden' }}>
+          <div className="k-split">
+            <div style={{ minWidth: 0 }}>
+              <SectionHead id="private-title" onInk eyebrow="Privacy" title={PRIVATE.title} lede={PRIVATE.body} />
+              <ul style={{ listStyle: 'none', padding: 0, margin: '28px 0 0', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: 12 }}>
+                {PRIVATE.points.map((p) => (
+                  <li key={p} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 15, fontWeight: 600, background: color.onHeroChip, borderRadius: 14, padding: '12px 14px' }}>
+                    <Tick size={16} stroke={color.gold} width={2.6} />
+                    {p}
+                  </li>
+                ))}
+              </ul>
+              <a href="/privacy/" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 14, fontSize: 15, fontWeight: 600, color: color.white, textDecoration: 'underline', textUnderlineOffset: 4 }}>
+                Read the privacy policy
+              </a>
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <Art height={260}><PhoneOnlyArt /></Art>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Questions */}
       <section id="faq" aria-labelledby="faq-title" className="k-anchor" style={{ ...WRAP, maxWidth: 880, padding: 'clamp(72px, 10vw, 128px) 28px 0' }}>
         <SectionHead id="faq-title" center eyebrow="Questions" title="Before you hand over a receipt" />
@@ -482,7 +442,7 @@ export function Landing() {
       </main>
 
       <footer style={{ borderTop: `1px solid ${color.border}`, background: color.surfaceAlt }}>
-        <div style={{ ...WRAP, padding: '56px 28px 28px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))', gap: 32 }}>
+        <div style={{ ...WRAP, padding: '56px 28px 28px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(140px, 100%), 1fr))', gap: 32 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <Logo size={28} />
@@ -563,7 +523,11 @@ function FooterLinks({ title, links }: { title: string; links: [string, string][
       <ul style={{ listStyle: 'none', padding: 0, margin: '10px 0 0' }}>
         {links.map(([href, label]) => (
           <li key={href}>
-            <a href={href} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 40, fontSize: 14.5, color: color.body, overflowWrap: 'anywhere' }}>{label}</a>
+            <a href={href} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 40, fontSize: 14.5, color: color.body, overflowWrap: 'anywhere' }}>
+              {/* An address breaks before its @ and its dots in a narrow column
+                  (or at a large text size), never mid-word. */}
+              <span>{label.includes('@') ? label.split(/(?=[@.])/).map((part, i) => <span key={i}>{i > 0 && <wbr />}{part}</span>) : label}</span>
+            </a>
           </li>
         ))}
       </ul>
