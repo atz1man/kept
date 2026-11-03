@@ -175,12 +175,14 @@ export function claimPack(r: Receipt, today: Date, name?: string): ClaimPack {
    * statutory dates the same pack already called "at least".
    */
   const floor = floorClock(r);
+  // A shop's Christmas returns date (christmas.ts) is not "28 days": say whose date it is.
+  const shopSpan = d.christmas ? 'Christmas returns' : `${r.windowDays} days`;
   events.push(deadline(
     d.deadline,
     'The shop’s own return window closes',
     floor
-      ? `${r.windowDays} days, any reason, on the shop’s terms — counted here from the order; the shop counts from ${floorWords(floor).countsFrom}`
-      : `${r.windowDays} days, any reason, on the shop’s terms`,
+      ? `${shopSpan}, any reason, on the shop’s terms — counted here from the order; the shop counts from ${floorWords(floor).countsFrom}`
+      : `${shopSpan}, any reason, on the shop’s terms`,
     floor !== null,
   ));
   if (r.distance) {
@@ -261,7 +263,7 @@ function standing(r: Receipt, today: Date, shopDeadline: Date): string[] {
      * that half still stands.
      */
     out.push(margin >= 0
-      ? `Sent back on ${fmtDateLong(fromISODate(r.sentOn))}, inside the shop’s own ${r.windowDays}-day window.`
+      ? `Sent back on ${fmtDateLong(fromISODate(r.sentOn))}, inside the shop’s own ${derive(r, today).christmas ? 'Christmas returns window' : `${r.windowDays}-day window`}.`
       : deadlineIsFloor(r)
         ? `Sent back on ${fmtDateLong(fromISODate(r.sentOn))}.`
         : `Sent back on ${fmtDateLong(fromISODate(r.sentOn))}, after the shop’s own window had closed.`);

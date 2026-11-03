@@ -21,6 +21,7 @@ import { RefundForm } from '../components/RefundForm';
 import { Letter } from '../components/Letter';
 import { readReturnRef, REG34_CLOCK, refundChase, refundChaseLine, refundLetter } from '../../lib/refund-chase';
 import { possessive } from '../../lib/words';
+import { christmasLine } from '../../lib/christmas';
 
 /** 2π × 40, the circumference of the ring the countdown draws on. */
 const RING_CIRCUMFERENCE = 251.3;
@@ -103,7 +104,9 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
    * beside an empty grey track, with no red anywhere on it. There is still a
    * day left on the last day, and the ring now says so — thinly.
    */
-  const remaining = windowRemaining(d.daysLeft, receipt.windowDays);
+  const remaining = windowRemaining(d.daysLeft, d.windowLength);
+  const christmasNote = christmasLine(receipt, d);
+  const windowWords = d.christmas ? 'Christmas returns' : `${receipt.windowDays}-day window`;
   /*
    * A settled receipt — returned or kept — has no clock. The ring went on
    * counting down in urgency red ("closed", "RETURN BY", "3 days left")
@@ -304,7 +307,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
             {deadlineText}
           </div>
           <div style={{ fontSize: 13, color: color.muted, marginTop: 6 }}>
-            {settled ? `${receipt.windowDays}-day window · bought ${boughtText}` : `${d.daysUsed} of ${receipt.windowDays} days used · bought ${boughtText}`}
+            {settled ? `${windowWords} · bought ${boughtText}` : `${d.daysUsed} of ${d.windowLength} days used · bought ${boughtText}`}
           </div>
         </TopCard>
       )}
@@ -502,6 +505,14 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
         <div style={{ padding: '16px 18px 14px' }}>
           <div style={cardLabel}>Store policy</div>
           <div style={{ fontSize: 14, marginTop: 5, lineHeight: 1.5, color: color.bodyStrong }}>{receipt.policy}</div>
+          {/* The shop's Christmas date for a purchase it covers — why the
+              deadline above is later than the window, or, where the shop
+              puts a condition on it the app cannot see, the date to check. */}
+          {christmasNote && (
+            <div data-christmas style={{ fontSize: 13.5, marginTop: 6, lineHeight: 1.5, color: color.bodyStrong }}>
+              {christmasNote}
+            </div>
+          )}
           {/* Where that sentence came from, said under it: read off the shop's
               own page on a day, or not yet. The words a person repeats at a
               counter should say how far to trust them. */}
@@ -519,7 +530,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
               being able to see, beside the policy that set it. */}
           {(receipt.status === 'sent' || receipt.status === 'returned') && (
             <div data-shop-window style={{ fontSize: 12.5, marginTop: 6, lineHeight: 1.5, color: color.muted }}>
-              {d.expired ? 'The window ran to' : 'The window runs to'} {deadlineText} · {receipt.windowDays}-day window · bought {boughtText}
+              {d.expired ? 'The window ran to' : 'The window runs to'} {deadlineText} · {windowWords} · bought {boughtText}
             </div>
           )}
           {dispatchDiffers && (
