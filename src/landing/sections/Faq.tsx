@@ -50,9 +50,7 @@ const FAQ: { q: string; a: ReactNode; id?: string }[] = [
   {
     id: IPHONE_ANSWER_ID,
     q: 'How do I put it on my phone?',
-    a: APP_STORE.url
-      ? <>Get it from the <a href={APP_STORE.url} style={{ color: color.accentInk, fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 3 }}>App Store</a>. On Android, open Quids In in Chrome and add it to your Home Screen; it then opens like any other app, and works offline.</>
-      : 'The iPhone app is on its way to the App Store. You don’t have to wait for it: open Quids In in Safari or Chrome and add it to your Home Screen. It then opens like any other app, and works offline.',
+    a: <>{APP_STORE.url ? <a href={APP_STORE.url} style={{ color: color.accentInk, fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 3 }}>Get it on the App Store</a> : 'The iPhone app is coming to the App Store'}. Or open Quids In in Safari or Chrome and add it to your Home Screen: it opens like any other app, and works offline.</>,
   },
   {
     q: 'Who makes Quids In?',

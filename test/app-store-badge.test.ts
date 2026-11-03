@@ -34,7 +34,7 @@ describe('the App Store button', () => {
     expect(out).toContain(`href="#${IPHONE_ANSWER_ID}"`);
     const faq = readFileSync(join(ROOT, 'src/landing/sections/Faq.tsx'), 'utf8');
     expect(faq).toContain('id: IPHONE_ANSWER_ID');
-    expect(faq).toMatch(/on its way to the App Store/);
+    expect(faq).toMatch(/The iPhone app is coming to the App Store/);
   });
 
   it('is on the hero, ahead of the web app', () => {
