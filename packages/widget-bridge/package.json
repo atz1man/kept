@@ -1,0 +1,13 @@
+{
+  "name": "@kept/widget-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Quids In on iOS: hands the Home Screen widget its next deadlines, through the App Group on the phone.",
+  "license": "UNLICENSED",
+  "author": "kept",
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    }
+  }
+}
