@@ -1,9 +1,10 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { color, font, radius } from '../../tokens';
 import { FREE_TIER_LIMIT } from '../../lib/quota';
 import { STORE_COUNT } from '../../lib/stores';
 import { COOLING_OFF_DAYS, LEGAL_DISCLAIMER, REJECT_DAYS } from '../../lib/legal';
 import { COMPANY, CONTACT_EMAIL } from '../../lib/brand';
+import { APP_STORE, IPHONE_ANSWER_ID } from '../app-store-listing';
 
 /*
  * The questions someone asks before trusting a receipt tracker, answered with
@@ -17,7 +18,7 @@ import { COMPANY, CONTACT_EMAIL } from '../../lib/brand';
  * loads. No price is named here; the pricing section owns it, and
  * scripts/agreement.mjs holds that section to the one in the app.
  */
-const FAQ: { q: string; a: ReactNode }[] = [
+const FAQ: { q: string; a: ReactNode; id?: string }[] = [
   {
     q: 'Is Quids In free?',
     a: `Yes, for your first ${FREE_TIER_LIMIT} receipts, with every feature included. After that, Quids In Plus unlocks unlimited receipts, by the month or by the year, and Family covers everyone in an Apple Family Sharing group. Both renew until you cancel, which takes a moment in your Apple ID settings.`,
@@ -47,8 +48,11 @@ const FAQ: { q: string; a: ReactNode }[] = [
     a: `${LEGAL_DISCLAIMER} Quids In tells you what the law says and drafts a letter for you to send, but it is not a solicitor and does not act for you.`,
   },
   {
+    id: IPHONE_ANSWER_ID,
     q: 'How do I put it on my phone?',
-    a: 'Open Quids In in Safari or Chrome and add it to your Home Screen. It then opens like any other app, and works offline.',
+    a: APP_STORE.url
+      ? <>Get it from the <a href={APP_STORE.url} style={{ color: color.accentInk, fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 3 }}>App Store</a>. On Android, open Quids In in Chrome and add it to your Home Screen; it then opens like any other app, and works offline.</>
+      : 'The iPhone app is on its way to the App Store. You don’t have to wait for it: open Quids In in Safari or Chrome and add it to your Home Screen. It then opens like any other app, and works offline.',
   },
   {
     q: 'Who makes Quids In?',
@@ -59,10 +63,12 @@ const FAQ: { q: string; a: ReactNode }[] = [
 ];
 
 export function Faq() {
+  // The App Store button links here; an answer it links to should be open.
+  const open = useHashTarget();
   return (
     <div style={{ display: 'grid', gap: 10 }}>
-      {FAQ.map(({ q, a }) => (
-        <details key={q} className="k-faq" style={{ background: color.surfaceAlt, borderRadius: radius.card }}>
+      {FAQ.map(({ q, a, id }) => (
+        <details key={q} id={id} open={id !== undefined && open === id ? true : undefined} className="k-faq" style={{ background: color.surfaceAlt, borderRadius: radius.card }}>
           <summary style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '20px 22px', minHeight: 44, cursor: 'pointer', fontFamily: font.display, fontWeight: 650, fontSize: 17, letterSpacing: '-0.01em', color: color.ink }}>
             <span>{q}</span>
             <span className="k-faq-mark" aria-hidden="true" style={{ flexShrink: 0, width: 28, height: 28, borderRadius: 999, background: color.surface, display: 'grid', placeItems: 'center' }}>
@@ -76,4 +82,16 @@ export function Faq() {
       ))}
     </div>
   );
+}
+
+/** The id in the address bar's #fragment, kept current as links on the page change it. */
+function useHashTarget(): string {
+  const read = () => (typeof location === 'undefined' ? '' : decodeURIComponent(location.hash.slice(1)));
+  const [hash, setHash] = useState(read);
+  useEffect(() => {
+    const on = () => setHash(read());
+    window.addEventListener('hashchange', on);
+    return () => window.removeEventListener('hashchange', on);
+  }, []);
+  return hash;
 }

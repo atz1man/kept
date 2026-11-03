@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { policyFor, withPolicy } from './src/lib/csp';
+import { APP_STORE } from './src/landing/app-store-listing';
 
 /** Where sw.js keeps the list this plugin writes — an empty array until stamped. */
 const BUILD_FILES = '[/* __BUILD_FILES__ */]';
@@ -35,6 +36,26 @@ function appFiles(bundle: Rollup.OutputBundle, appHtml: string): string[] {
   };
   visit(entry.fileName);
   return [...files].sort();
+}
+
+/**
+ * Safari's Smart App Banner on the landing page — "Quids In · Open in the App
+ * Store" across the top of the page on an iPhone — once the app has an Apple
+ * ID (src/landing/app-store-listing.ts). Nothing until then: a banner for an
+ * app the store does not have is a banner Safari will not show anyway, and
+ * the tag would claim a listing that does not exist.
+ */
+export function smartAppBanner(appId: string | null): Plugin {
+  return {
+    name: 'kept-smart-app-banner',
+    transformIndexHtml: {
+      order: 'post',
+      handler: (html, ctx) => {
+        if (!appId || !/(^|[\\/])index\.html$/.test(ctx.filename) || /[\\/](app|privacy|rights)[\\/]index\.html$/.test(ctx.filename)) return html;
+        return html.replace('</head>', `  <meta name="apple-itunes-app" content="app-id=${appId}">\n  </head>`);
+      },
+    },
+  };
 }
 
 /**
@@ -200,6 +221,7 @@ export default defineConfig(({ mode }) => ({
     contentSecurityPolicy(policyFor(loadEnv(mode, __dirname, 'VITE_').VITE_FEED_ORIGIN)),
     stampServiceWorker(),
     serveOcrFiles(),
+    smartAppBanner(APP_STORE.appId),
   ],
   server: { port: 5183 },
   build: {

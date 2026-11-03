@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { color, font, radius, shadow } from '../../tokens';
+import { color, font, palette, radius, shadow } from '../../tokens';
+import { APP_STORE, BADGE_PATH, IPHONE_ANSWER_ID } from '../app-store-listing';
 import { LogoMark } from '../../app/components/Icons';
 
 export const WRAP: CSSProperties = { maxWidth: 1160, margin: '0 auto', padding: '0 28px' };
@@ -87,5 +88,43 @@ export function Card({ children, emphasised = true, style, className }: { childr
     >
       {children}
     </div>
+  );
+}
+
+/**
+ * The App Store, in the place a visitor looks for it.
+ *
+ * Live, it is Apple's own badge linking to the listing. Until then it is an
+ * honest "coming" button that opens the answer about using Quids In on an
+ * iPhone today — never a badge, which Apple permits only for an app on the
+ * store, and never a link to nowhere, which is what the old one was.
+ *
+ * Always black on white type, in either theme: it stands for the App Store's
+ * own black badge, so it does not turn pale in dark mode.
+ */
+export function AppStoreButton() {
+  if (APP_STORE.url) {
+    return (
+      <a href={APP_STORE.url} style={{ display: 'inline-flex', minHeight: 48 }}>
+        <img src={BADGE_PATH} alt="Download on the App Store" height={54} style={{ height: 54, width: 'auto', display: 'block' }} />
+      </a>
+    );
+  }
+  const ink = palette.light.ink;
+  return (
+    <a
+      href={`#${IPHONE_ANSWER_ID}`}
+      className="k-store"
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 12, background: ink, color: palette.light.white, padding: '11px 22px 11px 18px', borderRadius: 14, border: `1.5px solid ${palette.light.onHeroSoft}`, minHeight: 48, boxSizing: 'border-box' }}
+    >
+      <svg aria-hidden="true" width="22" height="26" viewBox="0 0 22 26">
+        <rect x="2" y="1" width="18" height="24" rx="4.5" fill="none" stroke={palette.light.white} strokeWidth="2" />
+        <rect x="8" y="3.6" width="6" height="2" rx="1" fill={palette.light.white} />
+      </svg>
+      <span>
+        <span style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: 0.2 }}>iPhone app</span>
+        <span style={{ display: 'block', fontSize: 17, fontWeight: 650, lineHeight: 1.1, letterSpacing: '-0.01em' }}>Coming to the App Store</span>
+      </span>
+    </a>
   );
 }
