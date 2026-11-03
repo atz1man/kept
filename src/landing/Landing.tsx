@@ -343,8 +343,11 @@ export function Landing() {
                     </li>
                   ))}
                   {STORE_COUNT > SHOWN_SHOPS && (
-                    <li style={{ background: color.accentSoft, borderRadius: radius.pill, padding: '8px 14px', fontSize: 14, fontWeight: 600, color: color.accentInk }}>
-                      and {STORE_COUNT - SHOWN_SHOPS} more
+                    <li>
+                      {/* The rest have a page each (src/landing/shop-pages.ts). */}
+                      <a href="/returns/" style={{ display: 'inline-flex', alignItems: 'center', background: color.accentSoft, borderRadius: radius.pill, padding: '8px 14px', minHeight: 36, fontSize: 14, fontWeight: 600, color: color.accentInk }}>
+                        and {STORE_COUNT - SHOWN_SHOPS} more →
+                      </a>
                     </li>
                   )}
                 </ul>
@@ -462,7 +465,7 @@ export function Landing() {
             </p>
           </div>
           <FooterLinks title="Product" links={[['#how', 'How it works'], ['#pricing', 'Pricing'], ['#faq', 'Questions'], ['/app/', 'Open the app']]} />
-          <FooterLinks title="Your rights" links={[['/rights/', 'What the law gives you'], ['/privacy/', 'Privacy policy']]} />
+          <FooterLinks title="Your rights" links={[['/rights/', 'What the law gives you'], ['/returns/', 'Every shop’s returns policy'], ['/privacy/', 'Privacy policy']]} />
           {CONTACT_EMAIL && <FooterLinks title="Contact" links={[[`mailto:${CONTACT_EMAIL}`, CONTACT_EMAIL], ['/privacy/#contact', 'Data requests']]} />}
         </div>
         {/* The trading disclosure the law asks the company's website for —

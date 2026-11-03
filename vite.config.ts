@@ -6,6 +6,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { policyFor, withPolicy } from './src/lib/csp';
 import { APP_STORE } from './src/landing/app-store-listing';
+import { shopFiles } from './src/landing/shop-pages';
 
 /** Where sw.js keeps the list this plugin writes — an empty array until stamped. */
 const BUILD_FILES = '[/* __BUILD_FILES__ */]';
@@ -191,6 +192,24 @@ function serveOcrFiles(): Plugin {
 }
 
 /**
+ * A page per checked shop, for people searching "<shop> returns policy"
+ * (src/landing/shop-pages.ts). Written as plain HTML at build time, so a
+ * search engine reads the answer without running the app, and checked
+ * against the build's date: a shop whose check has gone stale since the last
+ * deploy has no page in the next one. Each carries the same policy as every
+ * other built page. Not in the iPhone bundle, which has no use for them.
+ */
+function shopPages(policy: string): Plugin {
+  return {
+    name: 'kept-shop-pages',
+    apply: 'build',
+    generateBundle() {
+      for (const { fileName, source } of shopFiles(new Date(), policy)) this.emitFile({ type: 'asset', fileName, source });
+    },
+  };
+}
+
+/**
  * The version a person can quote to support, from package.json — and only
  * that. Not the git commit: stamping the commit would change the bundle's
  * bytes on every commit, docs-only ones included, and the service worker's
@@ -207,7 +226,9 @@ const VERSION = (JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'ut
  */
 const IOS_MODE = 'ios';
 
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ mode }) => {
+  const policy = policyFor(loadEnv(mode, __dirname, 'VITE_').VITE_FEED_ORIGIN);
+  return {
   define: { __KEPT_VERSION__: JSON.stringify(VERSION) },
   plugins: [
     react(),
@@ -218,7 +239,8 @@ export default defineConfig(({ mode }) => ({
      * stops the build here (`feedOrigin` throws) rather than shipping an app
      * whose policy and fetch disagree. See src/lib/feed-origin.ts.
      */
-    contentSecurityPolicy(policyFor(loadEnv(mode, __dirname, 'VITE_').VITE_FEED_ORIGIN)),
+    contentSecurityPolicy(policy),
+    ...(mode === IOS_MODE ? [] : [shopPages(policy)]),
     stampServiceWorker(),
     serveOcrFiles(),
     smartAppBanner(APP_STORE.appId),
@@ -268,4 +290,5 @@ export default defineConfig(({ mode }) => ({
      */
     env: { TZ: 'America/New_York' },
   },
-}));
+};
+});
