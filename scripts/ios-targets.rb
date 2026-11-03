@@ -27,6 +27,21 @@ end
 app_group = project.main_group.find_subpath('App', false)
 app_group.new_reference('App.entitlements') unless app_group.files.any? { |f| f.path == 'App.entitlements' }
 
+# Siri and Shortcuts (ios/App/App/QuidsInIntents.swift, iOS 16+), compiled into
+# the app itself. AppIntents is weakly linked because the app still runs on
+# iOS 13, where the framework does not exist and a strong link would stop it
+# launching at all.
+%w[QuidsInIntentsCore.swift QuidsInIntents.swift].each do |name|
+  next if app_group.files.any? { |f| f.path == name }
+  ref = app_group.new_reference(name)
+  app.add_file_references([ref])
+end
+app.build_configurations.each do |config|
+  flags = Array(config.build_settings['OTHER_LDFLAGS'] || ['$(inherited)'])
+  flags += ['-weak_framework', 'AppIntents'] unless flags.include?('AppIntents')
+  config.build_settings['OTHER_LDFLAGS'] = flags
+end
+
 # Each extension the app carries: its folder (also the target's name), the
 # suffix on the app's bundle identifier, its Swift sources, and the system
 # frameworks it links.

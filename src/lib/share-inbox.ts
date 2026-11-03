@@ -43,3 +43,11 @@ export function incomingFrom(item: InboxItem | null | undefined): Incoming | nul
   }
   return { file: new File([data], item.name || 'shared', { type: item.mime }) };
 }
+
+/** Where a Siri or Shortcuts action (ios/App/App/QuidsInIntents.swift) asks the app to start. */
+export type IntentStart = 'paste' | 'scan';
+
+/** The intent's word ("add" or "scan") as the Add screen's start, or null for anything else. */
+export function intentStart(open: string | null | undefined): IntentStart | null {
+  return open === 'scan' ? 'scan' : open === 'add' ? 'paste' : null;
+}

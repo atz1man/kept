@@ -35,6 +35,8 @@ export interface AppState extends KeptState {
   sharedFile?: File | null;
   /** Counts shares that arrived while the app was open, so Add starts afresh for each. */
   shareId?: number;
+  /** How a Siri or Shortcuts action asked Add to start — the paste box or the camera — until Add has. */
+  intentStart?: 'paste' | 'scan';
   /** True in the landing page's demo, framed or not (see embed.ts): nothing is read or written to disk. */
   embedded: boolean;
   /**
@@ -135,7 +137,8 @@ export interface AppState extends KeptState {
 
 export type Action =
   | { type: 'go'; screen: Screen }
-  | { type: 'incoming'; text?: string; file?: File }
+  | { type: 'incoming'; text?: string; file?: File; start?: 'paste' | 'scan' }
+  | { type: 'intent-started' }
   | { type: 'open'; id: string }
   | { type: 'ob-next' }
   | { type: 'ob-skip' }
@@ -227,7 +230,10 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
         sharedText: action.text ?? null,
         sharedFile: action.file ?? null,
         shareId: (state.shareId ?? 0) + 1,
+        intentStart: action.start,
       };
+    case 'intent-started':
+      return { ...state, intentStart: undefined };
     case 'go':
       // The edit screen belongs to the receipt open behind it, so the
       // selection survives the trip in both directions.

@@ -539,8 +539,12 @@ export function App() {
           offer={offer}
           store={state.store}
           onRestorePurchase={appStore.restore}
-          start={addStart}
-          onStarted={() => setAddStart(undefined)}
+          // A start asked for on Home, or by Siri and Shortcuts.
+          start={addStart ?? state.intentStart}
+          onStarted={() => {
+            setAddStart(undefined);
+            if (state.intentStart) dispatch({ type: 'intent-started' });
+          }}
         />
       )}
 

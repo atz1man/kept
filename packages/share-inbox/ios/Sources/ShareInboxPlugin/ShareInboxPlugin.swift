@@ -20,12 +20,19 @@ public class ShareInboxPlugin: CAPPlugin, CAPBridgedPlugin {
     static let noteName = "shared.json"
     static let dataName = "shared.data"
 
+    /// Where a Siri or Shortcuts action leaves what to open ("add" or "scan"). Held to QuidsInIntentsCore.swift by test/app-intents.test.ts.
+    static let openKey = "kept.intent.open"
+
     @objc func take(_ call: CAPPluginCall) {
         guard let group = Bundle.main.object(forInfoDictionaryKey: "KeptAppGroup") as? String,
               let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) else {
-            call.resolve(["item": NSNull()])
+            call.resolve(["item": NSNull(), "open": NSNull()])
             return
         }
+        // A Siri or Shortcuts action that opened the app, taken once like a share.
+        let defaults = UserDefaults(suiteName: group)
+        let open = defaults?.string(forKey: ShareInboxPlugin.openKey)
+        defaults?.removeObject(forKey: ShareInboxPlugin.openKey)
         let inbox = container.appendingPathComponent(ShareInboxPlugin.inboxFolder, isDirectory: true)
         let noteURL = inbox.appendingPathComponent(ShareInboxPlugin.noteName)
         let dataURL = inbox.appendingPathComponent(ShareInboxPlugin.dataName)
@@ -37,9 +44,9 @@ public class ShareInboxPlugin: CAPPlugin, CAPBridgedPlugin {
               let note = try? JSONSerialization.jsonObject(with: noteData) as? [String: String],
               let name = note["name"], let mime = note["mime"],
               let data = try? Data(contentsOf: dataURL) else {
-            call.resolve(["item": NSNull()])
+            call.resolve(["item": NSNull(), "open": open ?? NSNull()])
             return
         }
-        call.resolve(["item": ["name": name, "mime": mime, "base64": data.base64EncodedString()]])
+        call.resolve(["open": open ?? NSNull(), "item": ["name": name, "mime": mime, "base64": data.base64EncodedString()]])
     }
 }
