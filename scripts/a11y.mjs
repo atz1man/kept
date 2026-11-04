@@ -578,6 +578,16 @@ await hiddenPage.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
 await hiddenPage.getByRole('button', { name: 'Skip' }).click().catch(() => {});
 await hiddenPage.waitForTimeout(400);
 const obscured = new Set();
+/*
+ * And the ring is not cut off by what it sits in. Measured: every receipt
+ * row on Home is a button filling its list item, and the list card hides its
+ * overflow to round its corners, so the ring drawn outside the button was cut
+ * off on the left and right always, and on all four sides for a row alone in
+ * its card: a keyboard user could not see which receipt they were on. The
+ * halo-and-outline probe above passes it, because the computed style is
+ * right; only the geometry is wrong.
+ */
+const clipped = new Set();
 let controlsSeen = 0;
 for (const [screen, open] of [
   ['home', async () => {}],
@@ -593,15 +603,36 @@ for (const [screen, open] of [
       const nav = document.querySelector('nav[aria-label="Main"]');
       if (!el || !nav || nav.contains(el) || !el.matches('button, a[href], input, select, textarea, [role="radio"]')) return null;
       const a = el.getBoundingClientRect();
-      return { what: (el.getAttribute('aria-label') || el.textContent || el.tagName).trim().slice(0, 40), under: a.bottom > nav.getBoundingClientRect().top + 1 };
+      // Which sides of the ring survive every ancestor that clips: one that
+      // hides overflow, or contains its paint (content-visibility does both).
+      const cs = getComputedStyle(el);
+      const off = parseFloat(cs.outlineOffset) || 0;
+      const reach = off + (parseFloat(cs.outlineWidth) || 0);
+      const clip = { l: -Infinity, t: -Infinity, r: Infinity, b: Infinity };
+      for (let p = el.parentElement; p; p = p.parentElement) {
+        const ps = getComputedStyle(p);
+        if (ps.overflowX === 'visible' && ps.overflowY === 'visible' && !/paint|strict|content/.test(ps.contain) && ps.contentVisibility !== 'auto') continue;
+        const b = p.getBoundingClientRect();
+        clip.l = Math.max(clip.l, b.left); clip.t = Math.max(clip.t, b.top); clip.r = Math.min(clip.r, b.right); clip.b = Math.min(clip.b, b.bottom);
+      }
+      // Each side's band runs from `off` to `reach` outside the box (inside it
+      // when negative); a side counts if the middle of its band is painted.
+      const mid = (off + reach) / 2;
+      const sides = [
+        a.left - mid >= clip.l - 0.5, a.top - mid >= clip.t - 0.5,
+        a.right + mid <= clip.r + 0.5, a.bottom + mid <= clip.b + 0.5,
+      ].filter(Boolean).length;
+      return { what: (el.getAttribute('aria-label') || el.textContent || el.tagName).trim().slice(0, 40), under: a.bottom > nav.getBoundingClientRect().top + 1, sides, ring: cs.outlineStyle !== 'none' };
     });
     if (!seen) continue;
     controlsSeen += 1;
     if (seen.under) obscured.add(`${screen}: "${seen.what}"`);
+    if (seen.ring && seen.sides < 4) clipped.add(`${screen}: "${seen.what}" (${4 - seen.sides} of 4 sides cut off)`);
   }
 }
 if (controlsSeen < 10) lostFocus.push(['the tab-bar check', `only ${controlsSeen} focused control(s) were measured`]);
 for (const o of obscured) lostFocus.push([`focus on ${o}`, 'is behind the tab bar']);
+for (const o of clipped) lostFocus.push([`focus ring on ${o}`, 'is clipped by the list it sits in']);
 
 /*
  * Forced colours: the state that erases every colour the app chose.
