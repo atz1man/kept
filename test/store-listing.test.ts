@@ -256,6 +256,79 @@ describe('what the review notes say about the policy list', () => {
   });
 });
 
+describe('what the review notes say about the parts outside the app', () => {
+  /*
+   * The build carries a widget, a share extension and Siri actions. A
+   * reviewer meets each of them outside the app, and the notes said nothing
+   * of any: not where to find them, and not that none of them goes online.
+   * Each is checked here only if it is in the project, read off the
+   * extension points and the intents file rather than kept as a list.
+   */
+  const pbx = readFileSync(join(ROOT, 'ios', 'App', 'App.xcodeproj', 'project.pbxproj'), 'utf8');
+  const plists = readdirSync(join(ROOT, 'ios', 'App'))
+    .map((d) => join(ROOT, 'ios', 'App', d, 'Info.plist'))
+    .filter((f) => { try { return statSync(f).isFile(); } catch { return false; } })
+    .map((f) => readFileSync(f, 'utf8'));
+  const point = (id: string) => plists.some((p) => p.includes(`<string>${id}</string>`));
+  const intents = pbx.includes('QuidsInIntents.swift in Sources')
+    ? readFileSync(join(ROOT, 'ios', 'App', 'App', 'QuidsInIntents.swift'), 'utf8')
+    : '';
+
+  it('finds the extensions it is meant to check', () => {
+    expect(point('com.apple.widgetkit-extension')).toBe(true);
+    expect(point('com.apple.share-services')).toBe(true);
+    expect(intents).not.toBe('');
+  });
+
+  it('name the widget, and say where it goes', () => {
+    if (point('com.apple.widgetkit-extension')) expect(listing.reviewNotes).toMatch(/widget[^.]*Home Screen/i);
+  });
+
+  it('name the share extension, and say what is shared is read on the phone', () => {
+    if (point('com.apple.share-services')) expect(listing.reviewNotes).toMatch(/\bShare\b[^.]*read on the (?:device|phone)/);
+  });
+
+  it('give one phrase Siri answers to, word for word', () => {
+    if (!intents) return;
+    // Siri says the app's name as the Home Screen shows it.
+    const displayName = /<key>CFBundleDisplayName<\/key>\s*<string>([^<]+)<\/string>/.exec(readFileSync(join(ROOT, 'ios', 'App', 'App', 'Info.plist'), 'utf8'))![1];
+    const phrases = [...intents.matchAll(/"([^"]*)\\\(\.applicationName\)([^"]*)"/g)].map((m) => `${m[1]}${displayName}${m[2]}`);
+    expect(phrases.length).toBeGreaterThan(0);
+    expect(phrases.some((p) => listing.reviewNotes.includes(`“${p}”`))).toBe(true);
+  });
+
+  it('and say none of them goes online', () => {
+    expect(listing.reviewNotes).toMatch(/none of (?:them|which|these) (?:reaches|uses|goes to) the (?:network|internet)/i);
+  });
+});
+
+describe('the summary of the review notes in SUBMISSION.md', () => {
+  /*
+   * It said the one purchase was "Unlimited receipts", paid once, and that
+   * the iPhone app downloads nothing: both true once, both false since the
+   * subscriptions and the feed host. Nothing read it, so it was the person
+   * filling in App Store Connect who would have found out.
+   */
+  const faq = readFileSync(join(ROOT, 'store', 'SUBMISSION.md'), 'utf8').split('### Questions the review team may ask')[1] ?? '';
+
+  it('is there to be read', () => {
+    expect(faq.length).toBeGreaterThan(100);
+  });
+
+  it('names every product the app sells, and no purchase it no longer does', () => {
+    for (const id of PLAN_ORDER) expect(faq).toContain(PLAN_PRODUCTS[id]);
+    expect(faq).not.toMatch(/paid once|Unlimited receipts|Unlock unlimited|kept\.unlimited/i);
+  });
+
+  it('says the policy list is downloaded when the iPhone build fetches one, as the notes do', () => {
+    const fetches = feedRefreshes(true, feedOrigin(loadEnv('ios', ROOT, 'VITE_').VITE_FEED_ORIGIN));
+    if (fetches) {
+      expect(faq).toMatch(/downloads/i);
+      expect(faq).not.toMatch(/downloads nothing|comes with app updates/i);
+    }
+  });
+});
+
 describe('the copyright line', () => {
   /*
    * App Store Connect asks for one, and it is the seller's name a customer
