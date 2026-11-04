@@ -25,6 +25,22 @@
  * the SHAPE, which is linear, not the absolute numbers, which is why the
  * filter column moving by half between two sets of runs is recorded and not
  * explained: it was measured, and nothing in the app plausibly did it.
+ *
+ * Measured again with the CPU slowed four times, and with the libraries a
+ * person might really have rather than this script's (six in seven of its
+ * receipts are open, which nobody's are):
+ *
+ *   3,000 receipts, 30 open, the rest settled      1.25 s, 36 rows drawn
+ *   3,000 receipts, 400 left in "Window closed"    2.0 s, 406 rows
+ *   2,000 as this script makes them                11.2 s, 1,717 rows
+ *
+ * Settled lists show their latest three, so only a backlog of closed windows
+ * nobody has settled makes Home long. For that case every row skips layout
+ * and paint until it scrolls near (`content-visibility` in styles.css): the
+ * last line is 4.6 s with it. A virtual list would do better still, at the
+ * cost of rows that do not exist for find-in-page, a screen reader's list
+ * count and the swipe gestures; not worth it for a backlog that one tap
+ * ("I'm keeping all") clears.
  */
 import './uk-clock.mjs';
 import { chromium } from 'playwright';
