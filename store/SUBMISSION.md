@@ -91,5 +91,8 @@ is on it too. Green before you Archive — `test/preflight.test.ts` holds the ch
 ### Questions the review team may ask, answered in `store/listing.json` → `reviewNotes`
 
 - **Do I need an account?** No — everything is on the device.
-- **Where does the data go?** Nowhere. The iPhone app downloads nothing: its list of policy changes comes with app updates (until a feed host is set, section 1).
-- **Are there purchases?** One, "Unlimited receipts", paid once. It is under Settings → Unlock unlimited, with Restore purchase directly below it.
+- **Where does the data go?** Nowhere. Each time it opens, the app downloads the list of policy changes from the website (Settings → Policy watch turns it off); the download is the same for everyone and sends nothing about the person.
+- **Are there purchases?** Three auto-renewable subscriptions in one group: `kept.plus.yearly`, `kept.plus.monthly` and `kept.family.yearly`. Settings → Plan, with Restore purchase directly under the plan buttons.
+- **What runs outside the app?** A widget, a Share extension and Siri and Shortcuts actions; none of them reaches the network.
+
+The notes are the answer the reviewer reads; these lines are a summary of them, and `test/store-listing.test.ts` holds both to the app.
