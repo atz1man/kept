@@ -8,6 +8,7 @@ import { Field, inputStyle } from './Field';
 import { Escalation } from './Escalation';
 import { Letter } from './Letter';
 import { Pressable } from './Pressable';
+import { cardHeaderHit } from './card-header';
 
 /**
  * "Something wrong with it?" — what the law gives today, and the letter that
@@ -43,7 +44,7 @@ export function FaultPanel({ receipt, today, onSent, onUnsent, onFinalSent, onFi
       <Pressable
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, fontWeight: 600, fontSize: 15 }}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, fontWeight: 600, fontSize: 15, ...cardHeaderHit }}
       >
         <span>{claim ? 'Fault letter sent' : 'Something wrong with it?'}</span>
         <svg width="10" height="7" viewBox="0 0 10 7" style={{ flexShrink: 0, transform: `rotate(${open ? 180 : 0}deg)`, transition: 'transform .2s' }} aria-hidden="true">

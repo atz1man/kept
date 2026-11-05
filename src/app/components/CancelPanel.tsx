@@ -6,6 +6,7 @@ import { LEGAL_DISCLAIMER } from '../../lib/legal';
 import type { Receipt } from '../../lib/types';
 import { Letter } from './Letter';
 import { Pressable } from './Pressable';
+import { cardHeaderHit } from './card-header';
 
 /**
  * "Cancel the order" — for an online order, in writing, inside the fourteen
@@ -31,7 +32,7 @@ export function CancelPanel({ receipt, today, onSent, onUnsent }: {
       <Pressable
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, fontWeight: 600, fontSize: 15 }}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, fontWeight: 600, fontSize: 15, ...cardHeaderHit }}
       >
         <span>{by ? 'Order cancelled' : 'Cancel the order in writing'}</span>
         <svg width="10" height="7" viewBox="0 0 10 7" style={{ flexShrink: 0, transform: `rotate(${open ? 180 : 0}deg)`, transition: 'transform .2s' }} aria-hidden="true">

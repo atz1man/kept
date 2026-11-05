@@ -635,6 +635,69 @@ for (const o of obscured) lostFocus.push([`focus on ${o}`, 'is behind the tab ba
 for (const o of clipped) lostFocus.push([`focus ring on ${o}`, 'is clipped by the list it sits in']);
 
 /*
+ * And every control is big enough to hit (WCAG 2.2 SC 2.5.8 asks 24 CSS px;
+ * Apple asks 44pt).
+ *
+ * Measured on a 390px screen: three panel headers on a receipt, "Something
+ * wrong with it?", "Cancel the order in writing" and the legal rights, were
+ * buttons 18-19px tall inside cards padded 15px round them, so the card
+ * looked like the thing to tap and only a line of text was. Every other
+ * control was 32px or more. This asks for 24px in both directions of every
+ * control on every screen it opens; a link inside a sentence is excepted, as
+ * the criterion excepts it. The panels on a receipt are opened by name, since
+ * the seeded receipt shows only the ones its state offers.
+ */
+const tinyTargets = new Set();
+{
+  const tPage = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
+  await tPage.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await tPage.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await tPage.waitForTimeout(400);
+  let measured = 0;
+  const measure = async (screen) => {
+    const small = await tPage.evaluate(() => [...document.querySelectorAll('button, a[href], input:not([type=hidden]), select, textarea, summary, [role="radio"], [role="switch"]')]
+      .filter((el) => {
+        const r = el.getBoundingClientRect();
+        if (!r.width || !r.height || getComputedStyle(el).visibility === 'hidden') return false;
+        // A link set in running text: the criterion's own exception.
+        if (el.tagName === 'A' && getComputedStyle(el).display === 'inline' && el.parentElement && /^(P|LI|SPAN|DIV)$/.test(el.parentElement.tagName) && (el.parentElement.textContent ?? '').trim().length > (el.textContent ?? '').trim().length + 20) return false;
+        return true;
+      })
+      .map((el) => { const r = el.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height), what: (el.getAttribute('aria-label') || el.textContent || el.getAttribute('placeholder') || el.tagName).trim().replace(/\s+/g, ' ').slice(0, 40) }; }));
+    measured += small.length;
+    for (const t of small) if (t.w < 24 || t.h < 24) tinyTargets.add(`${screen}: "${t.what}" is ${t.w}×${t.h}px`);
+  };
+  for (const [screen, open] of [
+    ['home', async () => {}],
+    // Bought in a shop: one statute, so the legal header is one line.
+    ['a receipt from a shop', async () => tPage.getByRole('button', { name: /Currys, JBL/ }).first().click()],
+    ['an online order', async () => {
+      await tPage.getByRole('button', { name: 'Back', exact: true }).click();
+      await tPage.waitForTimeout(300);
+      await tPage.getByRole('button', { name: /Zara, Wool-blend/ }).first().click();
+    }],
+    ['its edit form', async () => tPage.getByRole('button', { name: 'Edit', exact: true }).click()],
+    ['settings', async () => {
+      await tPage.getByRole('button', { name: 'Cancel' }).click();
+      await tPage.waitForTimeout(300);
+      await tPage.getByRole('button', { name: 'Settings', exact: true }).click();
+    }],
+    ['watch', async () => tPage.getByRole('button', { name: /^Watch/ }).click()],
+    ['add, typed in', async () => {
+      await tPage.getByRole('button', { name: /^Add/ }).first().click();
+      await tPage.waitForTimeout(300);
+      await tPage.getByRole('button', { name: 'Type it in yourself' }).click();
+    }],
+  ]) {
+    await open();
+    await tPage.waitForTimeout(500);
+    await measure(screen);
+  }
+  if (measured < 40) tinyTargets.add(`the target-size check: only ${measured} controls were measured`);
+}
+for (const t of tinyTargets) lostFocus.push([`tap target on ${t}`, 'is under 24px']);
+
+/*
  * Forced colours: the state that erases every colour the app chose.
  *
  * Windows high contrast replaces backgrounds and fills with the user's own
