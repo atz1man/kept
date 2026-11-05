@@ -583,7 +583,10 @@ const obscured = new Set();
  * row on Home is a button filling its list item, and the list card hides its
  * overflow to round its corners, so the ring drawn outside the button was cut
  * off on the left and right always, and on all four sides for a row alone in
- * its card: a keyboard user could not see which receipt they were on. The
+ * its card: a keyboard user could not see which receipt they were on. Then,
+ * tabbing back up a screen, the top of the ring on whatever reached the
+ * scroller's top edge (src/app/scroll-pad.ts), and three sides of Watch's
+ * focusable list. The
  * halo-and-outline probe above passes it, because the computed style is
  * right; only the geometry is wrong.
  */
@@ -592,16 +595,32 @@ let controlsSeen = 0;
 for (const [screen, open] of [
   ['home', async () => {}],
   ['a receipt', async () => hiddenPage.getByRole('button', { name: /Currys, JBL/ }).click()],
-  ['settings', async () => hiddenPage.getByRole('button', { name: 'Settings', exact: true }).click()],
+  ['its edit form', async () => hiddenPage.getByRole('button', { name: 'Edit', exact: true }).click()],
+  ['settings', async () => {
+    await hiddenPage.getByRole('button', { name: 'Cancel' }).click();
+    await hiddenPage.waitForTimeout(300);
+    await hiddenPage.getByRole('button', { name: 'Settings', exact: true }).click();
+  }],
+  ['watch', async () => hiddenPage.getByRole('button', { name: /^Watch/ }).click()],
+  ['add, typed in', async () => {
+    await hiddenPage.getByRole('button', { name: /^Add/ }).first().click();
+    await hiddenPage.waitForTimeout(300);
+    await hiddenPage.getByRole('button', { name: 'Type it in yourself' }).click();
+  }],
 ]) {
   await open();
   await hiddenPage.waitForTimeout(400);
-  for (let i = 0; i < 60; i += 1) {
-    await hiddenPage.keyboard.press('Tab');
+  // Both ways: tabbing forward scrolls a control in at the bottom edge, and
+  // back at the TOP, where a scroller with no top padding cut the ring off.
+  for (let i = 0; i < 120; i += 1) {
+    await hiddenPage.keyboard.press(i < 60 ? 'Tab' : 'Shift+Tab');
     const seen = await hiddenPage.evaluate(() => {
       const el = document.activeElement;
       const nav = document.querySelector('nav[aria-label="Main"]');
-      if (!el || !nav || nav.contains(el) || !el.matches('button, a[href], input, select, textarea, [role="radio"]')) return null;
+      // A scroll region that takes focus is measured for its ring only: it is
+      // always taller than the space above the bar.
+      const region = !!el?.matches('[role="region"][tabindex="0"]');
+      if (!el || !nav || nav.contains(el) || !(region || el.matches('button, a[href], input, select, textarea, [role="radio"]'))) return null;
       const a = el.getBoundingClientRect();
       // Which sides of the ring survive every ancestor that clips: one that
       // hides overflow, or contains its paint (content-visibility does both).
@@ -622,7 +641,7 @@ for (const [screen, open] of [
         a.left - mid >= clip.l - 0.5, a.top - mid >= clip.t - 0.5,
         a.right + mid <= clip.r + 0.5, a.bottom + mid <= clip.b + 0.5,
       ].filter(Boolean).length;
-      return { what: (el.getAttribute('aria-label') || el.textContent || el.tagName).trim().slice(0, 40), under: a.bottom > nav.getBoundingClientRect().top + 1, sides, ring: cs.outlineStyle !== 'none' };
+      return { what: (el.getAttribute('aria-label') || el.textContent || el.tagName).trim().slice(0, 40), under: !region && a.bottom > nav.getBoundingClientRect().top + 1, sides, ring: cs.outlineStyle !== 'none' };
     });
     if (!seen) continue;
     controlsSeen += 1;
@@ -632,7 +651,7 @@ for (const [screen, open] of [
 }
 if (controlsSeen < 10) lostFocus.push(['the tab-bar check', `only ${controlsSeen} focused control(s) were measured`]);
 for (const o of obscured) lostFocus.push([`focus on ${o}`, 'is behind the tab bar']);
-for (const o of clipped) lostFocus.push([`focus ring on ${o}`, 'is clipped by the list it sits in']);
+for (const o of clipped) lostFocus.push([`focus ring on ${o}`, 'is cut off by what it sits in']);
 
 /*
  * And every control is big enough to hit (WCAG 2.2 SC 2.5.8 asks 24 CSS px;

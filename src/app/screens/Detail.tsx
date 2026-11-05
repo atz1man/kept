@@ -23,6 +23,7 @@ import { readReturnRef, REG34_CLOCK, refundChase, refundChaseLine, refundLetter 
 import { possessive } from '../../lib/words';
 import { christmasLine } from '../../lib/christmas';
 import { cardHeaderHit } from '../components/card-header';
+import { SCROLL_PAD_TOP } from '../scroll-pad';
 
 /** 2π × 40, the circumference of the ring the countdown draws on. */
 const RING_CIRCUMFERENCE = 251.3;
@@ -155,7 +156,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
   const [dueText, sentText] = chase && receipt.sentOn ? fmtDatesTogether([chase.due, fromISODate(receipt.sentOn)], today) : [];
 
   return (
-    <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px', scrollPaddingBottom: 120 }}>
+    <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px', scrollPaddingTop: SCROLL_PAD_TOP, scrollPaddingBottom: 120 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, margin: '4px -2px 10px' }}>
         {/* Text controls, the way a phone's own navigation bar draws them:
             boxed buttons up here were two more cards on a screen of cards. */}

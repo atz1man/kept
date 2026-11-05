@@ -23,6 +23,7 @@ import { HowBought } from '../components/HowBought';
 import { PREFIXED_PAD, Prefixed } from '../components/Field';
 import { Pressable } from '../components/Pressable';
 import { Note, UnlockOffer } from '../components/UnlockOffer';
+import { SCROLL_PAD_TOP } from '../scroll-pad';
 
 interface Props {
   today: Date;
@@ -690,7 +691,7 @@ export function Add({ today, sharedText, sharedFile, quotaFull, trackedTotal, up
      * held inside the scroller's padding, so with 120px of it the save bar
      * stopped 120px short of the tab bar and floated mid-card.
      */
-    <div ref={scroller} className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 0', scrollPaddingBottom: collapsed ? 120 + SAVE_BAR_PX : 120 }}>
+    <div ref={scroller} className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 0', scrollPaddingTop: SCROLL_PAD_TOP, scrollPaddingBottom: collapsed ? 120 + SAVE_BAR_PX : 120 }}>
       <h1 tabIndex={-1} style={{ fontSize: 24, fontWeight: 600, padding: '10px 2px 4px', margin: 0 }}>Add a receipt</h1>
       <p style={{ fontSize: 13, color: color.muted, padding: '0 2px 14px', margin: 0 }}>
         {/* "Read from your photo — check … below" only while there is a card
