@@ -161,20 +161,21 @@ export function shopCss(): string {
   const face = font.ui.split(',')[0];
   return `@font-face{font-family:${face};src:url('/fonts/geist.woff2') format('woff2');font-weight:100 900;font-display:swap}
 *{box-sizing:border-box}
-:root{color-scheme:light}
-body{margin:0;background:${c.canvas};color:${c.body};font:17px/1.6 ${font.ui};-webkit-text-size-adjust:100%}
+:root{color-scheme:light;background:${c.canvas}}
+body{margin:0;background:${c.canvas};color:${c.ink};font:17px/1.6 ${font.ui};-webkit-text-size-adjust:100%}
 a{color:${c.accentInk}}
 .bar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 20px;border-bottom:1px solid ${c.borderHair}}
 .bar .home{font:700 20px/1 ${font.display};color:${c.ink};text-decoration:none;min-height:44px;display:inline-flex;align-items:center}
 .bar .cta,.button{display:inline-flex;align-items:center;min-height:44px;padding:0 20px;border-radius:999px;background:${c.accent};color:${c.white};font-weight:600;text-decoration:none}
 main{max-width:720px;margin:0 auto;padding:24px 20px 48px}
+main p{color:${c.body}}
 .crumb{font-size:14px;color:${c.muted};margin:0 0 8px}
 h1{font:700 clamp(30px,6vw,44px)/1.1 ${font.display};letter-spacing:-0.03em;color:${c.ink};margin:0 0 12px}
 h2{font:650 20px/1.3 ${font.display};color:${c.ink};margin:0 0 6px}
 .answer{font-size:21px;color:${c.ink};margin:0 0 12px}
 section,aside{margin-top:28px}
 .small-print{background:${c.caution};color:${c.cautionInk};border-radius:16px;padding:16px 18px}
-.small-print h2{color:${c.cautionInk}}
+.small-print h2,.small-print p{color:${c.cautionInk}}
 .christmas,.pitch{background:${c.surfaceAlt};border-radius:16px;padding:16px 18px}
 .source{font-size:15px;color:${c.muted};margin-top:28px}
 .shops{list-style:none;padding:0;margin:20px 0 0;display:grid;gap:2px}
