@@ -766,6 +766,107 @@ const bigTextFailures = [];
 failures.push(...bigTextFailures);
 
 /*
+ * And the phone's own text size, at the most the app applies.
+ *
+ * The iPhone app follows the text size chosen in iOS Settings, up to twice
+ * the default (src/lib/text-size.ts), by setting -webkit-text-size-adjust on
+ * the body — which Chromium honours only for a mobile viewport, so this is
+ * its own context. The minimum-font-size pass above raises only the small
+ * type; this doubles all of it. Measured before the app followed the
+ * setting: Edit's Cancel, title and Save drawn over one another, the
+ * wordmark under "On this phone", "£412.96" cut off at the pence on a
+ * 320px phone, and every row's name and line ending in "…". What is asked,
+ * of every screen: no row line cut short, no two controls or headings
+ * drawn over each other, and no visible text off the screen unless something
+ * inside the screen clips it on purpose (an ellipsis, a card's edge).
+ * Content passing under a bar pinned to the screen is scrolling, not overlap.
+ */
+const scaledFailures = [];
+let scaledScreens = 0;
+for (const width of WIDTHS) {
+  const sctx = await browser.newContext({ viewport: { width, height: 844 }, isMobile: true, hasTouch: true });
+  await sctx.addInitScript(() => {
+    // As src/app/text-size-native.ts sets it on a phone.
+    document.addEventListener('DOMContentLoaded', () => {
+      document.body.style.setProperty('-webkit-text-size-adjust', '200%');
+      document.documentElement.toggleAttribute('data-text-scaled', true);
+    });
+  });
+  const sp = await sctx.newPage();
+  await sp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  // Proof the setting took: the first heading at twice its size without it.
+  const plain = await (await browser.newContext({ viewport: { width, height: 844 }, isMobile: true, hasTouch: true })).newPage();
+  await plain.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  const headingSize = (pg) => pg.evaluate(() => parseFloat(getComputedStyle(document.querySelector('h1')).fontSize));
+  const base = await headingSize(plain);
+  await plain.context().close();
+  const took = await headingSize(sp);
+  const measure = (screen) => sp.evaluate(([screen, W]) => {
+    const out = [];
+    const pinned = (e) => { for (let p = e; p; p = p.parentElement) { const pos = getComputedStyle(p).position; if (pos === 'fixed' || pos === 'sticky' || p.matches?.('nav[aria-label="Main"], [data-save-bar]')) return true; } return false; };
+    const bar = document.querySelector('nav[aria-label="Main"]')?.getBoundingClientRect().top ?? innerHeight;
+    const shown = [...document.querySelectorAll('button, a[href], h1, h2, h3, label, input, select, textarea, [role="img"], header > div')]
+      .filter((e) => !e.closest('[aria-hidden="true"]') && getComputedStyle(e).visibility !== 'hidden')
+      .map((e) => ({ e, r: e.getBoundingClientRect(), pin: pinned(e) }))
+      .filter((x) => x.r.width > 0 && x.r.height > 0 && x.r.bottom > 0 && x.r.top < bar);
+    const name = (e) => (e.getAttribute('aria-label') || e.textContent || e.getAttribute('placeholder') || e.tagName).trim().replace(/\s+/g, ' ').slice(0, 28);
+    for (let i = 0; i < shown.length; i += 1) for (let j = i + 1; j < shown.length; j += 1) {
+      const a = shown[i], b = shown[j];
+      if (a.e.contains(b.e) || b.e.contains(a.e) || a.pin !== b.pin) continue;
+      const ox = Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left);
+      const oy = Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top);
+      if (ox > 4 && oy > 4) out.push(`"${name(a.e)}" is drawn over "${name(b.e)}"`);
+    }
+    const frame = document.querySelector('.k-frame');
+    for (const el of document.querySelectorAll('h1, h2, h3, p, span, button, a, label, div')) {
+      if (el.closest('[aria-hidden="true"]') || !el.childNodes.length || ![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) continue;
+      const r = el.getBoundingClientRect();
+      if (!r.width || (r.right <= W + 1 && r.left >= -1)) continue;
+      let clipped = false;
+      for (let p = el.parentElement; p && p !== frame; p = p.parentElement) if (getComputedStyle(p).overflowX !== 'visible') { clipped = true; break; }
+      if (!clipped) out.push(`"${name(el)}" runs off the screen (${Math.round(r.left)} to ${Math.round(r.right)}px)`);
+    }
+    // A row's lines wrap at this size rather than ending in "…".
+    for (const el of document.querySelectorAll('.k-row-line')) {
+      if (el.scrollWidth > el.clientWidth + 1) out.push(`row line "${name(el)}" is cut short`);
+    }
+    return [...new Set(out)];
+  }, [screen, width]);
+  for (const [screen, open] of [
+    ['home', async () => sp.getByRole('button', { name: 'Skip' }).click()],
+    ['a receipt', async () => sp.getByRole('button', { name: /Currys, JBL/ }).first().click()],
+    ['its claim pack', async () => sp.getByRole('button', { name: /^Claim pack/ }).click()],
+    ['its edit form', async () => {
+      await sp.getByRole('button', { name: 'Back', exact: true }).click();
+      await sp.waitForTimeout(250);
+      await sp.getByRole('button', { name: 'Edit', exact: true }).click();
+    }],
+    ['settings', async () => {
+      await sp.getByRole('button', { name: 'Cancel' }).click();
+      await sp.waitForTimeout(250);
+      await sp.getByRole('button', { name: 'Settings', exact: true }).click();
+    }],
+    ['watch', async () => sp.getByRole('button', { name: /^Watch/ }).click()],
+    ['add', async () => sp.getByRole('button', { name: /^Add/ }).first().click()],
+    ['add, typed in', async () => sp.getByRole('button', { name: 'Type it in yourself' }).click()],
+  ]) {
+    try {
+      await open();
+    } catch (e) {
+      scaledFailures.push({ label: `${screen} at twice the text size`, width, kind: 'could not be reached', detail: String(e.message).split('\n')[0] });
+      break;
+    }
+    await sp.waitForTimeout(400);
+    scaledScreens += 1;
+    for (const d of await measure(screen)) scaledFailures.push({ label: `${screen} at twice the text size`, width, kind: 'drawn wrong', detail: d });
+  }
+  if (!(base > 0 && Math.abs(took / base - 2) < 0.05)) scaledFailures.push({ label: 'the twice-the-text-size pass', width, kind: 'the text size never took effect', detail: `the first heading measured ${took}px against ${base}px` });
+  await sctx.close();
+}
+if (scaledScreens < 10) scaledFailures.push({ label: 'the twice-the-text-size pass', width: 0, kind: 'reached too few screens', detail: `${scaledScreens} measured` });
+failures.push(...scaledFailures);
+
+/*
  * The biggest phones get the whole screen.
  *
  * The app sat in a 402px column on every viewport, a cap meant for desktops.

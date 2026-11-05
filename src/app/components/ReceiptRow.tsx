@@ -68,7 +68,7 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
 
       <button
         type="button"
-        className={`k-press ${emphasised ? 'k-row-white' : 'k-row-plain'}`}
+        className={`k-press k-row ${emphasised ? 'k-row-white' : 'k-row-plain'}`}
         onPointerDown={(e) => {
           startX.current = e.clientX;
           swiped.current = false;
@@ -137,7 +137,7 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
            * a squeezed title neither overflows the page nor covers a button,
            * so nothing else would notice it read "Ke…".
            */}
-          <span data-name style={{ display: 'block', fontWeight: 600, fontSize: 15.5, letterSpacing: '-0.015em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: MIN_NAME_PX }}>
+          <span data-name className="k-row-line" style={{ display: 'block', fontWeight: 600, fontSize: 15.5, letterSpacing: '-0.015em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: MIN_NAME_PX }}>
             {receipt.item}
           </span>
           {/*
@@ -147,7 +147,7 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
            * install opens on five receipts nobody added, and that must never
            * be lost at 320px), then the shop, then the rest.
            */}
-          <div style={{ fontSize: 13, color: color.muted, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div className="k-row-line" style={{ fontSize: 13, color: color.muted, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {receipt.demo && <SampleTag />}
             {receipt.store}
             {/* Until it arrives, the count beside it runs from the order and
@@ -162,7 +162,7 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
           {policyChanged && <div style={{ fontSize: 12, fontWeight: 500, color: color.accentInk, marginTop: 1 }}>Policy changed</div>}
         </div>
 
-        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+        <div className="k-row-end" style={{ textAlign: 'right', flexShrink: 0 }}>
           <div style={{ fontFamily: font.figures, fontSize: 15.5, fontWeight: 650, letterSpacing: '-0.01em' }}>{money(receipt.amount)}</div>
           {/* Said in colour and in words, not in a pill: red and "2 days
               left" when it is close, the accent when it is coming up, grey

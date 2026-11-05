@@ -369,6 +369,32 @@ a:hover { color: var(--k-accent-ink); }
 }
 
 /*
+ * A figure set at display size keeps that size when the phone's text is made
+ * larger (src/app/text-size.ts). Everything else grows with the setting; a
+ * 46px total doubled is 92px, which on a 320px phone cut "£412.96" off at the
+ * pence. iOS itself stops scaling its large titles in the same way.
+ */
+.k-display { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+/*
+ * A row's name and its line under it hold to one line and end in "…" at the
+ * designed size, which keeps a list of hundreds scannable. Once the phone's
+ * text is larger (`data-text-scaled`, set by src/app/text-size-native.ts) a
+ * row cut to "JBL Tune…" / "Sample · Cu…" says less than the person asked to
+ * read, so the lines wrap instead. !important because the one-line rule is
+ * set inline on each row.
+ */
+:root[data-text-scaled] .k-row-line { white-space: normal !important; }
+/*
+ * And the price and days left drop to a line of their own, under the name
+ * and in line with it (a 44px avatar and the 13px gap), so the name has the
+ * row's width to wrap in. Beside a doubled "£89.00 / 2 days left", the name
+ * had the width of one letter and read "Tun / e / 770".
+ */
+:root[data-text-scaled] .k-row { flex-wrap: wrap; }
+:root[data-text-scaled] .k-row-end { flex: 1 0 100%; padding-left: 57px; text-align: left !important; }
+
+/*
  * Buttons are pills, the way a money app draws the thing to press. The
  * primary is the accent given a light source — a gradient from the tile's
  * top indigo to its bottom one, a hairline highlight along the top edge, and

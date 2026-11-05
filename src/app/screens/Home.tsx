@@ -130,8 +130,12 @@ export function Home({ receipts, today, urgentDays, policyAlert, changedIds, onO
 
   return (
     <div style={{ flex: 1, overflow: 'auto', padding: `6px 16px ${undoShowing ? 212 : 120}px`, scrollPaddingTop: SCROLL_PAD_TOP, scrollPaddingBottom: undoShowing ? 212 : 120 }}>
-      <header className="k-fade" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 2px 16px' }}>
-        <h1 tabIndex={-1} style={{ display: 'flex', alignItems: 'center', gap: 9, margin: 0, fontWeight: 400, minWidth: 0 }}>
+      {/* Wraps, and the masthead keeps its width: with the phone's text made
+          larger the wordmark is wider than the space beside the pill, and a
+          masthead allowed to shrink drew "in!" under "On this phone". The
+          pill goes to the next line instead. */}
+      <header className="k-fade" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 2px 16px' }}>
+        <h1 tabIndex={-1} style={{ display: 'flex', alignItems: 'center', gap: 9, margin: 0, fontWeight: 400 }}>
           <Logo size={28} />
           <span>
             <Wordmark />
@@ -540,20 +544,20 @@ export const SentRow = memo(function SentRow({ receipt: r, today, onOpen }: { re
   return (
     <li style={{ listStyle: 'none' }}>
       <Pressable
-        className={late ? 'k-row-white' : 'k-row-plain'}
+        className={late ? 'k-row-white k-row' : 'k-row-plain k-row'}
         onClick={() => onOpen(r.id)}
         aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${money(r.amount)}, ${went}, ${late ? 'refund late' : 'waiting for the refund'}`}
         style={groupedRow}
       >
         <Avatar store={r.store} cat={r.cat} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <span data-name style={rowTitle}>{r.item}</span>
-          <div style={rowSub}>
+          <span data-name className="k-row-line" style={rowTitle}>{r.item}</span>
+          <div className="k-row-line" style={rowSub}>
             {r.demo && <SampleTag />}
             {r.store} · {went}
           </div>
         </div>
-        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+        <div className="k-row-end" style={{ textAlign: 'right', flexShrink: 0 }}>
           <div style={{ fontFamily: font.figures, fontSize: 15.5, fontWeight: 650, letterSpacing: '-0.01em' }}>{money(r.amount)}</div>
           {/* Said as the deadline rows say theirs: in colour and in words. */}
           <div style={{ marginTop: 2, fontSize: 12.5, fontWeight: late ? 600 : 500, color: late ? color.danger : color.muted }}>
@@ -571,7 +575,7 @@ export const MoneyBackRow = memo(function MoneyBackRow({ receipt: r, onOpen }: {
       {/* Reachable. These were inert, so a receipt marked returned by
           a stray swipe could never be opened, corrected or deleted. */}
       <Pressable
-        className="k-row-plain"
+        className="k-row-plain k-row"
         onClick={() => onOpen(r.id)}
         aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${r.exchanged ? 'swapped for another' : `${money(refundOf(r))} ${r.credit ? 'in credit' : 'back'}, returned`}`}
         style={groupedRow}
@@ -580,16 +584,16 @@ export const MoneyBackRow = memo(function MoneyBackRow({ receipt: r, onOpen }: {
           <Tick />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <span data-name style={{ ...rowTitle, textDecoration: 'line-through', color: color.muted }}>{r.item}</span>
+          <span data-name className="k-row-line" style={{ ...rowTitle, textDecoration: 'line-through', color: color.muted }}>{r.item}</span>
           {/* The marker survives the return. This list is where "which of
               these were mine" is asked, and the row stopped saying so the
               moment it was ticked off. */}
-          <div style={rowSub}>
+          <div className="k-row-line" style={rowSub}>
             {r.demo && <SampleTag />}
             {r.store}
           </div>
         </div>
-        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+        <div className="k-row-end" style={{ textAlign: 'right', flexShrink: 0 }}>
           {/* A swap brought an item back, not money: said, not shown as £0.00. */}
           <div style={{ fontFamily: font.figures, fontSize: 15.5, fontWeight: 650, color: color.accentInk }}>{r.exchanged ? 'swapped' : money(refundOf(r))}</div>
           {/* Credit is not cash: it is still at the shop, to be spent. */}
@@ -605,21 +609,21 @@ export const KeepingRow = memo(function KeepingRow({ receipt: r, today, onOpen }
   return (
     <li style={{ listStyle: 'none' }}>
       <Pressable
-        className="k-row-plain"
+        className="k-row-plain k-row"
         onClick={() => onOpen(r.id)}
         aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${money(r.amount)}, ${cover ? `${cover}, ` : ''}keeping it`}
         style={groupedRow}
       >
         <Avatar store={r.store} cat={r.cat} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <span data-name style={{ ...rowTitle, color: color.body }}>{r.item}</span>
-          <div style={rowSub}>
+          <span data-name className="k-row-line" style={{ ...rowTitle, color: color.body }}>{r.item}</span>
+          <div className="k-row-line" style={rowSub}>
             {r.demo && <SampleTag />}
             {r.store}
             {cover && ` · ${cover}`}
           </div>
         </div>
-        <div style={{ fontFamily: font.figures, fontSize: 15.5, fontWeight: 650, color: color.muted, flexShrink: 0 }}>{money(r.amount)}</div>
+        <div className="k-row-end" style={{ fontFamily: font.figures, fontSize: 15.5, fontWeight: 650, color: color.muted, flexShrink: 0 }}>{money(r.amount)}</div>
       </Pressable>
     </li>
   );
@@ -713,7 +717,7 @@ function HeroCard({ receipt, today, onOpen }: { receipt: Receipt; today: Date; o
           sentence wraps inside its own column rather than dropping below a
           44px number and leaving it stranded on a line of its own. */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 8 }}>
-        <span style={{ fontFamily: font.figures, fontVariantNumeric: 'proportional-nums', fontSize: 44, fontWeight: 700, letterSpacing: '-0.05em', color: accent, lineHeight: 1, flexShrink: 0 }}>
+        <span className="k-display" style={{ fontFamily: font.figures, fontVariantNumeric: 'proportional-nums', fontSize: 44, fontWeight: 700, letterSpacing: '-0.05em', color: accent, lineHeight: 1, flexShrink: 0 }}>
           {count}
         </span>
         <span style={{ fontSize: 16, fontWeight: 600, color: color.bodyStrong, lineHeight: 1.3, letterSpacing: '-0.01em' }}>
@@ -798,7 +802,7 @@ function Balance({ returnable, keptBack, live, dueThisWeek, samples }: {
         {/* As every row says it: a figure about purchases nobody made is labelled. */}
         {samples && <span style={chip}>Samples</span>}
       </div>
-      <div data-balance="returnable" style={{ position: 'relative', fontFamily: font.figures, fontVariantNumeric: 'proportional-nums', fontSize: 46, fontWeight: 700, letterSpacing: '-0.05em', lineHeight: 1.05, marginTop: 6 }}>
+      <div data-balance="returnable" className="k-display" style={{ position: 'relative', fontFamily: font.figures, fontVariantNumeric: 'proportional-nums', fontSize: 46, fontWeight: 700, letterSpacing: '-0.05em', lineHeight: 1.05, marginTop: 6 }}>
         {pounds}
         <span style={{ fontSize: 28, letterSpacing: '-0.03em' }}>{pence}</span>
       </div>
@@ -832,19 +836,21 @@ function QuickActions({ onAdd }: { onAdd: (start?: AddStart) => void }) {
     { label: 'Upload', name: 'Upload a PDF or email', icon: <ReceiptGlyph size={20} stroke={color.accentInk} />, go: () => onAdd('file') },
   ];
   return (
-    <nav aria-label="Quick actions" data-quick-actions style={{ display: 'flex', gap: 10, margin: '16px 0 2px' }}>
+    // Each takes its own width and the pair wraps: with the phone's text made
+    // larger, two side by side on a 320px phone read "Sc…" and "Upl…".
+    <nav aria-label="Quick actions" data-quick-actions style={{ display: 'flex', flexWrap: 'wrap', gap: 10, margin: '16px 0 2px' }}>
       {actions.map((a) => (
         <Pressable
           key={a.label}
           className="k-row-plain"
           onClick={a.go}
           aria-label={a.name}
-          style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, padding: '9px 12px', background: color.surfaceAlt, borderRadius: radius.control, color: color.bodyStrong }}
+          style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '1 1 max-content', minWidth: 0, padding: '9px 12px', background: color.surfaceAlt, borderRadius: radius.control, color: color.bodyStrong }}
         >
           <span style={{ width: 38, height: 38, flexShrink: 0, borderRadius: '50%', background: color.accentSoft, display: 'grid', placeItems: 'center', color: color.accentInk }}>
             {a.icon}
           </span>
-          <span style={{ fontSize: 14.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{a.label}</span>
+          <span className="k-row-line" style={{ fontSize: 14.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{a.label}</span>
         </Pressable>
       ))}
     </nav>
