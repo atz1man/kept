@@ -19,6 +19,7 @@
  */
 import './uk-clock.mjs';
 import { chromium } from 'playwright';
+import { shopPagesToSweep } from './shop-pages-to-sweep.mjs';
 import { reportOnCrash, sayCrash } from './crash-report.mjs';
 import { palette } from '../src/tokens.ts';
 
@@ -568,6 +569,10 @@ for (const colorScheme of ['light', 'dark']) {
   await lp.goto(`${ORIGIN}/rights/`, { waitUntil: 'networkidle' });
   await lp.waitForTimeout(400);
   await sweepInto(lp, `${prefix}rights`);
+  for (const path of await shopPagesToSweep(lp, ORIGIN)) {
+    await lp.goto(`${ORIGIN}${path}`, { waitUntil: 'networkidle' });
+    await sweepInto(lp, `${prefix}shop page ${path}`);
+  }
   await wide.close();
 }
 
@@ -658,6 +663,9 @@ for (const colorScheme of ['light', 'dark']) {
     expect(`the privacy page, ${colorScheme} device`, await look(dp), app);
     await dp.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
     expect(`the landing page, ${colorScheme} device`, await look(dp), { scheme: 'light', ...LIGHT });
+    // The shop pages are light-only, like the landing page they link back to.
+    await dp.goto(`${ORIGIN}/returns/`, { waitUntil: 'networkidle' });
+    expect(`the shop index, ${colorScheme} device`, await look(dp), { scheme: 'light', ...LIGHT });
     await dp.goto(`${ORIGIN}/app/?embed=1`, { waitUntil: 'networkidle' });
     await dp.waitForTimeout(400);
     expect(`the landing page's demo, ${colorScheme} device`, await look(dp), { scheme: 'light', ...LIGHT });

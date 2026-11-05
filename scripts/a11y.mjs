@@ -19,6 +19,7 @@
  */
 import './uk-clock.mjs';
 import { chromium } from 'playwright';
+import { shopPagesToSweep } from './shop-pages-to-sweep.mjs';
 import { reportOnCrash, sayCrash } from './crash-report.mjs';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -416,6 +417,12 @@ await audit(lp, 'privacy', findings);
 await lp.goto(`${ORIGIN}/rights/`, { waitUntil: 'networkidle' });
 await lp.waitForTimeout(400);
 await audit(lp, 'rights', findings);
+// The per-shop returns pages, for people searching a shop's policy: the
+// pages a stranger is likeliest to arrive on.
+for (const path of await shopPagesToSweep(lp, ORIGIN)) {
+  await lp.goto(`${ORIGIN}${path}`, { waitUntil: 'networkidle' });
+  await audit(lp, `shop page ${path}`, findings);
+}
 
 /*
  * Reduced motion, which axe does not check and nothing else here exercised.

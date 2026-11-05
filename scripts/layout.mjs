@@ -16,6 +16,7 @@
  */
 import './uk-clock.mjs';
 import { chromium } from 'playwright';
+import { shopPagesToSweep } from './shop-pages-to-sweep.mjs';
 import { reportOnCrash, sayCrash } from './crash-report.mjs';
 
 const ORIGIN = process.env.KEPT_ORIGIN ?? 'http://localhost:5183';
@@ -555,6 +556,16 @@ for (const width of WIDTHS) {
     await page.evaluate((v) => window.scrollTo(0, v), y);
     await page.waitForTimeout(150);
     await checkOverflow(page, `rights @${y}`, width);
+  }
+  // The per-shop returns pages: plain HTML with a stylesheet of their own,
+  // so nothing the app's layout rules hold reaches them.
+  for (const path of await shopPagesToSweep(page, ORIGIN)) {
+    await page.goto(`${ORIGIN}${path}`, { waitUntil: 'networkidle' });
+    for (const y of [0, 900]) {
+      await page.evaluate((v) => window.scrollTo(0, v), y);
+      await page.waitForTimeout(150);
+      await checkOverflow(page, `${path} @${y}`, width);
+    }
   }
   await ctx.close();
 }
