@@ -22,6 +22,7 @@ import { Letter } from '../components/Letter';
 import { readReturnRef, REG34_CLOCK, refundChase, refundChaseLine, refundLetter } from '../../lib/refund-chase';
 import { possessive } from '../../lib/words';
 import { christmasLine } from '../../lib/christmas';
+import { cardHeaderHit } from '../components/card-header';
 import { SCROLL_PAD_TOP } from '../scroll-pad';
 
 /** 2π × 40, the circumference of the ring the countdown draws on. */
@@ -570,7 +571,7 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
           <Pressable
             onClick={() => setLegalOpen((v) => !v)}
             aria-expanded={legalOpen}
-            style={{ display: 'flex', alignItems: 'flex-start', gap: 10, minWidth: 0 }}
+            style={{ display: 'flex', alignItems: 'flex-start', gap: 10, minWidth: 0, ...cardHeaderHit }}
           >
             {/* The chips wrap among themselves; the chevron does not wrap with
                 them. When it was one more item in a single wrapping row, a
