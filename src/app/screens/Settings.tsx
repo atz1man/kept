@@ -20,6 +20,7 @@ import { Pressable } from '../components/Pressable';
 import { ChevronRight, ChevronUpDown } from '../components/Icons';
 import { Note, RestorePurchase, UnlockOffer } from '../components/UnlockOffer';
 import { SupportDetails } from '../components/SupportDetails';
+import { SCROLL_PAD_TOP } from '../scroll-pad';
 
 interface Props {
   settings: SettingsShape;
@@ -190,7 +191,7 @@ export function Settings({ settings, receipts, embedded, onExport, onRestore, re
   const usagePct = Math.min(100, (used / FREE_TIER_LIMIT) * 100);
 
   return (
-    <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px', scrollPaddingBottom: 120 }}>
+    <div className="k-fade" style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px', scrollPaddingTop: SCROLL_PAD_TOP, scrollPaddingBottom: 120 }}>
       <h1 tabIndex={-1} style={{ fontSize: 24, fontWeight: 600, padding: '10px 2px 0', margin: 0 }}>Settings</h1>
 
       {/*

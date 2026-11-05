@@ -9,6 +9,7 @@ import { CatIcon } from '../components/Icons';
 import { Field, PREFIXED_PAD, Prefixed, inputStyle } from '../components/Field';
 import { HowBought } from '../components/HowBought';
 import { Pressable } from '../components/Pressable';
+import { SCROLL_PAD_TOP } from '../scroll-pad';
 
 const CATEGORIES: { cat: Category; label: string }[] = [
   { cat: 'audio', label: 'Tech' },
@@ -121,7 +122,7 @@ export function Edit({ receipt, today, onSave, onCancel }: Props) {
         </Pressable>
       </div>
 
-      <div data-scroller style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '0 16px 120px', scrollPaddingBottom: 120 }}>
+      <div data-scroller style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '0 16px 120px', scrollPaddingTop: SCROLL_PAD_TOP, scrollPaddingBottom: 120 }}>
       <p style={{ fontSize: 13, color: color.muted, padding: '0 2px 6px', margin: '14px 0 0' }}>
         Fix anything the paste got wrong — or give it a name you will recognise later.
       </p>

@@ -6,6 +6,7 @@ import { Avatar } from '../components/Avatar';
 import { SampleTag } from '../components/ReceiptRow';
 import { assess } from '../../lib/policy-feed';
 import type { PolicyUpdate, Receipt } from '../../lib/types';
+import { SCROLL_PAD_TOP } from '../scroll-pad';
 
 interface Props {
   updates: PolicyUpdate[];
@@ -58,7 +59,7 @@ export function Watch({ updates, receipts, today, watching, refreshes, onOpen }:
       tabIndex={0}
       role="region"
       aria-label="Coming up and policy changes"
-      style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px', scrollPaddingBottom: 120 }}
+      style={{ flex: 1, overflow: 'auto', padding: '6px 16px 120px', scrollPaddingTop: SCROLL_PAD_TOP, scrollPaddingBottom: 120 }}
     >
       {/* No pulsing "live" dot beside the title: in the iPhone app the list
           arrives with app updates and nothing is fetched, so a light that
