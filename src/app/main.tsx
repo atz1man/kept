@@ -9,6 +9,7 @@ import { isNative } from '../lib/mirror';
 import { restoreFromMirror, savedToStore } from '../lib/storage';
 import { bootScript, shouldReload } from '../lib/stale-build';
 import { collectShare, SHARED_MARK } from '../lib/share';
+import { followTextSize } from './text-size-native';
 
 /**
  * On a phone the app is the whole viewport — every phone, the 430 and 440px
@@ -56,6 +57,9 @@ function Shell() {
  * takes the page's scheme, by the same attribute the landing page uses.
  */
 if (embedded()) document.documentElement.dataset.scheme = 'light';
+
+// The iPhone's own text size, in the app as in every other (lib/text-size.ts).
+followTextSize();
 
 function mount() {
   createRoot(document.getElementById('root')!).render(

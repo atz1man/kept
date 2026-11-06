@@ -93,7 +93,7 @@ export function Edit({ receipt, today, onSave, onCancel }: Props) {
         data-form-bar
         style={{
           flexShrink: 0,
-          display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)', alignItems: 'center', gap: 8,
+          display: 'grid', gridTemplateColumns: 'minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr)', alignItems: 'center', gap: 8,
           minHeight: 52, padding: '4px 8px',
           background: color.canvas,
           borderBottom: `1px solid ${color.borderHair}`,
@@ -109,7 +109,10 @@ export function Edit({ receipt, today, onSave, onCancel }: Props) {
         >
           Cancel
         </Pressable>
-        <h1 tabIndex={-1} style={{ fontSize: 17, fontWeight: 600, margin: 0, textAlign: 'center', whiteSpace: 'nowrap' }}>Edit receipt</h1>
+        {/* The buttons keep their width and the title wraps between them: with
+            the phone's text made larger, a title that would not wrap took the
+            middle and the two buttons were drawn under it. */}
+        <h1 tabIndex={-1} style={{ fontSize: 17, fontWeight: 600, margin: 0, textAlign: 'center', minWidth: 0 }}>Edit receipt</h1>
         <Pressable
           onClick={save}
           style={{
