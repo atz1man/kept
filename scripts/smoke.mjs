@@ -251,7 +251,7 @@ results['a changed policy is announced on the receipts list'] =
 // Swipe the urgent row left past the commit threshold. Brought into view
 // first, as a thumb would: below the balance and the quick actions the list
 // starts under the fold, and a drag at off-screen coordinates touches nothing.
-const row = page.getByRole('button', { name: /Currys, JBL/ });
+const row = page.getByRole('button', { name: /JBL.*?, Currys, / });
 await row.evaluate((el) => el.scrollIntoView({ block: 'center' }));
 await page.waitForTimeout(150);
 const box = await row.boundingBox();
@@ -296,7 +296,7 @@ for (const [label, refuse] of [['confirms a copy that happened', false], ['does 
   await sharePage.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
   await sharePage.getByRole('button', { name: 'Skip' }).click().catch(() => {});
   await sharePage.waitForTimeout(300);
-  await sharePage.getByRole('button', { name: /Currys, JBL/ }).click();
+  await sharePage.getByRole('button', { name: /JBL.*?, Currys, / }).click();
   await sharePage.waitForTimeout(300);
   await sharePage.getByRole('button', { name: 'Got my money back' }).click();
   await sharePage.waitForTimeout(700);
@@ -341,7 +341,7 @@ for (const [label, refuse] of [['confirms a copy that happened', false], ['does 
   await kp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
   await kp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
   await kp.waitForTimeout(300);
-  await kp.getByRole('button', { name: /Currys, JBL/ }).click();
+  await kp.getByRole('button', { name: /JBL.*?, Currys, / }).click();
   await kp.waitForTimeout(300);
   // Asked before it is pressed, so a build without it says so by name rather
   // than stopping the run on a click that times out.
@@ -370,7 +370,7 @@ for (const [label, refuse] of [['confirms a copy that happened', false], ['does 
       !/JBL/.test(filed.closed + filed.urgent + filed.later);
     if (!results['a kept receipt leaves the deadlines, loses its returns link, and says so']) problems.push(`keeping: ${JSON.stringify({ linkGone, filed })}`);
 
-    await kp.getByRole('button', { name: /Currys, JBL.*keeping it/ }).click();
+    await kp.getByRole('button', { name: /JBL.*?, Currys, .*keeping it/ }).click();
     await kp.waitForTimeout(300);
     await kp.getByRole('button', { name: 'Not keeping it after all' }).click();
     await kp.waitForTimeout(300);
@@ -412,7 +412,7 @@ for (const cancel of [false, true]) {
   await sp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
   await sp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
   await sp.waitForTimeout(300);
-  await sp.getByRole('button', { name: /Currys, JBL/ }).click();
+  await sp.getByRole('button', { name: /JBL.*?, Currys, / }).click();
   await sp.waitForTimeout(300);
   await sp.getByRole('button', { name: 'Got my money back' }).click();
   await sp.waitForTimeout(700);
@@ -492,14 +492,14 @@ for (const cancel of [false, true]) {
       // The row's name leads with the shop; its text leads with the item.
       return [...(h?.nextElementSibling?.querySelectorAll('li') ?? [])].map((li) => `${li.querySelector('button')?.getAttribute('aria-label') ?? ''} | ${li.textContent}`);
     });
-    const rowFor = (store) => (rows.find((t) => t.startsWith(`${store}, `)) ?? '').split(' | ')[1] ?? '';
+    const rowFor = (store) => (rows.find((t) => t.split(' | ')[0].includes(`, ${store}, `)) ?? '').split(' | ')[1] ?? '';
     results['a kept row says how long its guarantee runs'] =
       /cover ended/.test(rowFor('Argos')) && !/covered until/.test(rowFor('Argos')) &&
       /covered until \d+ \w+ 2027/.test(rowFor('Currys'));
     if (!results['a kept row says how long its guarantee runs']) problems.push(`kept cover: ${JSON.stringify(rows)}`);
 
     // Its own screen, while kept: no countdown, no "RETURN BY".
-    await bp.getByRole('button', { name: new RegExp(`^${shutStores[0]}, .*keeping it$`) }).click();
+    await bp.getByRole('button', { name: new RegExp(`, ${shutStores[0]}, .*keeping it$`) }).click();
     await bp.waitForTimeout(400);
     const detail = await bp.locator('main').innerText();
     results['a settled receipt stops counting down'] =
@@ -512,7 +512,7 @@ for (const cancel of [false, true]) {
     const stored = () => bp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.slice(0, 2).map((r) => r.status));
     const beforeUndo = await stored();
     for (const store of shutStores) {
-      await bp.getByRole('button', { name: new RegExp(`^${store}, .*keeping it$`) }).click();
+      await bp.getByRole('button', { name: new RegExp(`, ${store}, .*keeping it$`) }).click();
       await bp.waitForTimeout(300);
       await bp.getByRole('button', { name: 'Not keeping it after all' }).click();
       await bp.waitForTimeout(300);
@@ -582,7 +582,7 @@ for (const cancel of [false, true]) {
       closed: under(/Window closed/),
       unsure: under(/when did it arrive/i),
       keep: [...document.querySelectorAll('button')].map((b) => b.textContent.trim()).filter((t) => /^I’m keeping (it|all \d+)$/.test(t)),
-      row: [...document.querySelectorAll('li button')].map((b) => b.getAttribute('aria-label') ?? '').find((l) => l.startsWith('Apple, AirPods Pro')) ?? '',
+      row: [...document.querySelectorAll('li button')].map((b) => b.getAttribute('aria-label') ?? '').find((l) => l.startsWith('AirPods Pro')) ?? '',
       hero: [...document.querySelectorAll('main button')].find((b) => /See what to do/.test(b.textContent))?.innerText ?? '',
     };
   });
@@ -610,7 +610,7 @@ for (const cancel of [false, true]) {
     pointed: notes.some((n) => /add the day it arrived/.test(n.body)),
   };
   // The arrival date, offered where the row leads, and what it does.
-  await fp.getByRole('button', { name: /^Apple, AirPods Pro/ }).first().click({ timeout: 3000 }).catch(() => {});
+  await fp.getByRole('button', { name: /^AirPods Pro.*?, Apple, / }).first().click({ timeout: 3000 }).catch(() => {});
   await fp.waitForTimeout(400);
   const detail = await fp.locator('main').innerText();
   const arrival = {
@@ -676,8 +676,8 @@ for (const cancel of [false, true]) {
     return { panel, letter, copied, said };
   };
 
-  const fresh = await letterFor(/Currys, JBL/, 'The left ear cup crackles');
-  const old = await letterFor(/IKEA, MALM/, '');
+  const fresh = await letterFor(/JBL.*?, Currys, /, 'The left ear cup crackles');
+  const old = await letterFor(/MALM.*?, IKEA, /, '');
   results['something wrong: a new purchase is rejected for a refund, in a letter carrying their words'] =
     !!fresh && /reject it for a full refund/.test(fresh.panel) && /section 22/.test(fresh.letter) &&
     /It has developed a fault\. The left ear cup crackles\./.test(fresh.letter) && !/section 23/.test(fresh.letter) &&
@@ -707,7 +707,7 @@ for (const cancel of [false, true]) {
   const faultLetterText = async () => {
     await np.getByRole('button', { name: 'Receipts', exact: true }).click();
     await np.waitForTimeout(300);
-    await np.getByRole('button', { name: /Currys, JBL/ }).first().click();
+    await np.getByRole('button', { name: /JBL.*?, Currys, / }).first().click();
     await np.waitForTimeout(300);
     await np.getByRole('button', { name: 'Something wrong with it?' }).click();
     await np.waitForTimeout(200);
@@ -778,7 +778,7 @@ for (const cancel of [false, true]) {
   await up.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
   await up.getByRole('button', { name: 'Skip' }).click().catch(() => {});
   await up.waitForTimeout(300);
-  await up.getByRole('button', { name: /Currys, JBL/ }).first().click();
+  await up.getByRole('button', { name: /JBL.*?, Currys, / }).first().click();
   await up.waitForTimeout(300);
   await up.getByRole('button', { name: 'Got my money back' }).click();
   await up.waitForTimeout(400);
@@ -957,8 +957,8 @@ for (const cancel of [false, true]) {
     await fp.waitForTimeout(300);
     return t;
   };
-  const headphones = await lineFor(/Currys, JBL/);
-  const coat = await lineFor(/Zara, Wool-blend/);
+  const headphones = await lineFor(/JBL.*?, Currys, /);
+  const coat = await lineFor(/Wool-blend.*?, Zara, /);
   results['the receipt says which clock closes first, and hedges it when the arrival is unknown'] =
     /^Closes first: the shop’s own window, /.test(headphones) &&
     /^Likely to close first: your 30-day right to reject faulty goods for a full refund, no earlier than /.test(coat);
@@ -980,7 +980,7 @@ for (const cancel of [false, true]) {
   await sp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
   await sp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
   await sp.waitForTimeout(300);
-  await sp.getByRole('button', { name: /Currys, JBL/ }).first().click();
+  await sp.getByRole('button', { name: /JBL.*?, Currys, / }).first().click();
   await sp.waitForTimeout(300);
   const send = sp.getByRole('button', { name: 'I’ve sent it back' });
   let seen = { offered: (await send.count()) === 1 };
@@ -998,7 +998,7 @@ for (const cancel of [false, true]) {
       const under = (label) => heads.find((x) => x.textContent.includes(label))?.nextElementSibling?.textContent ?? '';
       return /Currys/.test(under('Sent back')) && !/JBL/.test(under('Due soon') + under('Later') + under('Window closed'));
     });
-    await sp.getByRole('button', { name: /Currys, JBL.*waiting for the refund/ }).click();
+    await sp.getByRole('button', { name: /JBL.*?, Currys, .*waiting for the refund/ }).click();
     await sp.waitForTimeout(300);
     await sp.getByRole('button', { name: 'Got my money back' }).click();
     await sp.waitForTimeout(400);
@@ -1021,11 +1021,11 @@ for (const cancel of [false, true]) {
   const rp = await rCtx.newPage();
   await rp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
   await rp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
-  await rp.getByRole('button', { name: /Currys, JBL/ }).first().click();
+  await rp.getByRole('button', { name: /JBL.*?, Currys, / }).first().click();
   await rp.getByRole('button', { name: 'Got my money back' }).click();
   await rp.waitForTimeout(300);
   await rp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
-  await rp.getByRole('button', { name: /Currys, JBL.*returned/ }).click();
+  await rp.getByRole('button', { name: /JBL.*?, Currys, .*returned/ }).click();
   await rp.waitForTimeout(300);
   let seen = { offered: (await rp.getByRole('button', { name: 'Not the full amount?' }).count()) === 1 };
   if (seen.offered) {
@@ -1039,7 +1039,7 @@ for (const cancel of [false, true]) {
     seen.detail = /Money back · £30\.00 recovered/.test(detail) && /of the £89\.00 it cost/.test(detail);
     await rp.getByRole('button', { name: 'Back', exact: true }).click();
     await rp.waitForTimeout(300);
-    seen.row = (await rp.getByRole('button', { name: /Currys, JBL.*£30\.00 back, returned/ }).count()) === 1;
+    seen.row = (await rp.getByRole('button', { name: /JBL.*?, Currys, .*£30\.00 back, returned/ }).count()) === 1;
     const stored = await rp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => /JBL/.test(r.item)));
     seen.stored = stored?.refunded === 3000;
   }
@@ -1073,7 +1073,7 @@ for (const cancel of [false, true]) {
     await cp.getByRole('button', { name: 'I’ve sent it back' }).click().catch(() => {});
     await cp.waitForTimeout(300);
   };
-  await sendBack(/Zara, Wool/);
+  await sendBack(/Wool.*?, Zara, /);
   const add = cp.getByRole('button', { name: 'Add the tracking number' });
   let seen = { offered: (await add.count()) === 1 };
   if (seen.offered) {
@@ -1088,7 +1088,7 @@ for (const cancel of [false, true]) {
     seen.notYetLate = (await cp.locator('[data-refund-chase]').count()) === 0;
     await cp.getByRole('button', { name: 'Back', exact: true }).click();
     await cp.waitForTimeout(300);
-    await sendBack(/Currys, JBL/);
+    await sendBack(/JBL.*?, Currys, /);
     await cp.getByRole('button', { name: 'Back', exact: true }).click();
     await cp.waitForTimeout(300);
     // Three weeks on: the Zara order went back ten days after it was placed,
@@ -1104,7 +1104,7 @@ for (const cancel of [false, true]) {
     });
     await cp.reload({ waitUntil: 'networkidle' });
     await cp.waitForTimeout(300);
-    seen.listed = (await cp.getByRole('button', { name: /Zara, Wool.*refund late/ }).count()) === 1 &&
+    seen.listed = (await cp.getByRole('button', { name: /Wool.*?, Zara, .*refund late/ }).count()) === 1 &&
       (await cp.getByRole('button', { name: /waiting for the refund/ }).count()) === 0;
     // At the TOP of the list, above every deadline heading, in the list's own
     // row style. It was the last row on the screen, under Later, so the one
@@ -1133,8 +1133,8 @@ for (const cancel of [false, true]) {
       await cp.waitForTimeout(300);
       return { panel: /The refund is late/.test(panel), letter, copied: copied === letter };
     };
-    seen.online = await chaseFor(/Zara, Wool/);
-    seen.counter = await chaseFor(/Currys, JBL/);
+    seen.online = await chaseFor(/Wool.*?, Zara, /);
+    seen.counter = await chaseFor(/JBL.*?, Currys, /);
   }
   const ok =
     seen.offered && seen.tooLongRefused && seen.shown && seen.notYetLate && seen.listed &&
@@ -1202,12 +1202,12 @@ for (const cancel of [false, true]) {
   const before = (text, a, b) => at(text, a) !== Infinity && at(text, a) < at(text, b);
   const seen = {};
 
-  const jbl = await read(/Currys, JBL/);
+  const jbl = await read(/JBL.*?, Currys, /);
   seen.native = /The paper receipt/.test(jbl.text);
   seen.returnFirst = before(jbl.text, 'Start your return', 'The paper receipt') && before(jbl.text, 'Start your return', 'Store policy');
   seen.oneFilled = jbl.filled.length === 1 && /^Start your return/.test(jbl.filled[0]);
 
-  const zara = await read(/Zara, Wool/);
+  const zara = await read(/Wool.*?, Zara, /);
   seen.arrivalUnderCard = before(zara.text, 'Has it arrived?', 'Store policy') && before(zara.text, 'Has it arrived?', 'The paper receipt') &&
     before(zara.text, /no earlier than/, 'Has it arrived?');
   seen.zaraOneFilled = zara.filled.length === 1;
@@ -1226,14 +1226,14 @@ for (const cancel of [false, true]) {
   await hp.reload({ waitUntil: 'networkidle' });
   await hp.waitForTimeout(300);
 
-  const late = await read(/Currys, JBL/);
+  const late = await read(/JBL.*?, Currys, /);
   seen.lateLeads = before(late.text, /Refund of £89\.00 not back by/, /The window r[ua]n/) && !/was due/.test(late.text) &&
     before(late.text, 'The refund is late', /The window r[ua]n/) && before(late.text, 'The refund is late', 'Store policy') &&
     before(late.text, 'The refund is late', 'The paper receipt');
   seen.lateRing = late.ring === 'Late';
   seen.lateOneFilled = late.filled.length === 1 && late.filled[0] === 'Copy the letter';
 
-  const returned = await read(/IKEA, MALM/);
+  const returned = await read(/MALM.*?, IKEA, /);
   seen.moneyLeads = before(returned.text, /Money back · £199\.00 recovered on /, /The window r[ua]n/) &&
     before(returned.text, /Money back · £199\.00 recovered on /, 'Store policy');
   // No word in the ring: a tick, which is drawn, not spelled.
@@ -1277,7 +1277,7 @@ for (const cancel of [false, true]) {
   await fp.waitForTimeout(300);
   const seen = {};
 
-  await fp.getByRole('button', { name: /Zara, Wool/ }).first().click();
+  await fp.getByRole('button', { name: /Wool.*?, Zara, / }).first().click();
   await fp.waitForTimeout(400);
   const row = await fp.evaluate(() => {
     const toggle = [...document.querySelectorAll('[aria-expanded]')].find((e) => /Your legal rights?/.test(e.textContent ?? ''));
@@ -1413,7 +1413,7 @@ for (const cancel of [false, true]) {
   const card = await lp.locator('[data-lines]').innerText().catch(() => '');
   await lp.getByRole('button', { name: 'Save receipt' }).click();
   await lp.waitForTimeout(400);
-  await lp.getByRole('button', { name: /^Boots, No7 serum/ }).first().click();
+  await lp.getByRole('button', { name: /^No7 serum.*?, Boots, / }).first().click();
   await lp.waitForTimeout(300);
   await lp.getByRole('button', { name: 'Split this receipt' }).first().click();
   const offered = await lp.locator('[data-split-lines] button').allInnerTexts().catch(() => []);
@@ -1494,7 +1494,7 @@ for (const cancel of [false, true]) {
     rows: rows.length,
     // Every row's title is the item its accessible name carries, never the shop.
     titledByItem: rows.length >= 5 && rows.every((r) => {
-      const held = stored.find((x) => r.label.startsWith(`${x.store}, ${x.item}`));
+      const held = stored.find((x) => r.label.startsWith(`${x.item}`) && r.label.includes(`, ${x.store}, `));
       return !!held && r.title === held.item && r.title !== held.store;
     }),
     titlesDiffer: new Set(rows.map((r) => r.title)).size === rows.length,
@@ -1547,12 +1547,12 @@ for (const cancel of [false, true]) {
   const kp = await kCtx.newPage();
   await kp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
   await kp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
-  await kp.getByRole('button', { name: /Currys, JBL/ }).first().click();
+  await kp.getByRole('button', { name: /JBL.*?, Currys, / }).first().click();
   await kp.getByRole('button', { name: 'Got my money back' }).click();
   await kp.waitForTimeout(300);
   await kp.getByRole('button', { name: 'Back to receipts' }).click();
   await kp.waitForTimeout(300);
-  await kp.getByRole('button', { name: /Currys, JBL.*returned$/ }).click();
+  await kp.getByRole('button', { name: /JBL.*?, Currys, .*returned$/ }).click();
   await kp.waitForTimeout(300);
   const mark = kp.getByRole('button', { name: 'It came back as store credit' });
   const seen = { offered: (await mark.count()) === 1 };
@@ -1571,8 +1571,8 @@ for (const cancel of [false, true]) {
     seen.dated = (await stored())?.credit?.expires === shift(today, 365);
     await kp.getByRole('button', { name: 'Back', exact: true }).click();
     await kp.waitForTimeout(300);
-    seen.row = (await kp.getByRole('button', { name: /Currys, JBL.*£89\.00 in credit, returned$/ }).count()) === 1;
-    await kp.getByRole('button', { name: /Currys, JBL.*returned$/ }).click();
+    seen.row = (await kp.getByRole('button', { name: /JBL.*?, Currys, .*£89\.00 in credit, returned$/ }).count()) === 1;
+    await kp.getByRole('button', { name: /JBL.*?, Currys, .*returned$/ }).click();
     await kp.waitForTimeout(300);
     await kp.getByRole('button', { name: 'It was money after all' }).click();
     await kp.waitForTimeout(200);
@@ -1613,7 +1613,7 @@ for (const cancel of [false, true]) {
   const more = yp.getByRole('button', { name: 'Show all 6' });
   const seen = {
     held: (await returnedRows()) === 3 && (await more.count()) === 1 && (await more.getAttribute('aria-expanded')) === 'false',
-    latestFirst: /^Shop returned 5,/.test((await yp.getByRole('button', { name: /, returned$/ }).first().getAttribute('aria-label')) ?? ''),
+    latestFirst: /^Thing 5, Shop returned 5,/.test((await yp.getByRole('button', { name: /, returned$/ }).first().getAttribute('aria-label')) ?? ''),
     keptWhole: (await yp.getByRole('button', { name: /keeping it$/ }).count()) === 4 && (await yp.getByRole('button', { name: /^Show all 4$/ }).count()) === 0,
   };
   if (seen.held) {
@@ -1625,7 +1625,7 @@ for (const cancel of [false, true]) {
     seen.closed = (await returnedRows()) === 3;
     await yp.getByLabel(/Search/).first().fill('Shop returned 0');
     await yp.waitForTimeout(300);
-    seen.searchFinds = (await returnedRows()) === 1 && /^Shop returned 0,/.test((await yp.getByRole('button', { name: /, returned$/ }).first().getAttribute('aria-label')) ?? '');
+    seen.searchFinds = (await returnedRows()) === 1 && /^Thing 0, Shop returned 0,/.test((await yp.getByRole('button', { name: /, returned$/ }).first().getAttribute('aria-label')) ?? '');
   }
   const ok = seen.held && seen.latestFirst && seen.keptWhole && seen.opened && seen.closed && seen.searchFinds;
   results['a long settled list shows its latest few, the rest a tap away, and a search finds any of them'] = !!ok;
@@ -1839,8 +1839,8 @@ for (const native of [true, false]) {
   });
   await ap.reload({ waitUntil: 'networkidle' });
   await ap.waitForTimeout(300);
-  const row = ap.getByRole('button', { name: /^ASOS, Trainers/ });
-  const seen = { listed: /^ASOS, Trainers \(on its way\), £60\.00, 23 days left$/.test((await row.getAttribute('aria-label').catch(() => '')) ?? '') };
+  const row = ap.getByRole('button', { name: /^Trainers.*?, ASOS, / });
+  const seen = { listed: /^Trainers \(on its way\), ASOS, £60\.00, 23 days left$/.test((await row.getAttribute('aria-label').catch(() => '')) ?? '') };
   await row.click().catch(() => {});
   await ap.waitForTimeout(300);
   const tap = ap.getByRole('button', { name: 'It arrived today' });
@@ -1853,7 +1853,7 @@ for (const native of [true, false]) {
     seen.stored = stored?.arrivedOn === today && stored?.windowStartsOn === today;
     await ap.getByRole('button', { name: 'Back', exact: true }).click();
     await ap.waitForTimeout(300);
-    seen.relisted = /^ASOS, Trainers, £60\.00, 28 days left$/.test((await row.getAttribute('aria-label').catch(() => '')) ?? '');
+    seen.relisted = /^Trainers, ASOS, £60\.00, 28 days left$/.test((await row.getAttribute('aria-label').catch(() => '')) ?? '');
   }
   const ok = seen.listed && seen.offered && seen.gone && seen.stored && seen.relisted;
   results['an order on its way says so, and "It arrived today" starts the window at the doormat'] = !!ok;
@@ -1879,7 +1879,7 @@ for (const native of [true, false]) {
   const wp = await wCtx.newPage();
   await wp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
   await wp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
-  await wp.getByRole('button', { name: /Currys, JBL/ }).first().click();
+  await wp.getByRole('button', { name: /JBL.*?, Currys, / }).first().click();
   await wp.getByRole('button', { name: 'Got my money back' }).click();
   await wp.waitForTimeout(400);
   const offer = wp.getByRole('button', { name: 'Not the full £89.00?' });
@@ -1928,8 +1928,8 @@ for (const native of [true, false]) {
     await ap.waitForTimeout(300);
     return out;
   };
-  const counter = await actions(/Currys, JBL/);
-  const online = await actions(/Zara, Wool/);
+  const counter = await actions(/JBL.*?, Currys, /);
+  const online = await actions(/Wool.*?, Zara, /);
   // The likelier ending leads, by place: first, on a row of its own. Filled
   // only when nothing else on the screen is — both seeded shops have a
   // returns page, and the link to it is then the one filled control, so
@@ -1970,7 +1970,7 @@ for (const native of [true, false]) {
   if (seen.said) {
     await bar.getByRole('button', { name: 'Undo' }).click();
     await vp.waitForTimeout(300);
-    seen.undone = (await count()) === before && (await vp.getByRole('button', { name: /Argos, Kettle/ }).count()) === 0;
+    seen.undone = (await count()) === before && (await vp.getByRole('button', { name: /Kettle.*?, Argos, / }).count()) === 0;
     seen.gone = (await bar.count()) === 0;
   }
   const ok = seen.said && seen.stored && seen.undone && seen.gone;
@@ -1991,7 +1991,7 @@ for (const native of [true, false]) {
   const lp = await lCtx.newPage();
   await lp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
   await lp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
-  await lp.getByRole('button', { name: /IKEA, MALM/ }).first().click();
+  await lp.getByRole('button', { name: /MALM.*?, IKEA, / }).first().click();
   await lp.waitForTimeout(300);
   await lp.getByRole('button', { name: 'Something wrong with it?' }).click();
   await lp.getByLabel('What’s wrong with it?').fill('A drawer runner has snapped');
@@ -2017,7 +2017,7 @@ for (const native of [true, false]) {
     });
     await lp.reload({ waitUntil: 'networkidle' });
     await lp.waitForTimeout(300);
-    await lp.getByRole('button', { name: /IKEA, MALM/ }).first().click();
+    await lp.getByRole('button', { name: /MALM.*?, IKEA, / }).first().click();
     await lp.waitForTimeout(300);
     await lp.getByRole('button', { name: 'Fault letter sent' }).click();
     await lp.waitForTimeout(200);
@@ -2047,11 +2047,11 @@ for (const native of [true, false]) {
   await bp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
   await bp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
   await bp.waitForTimeout(300);
-  const onHome = async () => (await bp.getByRole('button', { name: /Currys, JBL/ }).count()) > 0 && new URL(bp.url()).pathname === '/app/';
+  const onHome = async () => (await bp.getByRole('button', { name: /JBL.*?, Currys, / }).count()) > 0 && new URL(bp.url()).pathname === '/app/';
   const onDetail = async () => (await bp.getByRole('heading', { level: 1, name: 'Currys' }).count()) === 1;
   const back = async () => { await bp.goBack().catch(() => {}); await bp.waitForTimeout(400); };
   const seen = {};
-  await bp.getByRole('button', { name: /Currys, JBL/ }).first().click();
+  await bp.getByRole('button', { name: /JBL.*?, Currys, / }).first().click();
   await bp.waitForTimeout(300);
   await bp.getByRole('button', { name: 'Edit', exact: true }).click();
   await bp.waitForTimeout(300);
@@ -2063,7 +2063,7 @@ for (const native of [true, false]) {
   // Short, caught clicks: where Back has already left kept there is no row
   // to press, and that must read as this check failing, not as a timeout.
   const tap = (name) => bp.getByRole('button', { name, exact: true }).first().click({ timeout: 3000 }).then(() => true, () => false);
-  seen.reopened = await tap(/Currys, JBL/);
+  seen.reopened = await tap(/JBL.*?, Currys, /);
   await bp.waitForTimeout(300);
   await tap('Back');
   await bp.waitForTimeout(400);
@@ -2090,7 +2090,7 @@ for (const native of [true, false]) {
   await wp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
   await wp.getByRole('button', { name: /^Watch/ }).click();
   await wp.waitForTimeout(300);
-  const rows = wp.getByRole('button', { name: /: Last day to return it\./ });
+  const rows = wp.getByRole('button', { name: /, Last day to return it, / });
   const labels = await rows.evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')));
   // Each row is titled by the thing, as Home's list is: rows titled by the
   // event read "Last day to return it" four times over with the item cut off.
@@ -2109,7 +2109,7 @@ for (const native of [true, false]) {
   }));
   const seen = {
     listed: labels.length >= 3,
-    soonestFirst: /in 2 days: .*Currys, JBL/.test(labels[0] ?? ''),
+    soonestFirst: /^JBL .*, Currys, .*, in 2 days$/.test(labels[0] ?? ''),
     titledByItem: titles.length >= 3 && titles[0].startsWith('JBL') && new Set(titles).size === titles.length,
     shopsWhole: shopsWhole.length >= 3 && shopsWhole.every(Boolean),
   };
@@ -2140,7 +2140,7 @@ for (const native of [true, false]) {
   await dp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
   await dp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
   const seen = [];
-  for (const [row, label] of [[/^Currys, JBL/, 'I’ve sent it back'], [/^Zara, Wool-blend/, 'I’ve sent it back'], [/^Argos, Kenwood/, 'I’m keeping it']]) {
+  for (const [row, label] of [[/^JBL.*?, Currys, /, 'I’ve sent it back'], [/^Wool-blend.*?, Zara, /, 'I’ve sent it back'], [/^Kenwood.*?, Argos, /, 'I’m keeping it']]) {
     await dp.getByRole('button', { name: row }).first().click();
     await dp.waitForTimeout(300);
     const action = await dp.getByRole('button', { name: label, exact: true }).first().boundingBox().catch(() => null);
@@ -2309,7 +2309,7 @@ for (const native of [true, false]) {
     await rp.waitForTimeout(300);
     return { opened, rights: /^Your legal rights?$/m.test(text), cancel: /cancel for any reason/i.test(text) };
   };
-  const seen = { back: await rightsOn(/^ASOS, Jacket/, 'ASOS'), sent: await rightsOn(/^Boohoo, Scarf/, 'Boohoo'), kept: await rightsOn(/^Next, Jumper/, 'Next') };
+  const seen = { back: await rightsOn(/^Jacket.*?, ASOS, /, 'ASOS'), sent: await rightsOn(/^Scarf.*?, Boohoo, /, 'Boohoo'), kept: await rightsOn(/^Jumper.*?, Next, /, 'Next') };
   const ok = seen.back.opened && !seen.back.rights && !seen.back.cancel &&
     seen.sent.opened && !seen.sent.rights && !seen.sent.cancel &&
     seen.kept.opened && seen.kept.rights;
@@ -2347,7 +2347,7 @@ for (const native of [true, false]) {
   await xp.waitForTimeout(300);
   const after = await stored();
   seen.onlyMine = after.length === 1 && after[0].id === 'r_mine';
-  seen.listClean = (await xp.locator('main [data-sample]').count()) === 0 && !/sample ·/.test(await xp.locator('main').innerText()) && (await xp.getByRole('button', { name: /^Argos, Desk lamp/ }).count()) === 1;
+  seen.listClean = (await xp.locator('main [data-sample]').count()) === 0 && !/sample ·/.test(await xp.locator('main').innerText()) && (await xp.getByRole('button', { name: /^Desk lamp.*?, Argos, / }).count()) === 1;
   seen.offerGone = (await offer().count()) === 0;
   await xp.reload({ waitUntil: 'networkidle' });
   await xp.waitForTimeout(300);
@@ -2447,7 +2447,7 @@ for (const native of [true, false]) {
     return n;
   };
   const open = async () => {
-    await cp.getByRole('button', { name: /^Next, Rain jacket/ }).first().click({ timeout: 3000 }).catch(() => {});
+    await cp.getByRole('button', { name: /^Rain jacket.*?, Next, / }).first().click({ timeout: 3000 }).catch(() => {});
     await cp.waitForTimeout(300);
   };
   const seen = { listedBefore: (await listed()) === 1 };
@@ -2508,7 +2508,7 @@ for (const native of [true, false]) {
 
   // Swipe the online order.
   const swipe = async () => {
-    const row = sp.getByRole('button', { name: /^Zara, Wool-blend/ }).first();
+    const row = sp.getByRole('button', { name: /^Wool-blend.*?, Zara, / }).first();
     // Into the middle of the list first, as a thumb would: the tab bar is
     // docked across the full width now, so a row left half under it takes
     // the press on the bar instead.
@@ -2535,7 +2535,7 @@ for (const native of [true, false]) {
 
   // Posted, then refunded, then the refund taken back: one step, to waiting.
   await swipe();
-  await sp.getByRole('button', { name: /^Zara, Wool-blend/ }).first().click({ timeout: 3000 }).catch(() => {});
+  await sp.getByRole('button', { name: /^Wool-blend.*?, Zara, / }).first().click({ timeout: 3000 }).catch(() => {});
   await sp.waitForTimeout(300);
   await tap('Add the tracking number');
   await sp.getByLabel('Tracking or proof-of-postage number').fill('JD0002', { timeout: 3000 }).catch(() => {});
@@ -2549,7 +2549,7 @@ for (const native of [true, false]) {
   // With the bar up, the row just marked is the one a person reaches for,
   // and the list scrolled to its end must put it clear of the bar.
   seen.clearOfBar = await sp.evaluate(() => {
-    const row = [...document.querySelectorAll('button')].find((b) => /^Zara, Wool-blend/.test(b.getAttribute('aria-label') ?? ''));
+    const row = [...document.querySelectorAll('button')].find((b) => /^Wool-blend.*?, Zara, /.test(b.getAttribute('aria-label') ?? ''));
     let el = row?.parentElement;
     while (el && !(el.scrollHeight > el.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(el).overflowY))) el = el.parentElement;
     if (!row || !el || !document.querySelector('[role="status"] button')) return false;
@@ -2557,7 +2557,7 @@ for (const native of [true, false]) {
     const r = row.getBoundingClientRect();
     return row.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2));
   });
-  await sp.getByRole('button', { name: /^Zara, Wool-blend/ }).first().click({ timeout: 3000 }).catch(() => {});
+  await sp.getByRole('button', { name: /^Wool-blend.*?, Zara, / }).first().click({ timeout: 3000 }).catch(() => {});
   await sp.waitForTimeout(300);
   const posted = (await zara())?.sentOn;
   seen.refunded = (await zara())?.status === 'returned';
@@ -2600,10 +2600,10 @@ for (const native of [true, false]) {
   const back = async () => { await np.getByRole('button', { name: 'Back', exact: true }).click({ timeout: 3000 }).catch(() => {}); await np.waitForTimeout(300); };
   const stored = () => np.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => r.id === 'r_online')?.cancelledOn);
   const seen = {};
-  await open(/^Boots, Hairdryer/);
+  await open(/^Hairdryer.*?, Boots, /);
   seen.counterNone = (await np.getByRole('button', { name: 'Cancel the order in writing' }).count()) === 0;
   await back();
-  await open(/^ASOS, Trainers/);
+  await open(/^Trainers.*?, ASOS, /);
   await np.getByRole('button', { name: 'Cancel the order in writing' }).click({ timeout: 3000 }).catch(() => {});
   await np.waitForTimeout(300);
   const panel = (await np.locator('[data-cancel-panel]').innerText().catch(() => '')) ?? '';
@@ -2614,7 +2614,7 @@ for (const native of [true, false]) {
   await np.reload({ waitUntil: 'networkidle' });
   await np.waitForTimeout(300);
   seen.survives = (await stored()) === today;
-  await open(/^ASOS, Trainers/);
+  await open(/^Trainers.*?, ASOS, /);
   await np.getByRole('button', { name: 'Order cancelled' }).click({ timeout: 3000 }).catch(() => {});
   await np.waitForTimeout(300);
   seen.sendBy = /Send it back by .+ — the law gives fourteen days from cancelling\./.test((await np.locator('[data-cancel-sent]').innerText().catch(() => '')) ?? '');
@@ -2646,7 +2646,7 @@ for (const native of [true, false]) {
   });
   await fp.reload({ waitUntil: 'networkidle' });
   await fp.waitForTimeout(300);
-  await fp.getByRole('button', { name: /^Currys, Kettle/ }).first().click({ timeout: 3000 }).catch(() => {});
+  await fp.getByRole('button', { name: /^Kettle.*?, Currys, / }).first().click({ timeout: 3000 }).catch(() => {});
   await fp.waitForTimeout(300);
   await fp.getByRole('button', { name: 'Fault letter sent' }).click({ timeout: 3000 }).catch(() => {});
   await fp.waitForTimeout(300);
@@ -2677,7 +2677,7 @@ for (const native of [true, false]) {
   seen.recorded = (await finalStored())?.what === 'Still trips it';
   await fp.reload({ waitUntil: 'networkidle' });
   await fp.waitForTimeout(300);
-  await fp.getByRole('button', { name: /^Currys, Kettle/ }).first().click({ timeout: 3000 }).catch(() => {});
+  await fp.getByRole('button', { name: /^Kettle.*?, Currys, / }).first().click({ timeout: 3000 }).catch(() => {});
   await fp.waitForTimeout(300);
   await fp.getByRole('button', { name: 'Fault letter sent' }).click({ timeout: 3000 }).catch(() => {});
   await fp.waitForTimeout(300);
@@ -2724,9 +2724,9 @@ for (const native of [true, false]) {
     await ep.waitForTimeout(300);
     return t;
   };
-  const big = await escalationOn(/^Argos, Blender/);
-  const small = await escalationOn(/^Argos, Toaster/);
-  const quiet = await escalationOn(/^Currys, Kettle/, 'Fault letter sent');
+  const big = await escalationOn(/^Blender.*?, Argos, /);
+  const small = await escalationOn(/^Toaster.*?, Argos, /);
+  const quiet = await escalationOn(/^Kettle.*?, Currys, /, 'Fault letter sent');
   const seen = {
     big: /Section 75/.test(big) && /£150\.00/.test(big) && /chargeback/.test(big),
     small: !/Section 75/.test(small) && /chargeback/.test(small),
@@ -2759,7 +2759,7 @@ for (const native of [true, false]) {
   await wp.reload({ waitUntil: 'networkidle' });
   await wp.waitForTimeout(300);
   const stored = () => wp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.filter((r) => r.id === 'r_jeans' || r.swappedFrom === 'r_jeans'));
-  await wp.getByRole('button', { name: /^Next, Jeans/ }).first().click({ timeout: 3000 }).catch(() => {});
+  await wp.getByRole('button', { name: /^Jeans.*?, Next, / }).first().click({ timeout: 3000 }).catch(() => {});
   await wp.waitForTimeout(300);
   const seen = {};
   seen.tapped = await wp.getByRole('button', { name: 'Swapped it for another' }).click({ timeout: 3000 }).then(() => true, () => false);
@@ -2781,7 +2781,7 @@ for (const native of [true, false]) {
   await wp.waitForTimeout(300);
   await wp.getByRole('button', { name: 'Back', exact: true }).click({ timeout: 3000 }).catch(() => {});
   await wp.waitForTimeout(300);
-  seen.rowSays = (await wp.getByRole('button', { name: /^Next, Jeans, 32 waist, swapped for another$/ }).count()) === 1;
+  seen.rowSays = (await wp.getByRole('button', { name: /^Jeans, 32 waist, Next, swapped for another$/ }).count()) === 1;
   await wp.getByRole('button', { name: /swapped for another$/ }).first().click({ timeout: 3000 }).catch(() => {});
   await wp.waitForTimeout(300);
   await wp.getByRole('button', { name: 'Not swapped after all' }).click({ timeout: 3000 }).catch(() => {});
@@ -2818,9 +2818,9 @@ for (const native of [true, false]) {
   await xp.reload({ waitUntil: 'networkidle' });
   await xp.waitForTimeout(300);
   const stored = () => xp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.filter((r) => r.id === 'r_jeans' || r.swappedFrom === 'r_jeans'));
-  const original = () => xp.getByRole('button', { name: /^Next, Jeans, 32 waist, swapped for another$/ }).first().click({ timeout: 3000 }).catch(() => {});
+  const original = () => xp.getByRole('button', { name: /^Jeans, 32 waist, Next, swapped for another$/ }).first().click({ timeout: 3000 }).catch(() => {});
   const seen = {};
-  await xp.getByRole('button', { name: /^Next, Jeans/ }).first().click({ timeout: 3000 }).catch(() => {});
+  await xp.getByRole('button', { name: /^Jeans.*?, Next, / }).first().click({ timeout: 3000 }).catch(() => {});
   await xp.waitForTimeout(300);
   await xp.getByRole('button', { name: 'Swapped it for another' }).click({ timeout: 3000 }).catch(() => {});
   await xp.waitForTimeout(300);
@@ -2889,7 +2889,7 @@ for (const native of [true, false]) {
   await sp.reload({ waitUntil: 'networkidle' });
   await sp.waitForTimeout(300);
   const stored = () => sp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.filter((r) => r.id === 'r_basket' || r.splitFrom === 'r_basket'));
-  await sp.getByRole('button', { name: /^Boots, Shopping/ }).first().click({ timeout: 3000 }).catch(() => {});
+  await sp.getByRole('button', { name: /^Shopping.*?, Boots, / }).first().click({ timeout: 3000 }).catch(() => {});
   await sp.waitForTimeout(300);
   const seen = {};
   seen.offered = await sp.getByRole('button', { name: 'Split this receipt' }).click({ timeout: 3000 }).then(() => true, () => false);
@@ -2939,7 +2939,7 @@ results['onboarding is not shown again'] = !(await page
 results['the return survives a reload'] = await page.getByText('Money back ✓').isVisible();
 // A returned receipt has to stay reachable: the swipe is a one-finger gesture
 // on a row you might have meant to open, so it will fire by accident.
-await page.getByRole('button', { name: /Currys, JBL.*returned/ }).click();
+await page.getByRole('button', { name: /JBL.*?, Currys, .*returned/ }).click();
 await page.waitForTimeout(400);
 results['a returned receipt can still be opened'] =
   await page.getByText(/Money back · .* recovered/).isVisible();
@@ -2972,7 +2972,7 @@ await page.waitForTimeout(300);
 const receiptCount = () =>
   page.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.length);
 const beforeDelete = await receiptCount();
-await page.getByRole('button', { name: /Argos, Kenwood/ }).click();
+await page.getByRole('button', { name: /Kenwood.*?, Argos, / }).click();
 await page.waitForTimeout(300);
 await page.getByRole('button', { name: 'Delete' }).click();
 await page.waitForTimeout(400);
@@ -2985,7 +2985,7 @@ results['a deleted receipt can be undone'] =
   // By role, not by text: the undo bar names the receipt it deleted, so a
   // text match here could be satisfied by the message rather than the row —
   // the same trap that made the backup check pass for the wrong reason.
-  (await page.getByRole('button', { name: /Argos, Kenwood/ }).isVisible());
+  (await page.getByRole('button', { name: /Kenwood.*?, Argos, / }).isVisible());
 
 /*
  * The year-long window, read as a screen rather than as source.
@@ -2996,7 +2996,7 @@ results['a deleted receipt can be undone'] =
  * whose whole job is dates. So: the two dates the detail screen shows together
  * must not read as the same day, and the pair carries the year or neither does.
  */
-await page.getByRole('button', { name: /IKEA, MALM/ }).click();
+await page.getByRole('button', { name: /MALM.*?, IKEA, / }).click();
 await page.waitForTimeout(300);
 const ikea = await page.evaluate(() => {
   const label = [...document.querySelectorAll('div')].find((d) => d.textContent.trim() === 'Return by');
@@ -3012,7 +3012,7 @@ await page.getByRole('button', { name: 'Back', exact: true }).click();
 await page.waitForTimeout(300);
 
 // An edit must reach the screen, and the disk.
-await page.getByRole('button', { name: /Zara, Wool-blend/ }).click();
+await page.getByRole('button', { name: /Wool-blend.*?, Zara, / }).click();
 await page.waitForTimeout(300);
 // Zara counts from dispatch. The detail screen and the edit screen must name
 // the same date — they disagreed by two days, because the preview counted
@@ -3107,7 +3107,7 @@ results['an edit reaches the receipt'] =
 await page.getByRole('button', { name: 'Receipts', exact: true }).click();
 await page.waitForTimeout(300);
 // By the shop: the edit above renamed the item, and the pack must carry the new name.
-await page.getByRole('button', { name: /^Zara, / }).click();
+await page.getByRole('button', { name: /, Zara, / }).click();
 await page.waitForTimeout(300);
 await page.getByRole('button', { name: /^Claim pack/ }).click();
 await page.waitForTimeout(400);
@@ -3153,7 +3153,7 @@ results['the export is a kept backup'] = JSON.parse(readFileSync(backupPath, 'ut
 
 await page.getByRole('button', { name: 'Receipts', exact: true }).click();
 await page.waitForTimeout(300);
-await page.getByRole('button', { name: /Boots, No7/ }).click();
+await page.getByRole('button', { name: /No7.*?, Boots, / }).click();
 await page.waitForTimeout(300);
 await page.getByRole('button', { name: 'Delete' }).click();
 await page.waitForTimeout(400);
@@ -3176,7 +3176,7 @@ await page.waitForTimeout(400);
 results['a deleted receipt comes back from a backup'] =
   deleted &&
   (await holds('No7 skincare set')) &&
-  (await page.getByRole('button', { name: /Boots, No7/ }).isVisible());
+  (await page.getByRole('button', { name: /No7.*?, Boots, / }).isVisible());
 
 /*
  * And a restore must not undo what happened since the file was written. The
@@ -3186,7 +3186,7 @@ results['a deleted receipt comes back from a backup'] =
  * refund date disappears, and the app starts telling someone to return
  * something they already returned.
  */
-await page.getByRole('button', { name: /Currys, JBL/ }).click();
+await page.getByRole('button', { name: /JBL.*?, Currys, / }).click();
 await page.waitForTimeout(300);
 await page.getByRole('button', { name: 'Got my money back' }).click();
 await page.waitForTimeout(600);
@@ -3221,7 +3221,7 @@ results['restoring an older backup does not undo a refund taken since'] =
   const seen = {};
   await page.getByRole('button', { name: 'Receipts', exact: true }).click();
   await page.waitForTimeout(300);
-  await page.getByRole('button', { name: /Currys, JBL.*returned/ }).first().click({ timeout: 3000 }).catch(() => {});
+  await page.getByRole('button', { name: /JBL.*?, Currys, .*returned/ }).first().click({ timeout: 3000 }).catch(() => {});
   await page.waitForTimeout(300);
   await page.getByRole('button', { name: 'Not the full amount?' }).click({ timeout: 3000 }).catch(() => {});
   await page.getByLabel('How much came back?').fill('30', { timeout: 3000 }).catch(() => {});
@@ -3480,8 +3480,8 @@ results['a delivery date in the paste is read, not asked for'] =
     await lastPage.waitForTimeout(300);
     return seen;
   };
-  const lastDay = await ring(/ASOS, Running shoes/);
-  const longGone = await ring(/Argos, Toaster/);
+  const lastDay = await ring(/Running shoes.*?, ASOS, /);
+  const longGone = await ring(/Toaster.*?, Argos, /);
   results['the ring still shows something on the last day'] =
     // The danger red, `color.danger`: the number sits on a white card now, not ink.
     lastDay.drawn > 1 && lastDay.numberColour === lightToken('danger') &&
@@ -3774,12 +3774,12 @@ results['a paste with no total asks for one instead of saving £0'] =
  * says "window closed" on a day Zara would still take the coat back.
  */
 const zaraNoDispatch = await addPaste('Zara · Order placed 13 August 2026 · Linen shirt · Total £25.99', 'Linen shirt');
-await page.getByRole('button', { name: /Zara, Linen shirt/ }).click();
+await page.getByRole('button', { name: /Linen shirt.*?, Zara, / }).click();
 await page.waitForTimeout(400);
 const zaraDetail = await page.locator('main').innerText();
 await page.getByRole('button', { name: 'Back', exact: true }).click();
 await page.waitForTimeout(300);
-await page.getByRole('button', { name: /Currys, Kettle/ }).click();
+await page.getByRole('button', { name: /Kettle.*?, Currys, / }).click();
 await page.waitForTimeout(400);
 const tillDetail = await page.locator('main').innerText();
 await page.getByRole('button', { name: 'Back', exact: true }).click();
@@ -3812,7 +3812,7 @@ results['an unknown dispatch date is shown as a floor, not a deadline'] =
  * offered only on a shop that counts from dispatch: Currys does not, and a
  * receipt carrying the wrong clock is worse than one carrying none.
  */
-await page.getByRole('button', { name: /Zara, Linen shirt/ }).click();
+await page.getByRole('button', { name: /Linen shirt.*?, Zara, / }).click();
 await page.waitForTimeout(300);
 await page.getByRole('button', { name: 'Edit', exact: true }).click();
 await page.waitForTimeout(400);
@@ -3826,7 +3826,7 @@ const zaraFixed = await page.evaluate(() =>
   JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => r.item === 'Linen shirt'));
 await page.getByRole('button', { name: 'Back', exact: true }).click().catch(() => {});
 await page.waitForTimeout(300);
-await page.getByRole('button', { name: /Currys, Kettle/ }).click();
+await page.getByRole('button', { name: /Kettle.*?, Currys, / }).click();
 await page.waitForTimeout(300);
 await page.getByRole('button', { name: 'Edit', exact: true }).click();
 await page.waitForTimeout(400);
@@ -4420,7 +4420,7 @@ await landing.waitForTimeout(1200);
 await landing.locator('iframe[title="Quids In — live app demo"]').scrollIntoViewIfNeeded();
 await landing.waitForTimeout(600);
 const demo = landing.frameLocator('iframe[title="Quids In — live app demo"]');
-const demoRow = demo.getByRole('button', { name: /Currys, JBL/ });
+const demoRow = demo.getByRole('button', { name: /JBL.*?, Currys, / });
 // And the row into the middle of the demo's own screen: the app opens on its
 // balance, so the list starts below the fold inside the frame too.
 await demoRow.evaluate((el) => el.scrollIntoView({ block: 'center' })).catch(() => {});
@@ -4754,7 +4754,7 @@ results['the manifest is installable and declares the share target'] =
     };
   });
   // Any change at all triggers a write.
-  await fullPage.getByRole('button', { name: /Zara, Wool-blend/ }).click();
+  await fullPage.getByRole('button', { name: /Wool-blend.*?, Zara, / }).click();
   await fullPage.waitForTimeout(300);
   await fullPage.getByRole('button', { name: 'Got my money back' }).click();
   await fullPage.waitForTimeout(500);
@@ -4979,7 +4979,7 @@ results['nothing is fetched from a third party'] = requestsSeen > 0 && foreign.s
   await pp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
   await pp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
   await pp.waitForTimeout(300);
-  await pp.getByRole('button', { name: /^Zara, / }).click();
+  await pp.getByRole('button', { name: /, Zara, / }).click();
   await pp.waitForTimeout(300);
   await pp.getByRole('button', { name: /^Claim pack/ }).click();
   await pp.waitForTimeout(400);

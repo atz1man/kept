@@ -138,13 +138,13 @@ await audit(page, 'receipt detail · on its way', findings);
 await page.getByRole('button', { name: 'Back', exact: true }).click();
 await page.waitForTimeout(300);
 
-await page.getByRole('button', { name: /Currys, JBL/ }).click();
+await page.getByRole('button', { name: /JBL.*?, Currys, / }).click();
 await page.waitForTimeout(400);
 await audit(page, 'receipt detail', findings);
 
 await page.getByRole('button', { name: 'Back', exact: true }).click();
 await page.waitForTimeout(300);
-await page.getByRole('button', { name: /Currys, Le Creuset/ }).click();
+await page.getByRole('button', { name: /Le Creuset.*?, Currys, / }).click();
 await page.waitForTimeout(400);
 await audit(page, 'receipt detail · no guarantee', findings);
 
@@ -175,13 +175,13 @@ await page.evaluate(() => {
 });
 await page.reload({ waitUntil: 'networkidle' });
 await page.waitForTimeout(400);
-await page.getByRole('button', { name: /Currys, Le Creuset/ }).click();
+await page.getByRole('button', { name: /Le Creuset.*?, Currys, / }).click();
 await page.waitForTimeout(400);
 await audit(page, 'receipt detail · refund late', findings);
 await page.getByRole('button', { name: 'Back', exact: true }).click();
 await page.waitForTimeout(300);
 await audit(page, 'home · sent back', findings);
-await page.getByRole('button', { name: /Currys, JBL/ }).click();
+await page.getByRole('button', { name: /JBL.*?, Currys, / }).click();
 await page.waitForTimeout(400);
 
 // Opened, with the field filled: the textarea's label and hint, the letter
@@ -205,7 +205,7 @@ await page.waitForTimeout(200);
 // name to be audited at all.
 await page.getByRole('button', { name: 'Back', exact: true }).click().catch(() => {});
 await page.waitForTimeout(300);
-await page.getByRole('button', { name: /Zara, Wool-blend/ }).click();
+await page.getByRole('button', { name: /Wool-blend.*?, Zara, / }).click();
 await page.waitForTimeout(400);
 await audit(page, 'receipt detail · distance purchase', findings);
 
@@ -227,7 +227,7 @@ await page.getByRole('button', { name: 'Cancel' }).click().catch(() => {});
 await page.waitForTimeout(300);
 await page.getByRole('button', { name: 'Back', exact: true }).click().catch(() => {});
 await page.waitForTimeout(300);
-await page.getByRole('button', { name: /Currys, JBL/ }).click();
+await page.getByRole('button', { name: /JBL.*?, Currys, / }).click();
 await page.waitForTimeout(400);
 
 await page.getByRole('button', { name: 'Edit', exact: true }).click();
@@ -340,13 +340,13 @@ await audit(page, 'add receipt · unreadable paste', findings);
 // A returned receipt's detail, reachable only from the money-back list.
 await page.getByRole('button', { name: 'Receipts', exact: true }).click().catch(() => {});
 await page.waitForTimeout(300);
-await page.getByRole('button', { name: /IKEA, MALM/ }).click().catch(() => {});
+await page.getByRole('button', { name: /MALM.*?, IKEA, / }).click().catch(() => {});
 await page.waitForTimeout(300);
 await page.getByRole('button', { name: 'Got my money back' }).click().catch(() => {});
 await page.waitForTimeout(400);
 await page.getByRole('button', { name: 'Back to receipts' }).click().catch(() => {});
 await page.waitForTimeout(400);
-await page.getByRole('button', { name: /IKEA, MALM.*returned/ }).click().catch(() => {});
+await page.getByRole('button', { name: /MALM.*?, IKEA, .*returned/ }).click().catch(() => {});
 await page.waitForTimeout(400);
 await audit(page, 'receipt detail · returned', findings);
 
@@ -395,7 +395,7 @@ await page.evaluate(() => {
     return real(k, v);
   };
 });
-await page.getByRole('button', { name: /Zara, Wool-blend/ }).click().catch(() => {});
+await page.getByRole('button', { name: /Wool-blend.*?, Zara, / }).click().catch(() => {});
 await page.waitForTimeout(300);
 await page.getByRole('button', { name: 'Got my money back' }).click().catch(() => {});
 await page.waitForTimeout(400);
@@ -496,7 +496,7 @@ if (typedInFocus !== 'add-item') lostFocus.push(['"Type it in yourself"', `left 
 await focusPage.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
 for (const [label, go] of [
   ['onboarding → home', async () => focusPage.getByRole('button', { name: 'Skip' }).click()],
-  ['home → a receipt', async () => focusPage.getByRole('button', { name: /Currys, JBL/ }).click()],
+  ['home → a receipt', async () => focusPage.getByRole('button', { name: /JBL.*?, Currys, / }).click()],
   ['receipt → claim pack', async () => focusPage.getByRole('button', { name: /^Claim pack/ }).click()],
   ['claim pack → back', async () => focusPage.getByRole('button', { name: 'Back', exact: true }).click()],
   ['receipt → edit', async () => focusPage.getByRole('button', { name: 'Edit', exact: true }).click()],
@@ -540,7 +540,7 @@ const ringPage = await (await browser.newContext({ viewport: { width: 402, heigh
 await ringPage.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
 await ringPage.getByRole('button', { name: 'Skip' }).click().catch(() => {});
 await ringPage.waitForTimeout(400);
-await ringPage.getByRole('button', { name: /Currys, JBL/ }).click();
+await ringPage.getByRole('button', { name: /JBL.*?, Currys, / }).click();
 await ringPage.waitForTimeout(500);
 const FOCUS = lightToken('focus');
 const ringless = [];
@@ -601,7 +601,7 @@ const clipped = new Set();
 let controlsSeen = 0;
 for (const [screen, open] of [
   ['home', async () => {}],
-  ['a receipt', async () => hiddenPage.getByRole('button', { name: /Currys, JBL/ }).click()],
+  ['a receipt', async () => hiddenPage.getByRole('button', { name: /JBL.*?, Currys, / }).click()],
   ['its edit form', async () => hiddenPage.getByRole('button', { name: 'Edit', exact: true }).click()],
   ['settings', async () => {
     await hiddenPage.getByRole('button', { name: 'Cancel' }).click();
@@ -696,11 +696,11 @@ const tinyTargets = new Set();
   for (const [screen, open] of [
     ['home', async () => {}],
     // Bought in a shop: one statute, so the legal header is one line.
-    ['a receipt from a shop', async () => tPage.getByRole('button', { name: /Currys, JBL/ }).first().click()],
+    ['a receipt from a shop', async () => tPage.getByRole('button', { name: /JBL.*?, Currys, / }).first().click()],
     ['an online order', async () => {
       await tPage.getByRole('button', { name: 'Back', exact: true }).click();
       await tPage.waitForTimeout(300);
-      await tPage.getByRole('button', { name: /Zara, Wool-blend/ }).first().click();
+      await tPage.getByRole('button', { name: /Wool-blend.*?, Zara, / }).first().click();
     }],
     ['its edit form', async () => tPage.getByRole('button', { name: 'Edit', exact: true }).click()],
     ['settings', async () => {
@@ -722,6 +722,71 @@ const tinyTargets = new Set();
   if (measured < 40) tinyTargets.add(`the target-size check: only ${measured} controls were measured`);
 }
 for (const t of tinyTargets) lostFocus.push([`tap target on ${t}`, 'is under 24px']);
+
+/*
+ * And a control's spoken name starts with the words it shows (WCAG 2.5.3,
+ * Label in Name, and its advice that the visible label come first).
+ *
+ * Voice Control and Dragon users press a control by saying what they see; a
+ * screen reader user moving down a list hears each name's first words first.
+ * The rows said "Currys, JBL Tune 770NC headphones…" while showing the item
+ * first, so the list read "Currys, Currys, Currys" aloud — the very reason the
+ * row itself was reordered to lead with the item. Watch's Coming up rows led
+ * with the date. axe's own rule for this compares textContent, which runs a
+ * row's blocks together ("…return it8 Novin 2 days") and fails a name that
+ * is right, so this reads the first visible line as a person sees it.
+ */
+const misnamed = new Set();
+{
+  const nPage = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
+  await nPage.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  let named = 0;
+  const check = async (screen) => {
+    const seen = await nPage.evaluate(() => {
+      const norm = (t) => t.toLowerCase().replace(/[^a-z0-9£.]+/g, ' ').replace(/\s+/g, ' ').trim();
+      const out = [];
+      let count = 0;
+      for (const el of document.querySelectorAll('button[aria-label], a[aria-label]')) {
+        if (!el.getBoundingClientRect().width) continue;
+        const parts = [];
+        const walk = (node) => {
+          for (const c of node.childNodes) {
+            if (c.nodeType === 3) parts.push(c.textContent);
+            else if (c.nodeType === 1 && c.getAttribute('aria-hidden') !== 'true') {
+              const block = getComputedStyle(c).display !== 'inline';
+              if (block) parts.push('\n');
+              walk(c);
+              if (block) parts.push('\n');
+            }
+          }
+        };
+        walk(el);
+        const first = norm(parts.join('').split('\n').find((l) => norm(l)) ?? '');
+        if (!first) continue;
+        count += 1;
+        const name = norm(el.getAttribute('aria-label') ?? '');
+        if (!name.startsWith(first)) out.push(`"${name.slice(0, 50)}" shows "${first.slice(0, 40)}" first`);
+      }
+      return { out, count };
+    });
+    named += seen.count;
+    for (const o of seen.out) misnamed.add(`${screen}: ${o}`);
+  };
+  for (const [screen, open] of [
+    ['home', async () => nPage.getByRole('button', { name: 'Skip' }).click()],
+    ['a receipt', async () => nPage.getByRole('button', { name: /JBL.*?, Currys, / }).first().click()],
+    ['settings', async () => nPage.getByRole('button', { name: 'Settings', exact: true }).click()],
+    ['watch', async () => nPage.getByRole('button', { name: /^Watch/ }).click()],
+    ['add', async () => nPage.getByRole('button', { name: /^Add/ }).first().click()],
+  ]) {
+    await open();
+    await nPage.waitForTimeout(400);
+    await check(screen);
+  }
+  // A pass over no named control would say nothing about any of them.
+  if (named < 8) misnamed.add(`the label-in-name check: only ${named} named controls were read`);
+}
+for (const m of misnamed) lostFocus.push([`name of ${m}`, 'does not start with the words it shows']);
 
 /*
  * Forced colours: the state that erases every colour the app chose.
@@ -870,7 +935,7 @@ for (const [label, go] of [
     await motionPage.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
     await motionPage.getByRole('button', { name: 'Skip' }).click().catch(() => {});
   }],
-  ['receipt detail', async () => { await motionPage.getByRole('button', { name: /Currys, JBL/ }).click(); }],
+  ['receipt detail', async () => { await motionPage.getByRole('button', { name: /JBL.*?, Currys, / }).click(); }],
   ['settings', async () => { await motionPage.getByRole('button', { name: 'Settings', exact: true }).click(); }],
   ['landing', async () => { await motionPage.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' }); }],
 ]) {

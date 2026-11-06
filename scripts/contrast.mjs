@@ -210,13 +210,13 @@ async function walkApp(page, sweep) {
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await page.waitForTimeout(300);
 
-  await page.getByRole('button', { name: /Currys, JBL/ }).click();
+  await page.getByRole('button', { name: /JBL.*?, Currys, / }).click();
   await page.waitForTimeout(400);
   await sweep('receipt detail');
 
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await page.waitForTimeout(300);
-  await page.getByRole('button', { name: /Currys, Le Creuset/ }).click();
+  await page.getByRole('button', { name: /Le Creuset.*?, Currys, / }).click();
   await page.waitForTimeout(400);
   await sweep('receipt detail · no guarantee');
 
@@ -247,13 +247,13 @@ async function walkApp(page, sweep) {
   });
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForTimeout(400);
-  await page.getByRole('button', { name: /Currys, Le Creuset/ }).click();
+  await page.getByRole('button', { name: /Le Creuset.*?, Currys, / }).click();
   await page.waitForTimeout(400);
   await sweep('receipt detail · refund late');
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await page.waitForTimeout(300);
   await sweep('home · sent back');
-  await page.getByRole('button', { name: /Currys, JBL/ }).click();
+  await page.getByRole('button', { name: /JBL.*?, Currys, / }).click();
   await page.waitForTimeout(400);
 
   // The fault panel opens closed; its headline, the letter box and its two
@@ -277,7 +277,7 @@ async function walkApp(page, sweep) {
   // seeded online one, which is why it is opened by name.
   await page.getByRole('button', { name: 'Back', exact: true }).click().catch(() => {});
   await page.waitForTimeout(300);
-  await page.getByRole('button', { name: /Zara, Wool-blend/ }).click();
+  await page.getByRole('button', { name: /Wool-blend.*?, Zara, / }).click();
   await page.waitForTimeout(400);
   await sweep('receipt detail · distance purchase');
 
@@ -299,7 +299,7 @@ async function walkApp(page, sweep) {
   await page.waitForTimeout(300);
   await page.getByRole('button', { name: 'Back', exact: true }).click().catch(() => {});
   await page.waitForTimeout(300);
-  await page.getByRole('button', { name: /Currys, JBL/ }).click();
+  await page.getByRole('button', { name: /JBL.*?, Currys, / }).click();
   await page.waitForTimeout(400);
 
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
@@ -403,13 +403,13 @@ async function walkApp(page, sweep) {
   // A returned receipt's detail, reachable only from the money-back list.
   await page.getByRole('button', { name: 'Receipts', exact: true }).click().catch(() => {});
   await page.waitForTimeout(300);
-  await page.getByRole('button', { name: /IKEA, MALM/ }).click().catch(() => {});
+  await page.getByRole('button', { name: /MALM.*?, IKEA, / }).click().catch(() => {});
   await page.waitForTimeout(300);
   await page.getByRole('button', { name: 'Got my money back' }).click().catch(() => {});
   await page.waitForTimeout(400);
   await page.getByRole('button', { name: 'Back to receipts' }).click().catch(() => {});
   await page.waitForTimeout(400);
-  await page.getByRole('button', { name: /IKEA, MALM.*returned/ }).click().catch(() => {});
+  await page.getByRole('button', { name: /MALM.*?, IKEA, .*returned/ }).click().catch(() => {});
   await page.waitForTimeout(400);
   await sweep('receipt detail · returned');
 
@@ -458,7 +458,7 @@ async function walkApp(page, sweep) {
       return real(k, v);
     };
   });
-  await page.getByRole('button', { name: /Zara, Wool-blend/ }).click().catch(() => {});
+  await page.getByRole('button', { name: /Wool-blend.*?, Zara, / }).click().catch(() => {});
   await page.waitForTimeout(300);
   await page.getByRole('button', { name: 'Got my money back' }).click().catch(() => {});
   await page.waitForTimeout(400);
@@ -501,7 +501,7 @@ async function walkNative(page, sweep) {
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForTimeout(600);
   await sweep('home');
-  await page.getByRole('button', { name: /Currys, JBL/ }).click();
+  await page.getByRole('button', { name: /JBL.*?, Currys, / }).click();
   await page.waitForTimeout(400);
   await sweep('receipt detail');
   await page.getByRole('button', { name: 'Back', exact: true }).click();

@@ -546,7 +546,7 @@ export const SentRow = memo(function SentRow({ receipt: r, today, onOpen }: { re
       <Pressable
         className={late ? 'k-row-white k-row' : 'k-row-plain k-row'}
         onClick={() => onOpen(r.id)}
-        aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${money(r.amount)}, ${went}, ${late ? 'refund late' : 'waiting for the refund'}`}
+        aria-label={`${r.item}${r.demo ? ' (sample)' : ''}, ${r.store}, ${money(r.amount)}, ${went}, ${late ? 'refund late' : 'waiting for the refund'}`}
         style={groupedRow}
       >
         <Avatar store={r.store} cat={r.cat} />
@@ -577,7 +577,7 @@ export const MoneyBackRow = memo(function MoneyBackRow({ receipt: r, onOpen }: {
       <Pressable
         className="k-row-plain k-row"
         onClick={() => onOpen(r.id)}
-        aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${r.exchanged ? 'swapped for another' : `${money(refundOf(r))} ${r.credit ? 'in credit' : 'back'}, returned`}`}
+        aria-label={`${r.item}${r.demo ? ' (sample)' : ''}, ${r.store}, ${r.exchanged ? 'swapped for another' : `${money(refundOf(r))} ${r.credit ? 'in credit' : 'back'}, returned`}`}
         style={groupedRow}
       >
         <div style={{ width: 44, height: 44, borderRadius: '50%', background: color.accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -611,7 +611,7 @@ export const KeepingRow = memo(function KeepingRow({ receipt: r, today, onOpen }
       <Pressable
         className="k-row-plain k-row"
         onClick={() => onOpen(r.id)}
-        aria-label={`${r.store}, ${r.item}${r.demo ? ' (sample)' : ''}, ${money(r.amount)}, ${cover ? `${cover}, ` : ''}keeping it`}
+        aria-label={`${r.item}${r.demo ? ' (sample)' : ''}, ${r.store}, ${money(r.amount)}, ${cover ? `${cover}, ` : ''}keeping it`}
         style={groupedRow}
       >
         <Avatar store={r.store} cat={r.cat} />

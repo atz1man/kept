@@ -125,7 +125,7 @@ await page.waitForTimeout(400);
  * proves nothing — which is exactly the hole this suite was written after,
  * and it would have missed it aimed at the first row.
  */
-for (const shop of [/Zara, Wool-blend/, /Currys, JBL/]) {
+for (const shop of [/Wool-blend.*?, Zara, /, /JBL.*?, Currys, /]) {
   await page.getByRole('button', { name: shop }).click();
   await page.waitForTimeout(400);
   const returnBy = await page.evaluate(() => {

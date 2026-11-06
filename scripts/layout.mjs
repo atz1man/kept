@@ -834,7 +834,7 @@ for (const width of WIDTHS) {
   }, [screen, width]);
   for (const [screen, open] of [
     ['home', async () => sp.getByRole('button', { name: 'Skip' }).click()],
-    ['a receipt', async () => sp.getByRole('button', { name: /Currys, JBL/ }).first().click()],
+    ['a receipt', async () => sp.getByRole('button', { name: /JBL.*?, Currys, / }).first().click()],
     ['its claim pack', async () => sp.getByRole('button', { name: /^Claim pack/ }).click()],
     ['its edit form', async () => {
       await sp.getByRole('button', { name: 'Back', exact: true }).click();

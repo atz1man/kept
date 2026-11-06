@@ -89,7 +89,9 @@ export function Watch({ updates, receipts, today, watching, refreshes, onOpen }:
               <li key={`${c.receiptId}:${c.kind}`} style={{ listStyle: 'none' }}>
                 <Pressable
                   onClick={() => onOpen(c.receiptId)}
-                  aria-label={`${fmtDate(c.date)}, ${when}: ${c.what}. ${r.store}, ${r.item}${c.demo ? ' (sample)' : ''}`}
+                  // In the order the row shows it, as every row's name is:
+                  // the thing first, so the words on the row start its name.
+                  aria-label={`${r.item}${c.demo ? ' (sample)' : ''}, ${r.store}, ${c.what}, ${fmtDate(c.date)}, ${when}`}
                   className="k-row-plain"
                   style={{
                     // A statement row, as the list on Home draws one: the shop
