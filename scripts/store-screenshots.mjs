@@ -108,7 +108,7 @@ const shoot = async (name) => {
 
 await shoot('deadlines');
 
-await page.getByRole('button', { name: /Zara, Wool-blend/ }).click();
+await page.getByRole('button', { name: /Wool-blend.*?, Zara, / }).click();
 await settle();
 await shoot('shop-clock-and-your-rights');
 await page.getByRole('button', { name: 'Back', exact: true }).click();

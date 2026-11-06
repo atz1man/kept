@@ -104,7 +104,7 @@ export function ReceiptRow({ receipt, urgency, emphasised, policyChanged, onItsW
         // agreement sweep reads the amount and the status off the last two
         // fields of this label — and because "mixer (sample)" is how a person
         // would say it.
-        aria-label={`${receipt.store}, ${receipt.item}${receipt.demo ? ' (sample)' : ''}${onItsWay ? ' (on its way)' : ''}, ${money(receipt.amount)}, ${urgency.label}`}
+        aria-label={`${receipt.item}${receipt.demo ? ' (sample)' : ''}${onItsWay ? ' (on its way)' : ''}, ${receipt.store}, ${money(receipt.amount)}, ${urgency.label}`}
         style={{
           display: 'flex', alignItems: 'center', gap: 13, padding: '14px 16px',
           // A row in a grouped list (`.k-group`), not a card of its own: the

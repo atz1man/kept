@@ -821,7 +821,7 @@ if (!/Deadline alerts/.test(settingsText)) {
     await lp.getByRole('button', { name: 'Read it' }).click();
     await lp.getByRole('button', { name: 'Save receipt' }).click();
     await lp.waitForTimeout(800);
-    await lp.getByRole('button', { name: /^Argos, Argos purchase/ }).first().click().catch(() => {});
+    await lp.getByRole('button', { name: /^Argos purchase.*?, Argos, / }).first().click().catch(() => {});
     await lp.waitForTimeout(400);
     await lp.getByRole('button', { name: 'I’m keeping it' }).click().catch(() => {});
     await lp.waitForTimeout(1200);
