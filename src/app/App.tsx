@@ -185,16 +185,17 @@ export function App() {
             .catch(() => '');
           verified = sig.trim() ? await verifyFeed(body, sig.trim(), FEED_PUBLIC_KEY) : null;
         }
-        if (!feedIsAcceptable(FEED_PUBLIC_KEY, verified).accept) {
-          /*
-           * Refused, and the app keeps the feed it already holds. That is the
-           * right failure: the held copy was accepted under the same rule, and
-           * silently taking an unproven one would defeat the check. Nothing is
-           * said on screen because the feed a person can see is unchanged —
-           * there is no consequence to report yet.
-           */
-          return;
-        }
+        const accepted = feedIsAcceptable(FEED_PUBLIC_KEY, verified).accept;
+        /*
+         * Refused, the app keeps the feed it already holds. That is the right
+         * failure: the held copy was accepted under the same rule, and taking
+         * an unproven one would defeat the check. But the Watch screen says
+         * the list is fetched each time the app opens, so it now also says
+         * this one was not used (#7). Said both ways, so a list that passes
+         * later in the session takes the sentence away.
+         */
+        if (!cancelled) dispatch({ type: 'feed-checked', refused: !accepted });
+        if (!accepted) return;
 
         const incoming = readFeed(JSON.parse(body), 'network', today);
         if (cancelled || !incoming || incoming.length === 0) return;
@@ -466,7 +467,7 @@ export function App() {
         />
       )}
 
-      {screen === 'watch' && <Watch updates={state.updates} receipts={state.receipts} today={today} watching={settings.policyWatch} refreshes={feedRefreshes(isNative(), FEED_ORIGIN)} onOpen={(id) => dispatch({ type: 'open', id })} />}
+      {screen === 'watch' && <Watch updates={state.updates} receipts={state.receipts} today={today} watching={settings.policyWatch} refreshes={feedRefreshes(isNative(), FEED_ORIGIN)} refused={!!state.feedRefused} onOpen={(id) => dispatch({ type: 'open', id })} />}
 
       {screen === 'detail' && selected && (
         <Detail

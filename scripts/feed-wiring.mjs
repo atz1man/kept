@@ -197,7 +197,19 @@ async function launch(dir, port, { body, signature }) {
       )
       .then(() => true)
       .catch(() => false);
-    return { applied, askedForSignature: asked.includes('/policy-feed.sig') };
+    /*
+     * And what the Watch screen says about it (#7). A refused list is not
+     * used, which is right, and the screen said the list is fetched each time
+     * the app opens as though what it showed had just come. It says so now —
+     * here, in the only builds where a refusal can happen.
+     */
+    await page.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+    await page.getByRole('button', { name: /^Watch/ }).click();
+    const notice = await page
+      .waitForSelector('[data-feed-refused]', { timeout: 2000 })
+      .then(() => true)
+      .catch(() => false);
+    return { applied, askedForSignature: asked.includes('/policy-feed.sig'), notice };
   } finally {
     await browser.close();
     server.close();
@@ -253,7 +265,8 @@ for (const c of CASES) {
   }
   results.push({
     name: c.name,
-    ok: got.applied === c.applied && got.askedForSignature === c.askedForSignature,
+    // The sentence shows exactly when a list was refused, and never otherwise.
+    ok: got.applied === c.applied && got.askedForSignature === c.askedForSignature && got.notice === !c.applied,
     got,
     want: c,
   });
@@ -270,6 +283,7 @@ function report(crash) {
     if (!r.ok) {
       console.log(`      used the feed: ${r.got.applied} (wanted ${r.want.applied})`);
       console.log(`      asked for a signature: ${r.got.askedForSignature} (wanted ${r.want.askedForSignature})`);
+      console.log(`      said on Watch that it was not used: ${r.got.notice} (wanted ${!r.want.applied})`);
     }
   }
   let wrong = results.filter((r) => !r.ok).length;

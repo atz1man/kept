@@ -90,6 +90,15 @@ export interface AppState extends KeptState {
    * a copy of the receipts it had rendered with, after waiting for the file.
    */
   restored: RestoreReport | null;
+  /**
+   * Whether the policy list fetched this time was refused: signed with a key
+   * other than the one this build trusts, or not signed at all once a key is
+   * set (lib/feed-signature.ts). The list kept is the one already held, which
+   * is right, but the Watch screen said it was "fetched each time you open
+   * the app" as though what was on it had just arrived. Not saved: the next
+   * launch checks again, and only that answer is true of it.
+   */
+  feedRefused?: boolean;
   /** The receipt open on the detail screen. */
   selId: string | null;
   obStep: number;
@@ -164,6 +173,7 @@ export type Action =
   /** A plan iOS now holds: its late single-shot lodgings are remembered (schedule.ts `recordLate`). */
   | { type: 'lodged'; plan: readonly PlannedAlert[] }
   | { type: 'feed'; updates: PolicyUpdate[] }
+  | { type: 'feed-checked'; refused: boolean }
   | { type: 'settings'; patch: Partial<Settings> }
   | { type: 'keep'; id: string }
   /** `undoable`: from the swipe, which fires on rows people meant to open; the receipt's own screen has "Not sent after all" beside it. */
@@ -1020,6 +1030,8 @@ export function reducer(state: AppState, action: Action, today: Date): AppState 
     }
     case 'feed':
       return { ...state, updates: action.updates };
+    case 'feed-checked':
+      return state.feedRefused === action.refused ? state : { ...state, feedRefused: action.refused };
     case 'alerted':
       // Recorded only for what was actually shown (plus the gentler rungs it
       // superseded), so an alert that failed to display is tried again rather

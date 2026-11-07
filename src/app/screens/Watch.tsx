@@ -20,6 +20,8 @@ interface Props {
    * and then the switch above has nothing to decide.
    */
   refreshes: boolean;
+  /** The list fetched this launch was refused for its signature, and the one held was kept (#7). */
+  refused?: boolean;
   onOpen: (id: string) => void;
 }
 
@@ -41,7 +43,7 @@ function hostOf(url: string): string {
   }
 }
 
-export function Watch({ updates, receipts, today, watching, refreshes, onOpen }: Props) {
+export function Watch({ updates, receipts, today, watching, refreshes, refused = false, onOpen }: Props) {
   const ahead = comingUp(receipts, today);
   const byId = new Map(receipts.map((r) => [r.id, r]));
   const assessed = assess(updates, receipts, today);
@@ -222,6 +224,16 @@ export function Watch({ updates, receipts, today, watching, refreshes, onOpen }:
               : 'Quids In’s own list of changes. Policy watch is off, so this is what was already on your device.'}
             <br />
             The whole list downloads, never a query naming your shops — receipts never leave your phone.
+            {/* Only once the build checks signatures can this be true (#7). */}
+            {watching && refused && (
+              <>
+                <br />
+                <span data-feed-refused>
+                  The list that came this time could not be shown to be from Quids In, so it was not used. This is the
+                  list already on your phone.
+                </span>
+              </>
+            )}
           </>
         )}
       </p>
