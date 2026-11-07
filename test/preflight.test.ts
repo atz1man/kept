@@ -14,13 +14,15 @@ type Tree = ReturnType<typeof readTree>;
 const today: Tree = readTree();
 
 /*
- * Two placeholders have been filled since this gate was written: the contact
- * address and the listing's domain. Their checks are still held in both
- * directions, against the files as they were shipped — a gate that only ever
- * sees the filled-in value could stop reading the file and nobody would know.
+ * Three placeholders have been filled since this gate was written: the
+ * contact address, the listing's domain and the bundle identifier. Their
+ * checks are still held in both directions, against the files as they were
+ * shipped — a gate that only ever sees the filled-in value could stop reading
+ * the file and nobody would know.
  */
 const shipped: Tree = {
   ...today,
+  capacitorConfig: today.capacitorConfig.replace(/appId: '[^']+'/, "appId: 'uk.co.kept.REPLACE_ME'"),
   brand: today.brand.replace(/(export const CONTACT_EMAIL\b[^=]*=\s*)'[^']*';/, '$1null;'),
   listing: today.listing.replaceAll('https://getquidsin.co.uk', 'https://REPLACE_ME'),
 };
@@ -50,15 +52,15 @@ describe('npm run preflight', () => {
     ]);
   });
 
-  it('has the contact address and the domain filled in, and nothing else yet', () => {
+  it('has the contact address, the domain and the bundle identifier filled in, and nothing else yet', () => {
     expect(failing(preflight(today))).toEqual([
-      'the bundle identifier is yours',
       'the retailer table has been checked against the shops',
       'policy updates are signed',
     ]);
     // And the shipped fixture really is the old placeholder, not today's file.
     expect(shipped.brand).not.toBe(today.brand);
     expect(shipped.listing).not.toBe(today.listing);
+    expect(shipped.capacitorConfig).not.toBe(today.capacitorConfig);
   });
 
   it('passes a tree with everything filled in', () => {

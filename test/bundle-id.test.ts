@@ -163,12 +163,14 @@ describe('what it writes', () => {
      */
     const dir = checkout({ generated: true });
     writeFileSync(join(dir, 'ios/App/App.xcodeproj/project.pbxproj'), 'nothing here\n');
+    const configBefore = readFileSync(join(dir, 'capacitor.config.ts'), 'utf8');
 
     expect(() => run(dir, 'uk.co.apnexus.kept')).toThrow();
 
     // The files before it in the list are untouched: it refused before writing
-    // any of them.
-    expect(readFileSync(join(dir, 'capacitor.config.ts'), 'utf8')).toContain(PLACEHOLDER);
+    // any of them. Compared with what was there, not with the placeholder,
+    // which the repository no longer ships.
+    expect(readFileSync(join(dir, 'capacitor.config.ts'), 'utf8')).toBe(configBefore);
     expect(readFileSync(join(dir, 'ios/App/App/capacitor.config.json'), 'utf8')).toContain(PLACEHOLDER);
   });
 });

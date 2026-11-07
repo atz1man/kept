@@ -17,7 +17,7 @@ const config: CapacitorConfig = {
   // be guessed from here, and it is deliberately obvious rather than
   // plausible-looking, in the same spirit as SOCIAL_PROOF_IS_PLACEHOLDER and
   // TABLE_CHECKED_ON.
-  appId: 'uk.co.kept.REPLACE_ME',
+  appId: 'uk.co.getquidsin.app',
   appName: 'Quids In',
   webDir: 'dist-ios',
   ios: {
