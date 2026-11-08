@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 // @ts-expect-error - a small JS helper, run by CI's ios job in the Simulator
-import { MIN_COLOURS, launchSettled, readLaunchLog, sampledColours } from '../scripts/sim-launch.mjs';
+import { MIN_COLOURS, launchSettled, readLaunchLog, refusedCall, sampledColours } from '../scripts/sim-launch.mjs';
 
 /**
  * CI's ios job launches the compiled app in the Simulator and judges the
@@ -47,6 +47,31 @@ describe('reading the launch log', () => {
   it('names the Recovery screen, which is the app saying it could not render', () => {
     const r = readLaunchLog(`${GOOD}\n⚡️  [error] - Quids In could not render: {}`);
     expect(r.problems).toEqual(['console.error: ⚡️  [error] - Quids In could not render: {}']);
+  });
+
+  // The first real launch, on CI's iOS 26 simulator, logged these three: a
+  // fresh install reading files it has not written yet. Copied verbatim.
+  const FRESH = [
+    '⚡️  [error] - {"errorMessage":"The file “kept-receipts.json.next” couldn’t be opened because there is no such file.","message":"The file “kept-receipts.json.next” couldn’t be opened because there is no such file."}',
+    '⚡️  [error] - {"errorMessage":"The file “kept-receipts.json” couldn’t be opened because there is no such file.","message":"The file “kept-receipts.json” couldn’t be opened because there is no such file."}',
+    '⚡️  [error] - {"message":"The file “receipts” couldn’t be opened because there is no such file.","errorMessage":"The file “receipts” couldn’t be opened because there is no such file."}',
+  ];
+
+  it('expects a fresh install to find none of its files yet', () => {
+    const r = readLaunchLog([GOOD, ...FRESH].join('\n'));
+    expect(r.problems).toEqual([]);
+    expect(r.expected).toHaveLength(3);
+  });
+
+  it('fails any other refused native call', () => {
+    const r = readLaunchLog(`${GOOD}\n⚡️  [error] - {"errorMessage":"Plugin is not implemented on ios","message":"x"}`);
+    expect(r.problems).toEqual(['a native call was refused: Plugin is not implemented on ios']);
+  });
+
+  it("tells Capacitor's refusals from the app's own console.error", () => {
+    expect(refusedCall(FRESH[0])).toMatch(/no such file/);
+    expect(refusedCall('⚡️  [error] - Quids In could not render: {}')).toBeNull();
+    expect(refusedCall('⚡️  [error] - {"not":"a refusal"}')).toBeNull();
   });
 
   it('names a WebView that failed to load its document', () => {

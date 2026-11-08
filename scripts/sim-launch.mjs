@@ -17,7 +17,9 @@
  *                                                    and reached native code
  * and it fails on "STARTUP JS ERROR", "WebView failed", and "[error]", which
  * is how a console.error reaches native — the app's only console.error is the
- * Recovery screen saying it could not render.
+ * Recovery screen saying it could not render. Capacitor also logs a refused
+ * plugin call as "[error]"; of those, only a fresh install's missing files
+ * are expected (see FIRST_LAUNCH).
  *
  * A screenshot is taken too, uploaded by CI, and refused if it is one flat
  * colour: a WebView that loaded nothing paints exactly that.
@@ -32,6 +34,31 @@ import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { decodePng, pixelAt } from './png.mjs';
 import { appIdFromConfig } from './check-built-app.mjs';
+
+/**
+ * Capacitor's own JavaScript logs every REFUSED plugin call as console.error,
+ * with the refusal as JSON carrying `errorMessage`. That is a different thing
+ * from the app calling console.error, and the first CI launch showed both
+ * kinds side by side. The message of a refused call, or null when the line is
+ * the app's own.
+ */
+export function refusedCall(line) {
+  const m = line.match(/⚡️\s+\[error\]\s+-\s+(\{.*\})\s*$/);
+  if (!m) return null;
+  try {
+    const body = JSON.parse(m[1]);
+    return typeof body.errorMessage === 'string' ? body.errorMessage : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The one refusal a FRESH install must produce: reading the files it has not
+ * written yet (the store, its `.next` half-write, the receipts folder). The
+ * app expects exactly this and starts empty. Any other refusal fails.
+ */
+export const FIRST_LAUNCH = /couldn’t be opened because there is no such file/;
 
 /** What the launch log says, as facts and problems. */
 export function readLaunchLog(text) {
@@ -48,8 +75,14 @@ export function readLaunchLog(text) {
   if (pluginCalls.length === 0) problems.push("the app's JavaScript never reached native code");
   if (/STARTUP JS ERROR/.test(text)) problems.push('a JavaScript error at startup');
   if (/WebView failed/.test(text)) problems.push('the WebView failed to load');
-  for (const l of lines.filter((x) => /⚡️\s+\[error\]/.test(x))) problems.push(`console.error: ${l.trim()}`);
-  return { pluginCalls, warnings, problems };
+  const expected = [];
+  for (const l of lines.filter((x) => /⚡️\s+\[error\]/.test(x))) {
+    const rejection = refusedCall(l);
+    if (rejection === null) problems.push(`console.error: ${l.trim()}`);
+    else if (FIRST_LAUNCH.test(rejection)) expected.push(rejection);
+    else problems.push(`a native call was refused: ${rejection}`);
+  }
+  return { pluginCalls, warnings, expected, problems };
 }
 
 /** True once the log holds enough to judge: loaded, and some JS reached native. */
@@ -121,7 +154,8 @@ async function main(app, shot) {
   console.log(log.trim());
   console.log('-------------------');
 
-  const { pluginCalls, warnings, problems } = readLaunchLog(log);
+  const { pluginCalls, warnings, expected, problems } = readLaunchLog(log);
+  for (const e of expected) console.log(`· expected on a fresh install: ${e}`);
   if (!running) problems.push('the app is not running any more');
   const colours = sampledColours(decodePng(shot));
   if (colours < MIN_COLOURS) problems.push(`the screenshot is ${colours} colour(s): nothing was drawn`);
