@@ -213,3 +213,14 @@ jobs:
         # ios-privacy-manifest.test.ts; whether Xcode then copied the files is
         # a fact only the built bundle holds (scripts/check-built-app.mjs).
         run: node scripts/check-built-app.mjs build/ios/Build/Products/Debug-iphonesimulator/App.app
+      - name: Launch it in the Simulator and check it starts
+        # Until this, the app had been compiled on every push and run nowhere.
+        # Judged from Capacitor's own launch log (scripts/sim-launch.mjs).
+        run: node scripts/sim-launch.mjs build/ios/Build/Products/Debug-iphonesimulator/App.app build/ios/launch.png
+      - name: Keep the launch screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-launch
+          path: build/ios/launch.png
+          if-no-files-found: ignore
