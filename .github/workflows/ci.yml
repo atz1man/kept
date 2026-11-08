@@ -205,5 +205,11 @@ jobs:
           xcodebuild -workspace ios/App/App.xcworkspace -scheme App \
             -configuration Debug -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/ios \
             CODE_SIGNING_ALLOWED=NO build | tail -40
           exit ${PIPESTATUS[0]}
+      - name: The built app carries its privacy manifests, extensions and App Group
+        # Registration in project.pbxproj is checked on every run by
+        # ios-privacy-manifest.test.ts; whether Xcode then copied the files is
+        # a fact only the built bundle holds (scripts/check-built-app.mjs).
+        run: node scripts/check-built-app.mjs build/ios/Build/Products/Debug-iphonesimulator/App.app
