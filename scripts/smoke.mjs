@@ -268,6 +268,57 @@ await page.waitForTimeout(600);
 results['swipe marks the receipt returned'] = await page.getByText('Money back', { exact: true }).isVisible();
 
 /*
+ * The order number, ready for the shop's form.
+ *
+ * "Start your return" opens the shop's page and the page asks for the order
+ * number, which was small grey text a person had to press, hold and drag
+ * round. Under the link there is now one control that copies it. Both ways it
+ * can go, for the reason the share check below gives: a "Copied" that is said
+ * whether or not the copy happened is found out at the shop's form.
+ *
+ * And a receipt with no order number shows no such control: an empty Copy is
+ * a button that does nothing.
+ */
+for (const [label, refuse] of [['copies the order number for the shop’s form', false], ['does not claim an order number was copied when it was not', true]]) {
+  const oc = await browser.newContext({ viewport: { width: 402, height: 874 }, permissions: refuse ? [] : ['clipboard-write'] });
+  const op = await oc.newPage();
+  await op.addInitScript((refused) => {
+    window.__copied = null;
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: (t) => (refused ? Promise.reject(new Error('insecure origin')) : ((window.__copied = t), Promise.resolve())) },
+      configurable: true,
+    });
+  }, refuse);
+  await op.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await op.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await op.waitForTimeout(300);
+  await op.getByRole('button', { name: /Wool-blend.*?, Zara, / }).click();
+  await op.waitForTimeout(300);
+  const noneYet = (await op.locator('[data-order-copy]').count()) === 0;
+  await op.getByRole('button', { name: 'Edit', exact: true }).click();
+  await op.waitForTimeout(400);
+  await op.fill('#e-order', 'ZR-4471-90213');
+  await op.getByRole('button', { name: 'Save', exact: true }).click();
+  await op.waitForTimeout(400);
+  const copyButton = op.getByRole('button', { name: 'Copy order number ZR-4471-90213' });
+  const placed = await op.evaluate(() => {
+    const link = [...document.querySelectorAll('a')].find((a) => /Start your return/.test(a.textContent ?? ''));
+    const box = document.querySelector('[data-order-copy]');
+    if (!link || !box) return null;
+    return { under: box.getBoundingClientRect().top >= link.getBoundingClientRect().bottom, said: box.querySelector('[role="status"]')?.textContent ?? '' };
+  });
+  await copyButton.click().catch(() => {});
+  await op.waitForTimeout(200);
+  const after = await op.evaluate(() => ({ copied: window.__copied, said: document.querySelector('[data-order-copy] [role="status"]')?.textContent ?? '' }));
+  results[`the returns step ${label}`] = noneYet && !!placed && placed.under && /will ask for this/.test(placed.said) &&
+    (refuse
+      ? after.copied === null && /Couldn’t copy/.test(after.said) && !/Copied/.test(after.said)
+      : after.copied === 'ZR-4471-90213' && /^Copied/.test(after.said));
+  if (!results[`the returns step ${label}`]) problems.push(`order copy (${label}): ${JSON.stringify({ noneYet, placed, after })}`);
+  await oc.close();
+}
+
+/*
  * Sharing the win, both ways it can go.
  *
  * This check used to be `is the button now saying "Copied"` — which passed

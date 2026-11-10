@@ -19,6 +19,7 @@ import { SplitPanel } from '../components/SplitPanel';
 import { canSplit } from '../../lib/split';
 import { RefundForm } from '../components/RefundForm';
 import { Letter } from '../components/Letter';
+import { OrderRefCopy } from '../components/OrderRefCopy';
 import { readReturnRef, REG34_CLOCK, refundChase, refundChaseLine, refundLetter } from '../../lib/refund-chase';
 import { possessive } from '../../lib/words';
 import { christmasLine } from '../../lib/christmas';
@@ -378,6 +379,9 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
           <span style={{ fontSize: 13, fontWeight: 500, color: color.onAccentSoft }}>{returnsPage.host}<span aria-hidden="true"> ↗</span></span>
         </a>
       )}
+
+      {/* What that page asks for first, ready to paste (`OrderRefCopy`). */}
+      {returnsPage && receipt.orderRef && <OrderRefCopy orderRef={receipt.orderRef} />}
 
       {/*
        * What happened to it — sent back, money back, keeping it — straight
