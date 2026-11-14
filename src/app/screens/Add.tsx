@@ -22,6 +22,7 @@ import { ArrowRight, CameraGlyph, LogoMark, MailGlyph, ShareGlyph, Warning, Rece
 import { HowBought } from '../components/HowBought';
 import { PREFIXED_PAD, Prefixed } from '../components/Field';
 import { Pressable } from '../components/Pressable';
+import { MisreadReport } from '../components/MisreadReport';
 import { Note, UnlockOffer } from '../components/UnlockOffer';
 import { SCROLL_PAD_TOP } from '../scroll-pad';
 
@@ -1029,6 +1030,11 @@ export function Add({ today, sharedText, sharedFile, quotaFull, trackedTotal, up
               Something wrong? Correct it
             </Pressable>
           )}
+          {/* And the way a real misread gets back to the reader: the text and
+              what was read from it, in an email the person sends themselves
+              (`MisreadReport`). Not for a receipt typed in by hand — nothing
+              was read. */}
+          {!typedIn && text.trim() !== '' && <MisreadReport text={text} parsed={parsed} from={source === 'paste' ? 'paste' : readFrom} />}
           {scanShot && (
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, minHeight: 44, fontSize: 14, color: photoToKeep || !keepPhoto ? color.ink : color.muted }}>
               <input

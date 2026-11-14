@@ -114,10 +114,19 @@ export function Privacy() {
           it went.
         </Section>
 
+        <Section title="If you write to us">
+          The app sends nothing, but you can. Send feedback in Settings, and “Read it wrong? Send it to us” when you add
+          a receipt, each open an email in your own mail app, and nothing goes unless you send it. The second one
+          carries the text you added and what Quids In read from it, shown to you in full first, with email addresses,
+          phone numbers, postcodes and the name in a greeting taken out; you can change or delete any of it before
+          sending. If you do send it, we receive that email like any other, and use it only to fix how Quids In reads
+          receipts. Ask and we will delete it.
+        </Section>
+
         <Section title="Your rights">
-          Because Quids In holds nothing about you, there is nothing for anyone to access, correct, export or delete on
-          your behalf — all of it is on your phone, where you can export it, and Erase everything in Settings removes
-          it from the app.
+          Because the app sends us nothing about you, the only thing we can hold is an email you chose to send — and
+          you can ask us for a copy of it, or to delete it, at the address below. Everything else is on your phone,
+          where you can export it, and Erase everything in Settings removes it from the app.
         </Section>
 
         <Section title="Changes">
