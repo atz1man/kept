@@ -1,3 +1,4 @@
+import { WARRANTY_NOTICE_DAYS } from './warranty-notice';
 import { addDays, daysBetween, fmtDate, fromISODate, toISODate } from './dates';
 import { REPLY_DAYS } from './fault-letter';
 import { REFUND_CHASE_DAYS, REJECT_DAYS } from './legal';
@@ -53,12 +54,9 @@ export function remindedBeforeWindow(sent: readonly string[], receiptId: string)
   return (['week', 'soon', 'today'] as const).some((rung) => sent.includes(alertKey(receiptId, rung)));
 }
 
-/**
- * How long before a guarantee ends it is worth saying so. A month: long
- * enough to notice a fault you have been living with, book a repair and get
- * the thing looked at while it is still covered.
- */
-export const WARRANTY_NOTICE_DAYS = 30;
+// In a module of its own so the landing page can state the number without
+// carrying this whole file in its bundle (`warranty-notice.ts`).
+export { WARRANTY_NOTICE_DAYS };
 
 /**
  * How far ahead of its expiry store credit is worth a reminder. Our number, as

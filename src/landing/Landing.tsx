@@ -5,7 +5,7 @@ import { FAMILY_SIZE, PLAN_PRICES } from '../lib/pricing';
 import { FREE_TIER_LIMIT } from '../lib/quota';
 import { STORE_COUNT, STORE_POLICIES, findStore } from '../lib/stores';
 import { COOLING_OFF_DAYS, LATER_FAULTS, PRESUMED_FAULT_MONTHS, REJECT_DAYS } from '../lib/legal';
-import { WARRANTY_NOTICE_DAYS } from '../lib/alerts';
+import { WARRANTY_NOTICE_DAYS } from '../lib/warranty-notice';
 import { CONTACT_EMAIL, TAGLINE } from '../lib/brand';
 import { tickerLines } from './ticker';
 import { CompanyDisclosure } from '../pages/Disclosure';
