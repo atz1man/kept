@@ -268,6 +268,50 @@ await page.waitForTimeout(600);
 results['swipe marks the receipt returned'] = await page.getByText('Money back', { exact: true }).isVisible();
 
 /*
+ * A misread, sent back by the person who met it.
+ *
+ * The reader was built on emails written to test it, and the app measures
+ * nothing, so a real misread never reached anyone. Under the card there is
+ * now "Read it wrong? Send it to us": closed until asked for, and when opened
+ * it shows the whole message before any mail app does. Held here: the message
+ * on screen is the message in the link, the pasted email address, phone
+ * number, postcode and greeting name are gone from both, the order number the
+ * reader needs is still there, and opening it asked the network for nothing.
+ */
+{
+  const mc = await browser.newContext({ viewport: { width: 402, height: 874 } });
+  const mp = await mc.newPage();
+  await mp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
+  await mp.getByRole('button', { name: 'Skip' }).click().catch(() => {});
+  await mp.waitForTimeout(300);
+  await mp.getByRole('button', { name: 'Add a receipt' }).click();
+  await mp.waitForTimeout(400);
+  await mp.fill('#paste', 'Hi Samira,\nThanks for your Currys order CUR-99812-A\nTotal £89.00 · 2 Nov\nSent to samira@example.com, 12 High St, Leeds LS1 4AP, 07700 900123');
+  await mp.getByRole('button', { name: 'Read it' }).click();
+  await mp.waitForTimeout(400);
+  const toggle = mp.getByRole('button', { name: 'Read it wrong? Send it to us' });
+  const closedFirst = (await toggle.getAttribute('aria-expanded')) === 'false' && (await mp.locator('[data-misread] pre').count()) === 0;
+  const asked = [];
+  mp.on('request', (r) => asked.push(r.url()));
+  await toggle.click();
+  await mp.waitForTimeout(250);
+  const seen = await mp.evaluate(() => {
+    const box = document.querySelector('[data-misread]');
+    const link = box?.querySelector('a[href^="mailto:"]');
+    const href = link?.getAttribute('href') ?? '';
+    return { shown: box?.querySelector('pre')?.textContent ?? '', sent: href.includes('&body=') ? decodeURIComponent(href.split('&body=')[1]) : null, to: href.split('?')[0] };
+  });
+  const personal = /Samira|samira@|example\.com|LS1|4AP|07700|900123/;
+  results['a misread can be sent back, shown in full first and with the person taken out of it'] =
+    closedFirst && (await toggle.getAttribute('aria-expanded')) === 'true' &&
+    seen.sent !== null && seen.sent === seen.shown && seen.to === 'mailto:hello@getquidsin.co.uk' &&
+    !personal.test(seen.shown) && seen.shown.includes('CUR-99812-A') && seen.shown.includes('Shop: Currys') &&
+    seen.shown.includes('Hi [name],') && asked.length === 0;
+  if (!results['a misread can be sent back, shown in full first and with the person taken out of it']) problems.push(`misread report: ${JSON.stringify({ closedFirst, seen, asked })}`);
+  await mc.close();
+}
+
+/*
  * The order number, ready for the shop's form.
  *
  * "Start your return" opens the shop's page and the page asks for the order

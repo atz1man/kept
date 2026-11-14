@@ -429,6 +429,7 @@ src/lib/          the decision logic — pure, tested, no React
   backup.ts       reading a backup file back in, and merging it by id
   save-file.ts    where a backup actually lands — Files on iOS, a download on the web
   mirror.ts       the second copy, outside the web view, that survives a reclaim
+  misread-report.ts  a receipt read wrong, as an email the person chooses to send: redacted, shown first
   photos.ts       the paper slip on the filesystem, never read
   embed.ts        whether this page is the landing page's demo, which every store turns away
   csp.ts          the content security policy every built page carries: this build's scripts, this origin, and a configured feed host, nothing else
