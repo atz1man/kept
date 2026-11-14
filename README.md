@@ -382,6 +382,7 @@ src/lib/          the decision logic — pure, tested, no React
   types.ts        the Receipt, and the shapes every other module agrees on
   dates.ts        whole-day arithmetic, and which day it is: the UK's, wherever the phone is
   money.ts        integer pence
+  warranty-notice.ts  how long before a guarantee ends it is worth saying so
   receipt-scan.ts a till receipt, as the camera reads it, made readable by the parser
   confidence.ts   which figures a read was unsure of, so the Add card marks them to check
   support.ts      the version and the counts a person sends to support, never their purchases

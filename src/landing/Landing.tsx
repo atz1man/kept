@@ -4,7 +4,8 @@ import { Logo, Tick, Wordmark } from '../app/components/Icons';
 import { FAMILY_SIZE, PLAN_PRICES } from '../lib/pricing';
 import { FREE_TIER_LIMIT } from '../lib/quota';
 import { STORE_COUNT, STORE_POLICIES, findStore } from '../lib/stores';
-import { COOLING_OFF_DAYS, REJECT_DAYS } from '../lib/legal';
+import { COOLING_OFF_DAYS, LATER_FAULTS, PRESUMED_FAULT_MONTHS, REJECT_DAYS } from '../lib/legal';
+import { WARRANTY_NOTICE_DAYS } from '../lib/warranty-notice';
 import { CONTACT_EMAIL, TAGLINE } from '../lib/brand';
 import { tickerLines } from './ticker';
 import { CompanyDisclosure } from '../pages/Disclosure';
@@ -28,6 +29,7 @@ const DeadlinesArt = lazy(() => productArt().then((m) => ({ default: m.Deadlines
 const PhoneOnlyArt = lazy(() => productArt().then((m) => ({ default: m.PhoneOnlyArt })));
 const ScanArt = lazy(() => productArt().then((m) => ({ default: m.ScanArt })));
 const TwoClocksArt = lazy(() => productArt().then((m) => ({ default: m.TwoClocksArt })));
+const AfterWindowArt = lazy(() => productArt().then((m) => ({ default: m.AfterWindowArt })));
 
 /** A picture that loads after the page, holding its place until it does. */
 function Art({ height, children }: { height: number | string; children: ReactNode }) {
@@ -360,6 +362,40 @@ export function Landing() {
               <div style={{ minWidth: 0 }}><Art height={340}>{w.art}</Art></div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/*
+        * After the return window. Everything above is about the first month,
+        * and the purchases that cost the most go wrong long after it: the
+        * app already keeps the receipt, the photo and the warranty, warns
+        * before a warranty ends and drafts the letter when something breaks,
+        * and this page said none of it. One band, not a fourth step — the
+        * three steps were cut down to three on purpose. The periods are
+        * `legal.ts`'s own sentence and constants, not typed here.
+        */}
+      <section id="after" aria-labelledby="after-title" className="k-anchor" style={{ ...WRAP, padding: 'clamp(72px, 10vw, 128px) 28px 0' }}>
+        <div className="k-split k-flip k-reveal">
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: color.accentInk }}>After the return window</div>
+            <h2 id="after-title" style={{ fontFamily: font.display, fontWeight: 700, fontSize: 'clamp(28px, 3.4vw, 40px)', letterSpacing: '-0.03em', lineHeight: 1.12, margin: '12px 0 0' }}>
+              Keeping it? It’s still covered.
+            </h2>
+            <p style={{ fontSize: 16.5, lineHeight: 1.65, color: color.body, margin: '16px 0 0', maxWidth: 520 }}>
+              The return window is the short clock. Keep something, and Quids In holds on to its receipt, a photo of it and
+              its warranty. In the last {WARRANTY_NOTICE_DAYS} days before the warranty runs out, Quids In flags it when you open the app.
+            </p>
+            <p style={{ fontSize: 16.5, lineHeight: 1.65, color: color.body, margin: '14px 0 0', maxWidth: 520 }}>
+              And if it breaks: for the first {PRESUMED_FAULT_MONTHS} months a fault is taken to have been there from the
+              start, and after that {LATER_FAULTS} Quids In says what applies on the day, and drafts the letter to the shop.
+            </p>
+            <a href="/rights/" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 6, fontSize: 15, fontWeight: 600, color: color.accentInk }}>
+              What the law gives you →
+            </a>
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <Art height={340}><AfterWindowArt rejectDays={REJECT_DAYS} presumedMonths={PRESUMED_FAULT_MONTHS} warrantyYears={5} ownedYears={3} /></Art>
+          </div>
         </div>
       </section>
 
