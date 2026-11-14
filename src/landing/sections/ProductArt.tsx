@@ -117,6 +117,46 @@ export function TwoClocksArt({ shopDays, lawDays, coolingDays }: { shopDays: num
   );
 }
 
+/**
+ * A thing bought three years ago and kept: what has run out, what has not.
+ *
+ * The two pictures above are both about the first month. This is the rest of
+ * a purchase's life, which is where the expensive ones fail — drawn as the
+ * same receipt with its clocks, the short ones spent and the long ones still
+ * running. Every number is passed in from the modules that hold it.
+ */
+export function AfterWindowArt({ rejectDays, presumedMonths, warrantyYears, ownedYears }: { rejectDays: number; presumedMonths: number; warrantyYears: number; ownedYears: number }) {
+  const row = (label: string, sub: string, state: string, live: boolean) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <span aria-hidden="true" style={{ flex: '0 0 auto', width: 10, height: 10, borderRadius: 999, background: live ? color.accent : color.dotOff }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 600, color: live ? color.ink : color.muted }}>{label}</div>
+        <div style={{ fontSize: 12.5, color: color.muted, marginTop: 2 }}>{sub}</div>
+      </div>
+      <span style={{ flex: '0 0 auto', fontFamily: font.figures, fontSize: 12.5, fontWeight: 600, color: live ? color.accentInk : color.muted, whiteSpace: 'nowrap' }}>{state}</span>
+    </div>
+  );
+  return (
+    <Figure label={`A washing machine bought ${ownedYears} years ago and still in use: the ${rejectDays}-day window to reject it and the ${presumedMonths} months in which a fault is presumed have passed, its ${warrantyYears}-year warranty has ${warrantyYears - ownedYears} years left, and the law still allows a claim`}>
+      <div style={{ ...panel, padding: '20px 22px', display: 'grid', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+          <div>
+            <div style={{ fontWeight: 650, fontSize: 15, color: color.ink }}>Washing machine</div>
+            <div style={{ fontSize: 12.5, color: color.muted, marginTop: 2 }}>Bought {ownedYears} years ago · keeping it</div>
+          </div>
+          <span style={{ fontSize: 12, fontWeight: 600, color: color.accentInk, background: color.accentSoft, padding: '5px 10px', borderRadius: radius.pill, whiteSpace: 'nowrap' }}>
+            Still covered
+          </span>
+        </div>
+        {row('Returns and right to reject', `The shop’s window, and the law’s ${rejectDays} days`, 'Passed', false)}
+        {row('Fault presumed from the start', `The first ${presumedMonths} months`, 'Passed', false)}
+        {row(`${warrantyYears}-year warranty`, 'The maker’s own promise', `${warrantyYears - ownedYears} years left`, true)}
+        {row('Repair or replacement, by law', 'If a fault appears', 'Still open', true)}
+      </div>
+    </Figure>
+  );
+}
+
 /** The add screen after a scan: what it read, waiting to be checked. */
 export function ScanArt() {
   const field = (label: string, value: string) => (
