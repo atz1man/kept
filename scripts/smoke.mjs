@@ -276,7 +276,8 @@ results['swipe marks the receipt returned'] = await page.getByText('Money back',
  * it shows the whole message before any mail app does. Held here: the message
  * on screen is the message in the link, the pasted email address, phone
  * number, postcode and greeting name are gone from both, the order number the
- * reader needs is still there, and opening it asked the network for nothing.
+ * reader needs is still there, and opening it sent nothing anywhere: the only
+ * thing it may ask for is the panel's own script, from the app's own files.
  */
 {
   const mc = await browser.newContext({ viewport: { width: 402, height: 874 } });
@@ -292,9 +293,10 @@ results['swipe marks the receipt returned'] = await page.getByText('Money back',
   const toggle = mp.getByRole('button', { name: 'Read it wrong? Send it to us' });
   const closedFirst = (await toggle.getAttribute('aria-expanded')) === 'false' && (await mp.locator('[data-misread] pre').count()) === 0;
   const asked = [];
-  mp.on('request', (r) => asked.push(r.url()));
+  mp.on('request', (r) => asked.push(`${r.method()} ${r.url()}`));
   await toggle.click();
-  await mp.waitForTimeout(250);
+  // The panel is a chunk of its own, fetched when first opened.
+  await mp.locator('[data-misread] pre').waitFor({ timeout: 5000 }).catch(() => {});
   const seen = await mp.evaluate(() => {
     const box = document.querySelector('[data-misread]');
     const link = box?.querySelector('a[href^="mailto:"]');
@@ -306,7 +308,7 @@ results['swipe marks the receipt returned'] = await page.getByText('Money back',
     closedFirst && (await toggle.getAttribute('aria-expanded')) === 'true' &&
     seen.sent !== null && seen.sent === seen.shown && seen.to === 'mailto:hello@getquidsin.co.uk' &&
     !personal.test(seen.shown) && seen.shown.includes('CUR-99812-A') && seen.shown.includes('Shop: Currys') &&
-    seen.shown.includes('Hi [name],') && asked.length === 0;
+    seen.shown.includes('Hi [name],') && asked.every((a) => a.startsWith(`GET ${ORIGIN}/assets/`));
   if (!results['a misread can be sent back, shown in full first and with the person taken out of it']) problems.push(`misread report: ${JSON.stringify({ closedFirst, seen, asked })}`);
   await mc.close();
 }

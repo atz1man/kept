@@ -22,3 +22,20 @@ export function arrivedSomewhereNew(last: { current: string }, place: string): b
 
 /** The place, as App.tsx names it: the screen, and the receipt it shows. */
 export const placeOf = (screen: string, selId: string | null | undefined): string => `${screen}|${selId ?? ''}`;
+
+/**
+ * Whether this place's heading is still owed a focus move.
+ *
+ * A screen in a chunk of its own (Settings, the claim pack) mounts a moment
+ * after the navigation, so its heading is not in the document when the effect
+ * runs: the move has to wait for it. Waiting is a second thing StrictMode's
+ * re-run could lose — the first run starts the wait and is torn down, and the
+ * second, asking only "is this somewhere new?", is told no. So what is owed
+ * is kept by place as well: true on arrival, and true again on every re-run
+ * until `awaiting.current` is cleared by the move itself. Leaving for another
+ * place drops the debt, because `awaiting` then names the new one.
+ */
+export function headingOwed(last: { current: string }, awaiting: { current: string | null }, place: string): boolean {
+  if (arrivedSomewhereNew(last, place)) awaiting.current = place;
+  return awaiting.current === place;
+}

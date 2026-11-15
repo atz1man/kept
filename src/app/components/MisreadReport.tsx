@@ -1,8 +1,10 @@
-import { useId, useState } from 'react';
-import { color, font, radius } from '../../tokens';
+import { lazy, Suspense, useId, useState } from 'react';
+import { color } from '../../tokens';
 import { CONTACT_EMAIL } from '../../lib/brand';
-import { misreadMailto, misreadReport, type MisreadFacts } from '../../lib/misread-report';
+import type { MisreadFacts } from '../../lib/misread-report';
 import { Pressable } from './Pressable';
+
+const MisreadPanel = lazy(() => import('./MisreadPanel'));
 
 /**
  * "Read it wrong? Send it to us" — the way a real misread reaches the reader.
@@ -14,13 +16,16 @@ import { Pressable } from './Pressable';
  * nothing; the person's own mail app does, after they have read it and
  * changed whatever they like.
  *
+ * Only the control is here. What it opens (`MisreadPanel`) arrives when it is
+ * opened, from the app's own files — on the phone, from the bundle; on the
+ * web, from the worker's cache — so it costs a launch nothing.
+ *
  * Renders nothing until there is an address somebody reads.
  */
 export function MisreadReport({ text, parsed, from }: Omit<MisreadFacts, 'version'>) {
   const [open, setOpen] = useState(false);
   const panel = useId();
   if (!CONTACT_EMAIL) return null;
-  const report = open ? misreadReport({ version: __KEPT_VERSION__, text, parsed, from }) : '';
 
   return (
     <div data-misread style={{ marginTop: 2 }}>
@@ -34,35 +39,9 @@ export function MisreadReport({ text, parsed, from }: Omit<MisreadFacts, 'versio
       </Pressable>
       {open && (
         <div id={panel} style={{ marginTop: 4, padding: 14, background: color.surfaceAlt, border: `1px solid ${color.borderHair}`, borderRadius: 12 }}>
-          <div style={{ fontSize: 13.5, lineHeight: 1.5, color: color.body }}>
-            This opens an email to us in your own mail app — Quids In sends nothing itself. It carries what you added
-            and what was read from it, so the reader can be fixed. Email addresses, phone numbers, postcodes and the
-            name in a greeting are already taken out; a street address or a name elsewhere may not be, so read it
-            through and delete anything you’d rather keep.
-          </div>
-          <pre
-            tabIndex={0}
-            role="region"
-            aria-label="The message that will be sent"
-            style={{
-              whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', userSelect: 'text', fontFamily: font.figures, fontSize: 12, lineHeight: 1.5,
-              color: color.body, background: color.surface, border: `1px solid ${color.borderHair}`, borderRadius: radius.control,
-              padding: '10px 12px', margin: '10px 0 0', maxHeight: 220, overflowY: 'auto',
-            }}
-          >
-            {report}
-          </pre>
-          <a
-            href={misreadMailto(CONTACT_EMAIL, report)}
-            className="k-secondary"
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 10, minHeight: 44, boxSizing: 'border-box', padding: '10px 16px',
-              background: color.surface, border: `1px solid ${color.border}`, borderRadius: radius.control,
-              color: color.accentInk, textDecoration: 'none', fontWeight: 600, fontSize: 14,
-            }}
-          >
-            Email it to {CONTACT_EMAIL}<span aria-hidden="true">&nbsp;→</span>
-          </a>
+          <Suspense fallback={<div style={{ minHeight: 120 }} aria-busy="true" />}>
+            <MisreadPanel to={CONTACT_EMAIL} text={text} parsed={parsed} from={from} />
+          </Suspense>
         </div>
       )}
     </div>

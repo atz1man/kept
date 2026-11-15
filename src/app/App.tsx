@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { color, paperGrain } from '../tokens';
 import { dueAlerts, supersededKeys } from '../lib/alerts';
 import { mergeFeed, policyAlertFor, readFeed } from '../lib/policy-feed';
@@ -10,7 +10,7 @@ import { money, sumPence } from '../lib/money';
 import { canSplit } from '../lib/split';
 import { countsAsMoney, derive, makeReceiptId, recoveredPence, swapInFate, swapInFateText } from '../lib/receipts';
 import { fmtDateNear } from '../lib/dates';
-import { arrivedSomewhereNew, placeOf } from '../lib/focus-place';
+import { headingOwed, placeOf } from '../lib/focus-place';
 import { winSentence } from '../lib/words';
 import { exportBackup, wipe } from '../lib/storage';
 import { keepStorage } from '../lib/persist';
@@ -21,12 +21,12 @@ import { UndoBar } from './components/UndoBar';
 import { UpgradeNotice } from './components/UpgradeNotice';
 import { Add, type AddStart } from './screens/Add';
 import { Celebrate } from './screens/Celebrate';
-import { ClaimPack } from './screens/ClaimPack';
 import { Detail } from './screens/Detail';
 import { Edit } from './screens/Edit';
 import { Home } from './screens/Home';
 import { Onboarding } from './screens/Onboarding';
-import { Settings } from './screens/Settings';
+const ClaimPack = lazy(() => import('./screens/ClaimPack').then((m) => ({ default: m.ClaimPack })));
+const Settings = lazy(() => import('./screens/Settings').then((m) => ({ default: m.Settings })));
 import { Watch } from './screens/Watch';
 import { offerOf, quotaFull, useApp } from './state';
 import { useAppStore } from './purchases';
@@ -284,31 +284,51 @@ export function App() {
   // place, not on a count, so StrictMode's second run of the first paint is
   // still the first paint (lib/focus-place.ts).
   const lastPlace = useRef(placeOf(screen, state.selId));
+  /** The place whose heading has yet to be focused or announced (`headingOwed`). */
+  const awaitingHeading = useRef<string | null>(null);
   const [announced, setAnnounced] = useState('');
   /** A way into the Add screen chosen on home (Scan, Upload, Paste), held until Add has acted on it. */
   const [addStart, setAddStart] = useState<AddStart | undefined>(undefined);
   useEffect(() => {
-    if (!arrivedSomewhereNew(lastPlace, placeOf(screen, state.selId))) return;
-    const h1 = document.querySelector<HTMLElement>('main h1');
-    const heading = h1?.textContent?.trim() ?? '';
+    const place = placeOf(screen, state.selId);
+    if (!headingOwed(lastPlace, awaitingHeading, place)) return;
+    const arrive = (h1: HTMLElement) => {
+      awaitingHeading.current = null;
+      const heading = h1.textContent?.trim() ?? '';
 
-    // Focus is RESTORED where it was lost, never taken from a control the
-    // person is still on. Tapping a row unmounts the row, so focus falls to
-    // the document and has to be put somewhere; tapping a tab-bar button does
-    // not, and moving focus off the tab bar there would make the app's primary
-    // navigation the hardest thing on the page to reach — it sits after
-    // </main>, so getting back to it means tabbing through the whole screen.
-    if (document.activeElement === document.body || document.activeElement === null) {
-      // preventScroll: the new screen is already at its top, and scrolling to
-      // a heading that is already in view is a jump with no cause.
-      h1?.focus({ preventScroll: true });
-      setAnnounced('');
-      return;
-    }
-    // Focus stayed put, so nothing has said the screen changed. The heading is
-    // what the new screen IS, and it is the same words the focus move would
-    // have read out — so the two paths tell the person the same thing.
-    setAnnounced(heading);
+      // Focus is RESTORED where it was lost, never taken from a control the
+      // person is still on. Tapping a row unmounts the row, so focus falls to
+      // the document and has to be put somewhere; tapping a tab-bar button does
+      // not, and moving focus off the tab bar there would make the app's primary
+      // navigation the hardest thing on the page to reach — it sits after
+      // </main>, so getting back to it means tabbing through the whole screen.
+      if (document.activeElement === document.body || document.activeElement === null) {
+        // preventScroll: the new screen is already at its top, and scrolling to
+        // a heading that is already in view is a jump with no cause.
+        h1.focus({ preventScroll: true });
+        setAnnounced('');
+        return;
+      }
+      // Focus stayed put, so nothing has said the screen changed. The heading is
+      // what the new screen IS, and it is the same words the focus move would
+      // have read out — so the two paths tell the person the same thing.
+      setAnnounced(heading);
+    };
+    const main = document.querySelector<HTMLElement>('main');
+    const h1 = main?.querySelector<HTMLElement>('h1');
+    if (h1) return arrive(h1);
+    // A screen in a chunk of its own (Settings, the claim pack) mounts a
+    // moment after the navigation. Its heading is owed the same move, so wait
+    // for it rather than report an arrival nowhere.
+    if (!main) return;
+    const seen = new MutationObserver(() => {
+      const late = main.querySelector<HTMLElement>('h1');
+      if (!late) return;
+      seen.disconnect();
+      arrive(late);
+    });
+    seen.observe(main, { childList: true, subtree: true });
+    return () => seen.disconnect();
   }, [screen, state.selId]);
 
   // A backup that leaves the device only if the user says so — it goes to
@@ -513,7 +533,7 @@ export function App() {
       )}
 
       {screen === 'pack' && selected && (
-        <ClaimPack receipt={selected} today={today} onBack={() => dispatch({ type: 'go', screen: 'detail' })} />
+        <Suspense fallback={<div style={{ flex: 1 }} />}><ClaimPack receipt={selected} today={today} onBack={() => dispatch({ type: 'go', screen: 'detail' })} /></Suspense>
       )}
 
       {screen === 'edit' && selected && (
@@ -550,7 +570,7 @@ export function App() {
       )}
 
       {screen === 'settings' && (
-        <Settings
+        <Suspense fallback={<div style={{ flex: 1 }} />}><Settings
           settings={settings}
           receipts={state.receipts}
           embedded={state.embedded}
@@ -573,7 +593,7 @@ export function App() {
           offer={offer}
           store={state.store}
           onRestorePurchase={appStore.restore}
-        />
+        /></Suspense>
       )}
 
       {screen === 'celebrate' && state.celebrating && (
