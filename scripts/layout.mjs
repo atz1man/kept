@@ -485,6 +485,15 @@ const screens = [
   ['back to home', async (p) => { await p.getByRole('button', { name: 'Cancel' }).click(); await p.getByRole('button', { name: 'Back', exact: true }).click(); }],
   ['watch', async (p) => { await p.getByRole('button', { name: /^Watch/ }).click(); }],
   ['add', async (p) => { await p.getByRole('button', { name: 'Add a receipt' }).click(); }],
+  // A read card with "Read it wrong? Send it to us" opened: a long message in
+  // a scrolling box, and a mail link carrying an address, on a narrow phone.
+  ['add · misread report open', async (p) => {
+    await p.fill('#paste', 'Hi Samira,\nThanks for your Currys order CUR-99812-A-WITH-A-VERY-LONG-REFERENCE-THAT-CANNOT-BREAK\nTotal £89.00 · 2 Nov');
+    await p.getByRole('button', { name: 'Read it' }).click();
+    await p.getByRole('button', { name: 'Read it wrong? Send it to us' }).click();
+    await p.locator('[data-misread] pre').waitFor({ timeout: 5000 });
+  }],
+  ['add · started again', async (p) => { await p.getByRole('button', { name: 'Start again' }).click(); }],
   // The blank card, with every field it can show: shop, total, date, window
   // and its refusal — the tallest state this screen has.
   ['add · typed in', async (p) => {
