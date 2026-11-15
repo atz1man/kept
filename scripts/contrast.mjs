@@ -333,6 +333,12 @@ async function walkApp(page, sweep) {
   await page.getByRole('button', { name: 'Read it' }).click();
   await page.waitForTimeout(400);
   await sweep('add receipt');
+  // The misread panel, opened: its own ground, text and link (MisreadPanel).
+  await page.getByRole('button', { name: 'Read it wrong? Send it to us' }).click();
+  await page.locator('[data-misread] pre').waitFor({ timeout: 5000 });
+  await sweep('add receipt · misread report open');
+  await page.getByRole('button', { name: 'Read it wrong? Send it to us' }).click();
+  await page.waitForTimeout(200);
 
   // The parser names no shop rather than guessing one, so the add screen asks.
   // That field, its hint, and the hint's second wording once a known shop is

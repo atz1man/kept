@@ -15,6 +15,11 @@ export function seedReceipts(today: Date): Receipt[] {
       amount: toPence(89.0), purchasedOn: ago(12), windowDays: 14,
       policy: 'Currys · 14 days change of mind, unopened or unwanted. Refund to original payment method.',
       distance: false, warranty: { months: 24, note: 'Manufacturer warranty — repairs free within it' },
+      // An order number on the sample that is two days from its deadline, so
+      // the first receipt anyone opens shows the returns step whole — the
+      // shop's page and the number its form asks for — and every sweep that
+      // opens this receipt measures that control.
+      orderRef: 'CUR-4471-90213',
       status: 'active', demo: true,
     },
     {

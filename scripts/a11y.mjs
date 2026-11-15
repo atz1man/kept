@@ -264,6 +264,14 @@ await page.getByRole('button', { name: 'Read it' }).click();
 await page.waitForTimeout(400);
 await audit(page, 'add receipt', findings);
 
+// "Read it wrong? Send it to us", opened: a panel with a scrolling region and
+// a mail link that nothing else renders, in a chunk of its own.
+await page.getByRole('button', { name: 'Read it wrong? Send it to us' }).click();
+await page.locator('[data-misread] pre').waitFor({ timeout: 5000 });
+await audit(page, 'add receipt · misread report open', findings);
+await page.getByRole('button', { name: 'Read it wrong? Send it to us' }).click();
+await page.waitForTimeout(200);
+
 // The parser names no shop rather than guessing one, so the add screen asks.
 // That field, its hint, and the hint's second wording once a known shop is
 // typed are three things nothing else on any screen renders. Each read starts
