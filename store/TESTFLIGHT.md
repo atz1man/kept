@@ -14,10 +14,9 @@ Not people who will be kind about it.
 ## What to ask them to do, in the first week
 
 1. Install, skip or read the welcome, and delete the five samples.
-2. Add three real purchases by copying the order email and pasting it on
-   the Add screen. (There is no iPhone share-sheet entry yet: that is a
-   native share extension, built on a Mac. The web app's share target works
-   in Chrome on Android and desktop.)
+2. Add three real purchases: one by copying the order email and pasting it
+   on the Add screen, one from Mail by selecting the order's text and
+   choosing Share → Quids In, and one by photographing a paper receipt.
 3. When Quids In offers reminders after your first real receipt, turn them on
    (iOS asks once), then leave the app alone.
 4. Return one thing, or mark one returned, and mark one you are keeping.
@@ -32,8 +31,13 @@ Ask these in this order. The first two are the product.
 2. **Did any deadline look wrong to you?** Which shop, what the app said,
    what the shop's own page or receipt says. (Every one of these is a table
    fix: see POLICY-WATCH.md.)
-3. **Which order email did the paste get wrong?** Forward it, with personal
-   details removed — it goes into `test/fixtures/order-emails.ts`.
+3. **Which order email did the paste get wrong?** Ask them to tap **Read it
+   wrong? Send it to us** under the card when it happens. It shows the whole
+   message first, with email addresses, phone numbers, postcodes and the
+   name in a greeting already taken out, and sends from their own mail app —
+   ask them to add one line saying what was wrong. Each one goes into
+   `test/fixtures/order-emails.ts`, and the share of pastes that needed it
+   is the number issue #16 is waiting for.
    And **which paper receipt did the scan misread?** The shop, the total or
    the date — a photo of the receipt helps, with the card number covered. The
    scan has only been tested on rendered images; real thermal paper is the
@@ -52,6 +56,7 @@ Ask these in this order. The first two are the product.
 
 ## Where the answers go
 
-`Send feedback` in Settings, once `CONTACT_EMAIL` in `src/lib/brand.ts` is
-set, opens a mail to it and prints the address. Until then, collect answers
-however suits the testers — the questions matter more than the channel.
+`Send feedback` in Settings opens a mail to `CONTACT_EMAIL`
+(`src/lib/brand.ts`) and prints the address, and a misread sent from the Add
+screen arrives at the same one. Somebody has to read that inbox during the
+test: a tester who sends three misreads and hears nothing sends no fourth.
