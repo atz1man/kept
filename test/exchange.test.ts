@@ -226,7 +226,7 @@ describe('the original’s screen, when the swap cannot be taken back', () => {
   const screen = (swapBlocked: { text: string; onOpen: () => void } | null) =>
     renderToStaticMarkup(createElement(Detail, {
       receipt: receipt('a', { status: 'returned', returnedOn: toISODate(TODAY), exchanged: true }),
-      today: TODAY, urgentDays: 7, onBack: noop, onEdit: noop, onPack: noop, onReturn: noop, onUnreturn: noop,
+      today: TODAY, urgentDays: 7, onBack: noop, onEdit: noop, onSetWarranty: noop, onPack: noop, onReturn: noop, onUnreturn: noop,
       onExchange: noop, onUnexchange: noop, swapBlocked, onKeep: noop, onUnkeep: noop, onSend: noop, onUnsend: noop, onSetRefund: noop,
       onSetReturnRef: noop, onSetCredit: noop, onCreditSpent: noop, onFaultSent: noop, onFaultUnsent: noop, onFinalRejectSent: noop, onFinalRejectUnsent: noop, onCancelSent: noop,
       onCancelUnsent: noop, onArrived: noop, onDelete: noop, onSplit: noop, onUnsplit: null, splitFromReceipt: null,

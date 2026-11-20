@@ -940,10 +940,11 @@ for (const cancel of [false, true]) {
 
 /*
  * Asking for the guarantee. The reminder a month before cover ends can only
- * be about a guarantee kept knows of, and nothing asked for one: Add has no
- * field, and a receipt without one said nothing about it. A pasted coffee
- * machine's screen now asks, the button goes to the field, and once a length
- * is saved the screen counts it down instead of asking.
+ * be about a guarantee the app knows of. A pasted coffee machine's screen
+ * asks how long its guarantee is, with the common lengths one tap each: two
+ * years is saved as 24 months from the purchase date, the screen counts it
+ * down instead of asking, and the length is what the edit form then shows.
+ * "Another length" still goes to that form's field.
  */
 {
   const gCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
@@ -959,19 +960,25 @@ for (const cancel of [false, true]) {
   await gp.getByRole('button', { name: /John Lewis/ }).first().click();
   await gp.waitForTimeout(400);
   const asked = await gp.locator('main').innerText();
-  const button = gp.getByRole('button', { name: 'Add its guarantee' });
+  const lengths = gp.getByRole('group', { name: /how long is this one’s/ });
+  const offered = await lengths.getByRole('button').allInnerTexts().catch(() => []);
   let after = '';
-  if ((await button.count()) === 1) {
-    await button.click();
+  let stored = null;
+  let edited = null;
+  if (offered.includes('2 years')) {
+    await lengths.getByRole('button', { name: '2 years' }).click();
     await gp.waitForTimeout(300);
-    await gp.locator('#e-warranty').fill('24');
-    await gp.getByRole('button', { name: 'Save', exact: true }).click();
-    await gp.waitForTimeout(400);
     after = await gp.locator('main').innerText();
+    stored = await gp.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => !r.demo)?.warranty ?? null);
+    await gp.getByRole('button', { name: 'Edit', exact: true }).click();
+    await gp.waitForTimeout(300);
+    edited = await gp.locator('#e-warranty').inputValue().catch(() => null);
   }
-  results['a receipt with no guarantee asks for one, and counts it down once given'] =
-    /None recorded/.test(asked) && /Repairs should be free until/.test(after) && !/None recorded/.test(after);
-  if (!results['a receipt with no guarantee asks for one, and counts it down once given']) problems.push(`guarantee ask: ${JSON.stringify({ asked: /None recorded/.test(asked), after: after.slice(0, 120) })}`);
+  results['a receipt with no guarantee offers the common lengths, and one tap counts it down'] =
+    /None recorded/.test(asked) && offered.join('|') === '1 year|2 years|3 years|5 years|Another length' &&
+    stored?.months === 24 && /Repairs should be free until 21 September 2028/.test(after) && !/None recorded/.test(after) &&
+    edited === '24';
+  if (!results['a receipt with no guarantee offers the common lengths, and one tap counts it down']) problems.push(`guarantee ask: ${JSON.stringify({ asked: /None recorded/.test(asked), offered, stored, edited, after: after.slice(0, 160) })}`);
   await gCtx.close();
 }
 
