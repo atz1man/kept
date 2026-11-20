@@ -496,6 +496,7 @@ export function App() {
           urgentDays={settings.urgentDays}
           onBack={() => dispatch({ type: 'go', screen: 'home' })}
           onEdit={() => dispatch({ type: 'go', screen: 'edit' })}
+          onSetWarranty={(months) => dispatch({ type: 'update', receipt: { ...selected, warranty: { months } } })}
           onPack={() => dispatch({ type: 'go', screen: 'pack' })}
           onReturn={() => dispatch({ type: 'return', id: selected.id })}
           onUnreturn={() => dispatch({ type: 'unreturn', id: selected.id })}

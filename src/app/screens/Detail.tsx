@@ -22,6 +22,10 @@ import { Letter } from '../components/Letter';
 import { OrderRefCopy } from '../components/OrderRefCopy';
 import { readReturnRef, REG34_CLOCK, refundChase, refundChaseLine, refundLetter } from '../../lib/refund-chase';
 import { possessive } from '../../lib/words';
+import { WARRANTY_NOTICE_DAYS } from '../../lib/warranty-notice';
+
+/** The guarantee lengths offered with one tap: what electricals and furniture in the UK usually carry. */
+const GUARANTEE_YEARS = [1, 2, 3, 5] as const;
 import { christmasLine } from '../../lib/christmas';
 import { cardHeaderHit } from '../components/card-header';
 import { SCROLL_PAD_TOP } from '../scroll-pad';
@@ -35,6 +39,8 @@ interface Props {
   urgentDays: number;
   onBack: () => void;
   onEdit: () => void;
+  /** Record a guarantee of this many months, from the purchase date. */
+  onSetWarranty: (months: number) => void;
   /** Everything about it on one page: the claim pack. */
   onPack: () => void;
   onReturn: () => void;
@@ -79,7 +85,7 @@ const cardLabel = { fontSize: 13, fontWeight: 600, color: color.muted } as const
 const primaryButton = { flex: 1, padding: 13, textAlign: 'center', background: color.accent, color: color.white, border: 0, borderRadius: radius.control, fontWeight: 600, fontSize: 15, boxShadow: shadow.raised } as const;
 const secondaryButton = { flex: 1, padding: 13, textAlign: 'center', background: color.surface, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 14 } as const;
 
-export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onSetCredit, onCreditSpent, onArrived, onFaultSent, onFaultUnsent, onFinalRejectSent, onFinalRejectUnsent, onCancelSent, onCancelUnsent, onExchange, onUnexchange, swapBlocked, onDelete, onSplit, onUnsplit, splitFromReceipt }: Props) {
+export function Detail({ receipt, today, urgentDays, onBack, onEdit, onSetWarranty, onPack, onReturn, onUnreturn, onKeep, onUnkeep, onSend, onUnsend, onSetRefund, onSetReturnRef, onSetCredit, onCreditSpent, onArrived, onFaultSent, onFaultUnsent, onFinalRejectSent, onFinalRejectUnsent, onCancelSent, onCancelUnsent, onExchange, onUnexchange, swapBlocked, onDelete, onSplit, onUnsplit, splitFromReceipt }: Props) {
   const [legalOpen, setLegalOpen] = useState(true);
   const d = derive(receipt, today);
   /*
@@ -618,17 +624,34 @@ export function Detail({ receipt, today, urgentDays, onBack, onEdit, onPack, onR
         {asksForGuarantee(receipt) && (
           <div style={{ borderTop: `1px solid ${color.borderHair}`, padding: '15px 18px' }}>
             <div style={cardLabel}>Warranty</div>
-            <div style={{ fontSize: 14, marginTop: 5, lineHeight: 1.5, color: color.bodyStrong }}>
-              None recorded. Most electricals and furniture come with one — add its length and Quids In counts it down
-              beside the return window.
+            <div id="guarantee-ask" style={{ fontSize: 14, marginTop: 5, lineHeight: 1.5, color: color.bodyStrong }}>
+              None recorded. Most electricals and furniture come with one — how long is this one’s? Quids In counts it
+              down beside the return window, and flags it in its last {WARRANTY_NOTICE_DAYS} days.
             </div>
-            <Pressable
-              className="k-row-white k-secondary"
-              onClick={onEdit}
-              style={{ display: 'inline-flex', width: 'auto', marginTop: 10, padding: '10px 16px', background: color.surface, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13.5 }}
-            >
-              Add its guarantee
-            </Pressable>
+            {/* The common lengths, one tap each. This used to be a single
+                "Add its guarantee" that opened the whole edit form, to type a
+                number of months into the eighth field down — the step the
+                site's "Keeping it? It's still covered." rests on, behind the
+                most work. Any other length is still the edit form's. */}
+            <div role="group" aria-labelledby="guarantee-ask" data-guarantee-lengths style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+              {GUARANTEE_YEARS.map((years) => (
+                <Pressable
+                  key={years}
+                  className="k-row-white k-secondary"
+                  onClick={() => onSetWarranty(years * 12)}
+                  style={{ display: 'inline-flex', width: 'auto', minHeight: 40, alignItems: 'center', padding: '8px 14px', background: color.surface, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13.5 }}
+                >
+                  {years === 1 ? '1 year' : `${years} years`}
+                </Pressable>
+              ))}
+              <Pressable
+                className="k-row-white k-secondary"
+                onClick={onEdit}
+                style={{ display: 'inline-flex', width: 'auto', minHeight: 40, alignItems: 'center', padding: '8px 14px', background: color.surface, border: `1px solid ${color.borderSoft}`, borderRadius: radius.control, fontWeight: 600, fontSize: 13.5 }}
+              >
+                Another length
+              </Pressable>
+            </div>
           </div>
         )}
 

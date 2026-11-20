@@ -16,7 +16,7 @@ const iso = (n: number) => toISODate(addDays(TODAY, n));
 const noop = () => {};
 const screen = (r: Receipt) =>
   renderToStaticMarkup(createElement(Detail, {
-    receipt: r, today: TODAY, urgentDays: 7, onBack: noop, onEdit: noop, onPack: noop, onReturn: noop, onUnreturn: noop,
+    receipt: r, today: TODAY, urgentDays: 7, onBack: noop, onEdit: noop, onSetWarranty: noop, onPack: noop, onReturn: noop, onUnreturn: noop,
     onExchange: noop, onUnexchange: noop, swapBlocked: null, onKeep: noop, onUnkeep: noop, onSend: noop, onUnsend: noop, onSetRefund: noop,
     onSetReturnRef: noop, onSetCredit: noop, onCreditSpent: noop, onFaultSent: noop, onFaultUnsent: noop, onFinalRejectSent: noop, onFinalRejectUnsent: noop, onCancelSent: noop,
     onCancelUnsent: noop, onArrived: noop, onDelete: noop, onSplit: noop, onUnsplit: null, splitFromReceipt: null,
