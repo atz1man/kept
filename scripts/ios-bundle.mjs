@@ -751,8 +751,12 @@ if (!/Deadline alerts/.test(settingsText)) {
     if (new Set(ids).size !== ids.length) failures.push({ what: 'two reminders were lodged under one id, so iOS keeps only one', saw: ids.join(',') });
     if (bad.length > 0) failures.push({ what: 'a reminder iOS was handed is malformed (id, time, text or receipt)', saw: JSON.stringify(bad[0]).slice(0, 200) });
 
-    // A tapped reminder opens the receipt it is about.
-    const first = lodged[0];
+    // A tapped reminder opens the receipt it is about. One about the return
+    // window, which keeping the purchase cancels anyway: a tapped reminder
+    // counts as delivered, and it was lodged[0] — which inside a Christmas
+    // extension is the right to reject, so tapping it took that reminder off
+    // the list the kept-purchase check below expects to find it on.
+    const first = lodged.find((n) => /:(?:week|soon|today|closed)$/.test(String(n.extra?.key))) ?? lodged[0];
     const item = receipts.find((r) => r.id === first.extra.receiptId)?.item ?? '';
     await ap.evaluate((n) => window.__tapNotification(n), first);
     await ap.waitForTimeout(600);
