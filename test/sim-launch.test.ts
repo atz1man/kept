@@ -111,3 +111,29 @@ describe('the screenshot', () => {
     expect(sampledColours(image((x, y) => [x * 4, y * 4, 128]))).toBeGreaterThanOrEqual(MIN_COLOURS);
   });
 });
+
+describe('launching again', () => {
+  // @ts-expect-error - a small JS helper, run by CI's ios job in the Simulator
+  const load = () => import('../scripts/sim-launch.mjs');
+
+  it('only when the first launch printed nothing for the whole quiet time and the app is not running', async () => {
+    const { shouldRelaunch, SILENT_MS } = await load();
+    const quiet = { attempt: 1, output: '', elapsedMs: SILENT_MS, appRunning: false };
+    expect(shouldRelaunch(quiet)).toBe(true);
+    expect(shouldRelaunch({ ...quiet, elapsedMs: SILENT_MS - 1 })).toBe(false);
+    expect(shouldRelaunch({ ...quiet, appRunning: true })).toBe(false);
+  });
+
+  it('never for an app that started and said anything, however badly', async () => {
+    const { shouldRelaunch, SILENT_MS } = await load();
+    const base = { attempt: 1, elapsedMs: SILENT_MS * 2, appRunning: false };
+    expect(shouldRelaunch({ ...base, output: '⚡️  Loading app at capacitor://localhost...' })).toBe(false);
+    expect(shouldRelaunch({ ...base, output: '\n⚡️  ------ STARTUP JS ERROR ------\n' })).toBe(false);
+    expect(shouldRelaunch({ ...base, output: 'An error was encountered processing the command' })).toBe(false);
+  });
+
+  it('once: a second silent launch is judged, not retried', async () => {
+    const { shouldRelaunch, SILENT_MS } = await load();
+    expect(shouldRelaunch({ attempt: 2, output: '', elapsedMs: SILENT_MS * 2, appRunning: false })).toBe(false);
+  });
+});
