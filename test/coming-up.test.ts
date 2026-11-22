@@ -9,9 +9,15 @@ import type { Receipt } from '../src/lib/types';
 const TODAY = new Date(2026, 7, 28);
 const iso = (n: number) => toISODate(addDays(TODAY, n));
 
-/** Bought `ago` days before TODAY with a 30-day window. */
+/**
+ * Bought `ago` days before TODAY with a 30-day window, from a shop the table
+ * does not know — so no shop's own rules (a Christmas extension, a clock that
+ * starts at dispatch) move the dates these cases are about. It was Argos, and
+ * some of these purchases land in the autumn, inside Argos's real Christmas
+ * dates once those were published.
+ */
 const r = (id: string, ago: number, over: Partial<Receipt> = {}): Receipt => ({
-  id, store: 'Argos', item: 'Kettle', cat: 'kitchen', amount: toPence(29),
+  id, store: 'A shop not in the table', item: 'Kettle', cat: 'kitchen', amount: toPence(29),
   purchasedOn: iso(-ago), windowDays: 30, policy: 'p', distance: false, status: 'active',
   ...over,
 });
