@@ -1924,6 +1924,11 @@ for (const native of [true, false]) {
  * app counted from the order and said, deep in the detail, that this was a
  * floor. The row now says it is on its way, and one tap on the receipt moves
  * the window to the day it came.
+ *
+ * Apple, not ASOS: the purchase is dated from today's real clock, and from
+ * mid-November an ASOS order lands in ASOS's own Christmas dates, which
+ * correctly replace the 28 days this check is about. Apple counts from the
+ * doormat too and publishes no Christmas extension in the table.
  */
 {
   const aCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
@@ -1935,16 +1940,16 @@ for (const native of [true, false]) {
     const iso = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
     const s = JSON.parse(localStorage.getItem('kept.v1'));
     s.receipts.push({
-      id: 'r_asos', store: 'ASOS', item: 'Trainers', cat: 'clothing', amount: 6000, purchasedOn: iso(5),
-      windowDays: 28, policy: 'ASOS · 28 days from delivery.', distance: true, status: 'active',
+      id: 'r_apple', store: 'Apple', item: 'AirPods', cat: 'audio', amount: 17900, purchasedOn: iso(5),
+      windowDays: 14, policy: 'Apple · 14 days from delivery.', distance: true, status: 'active',
     });
     localStorage.setItem('kept.v1', JSON.stringify(s));
     return iso(0);
   });
   await ap.reload({ waitUntil: 'networkidle' });
   await ap.waitForTimeout(300);
-  const row = ap.getByRole('button', { name: /^Trainers.*?, ASOS, / });
-  const seen = { listed: /^Trainers \(on its way\), ASOS, £60\.00, 23 days left$/.test((await row.getAttribute('aria-label').catch(() => '')) ?? '') };
+  const row = ap.getByRole('button', { name: /^AirPods.*?, Apple, / });
+  const seen = { listed: /^AirPods \(on its way\), Apple, £179\.00, 9 days left$/.test((await row.getAttribute('aria-label').catch(() => '')) ?? '') };
   await row.click().catch(() => {});
   await ap.waitForTimeout(300);
   const tap = ap.getByRole('button', { name: 'It arrived today' });
@@ -1953,11 +1958,11 @@ for (const native of [true, false]) {
     await tap.click();
     await ap.waitForTimeout(300);
     seen.gone = (await ap.locator('[data-arrival]').count()) === 0;
-    const stored = await ap.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => r.id === 'r_asos'));
+    const stored = await ap.evaluate(() => JSON.parse(localStorage.getItem('kept.v1')).receipts.find((r) => r.id === 'r_apple'));
     seen.stored = stored?.arrivedOn === today && stored?.windowStartsOn === today;
     await ap.getByRole('button', { name: 'Back', exact: true }).click();
     await ap.waitForTimeout(300);
-    seen.relisted = /^Trainers, ASOS, £60\.00, 28 days left$/.test((await row.getAttribute('aria-label').catch(() => '')) ?? '');
+    seen.relisted = /^AirPods, Apple, £179\.00, 14 days left$/.test((await row.getAttribute('aria-label').catch(() => '')) ?? '');
   }
   const ok = seen.listed && seen.offered && seen.gone && seen.stored && seen.relisted;
   results['an order on its way says so, and "It arrived today" starts the window at the doormat'] = !!ok;

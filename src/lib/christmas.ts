@@ -77,6 +77,20 @@ export const CHRISTMAS: readonly ChristmasExtension[] = [
   { store: 'Ernest Jones', boughtFrom: '2026-10-01', boughtTo: '2026-12-24', returnBy: '2027-01-23', appliesTo: 'all', excludes: 'Not for warranty bought on a monthly plan.', checkedOn: ON },
   { store: 'H.Samuel', boughtFrom: '2026-10-01', boughtTo: '2026-12-24', returnBy: '2027-01-23', appliesTo: 'all', excludes: 'Not for warranty bought on a monthly plan.', checkedOn: ON },
   { store: 'Dell', boughtFrom: '2026-11-01', boughtTo: '2026-12-29', returnBy: '2027-01-15', appliesTo: 'all', excludes: 'For consumers buying at Dell.com.', checkedOn: ON },
+  /*
+   * Christmas 2026, second pass, read on 22 November 2026
+   * (store/retailer-check/2026-11-22-christmas.md): shops that had published
+   * nothing on 3 November.
+   */
+  { store: 'Amazon', boughtFrom: '2026-11-01', boughtTo: '2026-12-25', returnBy: '2027-01-31', appliesTo: 'all', excludes: 'It says “most items”.', checkedOn: '2026-11-22' },
+  { store: 'Argos', boughtFrom: '2026-09-23', boughtTo: '2026-12-25', returnBy: '2027-01-31', appliesTo: 'all', checkedOn: '2026-11-22' },
+  { store: 'ASOS', boughtFrom: '2026-11-16', boughtTo: '2026-12-18', returnBy: '2027-01-18', appliesTo: 'all', checkedOn: '2026-11-22' },
+  { store: 'John Lewis', boughtFrom: '2026-10-01', boughtTo: '2026-12-24', returnBy: '2027-01-23', appliesTo: 'all', condition: 'gifts', checkedOn: '2026-11-22' },
+  // "Valid from 9th November until 14th December", and "purchases made from
+  // 14th December … our usual 28 day refund policy": the 14th is claimed by
+  // both, so it is left to the ordinary window, which is the cautious reading.
+  { store: 'Dune London', boughtFrom: '2026-11-09', boughtTo: '2026-12-13', returnBy: '2027-01-11', appliesTo: 'all', checkedOn: '2026-11-22' },
+  { store: 'Beaverbrooks', boughtFrom: '2026-10-18', boughtTo: '2026-12-06', returnBy: '2027-01-04', appliesTo: 'all', excludes: 'Not for made-to-order or personalised items, gift cards or pre-owned items.', checkedOn: '2026-11-22' },
 ];
 
 /** The extension that covers this purchase, conditional or not, or null. */
