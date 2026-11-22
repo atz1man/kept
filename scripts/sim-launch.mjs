@@ -179,6 +179,20 @@ async function main(app, shot) {
     if (!retry) break;
     console.log(`! launch ${attempt} printed nothing in ${SILENT_MS / 1000}s and the app was not running${exited === null ? '' : ` (simctl exited: ${exited})`}; launching again`);
     child.kill();
+    // What a launch WITHOUT the console says: a process id, or simctl's own
+    // error. Seen twice on 22 November with nothing at all from the console
+    // form, so the next one that stalls says why.
+    try {
+      const plain = execFileSync('xcrun', ['simctl', 'launch', '--terminate-running-process', phone.udid, appId], { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'pipe'] });
+      console.log(`! a plain launch answered: ${plain.trim() || '(nothing)'}`);
+    } catch (e) {
+      console.log(`! a plain launch failed: ${String(e.stderr || e.message).trim().slice(0, 400)}`);
+    }
+    try {
+      xcrun('terminate', phone.udid, appId);
+    } catch {
+      /* not running */
+    }
   }
   // Let the first screen paint and any late startup error arrive.
   await new Promise((r) => setTimeout(r, 6000));
@@ -201,6 +215,16 @@ async function main(app, shot) {
   for (const w of warnings) console.log(`! ${w}`);
   if (problems.length) {
     for (const p of problems) console.error(`✗ ${p}`);
+    // The simulator's own account of the app, so a failure here is a
+    // diagnosis and not only a verdict.
+    try {
+      const said = xcrun('spawn', phone.udid, 'log', 'show', '--last', '4m', '--style', 'compact',
+        '--predicate', `process == "App" OR eventMessage CONTAINS[c] "${appId}"`);
+      console.error('--- simulator log about the app (last 40 lines) ---');
+      console.error(said.trim().split('\n').slice(-40).join('\n'));
+    } catch (e) {
+      console.error(`(no simulator log: ${String(e.message).slice(0, 200)})`);
+    }
     process.exit(1);
   }
   console.log(`✓ launched on ${phone.name}: JavaScript reached ${[...new Set(pluginCalls)].join(', ')}; ${colours} colours on screen; screenshot at ${shot}`);
