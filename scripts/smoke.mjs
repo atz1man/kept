@@ -546,14 +546,24 @@ for (const cancel of [false, true]) {
   const backCtx = await browser.newContext({ viewport: { width: 402, height: 874 } });
   const bp = await backCtx.newPage();
   await bp.goto(`${ORIGIN}/app/`, { waitUntil: 'networkidle' });
-  const shutStores = await bp.evaluate(() => {
+  // Thirteen months ago, from whatever day this runs: the mixer's 12-month
+  // guarantee has ended and the headphones' 24 months have eleven to go. A
+  // fixed date here went stale on its own — on 25 November 2026 the
+  // headphones' cover was 42 days from ending, so their screen rightly
+  // counted it down and the check below read that as the return window.
+  const bought = new Date();
+  bought.setUTCDate(1);
+  bought.setUTCMonth(bought.getUTCMonth() - 13);
+  const boughtOn = bought.toISOString().slice(0, 10);
+  const coverYear = bought.getUTCFullYear() + 2;
+  const shutStores = await bp.evaluate((boughtOn) => {
     const s = JSON.parse(localStorage.getItem('kept.v1'));
     s.onboardingSeen = true;
     const shut = s.receipts.slice(0, 2);
-    for (const r of shut) { r.purchasedOn = '2025-01-06'; delete r.windowStartsOn; }
+    for (const r of shut) { r.purchasedOn = boughtOn; delete r.windowStartsOn; }
     localStorage.setItem('kept.v1', JSON.stringify(s));
     return shut.map((r) => r.store);
-  });
+  }, boughtOn);
   await bp.reload({ waitUntil: 'networkidle' });
   await bp.waitForTimeout(500);
   const heroBefore = await bp.locator('main').innerText();
@@ -582,8 +592,8 @@ for (const cancel of [false, true]) {
       !/Window closed/.test(after.text) && /Next to close/.test(after.text) &&
       shutStores.every((store) => after.keeping.includes(store)) && /Moved 2 to Keeping it/.test(after.bar);
     if (!results['closed windows can be kept in one tap, and the hero moves on']) problems.push(`backlog kept: ${JSON.stringify({ closedHead: after.closedHead, keeping: after.keeping.slice(0, 80), bar: after.bar })}`);
-    // Both were bought in January 2025 here. The mixer's 12-month guarantee
-    // has ended and its row says so; the headphones' 24 months run into 2027.
+    // Both were bought thirteen months ago. The mixer's 12-month guarantee
+    // has ended and its row says so; the headphones' 24 months run on.
     const rows = await bp.evaluate(() => {
       const h = [...document.querySelectorAll('h2')].find((x) => x.textContent.includes('Keeping'));
       // The row's name leads with the shop; its text leads with the item.
@@ -592,7 +602,7 @@ for (const cancel of [false, true]) {
     const rowFor = (store) => (rows.find((t) => t.split(' | ')[0].includes(`, ${store}, `)) ?? '').split(' | ')[1] ?? '';
     results['a kept row says how long its guarantee runs'] =
       /cover ended/.test(rowFor('Argos')) && !/covered until/.test(rowFor('Argos')) &&
-      /covered until \d+ \w+ 2027/.test(rowFor('Currys'));
+      new RegExp(`covered until \\d+ \\w+ ${coverYear}`).test(rowFor('Currys'));
     if (!results['a kept row says how long its guarantee runs']) problems.push(`kept cover: ${JSON.stringify(rows)}`);
 
     // Its own screen, while kept: no countdown, no "RETURN BY".
@@ -1964,9 +1974,14 @@ for (const native of [true, false]) {
     await ap.waitForTimeout(300);
     seen.relisted = /^AirPods, Apple, £179\.00, 14 days left$/.test((await row.getAttribute('aria-label').catch(() => '')) ?? '');
   }
-  const ok = seen.listed && seen.offered && seen.gone && seen.stored && seen.relisted;
+  // The day counts above hold only while Apple has no Christmas dates; if a
+  // later pass gives it some, this says so by name rather than failing on a
+  // number that the app had every right to change.
+  const fixtureMoved = /store: 'Apple'/.test(readFileSync(new URL('../src/lib/christmas.ts', import.meta.url), 'utf8'));
+  const ok = !fixtureMoved && seen.listed && seen.offered && seen.gone && seen.stored && seen.relisted;
   results['an order on its way says so, and "It arrived today" starts the window at the doormat'] = !!ok;
-  if (!ok) problems.push(`on its way: ${JSON.stringify(seen)}`);
+  if (fixtureMoved) problems.push('on its way: Apple now has Christmas dates in christmas.ts, which move this check\'s deadline; use a delivery-clocked shop with none');
+  else if (!ok) problems.push(`on its way: ${JSON.stringify(seen)}`);
   await aCtx.close();
 }
 

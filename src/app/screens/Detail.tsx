@@ -23,12 +23,12 @@ import { OrderRefCopy } from '../components/OrderRefCopy';
 import { readReturnRef, REG34_CLOCK, refundChase, refundChaseLine, refundLetter } from '../../lib/refund-chase';
 import { possessive } from '../../lib/words';
 import { WARRANTY_NOTICE_DAYS } from '../../lib/warranty-notice';
-
-/** The guarantee lengths offered with one tap: what electricals and furniture in the UK usually carry. */
-const GUARANTEE_YEARS = [1, 2, 3, 5] as const;
 import { christmasLine } from '../../lib/christmas';
 import { cardHeaderHit } from '../components/card-header';
 import { SCROLL_PAD_TOP } from '../scroll-pad';
+
+/** The guarantee lengths offered with one tap: what electricals and furniture in the UK usually carry. */
+const GUARANTEE_YEARS = [1, 2, 3, 5] as const;
 
 /** 2π × 40, the circumference of the ring the countdown draws on. */
 const RING_CIRCUMFERENCE = 251.3;
