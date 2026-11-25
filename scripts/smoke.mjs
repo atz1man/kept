@@ -551,11 +551,12 @@ for (const cancel of [false, true]) {
   // fixed date here went stale on its own — on 25 November 2026 the
   // headphones' cover was 42 days from ending, so their screen rightly
   // counted it down and the check below read that as the return window.
+  // The first of the month, in London's calendar like the app's own today.
   const bought = new Date();
-  bought.setUTCDate(1);
-  bought.setUTCMonth(bought.getUTCMonth() - 13);
-  const boughtOn = bought.toISOString().slice(0, 10);
-  const coverYear = bought.getUTCFullYear() + 2;
+  bought.setDate(1);
+  bought.setMonth(bought.getMonth() - 13);
+  const boughtOn = `${bought.getFullYear()}-${String(bought.getMonth() + 1).padStart(2, '0')}-01`;
+  const coverYear = bought.getFullYear() + 2;
   const shutStores = await bp.evaluate((boughtOn) => {
     const s = JSON.parse(localStorage.getItem('kept.v1'));
     s.onboardingSeen = true;
