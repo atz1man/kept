@@ -160,24 +160,31 @@ async function main(app, shot) {
   let log = '';
   let child;
   for (let attempt = 1; ; attempt += 1) {
+    // Each attempt writes only its own buffer: a killed first launch's pty
+    // can still flush, and its late lines must not be read as the second's.
+    const out = { text: '' };
     log = '';
     let exited = null;
     child = spawn('xcrun', ['simctl', 'launch', '--console-pty', '--terminate-running-process', phone.udid, appId]);
-    child.stdout.on('data', (d) => (log += d));
-    child.stderr.on('data', (d) => (log += d));
+    child.stdout.on('data', (d) => { out.text += d; log = out.text; });
+    child.stderr.on('data', (d) => { out.text += d; log = out.text; });
     child.on('exit', (code, signal) => (exited = signal ?? code));
     const started = Date.now();
     let retry = false;
     while (!launchSettled(log) && Date.now() - started < LAUNCH_DEADLINE_MS) {
       await new Promise((r) => setTimeout(r, 500));
       const elapsedMs = Date.now() - started;
-      if (shouldRelaunch({ attempt, output: log, elapsedMs, appRunning: elapsedMs >= SILENT_MS ? isRunning() : true })) {
+      // Asked only when nothing has been printed: each ask is a blocking spawn.
+      const silent = attempt === 1 && out.text.trim() === '' && elapsedMs >= SILENT_MS;
+      if (silent && shouldRelaunch({ attempt, output: out.text, elapsedMs, appRunning: isRunning() })) {
         retry = true;
         break;
       }
     }
     if (!retry) break;
     console.log(`! launch ${attempt} printed nothing in ${SILENT_MS / 1000}s and the app was not running${exited === null ? '' : ` (simctl exited: ${exited})`}; launching again`);
+    child.stdout.removeAllListeners('data');
+    child.stderr.removeAllListeners('data');
     child.kill();
     // What a launch WITHOUT the console says: a process id, or simctl's own
     // error. Seen twice on 22 November with nothing at all from the console
@@ -218,8 +225,8 @@ async function main(app, shot) {
     // The simulator's own account of the app, so a failure here is a
     // diagnosis and not only a verdict.
     try {
-      const said = xcrun('spawn', phone.udid, 'log', 'show', '--last', '4m', '--style', 'compact',
-        '--predicate', `process == "App" OR eventMessage CONTAINS[c] "${appId}"`);
+      const said = execFileSync('xcrun', ['simctl', 'spawn', phone.udid, 'log', 'show', '--last', '4m', '--style', 'compact',
+        '--predicate', `process == "App" OR eventMessage CONTAINS[c] "${appId}"`], { encoding: 'utf8', timeout: 60_000, maxBuffer: 16 * 1024 * 1024 });
       console.error('--- simulator log about the app (last 40 lines) ---');
       console.error(said.trim().split('\n').slice(-40).join('\n'));
     } catch (e) {
