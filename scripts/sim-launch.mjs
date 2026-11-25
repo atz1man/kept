@@ -101,6 +101,27 @@ export function sampledColours(image, step = 8) {
 
 export const MIN_COLOURS = 8;
 
+/** How long one launch may take to settle. */
+export const LAUNCH_DEADLINE_MS = 90_000;
+/** How long a launch may print nothing at all before it is taken as never started. */
+export const SILENT_MS = 45_000;
+
+/**
+ * Whether to launch the app again: once, and only when the first launch
+ * printed NOTHING — not a line from the bridge, not an error from simctl —
+ * for SILENT_MS, and the app is not running.
+ *
+ * Seen on CI: on a freshly booted iOS 26 simulator, `simctl launch` sat for
+ * the whole deadline with no output and the app's icon on the home screen,
+ * never opened. That is the simulator not yet taking launches, not the app:
+ * an app that starts and then fails prints the bridge's own lines, or a
+ * startup error, and is judged on them, never relaunched. So a second try is
+ * only for a launch that never began, and the judgement after it is the same.
+ */
+export function shouldRelaunch({ attempt, output, elapsedMs, appRunning }) {
+  return attempt === 1 && output.trim() === '' && elapsedMs >= SILENT_MS && !appRunning;
+}
+
 function xcrun(...args) {
   return execFileSync('xcrun', ['simctl', ...args], { encoding: 'utf8' });
 }
@@ -135,17 +156,48 @@ async function main(app, shot) {
   xcrun('status_bar', phone.udid, 'override', '--time', '9:41', '--batteryState', 'charged', '--batteryLevel', '100');
   xcrun('install', phone.udid, app);
 
+  const isRunning = () => xcrun('spawn', phone.udid, 'launchctl', 'list').includes(appId);
   let log = '';
-  const child = spawn('xcrun', ['simctl', 'launch', '--console-pty', '--terminate-running-process', phone.udid, appId]);
-  child.stdout.on('data', (d) => (log += d));
-  child.stderr.on('data', (d) => (log += d));
-
-  const deadline = Date.now() + 90_000;
-  while (!launchSettled(log) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 500));
+  let child;
+  for (let attempt = 1; ; attempt += 1) {
+    log = '';
+    let exited = null;
+    child = spawn('xcrun', ['simctl', 'launch', '--console-pty', '--terminate-running-process', phone.udid, appId]);
+    child.stdout.on('data', (d) => (log += d));
+    child.stderr.on('data', (d) => (log += d));
+    child.on('exit', (code, signal) => (exited = signal ?? code));
+    const started = Date.now();
+    let retry = false;
+    while (!launchSettled(log) && Date.now() - started < LAUNCH_DEADLINE_MS) {
+      await new Promise((r) => setTimeout(r, 500));
+      const elapsedMs = Date.now() - started;
+      if (shouldRelaunch({ attempt, output: log, elapsedMs, appRunning: elapsedMs >= SILENT_MS ? isRunning() : true })) {
+        retry = true;
+        break;
+      }
+    }
+    if (!retry) break;
+    console.log(`! launch ${attempt} printed nothing in ${SILENT_MS / 1000}s and the app was not running${exited === null ? '' : ` (simctl exited: ${exited})`}; launching again`);
+    child.kill();
+    // What a launch WITHOUT the console says: a process id, or simctl's own
+    // error. Seen twice on 22 November with nothing at all from the console
+    // form, so the next one that stalls says why.
+    try {
+      const plain = execFileSync('xcrun', ['simctl', 'launch', '--terminate-running-process', phone.udid, appId], { encoding: 'utf8', timeout: 60_000, stdio: ['ignore', 'pipe', 'pipe'] });
+      console.log(`! a plain launch answered: ${plain.trim() || '(nothing)'}`);
+    } catch (e) {
+      console.log(`! a plain launch failed: ${String(e.stderr || e.message).trim().slice(0, 400)}`);
+    }
+    try {
+      xcrun('terminate', phone.udid, appId);
+    } catch {
+      /* not running */
+    }
+  }
   // Let the first screen paint and any late startup error arrive.
   await new Promise((r) => setTimeout(r, 6000));
 
-  const running = xcrun('spawn', phone.udid, 'launchctl', 'list').includes(appId);
+  const running = isRunning();
   mkdirSync(dirname(shot), { recursive: true });
   xcrun('io', phone.udid, 'screenshot', '--type=png', shot);
   child.kill();
@@ -163,6 +215,16 @@ async function main(app, shot) {
   for (const w of warnings) console.log(`! ${w}`);
   if (problems.length) {
     for (const p of problems) console.error(`✗ ${p}`);
+    // The simulator's own account of the app, so a failure here is a
+    // diagnosis and not only a verdict.
+    try {
+      const said = xcrun('spawn', phone.udid, 'log', 'show', '--last', '4m', '--style', 'compact',
+        '--predicate', `process == "App" OR eventMessage CONTAINS[c] "${appId}"`);
+      console.error('--- simulator log about the app (last 40 lines) ---');
+      console.error(said.trim().split('\n').slice(-40).join('\n'));
+    } catch (e) {
+      console.error(`(no simulator log: ${String(e.message).slice(0, 200)})`);
+    }
     process.exit(1);
   }
   console.log(`✓ launched on ${phone.name}: JavaScript reached ${[...new Set(pluginCalls)].join(', ')}; ${colours} colours on screen; screenshot at ${shot}`);
