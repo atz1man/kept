@@ -825,6 +825,25 @@ describe('what was bought', () => {
     expect(parse('Argos\nTower 1.7L Kettle\nUnit price £59.99\nTotal: £59.99').item).toBe('Tower 1.7L Kettle');
   });
 
+  it('takes a sale\'s price comparison as part of the price, never the name', () => {
+    // Black Friday emails print "Was £379.00 Now £249.00" under the product,
+    // or "RRP £60.00 save £30.00" on its line. The first named the receipt
+    // "Was Now"; the second "No7 gift set RRP save".
+    expect(parse('Currys\nSony WH-1000XM5 headphones\nWas £379.00 Now £249.00\nOrder total £249.00').item).toBe('Sony WH-1000XM5 headphones');
+    expect(parse('Boots\nNo7 gift set RRP £60.00 save £30.00 £30.00\nOrder total £30.00').item).toBe('No7 gift set');
+    const two = parse('John Lewis\nLEGO Star Wars set\nWas £99.99 Now £84.99\nLEGO Technic set\nWas £59.99 Now £49.99\nTotal to pay: £134.98');
+    expect(two.lines).toEqual([{ item: 'LEGO Star Wars set', pence: 8499 }, { item: 'LEGO Technic set', pence: 4999 }]);
+    // A name that merely contains one of the words keeps it.
+    expect(parse('Argos\nNow TV Smart Stick £24.99\nTotal £24.99').item).toBe('Now TV Smart Stick');
+  });
+
+  it('never takes a banner\'s "from £5" for something bought', () => {
+    const jl = parse('Black Friday deals from £5 — shop now\nJohn Lewis\nOrdered on 20 September 2026\nDyson V15 vacuum £499.00\nLEGO Technic set £49.99\nTotal to pay: £548.99');
+    expect(jl.item).toBe('Dyson V15 vacuum');
+    expect(jl.lines).toEqual([{ item: 'Dyson V15 vacuum', pence: 49900 }, { item: 'LEGO Technic set', pence: 4999 }]);
+    expect(parse('Argos\nToys starting at £9.99\nKettle £29.00\nTotal £29.00').item).toBe('Kettle');
+  });
+
   it('gives a bare price line no name when what is above it is not one', () => {
     // Above the label is another price, or nothing: no guess, rather than a
     // wrong one that reads like the answer.

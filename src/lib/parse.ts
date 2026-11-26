@@ -1091,6 +1091,33 @@ export const UNKNOWN_STORE_WINDOW_DAYS = 28;
  */
 const NOT_AN_ITEM = /\b(?:sub[\s-]?total|total|delivery|shipping|postage|p&p|vat|tax|discount|saving|savings|saved|promo|voucher|gift\s?card|payment|paid|card|visa|mastercard|amex|paypal|klarna|refund|balance|cash|change|tender(?:ed)?|contactless|order\s+(?:number|no|#|ref)|you\s+(?:paid|saved))\b/i;
 
+/*
+ * The words a sale prints beside a price: "Was £379.00 Now £249.00", "RRP
+ * £60.00 save £30.00". Part of the price, never the name — taken off with the
+ * figure they belong to. Before this, a Black Friday email that put the
+ * comparison on its own line under the product named the receipt "Was Now",
+ * and one that put it on the product's line named it "No7 gift set RRP save".
+ */
+const PRICE_TALK = /\b(?:was|now(?:\s+only)?|rrp|(?:you\s+)?save|reduced\s+from|only)\s*:?\s*£\s?[\d,.]+/gi;
+
+/*
+ * "Deals from £5", "starting at £9.99", "up to £50 off": a price a banner
+ * quotes, never one anybody paid. A line whose every figure is one of these
+ * is marketing — "Black Friday deals from £5 — shop now" above an order was
+ * the receipt's name, and a £5 line in its basket.
+ */
+const QUOTED_PRICE = /\b(?:from|starting\s+(?:at|from)|up\s+to)\s+£\s?[\d,.]+/gi;
+
+function onlyQuotedPrices(segment: string): boolean {
+  return new RegExp(QUOTED_PRICE.source, 'i').test(segment) && !/£\s?\d/.test(segment.replace(QUOTED_PRICE, ''));
+}
+
+/** A priced line that is nothing but a sale's price comparison: its name is above it. */
+function onlyPriceTalk(segment: string): boolean {
+  if (!new RegExp(PRICE_TALK.source, 'i').test(segment)) return false;
+  return !/[a-z]{3}/i.test(segment.replace(PRICE_TALK, '').replace(/£\s?[\d,.]+/g, ''));
+}
+
 /** Tidy a candidate: no bullets, no trailing price or separators, no runaway length. */
 /** Where a long product title is cut: the name of a receipt, not its catalogue entry. */
 const ITEM_SHORTENED_TO = 60;
@@ -1105,6 +1132,7 @@ const ITEM_SHORTENED_TO = 60;
  */
 function cleanItem(raw: string, long: 'shorten' | 'refuse' = 'refuse'): string | null {
   let s = raw
+    .replace(PRICE_TALK, '')
     .replace(/£\s?[\d,.]+/g, '')
     .replace(/^[\s•*·\-–—:|]+|[\s•*·\-–—:|,]+$/g, '')
     .replace(/\s{2,}/g, ' ')
@@ -1208,9 +1236,9 @@ function pickItem(text: string, store: StorePolicy | null): string | null {
   const storeWords = store ? [store.name, ...store.aliases].map((w) => w.toLowerCase()) : [];
   const segments = text.split(/\n|·/);
   for (const [i, segment] of segments.entries()) {
-    if (!/£\s?\d/.test(segment) || NOT_AN_ITEM.test(segment)) continue;
+    if (!/£\s?\d/.test(segment) || NOT_AN_ITEM.test(segment) || onlyQuotedPrices(segment)) continue;
     const own = cleanItem(segment);
-    const s = own && LABEL_ONLY.test(own) ? nameAbove(segments, i, storeWords) : own;
+    const s = (own && LABEL_ONLY.test(own)) || onlyPriceTalk(segment) ? nameAbove(segments, i, storeWords) : own;
     if (!s) continue;
     if (storeWords.includes(s.toLowerCase())) continue;
     return s;
@@ -1244,13 +1272,13 @@ function pickLines(text: string, store: StorePolicy | null, total: Pence | null)
   const out: { item: string; pence: Pence }[] = [];
   const segments = text.split(/\n|·/);
   for (const [i, segment] of segments.entries()) {
-    if (!/£\s?\d/.test(segment) || NOT_AN_ITEM.test(segment)) continue;
+    if (!/£\s?\d/.test(segment) || NOT_AN_ITEM.test(segment) || onlyQuotedPrices(segment)) continue;
     if (/(?:-\s?£|£\s?-)\s?\d/.test(segment)) continue;
     const prices = amountsIn(segment);
     const pence = prices[prices.length - 1];
     if (!pence) continue;
     const own = cleanItem(segment.replace(/^\s*(?:qty\s*:?\s*)?\d{1,2}\s*[x×]\s+/i, ''), 'shorten');
-    const item = own && LABEL_ONLY.test(own) ? nameAbove(segments, i, storeWords) : own;
+    const item = (own && LABEL_ONLY.test(own)) || onlyPriceTalk(segment) ? nameAbove(segments, i, storeWords) : own;
     if (!item || storeWords.includes(item.toLowerCase())) continue;
     out.push({ item, pence });
   }
