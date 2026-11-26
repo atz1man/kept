@@ -169,6 +169,41 @@ Total £229.00`,
     expect: { store: 'Apple', pence: 22900, purchasedOn: '2026-09-19', item: 'AirPods Pro (2nd generation)', arrivedOn: '2026-09-23' },
   },
   {
+    name: 'Currys, a sale price on its own line under the product',
+    text: `Currys order confirmation
+Order number: 1234567890
+Order date: 18 September 2026
+Sony WH-1000XM5 headphones
+Was £379.00 Now £249.00
+Subtotal £249.00
+Delivery FREE
+Order total £249.00
+You saved £130.00`,
+    expect: { store: 'Currys', pence: 24900, purchasedOn: '2026-09-18', item: 'Sony WH-1000XM5 headphones', orderRef: '1234567890' },
+  },
+  {
+    name: 'Boots, an RRP and a saving on the product line',
+    text: `Boots.com order confirmation
+Order date 21/09/2026
+No7 Future Renew gift set RRP £60.00 save £30.00 £30.00
+Delivery £3.50
+Order total £33.50`,
+    expect: { store: 'Boots', pence: 3350, purchasedOn: '2026-09-21', item: 'No7 Future Renew gift set' },
+  },
+  {
+    name: 'ASOS, a promo code taken off before the total',
+    text: `Thanks for your order, Sam
+ASOS
+Order No. 456789123
+Order date: 22 Sep 2026
+Qty 1 × Puffer jacket £80.00
+Subtotal £80.00
+Promo code SAVE20 -£20.00
+Standard Delivery £4.50
+Total £64.50`,
+    expect: { store: 'ASOS', pence: 6450, purchasedOn: '2026-09-22', item: 'Puffer jacket' },
+  },
+  {
     name: 'a shop kept does not know, labelled item',
     text: `Order confirmation — The Corner Bookshop
 Order date: 24 September 2026
