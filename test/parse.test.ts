@@ -837,6 +837,13 @@ describe('what was bought', () => {
     expect(parse('Argos\nNow TV Smart Stick £24.99\nTotal £24.99').item).toBe('Now TV Smart Stick');
   });
 
+  it('never takes a banner\'s "from £5" for something bought', () => {
+    const jl = parse('Black Friday deals from £5 — shop now\nJohn Lewis\nOrdered on 20 September 2026\nDyson V15 vacuum £499.00\nLEGO Technic set £49.99\nTotal to pay: £548.99');
+    expect(jl.item).toBe('Dyson V15 vacuum');
+    expect(jl.lines).toEqual([{ item: 'Dyson V15 vacuum', pence: 49900 }, { item: 'LEGO Technic set', pence: 4999 }]);
+    expect(parse('Argos\nToys starting at £9.99\nKettle £29.00\nTotal £29.00').item).toBe('Kettle');
+  });
+
   it('gives a bare price line no name when what is above it is not one', () => {
     // Above the label is another price, or nothing: no guess, rather than a
     // wrong one that reads like the answer.
