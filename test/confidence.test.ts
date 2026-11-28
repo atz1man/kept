@@ -287,6 +287,23 @@ describe('a refund pasted as if it were a purchase', () => {
     }
   });
 
+  it('reads a cancelled order as money coming back, not a purchase', () => {
+    // "Your order has been cancelled … Refund total £60.00" was saved as a
+    // £60 purchase with a return window, unmarked.
+    for (const text of [
+      'ASOS\nYour order has been cancelled\nOrder No. 999888777\nOrder date: 27 Sep 2026\nTrainers £60.00\nRefund total £60.00',
+      'Argos\nCancellation confirmed\nOrder number: 1187 2236 4410\nOrdered: 20 Sep 2026\nTotal £29.99',
+    ]) {
+      const p = parse(text);
+      expect(p.refund).toBe(true);
+      expect(toCheck(p).amount).toBe('refund');
+    }
+    // A shop selling free cancellation, or the word further down an order, is not one.
+    const banner = parse('Free cancellation on all orders\nJohn Lewis\nThank you for your order\nOrder date: 2 October 2026\nTotal £49.00');
+    const footer = parse('Argos\nThank you for your order\nOrder date: 2 October 2026\nKettle £29.99\nTotal £29.99\nChanged your mind? Orders can be cancelled until they are dispatched.');
+    for (const p of [banner, footer]) expect(p.refund).toBe(false);
+  });
+
   it('is not anything in the order-email corpus', () => {
     expect(ORDER_EMAILS.filter((e) => parse(e.text).refund).map((e) => e.name)).toEqual([]);
   });

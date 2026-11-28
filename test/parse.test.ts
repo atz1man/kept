@@ -837,6 +837,19 @@ describe('what was bought', () => {
     expect(parse('Argos\nNow TV Smart Stick £24.99\nTotal £24.99').item).toBe('Now TV Smart Stick');
   });
 
+  it('names a line of a split order after the thing, not where its parcel is', () => {
+    const argos = parse('Argos\nPart of your order is on its way\nOrdered: 20 Sep 2026\nDispatched today: Ninja blender £79.99\nStill to come: Tefal pan set £49.99\nOrder total: £129.98');
+    expect(argos.item).toBe('Ninja blender');
+    expect(argos.lines).toEqual([{ item: 'Ninja blender', pence: 7999 }, { item: 'Tefal pan set', pence: 4999 }]);
+  });
+
+  it('never offers gift wrap as something bought', () => {
+    const ms = parse('M&S\nOrder date: 20/09/2026\nCashmere scarf £49.00\nLeather gloves £35.00\nGift wrap £4.00\nGift message £0.00\nTotal £88.00');
+    expect(ms.lines.map((l) => l.item)).toEqual(['Cashmere scarf', 'Leather gloves']);
+    // A product with "gift" in its name is still one.
+    expect(parse('Boots\nNo7 gift set £30.00\nTotal £30.00').item).toBe('No7 gift set');
+  });
+
   it('never takes a banner\'s "from £5" for something bought', () => {
     const jl = parse('Black Friday deals from £5 — shop now\nJohn Lewis\nOrdered on 20 September 2026\nDyson V15 vacuum £499.00\nLEGO Technic set £49.99\nTotal to pay: £548.99');
     expect(jl.item).toBe('Dyson V15 vacuum');

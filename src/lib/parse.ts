@@ -1089,7 +1089,7 @@ export const UNKNOWN_STORE_WINDOW_DAYS = 28;
  * Words that mark a line as money ABOUT the order rather than a thing in it.
  * A line carrying a price is an item only if it carries none of these.
  */
-const NOT_AN_ITEM = /\b(?:sub[\s-]?total|total|delivery|shipping|postage|p&p|vat|tax|discount|saving|savings|saved|promo|voucher|gift\s?card|payment|paid|card|visa|mastercard|amex|paypal|klarna|refund|balance|cash|change|tender(?:ed)?|contactless|order\s+(?:number|no|#|ref)|you\s+(?:paid|saved))\b/i;
+const NOT_AN_ITEM = /\b(?:sub[\s-]?total|total|delivery|shipping|postage|p&p|vat|tax|discount|saving|savings|saved|promo|voucher|gift\s?card|gift\s?wrap(?:ping)?|gift\s+(?:message|bag)|payment|paid|card|visa|mastercard|amex|paypal|klarna|refund|balance|cash|change|tender(?:ed)?|contactless|order\s+(?:number|no|#|ref)|you\s+(?:paid|saved))\b/i;
 
 /*
  * The words a sale prints beside a price: "Was £379.00 Now £249.00", "RRP
@@ -1112,6 +1112,15 @@ function onlyQuotedPrices(segment: string): boolean {
   return new RegExp(QUOTED_PRICE.source, 'i').test(segment) && !/£\s?\d/.test(segment.replace(QUOTED_PRICE, ''));
 }
 
+/*
+ * Where a split order says each thing is: "Dispatched today: Ninja blender
+ * £79.99", "Still to come: Tefal pan set £49.99". The label before the colon
+ * is the parcel's news, not the thing's name — it was the receipt's name,
+ * and each line of the basket split carried one.
+ */
+const DELIVERY_STATUS =
+  /^\s*(?:dispatched|despatched|shipped|delivered|sent|on\s+its\s+way|still\s+to\s+come|to\s+follow|coming\s+(?:later|soon)|in\s+this\s+(?:parcel|delivery)|arriving\s+(?:today|tomorrow|later|soon))(?:\s+today)?\s*:\s*/i;
+
 /** A priced line that is nothing but a sale's price comparison: its name is above it. */
 function onlyPriceTalk(segment: string): boolean {
   if (!new RegExp(PRICE_TALK.source, 'i').test(segment)) return false;
@@ -1132,6 +1141,7 @@ const ITEM_SHORTENED_TO = 60;
  */
 function cleanItem(raw: string, long: 'shorten' | 'refuse' = 'refuse'): string | null {
   let s = raw
+    .replace(DELIVERY_STATUS, '')
     .replace(PRICE_TALK, '')
     .replace(/£\s?[\d,.]+/g, '')
     .replace(/^[\s•*·\-–—:|]+|[\s•*·\-–—:|,]+$/g, '')
@@ -1387,11 +1397,18 @@ function tidy(raw: string): string {
  * in the suites: the two refunds among them, and nothing else.
  */
 const REFUND_WORD = /\brefund(?:ed|s)?\b/i;
+/*
+ * "Your order has been cancelled", "Cancellation confirmed": the money is
+ * coming back, as it is from a refund, and saved as it stands the email was a
+ * fresh purchase of what was never bought, with a return window to match.
+ * "Cancelled", not "cancel": "cancel any time" is a subscription's selling.
+ */
+const CANCELLED = /\bcancell?(?:ed|ation)\b/i;
 const REFUND_SELLING = /\b(?:free|easy|hassle|polic(?:y|ies)|within\s+\d+\s+days)\b/i;
 
 function readsAsRefund(text: string): boolean {
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
-  if (lines.slice(0, 4).some((l) => REFUND_WORD.test(l) && !REFUND_SELLING.test(l))) return true;
+  if (lines.slice(0, 4).some((l) => (REFUND_WORD.test(l) || CANCELLED.test(l)) && !REFUND_SELLING.test(l))) return true;
   return lines.some((l) => /^refund$/i.test(l));
 }
 
